@@ -4,7 +4,7 @@ Recovery procedure for the pinned static snapshot. It does not set the live cand
 
 The pinned source versions are recovered in the project-owned static snapshot:
 
-`/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852`
+`/Users/rcourson/Documents/Vibe/Aux/out/provided-source-snapshot-1.26.1016.1852`
 
 The existing stage is unchanged. No newer source version was adopted. The snapshot is an explicit source input, selected with `--source-snapshot`; installed defaults do not silently redirect to it. Canonical inventories and source versions remain unchanged. See `docs/acceptance/provided-source-snapshot-recovery.json` for manifest, inventory, validator and original critical-file hashes.
 

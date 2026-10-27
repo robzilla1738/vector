@@ -1,9 +1,0 @@
-# Chromium security updates
-
-Aux’s upstream tag and commit are recorded in [chromium/version.txt](../chromium/version.txt). Use the official [Chrome Releases stable announcements](https://chromereleases.googleblog.com/search/label/Stable%20updates) to select the latest released Mac version in the pinned Chromium major. Internal tags alone do not establish release availability.
-
-Prepare each update in a disposable checkout with matching dependencies. Replay the ordered area patches, resolve product conflicts, compile with the single dev lock, and launch with a disposable Profile to inspect affected behavior. Preserve the working stable checkout and its build cache. Commit the version and patch changes together only after replay succeeds; record build and launch results in [STATUS.md](STATUS.md). Hosted CI, signing and releases are outside local development.
-
-Aux currently uses Chromium `154.0.8037.98` at upstream commit `b859317bf11f6be47f9b7799ec690a0a42a1fb33`. That pin compiled, launched and supported the disposable-profile walkthroughs recorded in STATUS; the earlier pending-respin note is resolved. The ordered native series through 0101 has replayed from that exact upstream commit with zero product byte/mode differences. Its latest runtime/renderer candidate is still building and requires changed-flow observation.
-
-The [official stable release log](https://chromereleases.googleblog.com/) now lists Mac `155.0.8059.39/.40` (October 6, 2026). The current competitive acceptance compares matching 154 builds. The next major update must use a fresh disposable checkout and repeat the focused replay/build/changed-flow procedure above; preserve both measurement and product checkouts. A successful 154 build does not establish 155 compatibility. Historical respin instructions and results are [archived](archive/2026-10-05-v2/CHROMIUM_RESPINS.md).

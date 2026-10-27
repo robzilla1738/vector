@@ -1,37 +1,12 @@
-# Aux Chromium source
+# Aux Chromium
 
-Aux pins Chromium `154.0.8037.98` at the commit in [version.txt](version.txt). The source and build output live outside this repository. [downloads.ini](downloads.ini) records the official branch-point lite archive and its SHA-256; the exact `.98` security respin is fetched from the upstream tag and checked against its pinned commit. The branch-point archive alone does not contain that respin.
+Aux builds on Chromium `155.0.8059.85` (commit in [version.txt](version.txt)). The checkout and build output live outside the repo at `/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src`; how to build it is in [BUILDING.md](BUILDING.md).
 
-The patch order is [patches/series](patches/series). Source patches are the reviewable record of every upstream change. No Chromium profile, build output, credential, downloaded archive, or reference capture belongs in Git.
+## Here
 
-## Local commands
+- [patches/series](patches/series) lists the Aux patches in apply order; [patches/aux/](patches/aux/) holds them. They are the reviewable record of every upstream change. [patches/README.md](patches/README.md) describes area ownership.
+- `patches/benchmark/` holds stock-Chromium comparison patches used only for performance measurements.
+- `flags.*.gn` are GN argument sets. [flags.aux.gn](flags.aux.gn) is the local AuxFast build; `flags.fast.gn` and `flags.release.gn` are the official-build variants; `flags.dev.gn` and `flags.aside.gn` are component-build variants.
+- `tests/` holds native smoke scripts.
 
-For a **new empty checkout only**:
-
-```sh
-chromium/aux-chromium presetup
-chromium/aux-chromium setup
-chromium/aux-chromium push
-chromium/aux-chromium sanity
-chromium/aux-chromium stage-shell
-chromium/aux-chromium configure --flavor dev
-chromium/aux-chromium build --flavor dev
-node chromium/stage-runtime.mjs "$HOME/aux-chromium-product/chromium/src/out/AuxDev/Aux.app"
-chromium/aux-chromium run --flavor dev --profile /tmp/aux-chromium-profile
-```
-
-The current product checkout is `~/aux-chromium-product/chromium/src`; preserve its applied patches and incremental cache. The launcher, builder and staging tools default to it and Fast output through `dev-defaults.json`. Set `AUX_CHROMIUM_SRC` for a different checkout and `AUX_DEPOT_TOOLS` for depot_tools. Read [STATUS](../docs/STATUS.md) before staging: authored patches, applied patches, compiled patches and staged renderer/host bindings can be at different checkpoints. Do not rerun `setup` or `push` on an existing patched checkout.
-
-Development builds use `out/AuxDev` and component linking. Fast/release builds use [flags.fast.gn](flags.fast.gn): official static linking, ThinLTO, PGO phase 2, H.264/AAC and Widevine. [flags.release.gn](flags.release.gn) imports these settings. Build flags alone do not prove that an output was built with them. Keep one native builder and use the plain development PID lock for every native source mutation/build.
-
-`pop` removes the series in reverse order. `refresh --patch aux/<area>/<name>.patch <upstream paths...>` records a selected tracked diff, and `format <upstream paths...>` runs Chromium's clang-format. `stage-shell` builds the Chromium renderer with SurfaceEmbed's restricted `object-src 'self'` policy, stages current `apps/shell/dist` assets under `chrome/browser/resources/aux/assets`. Run it before a native resource rebuild when renderer assets change. CSP and bootstrap order can be checked with `node chromium/stage-shell.mjs verify`. The current AuxFast preview has the native Mojo host integration; methods still absent from its allowlist remain product gaps.
-
-`stage-runtime` builds a self-contained runtime bundle and stages it beside an unsigned `Aux.app`. `slim-node.mjs` builds Node `26.9.0` with small ICU, no npm and LTO, then strips local symbols. Node 26 no longer includes Corepack or accepts its old configure switch. The official source archive is pinned to SHA-256 `47b970d88511b429e587b740fa733176909d2a2005a29662f01b05205f58468b`; its incremental source build and executable are cached outside the repository in `~/aux-node-slim` (override with `AUX_NODE_CACHE`). The source build uses the same plain native development lock. Pass an app path to stage a different build, for example `node chromium/stage-runtime.mjs /path/to/Aux.app`. Run this before signing; the script refuses to modify a signed app. The slim executable's 90 MB size target is advisory and must be measured after the build.
-
-Node `26.9.0` includes the [upstream SQLite backup fix](https://github.com/nodejs/node/pull/65666): completion now drains promise reactions before the event loop becomes idle. The prior `26.7.0` pin could leave a completed backup waiting for unrelated callbacks, causing intermittent recovery-test timeouts. Backup code, test timeouts and worker pools need no workaround. The new official source retains the same full ICU 78 dataset and checksum used by staging; `Intl.Segmenter` support is preserved. A pin update still requires the normal slim runtime build and staging before an app contains the fix.
-
-## Source and build evidence
-
-The exact `.98` upstream commit is the build input. Current compilation, native launch and performance status are recorded in [STATUS](../docs/STATUS.md); measurements belong in [BENCHMARKS](../docs/BENCHMARKS.md). Historical evidence does not establish that the current source or staged app passes.
-
-Development and verification are local. Do not dispatch CI, push, sign or release as part of this implementation. The stock comparison must use the same Chromium version and resolved Fast flags as Aux, with the Aux shell disabled, before the five paired measurements run.
+The checkout already has the series applied, plus owner work. Never reset it, re-apply the series over it, or remove unrelated changes. The `aux-chromium` setup/push/pop tool that once rebuilt a fresh 154 checkout from the series stopped working when the shell was retired on 2026-10-18 and was removed; it is at tag `archive/pre-cleanup-2026-10-27`. A fresh checkout cannot be rebuilt from this repo today.

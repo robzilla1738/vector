@@ -4,16 +4,14 @@ Aux uses Chromium 155.0.8059.85 on macOS arm64. The shared checkout is
 `/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src`.
 `depot_tools` for that checkout is `/Users/rcourson/Documents/Vibe/aux-chromium-durable/depot_tools`.
 The existing dirty checkout contains owner work: never reset it or remove its changes.
-Read the root `AGENTS.md`, `docs/design/names.md` and `docs/STATUS.md` first.
-The earlier runtime/shell development commands are retired; their history remains
-under `docs/archive/`.
+Read the root `AGENTS.md` and `docs/STATUS.md` first.
 
 ## Native targets
 
 - `out/AuxAside` is the intermediate component build. Its historical output directory
   name is not a shipped product identifier. It must have `enable_aux_browser=true`
   and `enable_aux_shell=false`; a disabled browser flag does not verify new sources.
-- `out/AuxFast` is the final independent non-component build. Use
+- `out/AuxFast` is the final non-component build. Use
   `chromium/flags.aux.gn`, with `is_official_build=false` for the local unsigned build.
   Preserve an existing args file before changing it. The browser executable lives
   at `out/AuxFast/Aux.app/Contents/MacOS/Aux`.
@@ -27,14 +25,13 @@ may already be applied to the shared checkout. Check before applying it again.
 Record focused enabled-object compilation separately from full linkage, runtime
 observation and parity acceptance.
 
-## Workspace and assembly
+## Assembly
 
-From the workspace root, run `pnpm build`, `node scripts/build-runtime.mjs`, then
-`node scripts/build-sea.mjs`. Package only independently built artifacts with
-`node scripts/package-aux.mjs --chromium /absolute/path/to/Aux.app --app /absolute/output/Aux.app`.
-Intermediate component packaging additionally requires `--development`; it does
-not satisfy final installation acceptance. Assembly uses local ad hoc signing.
-No push, hosted Actions, Developer ID signing, notarization or release is authorized.
+Stage, audit, assemble and package the supplied implementation with the root
+`pnpm stage:provided`, `pnpm check:provided`, `pnpm assemble:provided` and
+`pnpm package:provided` (see the root README). Candidate repairs are applied as
+receipt-bound deltas under `docs/integration/proposed/completion-20261026/`.
+No push, hosted Actions, signing, notarization or release is authorized.
 
 The native browser owns its bundled daemon lifecycle. For runtime observation,
 set a disposable `AUX_HOME` and `--user-data-dir`, and use `--use-mock-keychain`.

@@ -8,7 +8,7 @@ Cloud access is an explicit build option. Omitting `--cloud-profile` preserves t
 node scripts/stage-provided.mjs \
   --source-snapshot out/provided-source-snapshot-1.26.1016.1852 \
   --output out/provided-reuse-cloud-development \
-  --app-path /Users/rcourson/Documents/Vibe/web/out/provided-candidate-cloud-development/Aux.app \
+  --app-path /Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-cloud-development/Aux.app \
   --cloud-profile development
 node scripts/check-provided.mjs out/provided-reuse-cloud-development \
   --source-snapshot out/provided-source-snapshot-1.26.1016.1852

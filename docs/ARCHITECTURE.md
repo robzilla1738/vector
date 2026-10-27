@@ -1,29 +1,33 @@
-# Aux local architecture
+# Aux architecture
 
-The shipping product reuses the supplied Aside implementation on Chromium and brands it as Aux. The independent implementation later in this file is retired. When the two differ, the supplied implementation wins. Product rules are in [design/aside-contract.md](design/aside-contract.md). The live candidate is in [STATUS](STATUS.md).
+Aux ships the supplied Aside implementation on Aux Chromium, rebranded. Product rules are in the [contract](design/aside-contract.md); the live candidate is in [STATUS](STATUS.md).
 
-## Current product
+## The app
 
-- The browser is Chromium from `/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src`. Its native supervisor starts the supplied daemon from the app bundle, checks owned health, and supervises shutdown.
-- The supplied Agent extension, daemon, CLI, helpers, and runtime ship with the candidate. There is no built-in password manager. Users bring a browser extension such as 1Password.
-- Users bring a provider API key or connect an eligible ChatGPT/Codex plan. Aux does not sell inference or subscriptions.
-- Aux home, ports, and installation identity stay separate from Aside. Disposable development launches use `--use-mock-keychain`.
-- Public wire bytes (`AsideDaemonSessionToken`, `aside.daemon.auth.`, health `service:"aside-daemon"`, `Aside.*` commands) and `aside.dk.*` derivation labels stay until a versioned migration. Branding does not rename them.
+`Aux.app` is a Chromium 155 build from the durable checkout with the Aux patch series applied. Its supplied components live under `Contents/Resources/aux/`:
 
-## Retired independent implementation
+| Path | Component |
+|---|---|
+| `apps/daemon/Aux Daemon.app` | Supplied daemon (Node SEA) with Aux adaptations. The browser's native supervisor starts it, checks its owned health endpoint, and stops it on Quit. |
+| `apps/extension/` | Supplied Agent extension: new tab, chat, side panel, settings. |
+| `apps/cli/Aux CLI.app` | Supplied CLI, authenticating to the same daemon. |
+| `apps/computer-use/` | Supplied Computer Use helper. |
+| `agent-runtime/`, `memory-distribution/` | Supplied Node/Python runtime and memory model payloads. Immutable seeds; mutable state goes to the Aux home. |
+| `native/` | Native boundary library and carrier for the original addon. |
+| `bundle.json`, `provenance/` | Stage manifest and the hashes of every input. |
 
-The notes below describe the earlier clean-room architecture. They are not build instructions. In particular, ordinary windows are not gated on Vault setup, and the product is not implemented from `docs/spec/`.
+There is no Vault extension and no built-in password manager. Users bring a provider key or an eligible ChatGPT/Codex plan. Aux keeps its own home, app data, installation identity and ports (daemon 21520, bridge 21522, CDP 45203), separate from Aside.
 
-Aux was independently implemented from the behavior specifications in `docs/spec/`. Naming and local boundaries were defined in `docs/design/names.md`.
+## How a build is produced
 
-The Chromium browser owned process startup. Its native supervisor located the components under `Contents/Resources/aux`, started the daemon, verified owned health, and supervised shutdown and restart. Native installation authentication signed challenges with a local P-256 key. Profile identities bound the canonical Chromium profile path to a local account. That design gated ordinary windows until Vault setup, unlock, and onboarding were acknowledged.
+1. **Stage.** `scripts/stage-provided.mjs` copies the pinned supplied inputs (`docs/source/*-inputs.json`, or the frozen snapshot in `out/`) and applies the Aux transforms in `scripts/lib/` and `vendor/provided/`. Each transform is count-checked against exact anchors.
+2. **Audit.** `scripts/check-provided.mjs` confirms that every file the transforms did not touch still matches its supplied bytes.
+3. **Assemble and package.** `scripts/assemble-provided.mjs` and `scripts/package-provided.mjs` combine the stage with a native Chromium build into `Aux.app`.
+4. **Native.** Chromium changes are patches in `chromium/patches/`, built from the durable checkout through `scripts/native-build.py`.
+5. **Repairs.** The current candidate was then repaired with receipt-bound deltas under `docs/integration/proposed/completion-20261026/`. Their exact inputs are in `integrator/current-source-selection.json`.
 
-The daemon used Hono, tRPC, WebSocket transport, and SQLite. Account-scoped services provided sessions, provider credentials, projects, routines, memory/history/context, inbox, skills, channels, and encrypted Vault storage. The agent engine streamed durable events and applied session access policy to browser, file, shell, helper, and external tools. Credentials and decrypted Vault data did not enter ordinary model transcripts.
+## Compatibility boundaries
 
-The independently keyed Agent and Vault extensions were bundled Chromium components. React surfaces used shared UI tokens and licensed upstream fonts/icons. Native `chrome.aux*` APIs exposed account authentication, browser preferences, autocomplete, notifications, popup hosting, filtering, and browser import. The authenticated extension bridge routed commands by account, profile, and browsing mode and validated observed document identities before actions.
+The candidate still uses the compatibility protocol bytes and `aside.dk.*` HKDF domains listed in the contract. They are wire and cryptographic formats, not branding, and change only through a versioned migration. A few Aside identifiers live inside the immutable supplied addon and are remapped at runtime; STATUS lists them.
 
-The CLI authenticated to the same local daemon. Its MCP and persistent JavaScript REPL used the shared session/tool policy. Swift helpers provided permission-aware macOS operations through private parent pipes. Memory embeddings used pinned upstream ONNX weights. The local Vault used authenticated encryption and password/recovery wrapping.
-
-Packaging assembled independent daemon/CLI Node SEA executables, both extensions, helpers, model data, and pinned Node/Python/ripgrep/Poppler runtimes. Development assembly permitted a component Chromium build and its adjacent libraries. That design's final installation required a non-component build with the retired shell disabled and a local ad hoc signature. No hosted service or system Node installation was required by that assembled architecture.
-
-That description was the implemented independent structure, not completed parity with the supplied product.
+The retired clean-room implementation that preceded this design is at tag `archive/pre-cleanup-2026-10-27`.
