@@ -35,7 +35,7 @@ The cohort now carries every correction the shipping candidate has. Nothing is a
 - **Daemon JS:** `future-supervised-build/resources-rebased-a1/compose.py` replays the final-polish (6), brand-sweep (13), broker-order (8) and memory-close (2) rules onto both frozen future leaves. All apply exactly once and both outputs parse. This clears `futureResourcesLackRules`.
 - **Daemon main:** `future-supervised-build/main-rebased-a1/` is the future main with the bounded peer-loss shutdown applied cleanly. It compiles with the cohort's recorded command.
 - **Task layout:** the future link uses the same file the shipping daemon used, so `prepared-lease-recovery-a1/source/AuxNativeTaskLayout.swift` applies as-is.
-- **PDF-ABI:** the future link must swap in `out/live-inputs/completion-20261026/aux-completion-final-daemon-pdf-abi-20261026-a1/worker-host.o`, exactly as `final-daemon-pdf-abi/relink/relink.py` did for the shipping daemon.
+- **PDF-ABI:** the future link must swap in `out/live-inputs/tmp-preserved/aux-completion-final-daemon-pdf-abi-20261026-a1/worker-host.o`, exactly as `final-daemon-pdf-abi/relink/relink.py` did for the shipping daemon.
 
 What is left before activation is only what Apple gates: relink the daemon and Framework from these inputs, then make the entitlement/profile change and the v11 signing delta.
 
