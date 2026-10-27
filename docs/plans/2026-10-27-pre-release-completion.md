@@ -195,11 +195,11 @@ Batch 5 items start as soon as their approval lands (hosted can start after Batc
   - `scripts/verify-candidate.py` checks the repair chain. Lane A's stage-port was dropped by decision: the candidate is the A38 base plus the receipt chain, and the fresh-stage pipeline is its predecessor.
 - **Batch 2: already done in the candidate** (audit). Wire protocol and key domains are Aux. The last extension brand string was removed.
 - **Batch 3: blocked.** No way to drive the UI in this session: no computer-use tools, no assistive access, no Screen Recording.
-- **Batch 4: scoped** (`runtime/addon-replacement-scope/README.md`). Blocked on owner approval for Keychain-touching code.
+- **Batch 4: done for delivered code.** The supplied addon and its carrier were unreachable (the selected native route owns installation authority) and are removed; no `AsideNative` symbol remains. Internal Keychain item names (`aux.<scope>.aside.*`) and the boundary's original-group constant need a Keychain data migration, which needs owner approval.
 - **Batch 5:**
-  - REPL: source complete and inactive; waiting on Apple.
-  - Hosted service: green locally (63/63); deploy steps need owner approval.
+  - REPL: source complete, rebased onto the current seal (browser overlay, daemon JS with every rule, main with the peer-loss bound, which compiles) and inactive; waiting on Apple.
+  - Hosted service: green locally (63/63, after fixing a stale BYOK test); source pins refreshed for the deploy review; deploy steps need owner approval.
   - 1Password: needs an identity choice, a vendor account and UI access.
   - ChatGPT: needs the form submitted.
   - Legal: needs the missing facts.
-- **Batch 6:** STATUS, AGENTS.md, the contract and README updated to the current seal `5f787d38`.
+- **Batch 6:** STATUS, AGENTS.md, the contract and README updated to the current seal `3b9f9b68`; `scripts/verify-candidate.py` passes.
