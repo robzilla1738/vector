@@ -16,14 +16,15 @@ import { readinessRoutes } from './readiness';
 import { eventsRoutes } from './events';
 import { routines1852Routes } from './routines-1852';
 
-export const app=new Hono<{Variables:AuthVariables}>().basePath('/api/v1');
+export const app=new Hono<{Variables:AuthVariables&{requestId:string}}>().basePath('/api/v1');
 app.use('*',bodyLimit({maxSize:4*1024*1024,onError:c=>c.json({error:'Use a private upload for payloads larger than 4 MiB.'},413)}));
 app.use('*',cors({origin:origin=>{
   const allowed=(process.env.AUX_ALLOWED_ORIGINS||process.env.NEXT_PUBLIC_APP_URL||'https://app.getaux.co').split(',').map(value=>value.trim()).filter(Boolean);
   allowed.push('chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm');
   return allowed.includes(origin)?origin:undefined;
 },allowHeaders:['Authorization','Content-Type','If-Match','If-None-Match','X-Aux-Auth-Protocol','X-Aux-Sync-Encryption','X-Aux-If-Match','X-Aux-If-None-Match'],exposeHeaders:['ETag','Content-Range','Accept-Ranges','X-Aux-Cookie-Revision'],maxAge:600}));
-app.use('*',async(c,next)=>{c.header('Cache-Control','no-store');c.header('X-Content-Type-Options','nosniff');await next();});
+// Vercel's request id ties a client report to the platform log line.
+app.use('*',async(c,next)=>{c.header('Cache-Control','no-store');c.header('X-Content-Type-Options','nosniff');c.set('requestId',c.req.header('x-vercel-id')??crypto.randomUUID());c.header('X-Request-Id',c.get('requestId'));await next();});
 app.get('/health',c=>c.json({service:'aux-cloud',status:'ok',version:1}));
 app.route('/auth',authRoutes);
 app.route('/webhooks/clerk',authWebhooks);
@@ -53,6 +54,6 @@ app.onError((error,c)=>{
   // Do not log bodies, tokens, email addresses, database URLs or provider errors.
   const detail=error as Error&{code?:unknown;statusCode?:unknown};
   const safeLabel=(value:unknown)=>typeof value==='string'&&/^[A-Za-z0-9_]{1,64}$/.test(value)?value:undefined;
-  console.error(JSON.stringify({event:'aux_request_failed',path:c.req.routePath,name:safeLabel(error.name),kind:safeLabel(error.constructor.name),code:safeLabel(detail.code),providerStatus:typeof detail.statusCode==='number'&&detail.statusCode>=400&&detail.statusCode<=599?detail.statusCode:undefined}));
+  console.error(JSON.stringify({event:'aux_request_failed',requestId:c.get('requestId'),path:c.req.routePath,name:safeLabel(error.name),kind:safeLabel(error.constructor.name),code:safeLabel(detail.code),providerStatus:typeof detail.statusCode==='number'&&detail.statusCode>=400&&detail.statusCode<=599?detail.statusCode:undefined}));
   return c.json({error:'The service could not complete this request. Please retry.'},503);
 });
