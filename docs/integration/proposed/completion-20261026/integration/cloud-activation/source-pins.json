@@ -1,15 +1,15 @@
 {
   "format": "aux.cloud.activation-source-pins.v1",
   "sourceRoot": "/Users/rcourson/Documents/Vibe/Aux",
-  "reviewedAt": "2026-10-26",
-  "sourceCommit": "8bb36c9fb26efd89baf4f2bc5758972f06b25f9b",
-  "serviceTree": "d270fcd9c36f122dec49ff86034f82b777a434df",
-  "lastServiceCommit": "36ed09783d0d1816acc8e0f7ece7ff4a222b8bd4",
+  "reviewedAt": "2026-10-27",
+  "sourceCommit": "c34109cdf3c42cbf210eee8ada38f0b17306e7ba",
+  "serviceTree": "9e17d81c3025464cb941c6cbba8b2f898896e3f1",
+  "lastServiceCommit": "39c75b960b92fe480f56d7f61f71a4ee9352506d",
   "serviceFiles": [
     {
       "path": "services/aux-cloud/.env.example",
-      "bytes": 1207,
-      "sha256": "eca169683a58d5ddebe342a2f1c0ca57ee9745440b18a0631d8da762a7da9ec2"
+      "bytes": 717,
+      "sha256": "491669b0062537602283dd1c4c2166314b3cd486d07d70465e96fdea88ba2c94"
     },
     {
       "path": "services/aux-cloud/.gitignore",
@@ -22,19 +22,14 @@
       "sha256": "98906c0f9f6946ce9ea7bf87af43961849b7a4c4af6d41f898a363bb9ea8f5b5"
     },
     {
-      "path": "services/aux-cloud/app/account/billing-panel.tsx",
-      "bytes": 5064,
-      "sha256": "a3b308034c54d9436b88e6a48c9f7fb3dad06cbd3341a9b768f426c62a4283e4"
-    },
-    {
       "path": "services/aux-cloud/app/account/page.tsx",
       "bytes": 486,
       "sha256": "e1c9bcea8fa4756aae14872738a48cf69b01eaba07002e0b8cb5792d49423de2"
     },
     {
       "path": "services/aux-cloud/app/account/panel.tsx",
-      "bytes": 529,
-      "sha256": "e4ccbda64d6abe353a15a9472c340c0a13dcfe90459b7c9f5f70453d1fb95f73"
+      "bytes": 390,
+      "sha256": "4bc3b75ac868616246613a5fedb20352d08f05b7c50d7decf0bef1ded2b1ac55"
     },
     {
       "path": "services/aux-cloud/app/api/v1/[[...path]]/route.ts",
@@ -43,8 +38,8 @@
     },
     {
       "path": "services/aux-cloud/app/community/page.tsx",
-      "bytes": 1551,
-      "sha256": "dc8aa84ac421a14cf71a2177082bb10d75df0927bd3be646f8f3281385a967f3"
+      "bytes": 1077,
+      "sha256": "2580ce4f34d4c76870de947274389375b2d589a5fc43c70cfd130b73405139c3"
     },
     {
       "path": "services/aux-cloud/app/desktop/connect/page.tsx",
@@ -63,8 +58,8 @@
     },
     {
       "path": "services/aux-cloud/app/docs/page.tsx",
-      "bytes": 3100,
-      "sha256": "9df8551dcf1628deb0d9c1aac6787d4a09703fd475dd595509eb4ec2d6ef42fd"
+      "bytes": 1915,
+      "sha256": "3e5b32073da2d12f785edd6f148724de04d418e35f7cf20ff7112d6c70d83e2e"
     },
     {
       "path": "services/aux-cloud/app/information-page.tsx",
@@ -83,18 +78,18 @@
     },
     {
       "path": "services/aux-cloud/app/policy/privacy/page.tsx",
-      "bytes": 4841,
-      "sha256": "7fdfb6973902eadd687d192c9763d05a435a5c51188dee6e7b8ea90138ba12f9"
+      "bytes": 3773,
+      "sha256": "9502d2547887495d05112ee32ffedf8bde9652b0b5771f5e3c6b28e66685b019"
     },
     {
       "path": "services/aux-cloud/app/policy/terms/page.tsx",
-      "bytes": 3004,
-      "sha256": "ba59a18986f44efc40cb70817dcbe834a7d144a9567bd1fa31a7b5c5bb8cfe20"
+      "bytes": 3399,
+      "sha256": "59c1069a7f5d9b8ba72da53546353bca79394063397c678efd0c8f636f60de0f"
     },
     {
       "path": "services/aux-cloud/app/s/[id]/page.tsx",
-      "bytes": 2272,
-      "sha256": "6fe13daf9f1cd43bd6219a3257e2b5df1e120a99585dfb902c05c87dc65c27fd"
+      "bytes": 2712,
+      "sha256": "5b94d9b3613fe9ad3819221959c601c67f91ca54d57718532d7699d3512532bb"
     },
     {
       "path": "services/aux-cloud/app/sign-in/[[...sign-in]]/page.tsx",
@@ -103,8 +98,8 @@
     },
     {
       "path": "services/aux-cloud/app/sign-up/[[...sign-up]]/page.tsx",
-      "bytes": 157,
-      "sha256": "521bdc7b501105fd91cc44b612c41cdd062e10025283ab6318bffc4b091befe4"
+      "bytes": 398,
+      "sha256": "e6beb2925ae7329f75987b7c8cf27c4d54f6d5ddf6ee5cee6bb050e39d4ef2d5"
     },
     {
       "path": "services/aux-cloud/app/style.css",
@@ -127,11 +122,6 @@
       "sha256": "362222632bb672d39cab8a302728ee6af1a03b2396c8f5adcb6e2efac56cdb70"
     },
     {
-      "path": "services/aux-cloud/docs/billing.md",
-      "bytes": 8302,
-      "sha256": "876ac3dcddaff4330f985fec41cd0d7ae1182acfd66f121802a7db08b59649bb"
-    },
-    {
       "path": "services/aux-cloud/docs/drive-1852.md",
       "bytes": 7001,
       "sha256": "7cd43bf2a0dfe124dbf4f1f3a1fe027130337d61d844a7f602e69f6e99c2f680"
@@ -143,28 +133,18 @@
     },
     {
       "path": "services/aux-cloud/docs/identity-transition.md",
-      "bytes": 3479,
-      "sha256": "52eb951c350516f76411425ea95f0c054e0cb251c1c8dbc2ca44ec3be28bb829"
-    },
-    {
-      "path": "services/aux-cloud/docs/inference-uploads.md",
-      "bytes": 4907,
-      "sha256": "6f9a75bb8e1f8bebfe74631780ef65d078be69738d801e8999d467138db10179"
-    },
-    {
-      "path": "services/aux-cloud/docs/inference.md",
-      "bytes": 5724,
-      "sha256": "8e2c2182d24322194f30bcc7338f77ea2dc462c08d4919a0f4e248a5a79383b9"
+      "bytes": 949,
+      "sha256": "884d7159a8b4b9cfa47ccbb1fd7248db37fede1e040f7f153b0169e23dc471a6"
     },
     {
       "path": "services/aux-cloud/docs/operations.md",
-      "bytes": 8247,
-      "sha256": "81779ee2fee6e333cf33065b16c597ac6528886b8a2ad651c5e5451483beecb7"
+      "bytes": 8363,
+      "sha256": "f331ef9679d60fa22d5c56aa5bfcea1d46f846c14742f7f25c3527b0acba2920"
     },
     {
       "path": "services/aux-cloud/docs/recovery.md",
-      "bytes": 16421,
-      "sha256": "dc4041dd12e24887301a296df2c422288acaa4412058194674b8bcb680b9fa3b"
+      "bytes": 16444,
+      "sha256": "2ccf28525f6961a9b2960ad91868cbf42b5b804155a1a949f1b0ef805f1110c5"
     },
     {
       "path": "services/aux-cloud/docs/session-sync.md",
@@ -282,11 +262,6 @@
       "sha256": "ddb9101026adc66b712e6c7e6ba886903aa937c6fcacf11286167be7180ac69e"
     },
     {
-      "path": "services/aux-cloud/evidence/stripe-resources.json",
-      "bytes": 728,
-      "sha256": "d4aa114a4e1be265a101d82b3e1226b037098b71592e7aa8537fd3063d7d0bfa"
-    },
-    {
       "path": "services/aux-cloud/evidence/sync-recovery-deployed.json",
       "bytes": 1226,
       "sha256": "ba93ccc46c455c1a9c993dc490b04272103d63b7a49e1cc3bd24c92f28e4327d"
@@ -357,14 +332,19 @@
       "sha256": "c7b963011657f8d6e28acdc0969eca1d0b6d7f118954142c918cf2bb52ba2e5e"
     },
     {
+      "path": "services/aux-cloud/migrations/013-account-lifecycle.sql",
+      "bytes": 1506,
+      "sha256": "c44fb191dc09e344b0adcbf9c0d70555d069dfac0d4a940ba51a734bdf4baea5"
+    },
+    {
       "path": "services/aux-cloud/next-env.d.ts",
       "bytes": 288,
       "sha256": "1862ac4bbbc5192d4bf562161df66ea547ed3e67173100656ab606ae9797db2b"
     },
     {
       "path": "services/aux-cloud/next.config.ts",
-      "bytes": 1201,
-      "sha256": "04301cd5d2e82e49ad567641258d3b76a714fab6efba8c82646fc5669e3062f2"
+      "bytes": 1665,
+      "sha256": "7f93a779df0e1d37afe6edf0c2014d8948c6096fde048d1d8f0111c9da50e11f"
     },
     {
       "path": "services/aux-cloud/ops/backup-runner/README.md",
@@ -373,8 +353,8 @@
     },
     {
       "path": "services/aux-cloud/ops/backup-runner/production.env.example",
-      "bytes": 671,
-      "sha256": "f98fe42596cdfc862560e739f1171b4b4b88db4a162f343a1c26d7f8b657ad37"
+      "bytes": 616,
+      "sha256": "6d572145fabf15a69c2d6059fb1c6752916a6bdd6b329157052c04a60dd5d621"
     },
     {
       "path": "services/aux-cloud/ops/backup-runner/runner-review.example.json",
@@ -403,13 +383,13 @@
     },
     {
       "path": "services/aux-cloud/package.json",
-      "bytes": 1356,
-      "sha256": "e6a2a7563fe7b6eaae72b6994cb9aa5c5f68aa9cbd376d8c684582d7ef85ec7f"
+      "bytes": 1217,
+      "sha256": "d0ece275214a34bc087ea48e9d50a83b69e0fba3bb5603b777b9449d47626269"
     },
     {
       "path": "services/aux-cloud/pnpm-lock.yaml",
-      "bytes": 99068,
-      "sha256": "9a5a0da373f488e3374fbb2936c718366e69f50afe52af30dfdb049ed314cc81"
+      "bytes": 90957,
+      "sha256": "b82f8ed5f35eb925e97b92be5d8f280a595e3c0ad5700f0a29f15520bb0bb322"
     },
     {
       "path": "services/aux-cloud/pnpm-workspace.yaml",
@@ -688,8 +668,8 @@
     },
     {
       "path": "services/aux-cloud/scripts/backup-runner-core.test.mjs",
-      "bytes": 5719,
-      "sha256": "6696015d415b399f9d45f31bae9184da9eca1a94d7460156bf9b23c34f72ddb3"
+      "bytes": 5810,
+      "sha256": "fefd3c8d7a706c9464a44178d876bdb884beecb9a05b3ac79f9df517349c053f"
     },
     {
       "path": "services/aux-cloud/scripts/check-auth-db.ts",
@@ -723,8 +703,8 @@
     },
     {
       "path": "services/aux-cloud/scripts/check-environment.mjs",
-      "bytes": 4458,
-      "sha256": "0977ce30448ef236f255a3b4959d82ed46e4818037da04e6a29685335213ddca"
+      "bytes": 3769,
+      "sha256": "9a48e86a73d8e6dd1086a3b04cf543a393dc9590c127beb3e94eb2ad7daf0549"
     },
     {
       "path": "services/aux-cloud/scripts/check-production-bootstrap.mjs",
@@ -733,8 +713,8 @@
     },
     {
       "path": "services/aux-cloud/scripts/check-production-configuration.mjs",
-      "bytes": 6431,
-      "sha256": "94248a8cb0bb37ac356e6e96084eedb5bbd6108b6d520d571a460fcfab5b59c7"
+      "bytes": 5832,
+      "sha256": "15307a15f56768781bfacad740fc37c16a189d8fd019773319e644c36b789378"
     },
     {
       "path": "services/aux-cloud/scripts/check-production-configuration.test.mjs",
@@ -748,13 +728,13 @@
     },
     {
       "path": "services/aux-cloud/scripts/check-readiness.mts",
-      "bytes": 5154,
-      "sha256": "ed486626789cd7df064db861c59d63cbe2c64f3972dceba3cd410ee1591cb612"
+      "bytes": 5163,
+      "sha256": "a70a64aa73f1b3fc1c3f83567f10e8aa7a0776ac8c7f9dd528980cf7bea2a6fd"
     },
     {
       "path": "services/aux-cloud/scripts/check-readiness.test.ts",
-      "bytes": 4541,
-      "sha256": "147d661dd0ffb52a3d7ef7542a0a50b11fa88629890fd73fc0a85f98eaef45ee"
+      "bytes": 4493,
+      "sha256": "1685f57381188893625d252251db1ce640b841f0257c245606a02a991a7740ad"
     },
     {
       "path": "services/aux-cloud/scripts/check-recovery-capture.mjs",
@@ -770,16 +750,6 @@
       "path": "services/aux-cloud/scripts/check-session-sync-db.ts",
       "bytes": 5687,
       "sha256": "83882312c927c025eeae7997549276f06e173401980572c1b67aa0d918186763"
-    },
-    {
-      "path": "services/aux-cloud/scripts/check-stripe-checkout.mts",
-      "bytes": 6763,
-      "sha256": "6cc2f0c778619436e5e9f903acca74a99bf8e7334c14d3997505e65e2ba63e94"
-    },
-    {
-      "path": "services/aux-cloud/scripts/check-stripe-sandbox.mts",
-      "bytes": 3521,
-      "sha256": "8fdf5bb9ee9057b9bc2c35dd11d8cd2d67529b2fbbcc37e600f59f560f44ea63"
     },
     {
       "path": "services/aux-cloud/scripts/check-sync-recovery-deployed.mts",
@@ -808,8 +778,8 @@
     },
     {
       "path": "services/aux-cloud/scripts/cloud-backup-runner.mjs",
-      "bytes": 2623,
-      "sha256": "1ee4e81f8ec544daf2c3bb816bff88ec41a7b993eb41dd10015021e4d01546be"
+      "bytes": 2473,
+      "sha256": "a61708c1028ab90a9043c9a1f37222f123c7af77f1096b0d00e2d5019e37aab7"
     },
     {
       "path": "services/aux-cloud/scripts/cloud-recovery-online.mjs",
@@ -847,6 +817,16 @@
       "sha256": "3da056e7bad7385c1165671172a007e55ddfbfd35f92b6bcd1b409c26bc8dd9f"
     },
     {
+      "path": "services/aux-cloud/scripts/operator.mts",
+      "bytes": 2499,
+      "sha256": "7c068d0068c037fd9929f0dee88f142f6ae7166e5531e2288125f780625741bd"
+    },
+    {
+      "path": "services/aux-cloud/scripts/operator.test.ts",
+      "bytes": 1633,
+      "sha256": "5f420020603d420a210a90fbc0ec1e3aac383fa4523862a4307aa1bd6d1180cd"
+    },
+    {
       "path": "services/aux-cloud/scripts/recovery-bundle.mjs",
       "bytes": 7329,
       "sha256": "689bd4efea79c4a7dad9a29d4ace11c7f86516bcc86f6766a2f644df449a488b"
@@ -872,9 +852,14 @@
       "sha256": "c7a65ad72805a03180de813005a5301e62a4e2beeb3f4d7d8d20db2b139354b4"
     },
     {
+      "path": "services/aux-cloud/src/app-composition.test.ts",
+      "bytes": 5162,
+      "sha256": "0dac3c5e9f0f195f30fabd87249154790ac4bcea85abd4574cbb1a035bedee52"
+    },
+    {
       "path": "services/aux-cloud/src/app.ts",
-      "bytes": 3825,
-      "sha256": "ab32116897e3bb1ee2dd98d748e2382da8224bdcd9a5cde555289a9e2fd08a11"
+      "bytes": 4176,
+      "sha256": "868880acfda61470f262c78dd7bec74be99c3d8c883567a2d72dab8201331006"
     },
     {
       "path": "services/aux-cloud/src/attachments.test.ts",
@@ -883,13 +868,8 @@
     },
     {
       "path": "services/aux-cloud/src/attachments.ts",
-      "bytes": 22592,
-      "sha256": "45bff10715d1322c6d3bf055055bbe28fd4747b7c1145ce7a4fc17ce644ba5c0"
-    },
-    {
-      "path": "services/aux-cloud/src/audio-duration.ts",
-      "bytes": 5988,
-      "sha256": "ded402f13bd19b9fccf76b98fd63ec62226be3d64c33b2588cdfde1c347edeb6"
+      "bytes": 22399,
+      "sha256": "fa10ff819c2cd14e478b13f69e152cec1342c1a3e4e6cb6b785608da62e52bcb"
     },
     {
       "path": "services/aux-cloud/src/auth.test.ts",
@@ -898,23 +878,13 @@
     },
     {
       "path": "services/aux-cloud/src/auth.ts",
-      "bytes": 39879,
-      "sha256": "8f303082a5421b4e27352761b60d62a54cf534c8f1b9167277c36f7b6397e297"
-    },
-    {
-      "path": "services/aux-cloud/src/billing-identity-transition.ts",
-      "bytes": 1233,
-      "sha256": "48fae5a3f820f95c31dbea97c292a2f483e553268ed8a8a1ef6c5010c84b4216"
-    },
-    {
-      "path": "services/aux-cloud/src/billing.test.ts",
-      "bytes": 13631,
-      "sha256": "2f4a489c7fbc3c4f8f651b67bc0392fb0f9036f2cbe60b55cca8c4bda4b45798"
+      "bytes": 41399,
+      "sha256": "8d86360ba1704b5571be69ca1f80fefa87c0f65c138f7a57cc1593818ca74e24"
     },
     {
       "path": "services/aux-cloud/src/billing.ts",
-      "bytes": 31400,
-      "sha256": "afc8d76d6922edeab9e9e1917513342e4934754112f829d10c481e6e87e49529"
+      "bytes": 1899,
+      "sha256": "cc2c4eb3ec39fa3de6d1902f182a6d6a872587147ff3e3583e5314b0ba9406d5"
     },
     {
       "path": "services/aux-cloud/src/blob-length.test.ts",
@@ -928,8 +898,8 @@
     },
     {
       "path": "services/aux-cloud/src/cloud-identity.test.ts",
-      "bytes": 4284,
-      "sha256": "e2414e3f5d60001a5d65a3eae09cc61eb3398ae403bb4967b83c0dec305843a8"
+      "bytes": 1485,
+      "sha256": "cee8b24aefa6524a554c7c35e3809ad3b53ea554e5683847b1950fe69b0125c1"
     },
     {
       "path": "services/aux-cloud/src/db.ts",
@@ -977,64 +947,44 @@
       "sha256": "b8330d67e6189469fceba82857749e95deeb417886206a95d6cca8943a5a249b"
     },
     {
-      "path": "services/aux-cloud/src/image-generation.test.ts",
-      "bytes": 1193,
-      "sha256": "7fca5ab69ff5e424901d23f730012e1d095f29972ae4e75fd39d5f89a3b73c96"
-    },
-    {
-      "path": "services/aux-cloud/src/image-generation.ts",
-      "bytes": 977,
-      "sha256": "ddc824aeceb98132a6cfab9a1a9a8f5e07c86775e75f344daf8b7fdd8095a31f"
-    },
-    {
-      "path": "services/aux-cloud/src/inference-uploads.test.ts",
-      "bytes": 6351,
-      "sha256": "d47f4aad1818a48dac94640a29a61704b1ac22c384051232a7d94e05a22ea7f8"
-    },
-    {
-      "path": "services/aux-cloud/src/inference-uploads.ts",
-      "bytes": 5437,
-      "sha256": "2f8266c1eddb139b12f785aa3e4551eb4f3b7341e8a078bf4b4ea8198aa0eba0"
-    },
-    {
-      "path": "services/aux-cloud/src/inference.test.ts",
-      "bytes": 4553,
-      "sha256": "3d3f7c86f8c302da4bfdf819d5b7cea131e23f6111943297809b78db88d97013"
-    },
-    {
       "path": "services/aux-cloud/src/inference.ts",
-      "bytes": 25477,
-      "sha256": "f6d95e9ab1f40dd24682c07602bf8a87075ed6b539beb9a4694f45b5ea004163"
+      "bytes": 1122,
+      "sha256": "5457932a82ef065127840d302c80bf8b61a1a58dd717508afc53e2a6e253c227"
     },
     {
       "path": "services/aux-cloud/src/internal-auth.ts",
-      "bytes": 386,
-      "sha256": "e5eec0ce813bc9f7af1f654c47246323291614418d3fc93e027bc419ce628469"
+      "bytes": 747,
+      "sha256": "59dadfbe8597fa9e2b6b7f564fdd4b6c471ed44e2a7f979433c73c73a1f857e0"
     },
     {
       "path": "services/aux-cloud/src/launch-mode.test.ts",
-      "bytes": 3108,
-      "sha256": "5f9318e01ebda20cfde48f8b25fb0ef4d9a015f68599910b42e5a8f128f29095"
+      "bytes": 2029,
+      "sha256": "ec333eb24b2727318ebb3d7fa98c5a832fe2d346a22193dfd8b7a842f1a44329"
     },
     {
       "path": "services/aux-cloud/src/launch-mode.ts",
-      "bytes": 365,
-      "sha256": "4f0ad1e830c0a5640c7bee82e154cc8c358ff3d31adfd9cc1bfa2d8cc860e4e6"
+      "bytes": 265,
+      "sha256": "a6f14e92f2032cb316ae61533801adcb01a86af1ba5b0208f64a576d023b8830"
+    },
+    {
+      "path": "services/aux-cloud/src/legal.ts",
+      "bytes": 201,
+      "sha256": "e85e9c3993c0d2667710503f85d2de20c161c0fdec374343607c972c04063e09"
     },
     {
       "path": "services/aux-cloud/src/maintenance.ts",
-      "bytes": 1275,
-      "sha256": "013c5d438f1077b6d099af63a3bdf3d6c28df47e6fb49117b474cb15bde611ca"
+      "bytes": 2492,
+      "sha256": "b5b7314422805a1473eb10d80497964c0e556b17f21ff8770ba916abe25ad81e"
     },
     {
       "path": "services/aux-cloud/src/operations.test.ts",
-      "bytes": 6299,
-      "sha256": "5db56d20790bb487a5e3c52536a86129183d73dd1dc8ae12cf458e73b512fa71"
+      "bytes": 6189,
+      "sha256": "24be7872eb244fac4bc7a96d590ca12c2bc95768e5b39b4c47cd2a0bbb682f83"
     },
     {
       "path": "services/aux-cloud/src/readiness.ts",
-      "bytes": 1491,
-      "sha256": "66ddad2b597b59f22ba49c2e4c4900f4f09702e267847c7a1b2a0f296149ca64"
+      "bytes": 1493,
+      "sha256": "6efa597dd5177ca31fdb28550da273fb04080731054dfb10d3134becb74e1906"
     },
     {
       "path": "services/aux-cloud/src/routines-1852.test.ts",
@@ -1048,8 +998,8 @@
     },
     {
       "path": "services/aux-cloud/src/schema-manifest.json",
-      "bytes": 1119,
-      "sha256": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10"
+      "bytes": 1218,
+      "sha256": "16a34f8a02631c627db30e9ea9cc22ccc222483a16f177350cd6508fa7ff3cb0"
     },
     {
       "path": "services/aux-cloud/src/session-sync.test.ts",
@@ -1068,8 +1018,8 @@
     },
     {
       "path": "services/aux-cloud/src/sync-recovery-integration.test.ts",
-      "bytes": 11509,
-      "sha256": "996c1e77b9096fc0441e8b8dfeae42064365a8d429bc2b088f51de51759e026f"
+      "bytes": 9100,
+      "sha256": "aeb9832c64735fc24266bcca34ff8c4c4f52abd4d70eea6ee88c1db9e27e7595"
     },
     {
       "path": "services/aux-cloud/src/sync-recovery-server-key.ts",
@@ -1083,8 +1033,8 @@
     },
     {
       "path": "services/aux-cloud/src/sync-recovery.ts",
-      "bytes": 6551,
-      "sha256": "837e423290214632eb76fb13ee9aa15b390d74386b60710174fa92a20fbe64d8"
+      "bytes": 6470,
+      "sha256": "84d91300a67e0a2d271f8d435e7a224e44a8ef35e2b9690f9ff213159b06b52a"
     },
     {
       "path": "services/aux-cloud/src/sync.test.ts",
@@ -1093,13 +1043,13 @@
     },
     {
       "path": "services/aux-cloud/src/sync.ts",
-      "bytes": 23575,
-      "sha256": "1d411c26e4bb2cb4743ef393749058cb9dcd7ac94b017a13b81732e0bce2e679"
+      "bytes": 24284,
+      "sha256": "b609851f935c7692f4d5d0b41c66bcb52ee161bf245548faf9a43facbda1c03c"
     },
     {
-      "path": "services/aux-cloud/src/usage.ts",
-      "bytes": 4088,
-      "sha256": "d16ab41fe5318d2f77120fc3a2f201408a7453b649ff8a5202b0932e6f0dbe64"
+      "path": "services/aux-cloud/src/test-database.ts",
+      "bytes": 4955,
+      "sha256": "7e8cf759831aa070e12f6652a539553468e728951a8d1441df21ebb5fcd6c287"
     },
     {
       "path": "services/aux-cloud/test-fixtures/provided-pricing-table-shared.js",
@@ -1117,7 +1067,7 @@
       "sha256": "59022a1315d692f82f70a9ab70fca44b5ddffe5af3987c91b4c0eb08aaa7d925"
     }
   ],
-  "serviceFileCount": 222,
+  "serviceFileCount": 212,
   "schemaManifest": {
     "001-auth.sql": "b86d32b9ffa4a746dcf8373d72d5a26db8e66c6328e9b6940baca79d31689981",
     "002-sync.sql": "41d503100fece24c2b7e0f4e84941ecaacc2d0932daceca2248ec452212257e5",
@@ -1130,9 +1080,10 @@
     "009-drive-1852.sql": "f7a3ccb0a52932ca91df331035aa5187fc5ad4f20ae900e8b5902686e23efb41",
     "010-drive-cookies.sql": "5cb5eba8f29314b487b4106770180fe243367af09bd87d083366c3e126e43b11",
     "011-inference-uploads.sql": "98502eaa3231e388ed794e86f81dba4670506f5eb0d47859f84db4421e6f26a4",
-    "012-sync-recovery-v2.sql": "c7b963011657f8d6e28acdc0969eca1d0b6d7f118954142c918cf2bb52ba2e5e"
+    "012-sync-recovery-v2.sql": "c7b963011657f8d6e28acdc0969eca1d0b6d7f118954142c918cf2bb52ba2e5e",
+    "013-account-lifecycle.sql": "c44fb191dc09e344b0adcbf9c0d70555d069dfac0d4a940ba51a734bdf4baea5"
   },
-  "canonicalManifestSha256": "75f926295a7e392e935b6892bda274fc74746bd4d31e6024ff6b9c6a4255c751",
+  "canonicalManifestSha256": "1789a3aa67cfbd0d395d7912bd2dacfcf6f1577367f2b43a5784cebe830af34e",
   "evidenceInputs": [
     {
       "path": "docs/integration/proposed/completion-20261026/integrator/cloud-production-configuration.json",
@@ -1265,7 +1216,6 @@
     "services/aux-cloud/.env.example",
     "services/aux-cloud/.gitignore",
     "services/aux-cloud/.vercelignore",
-    "services/aux-cloud/app/account/billing-panel.tsx",
     "services/aux-cloud/app/account/panel.tsx",
     "services/aux-cloud/app/api/v1/[[...path]]/route.ts",
     "services/aux-cloud/app/community/page.tsx",
@@ -1274,12 +1224,15 @@
     "services/aux-cloud/app/layout.tsx",
     "services/aux-cloud/app/policy/privacy/page.tsx",
     "services/aux-cloud/app/policy/terms/page.tsx",
+    "services/aux-cloud/app/s/[id]/page.tsx",
+    "services/aux-cloud/app/sign-up/[[...sign-up]]/page.tsx",
     "services/aux-cloud/config/deployment-resources.json",
     "services/aux-cloud/docs/auth-contract.md",
+    "services/aux-cloud/docs/billing.md",
     "services/aux-cloud/docs/drive-1852.md",
     "services/aux-cloud/docs/events.md",
     "services/aux-cloud/docs/identity-transition.md",
-    "services/aux-cloud/docs/inference-uploads.md",
+    "services/aux-cloud/docs/inference.md",
     "services/aux-cloud/docs/operations.md",
     "services/aux-cloud/docs/recovery.md",
     "services/aux-cloud/docs/session-sync.md",
@@ -1303,6 +1256,7 @@
     "services/aux-cloud/evidence/stripe-checkout.json",
     "services/aux-cloud/evidence/stripe-lifecycle.json",
     "services/aux-cloud/evidence/stripe-payment-refund.json",
+    "services/aux-cloud/evidence/stripe-resources.json",
     "services/aux-cloud/evidence/sync-recovery-deployed.json",
     "services/aux-cloud/evidence/sync-recovery-status-deployed.json",
     "services/aux-cloud/migrations/008-session-sync.sql",
@@ -1310,6 +1264,7 @@
     "services/aux-cloud/migrations/010-drive-cookies.sql",
     "services/aux-cloud/migrations/011-inference-uploads.sql",
     "services/aux-cloud/migrations/012-sync-recovery-v2.sql",
+    "services/aux-cloud/migrations/013-account-lifecycle.sql",
     "services/aux-cloud/next.config.ts",
     "services/aux-cloud/ops/backup-runner/README.md",
     "services/aux-cloud/ops/backup-runner/production.env.example",
@@ -1389,8 +1344,6 @@
     "services/aux-cloud/scripts/check-recovery-capture.mjs",
     "services/aux-cloud/scripts/check-recovery-restore.mjs",
     "services/aux-cloud/scripts/check-session-sync-db.ts",
-    "services/aux-cloud/scripts/check-stripe-checkout.mts",
-    "services/aux-cloud/scripts/check-stripe-sandbox.mts",
     "services/aux-cloud/scripts/check-sync-recovery-deployed.mts",
     "services/aux-cloud/scripts/check-sync-recovery-status-deployed.mts",
     "services/aux-cloud/scripts/cloud-backup-fetch.mjs",
@@ -1403,16 +1356,17 @@
     "services/aux-cloud/scripts/migrate-recovery-development.mjs",
     "services/aux-cloud/scripts/migrate-recovery-production.mjs",
     "services/aux-cloud/scripts/online-recovery-objects.mjs",
+    "services/aux-cloud/scripts/operator.mts",
+    "services/aux-cloud/scripts/operator.test.ts",
     "services/aux-cloud/scripts/recovery-bundle.mjs",
     "services/aux-cloud/scripts/recovery-bundle.test.mjs",
     "services/aux-cloud/scripts/recovery-restore-core.mjs",
     "services/aux-cloud/scripts/recovery-restore-process.mjs",
     "services/aux-cloud/scripts/recovery-tool-process.mjs",
+    "services/aux-cloud/src/app-composition.test.ts",
     "services/aux-cloud/src/app.ts",
     "services/aux-cloud/src/attachments.ts",
-    "services/aux-cloud/src/audio-duration.ts",
     "services/aux-cloud/src/auth.ts",
-    "services/aux-cloud/src/billing-identity-transition.ts",
     "services/aux-cloud/src/billing.test.ts",
     "services/aux-cloud/src/billing.ts",
     "services/aux-cloud/src/blob-length.test.ts",
@@ -1426,15 +1380,12 @@
     "services/aux-cloud/src/events.ts",
     "services/aux-cloud/src/http.test.ts",
     "services/aux-cloud/src/http.ts",
-    "services/aux-cloud/src/image-generation.test.ts",
-    "services/aux-cloud/src/image-generation.ts",
-    "services/aux-cloud/src/inference-uploads.test.ts",
-    "services/aux-cloud/src/inference-uploads.ts",
     "services/aux-cloud/src/inference.test.ts",
     "services/aux-cloud/src/inference.ts",
     "services/aux-cloud/src/internal-auth.ts",
     "services/aux-cloud/src/launch-mode.test.ts",
     "services/aux-cloud/src/launch-mode.ts",
+    "services/aux-cloud/src/legal.ts",
     "services/aux-cloud/src/maintenance.ts",
     "services/aux-cloud/src/operations.test.ts",
     "services/aux-cloud/src/readiness.ts",
@@ -1449,13 +1400,15 @@
     "services/aux-cloud/src/sync-recovery-store.ts",
     "services/aux-cloud/src/sync-recovery.ts",
     "services/aux-cloud/src/sync.ts",
+    "services/aux-cloud/src/test-database.ts",
     "services/aux-cloud/src/usage.ts",
     "services/aux-cloud/vercel.json"
   ],
   "checks": {
     "serviceSourceClean": true,
-    "twelveSourceMigrationHashesMatch": true,
-    "testsRerun": false,
+    "migrationCount": 13,
+    "sourceMigrationHashesMatch": true,
+    "testsRerun": true,
     "backupRun": false,
     "dashboardAccess": false,
     "secretValuesRead": false,

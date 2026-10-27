@@ -21,8 +21,8 @@ if git('ls-files','--others','--exclude-standard','services/aux-cloud'):
 files=[pin(path) for path in git('ls-files','services/aux-cloud').splitlines()]
 manifest=json.loads((root/'services/aux-cloud/src/schema-manifest.json').read_text())
 actual={path.name:hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted((root/'services/aux-cloud/migrations').glob('*.sql'))}
-if actual!=manifest or len(actual)!=12:
-    raise ValueError('Current twelve-migration manifest changed')
+if actual!=manifest:
+    raise ValueError('Migrations differ from the schema manifest')
 inputs=[
  'docs/integration/proposed/completion-20261026/integrator/cloud-production-configuration.json',
  'docs/integration/proposed/completion-20261026/integrator/cloud-env-metadata.json',
@@ -50,7 +50,7 @@ inputs=[
 state=json.loads((root/'docs/integration/proposed/completion-20261026/integrator/cloud-state.json').read_text())
 reported=state['deployment']['reportedGitCommit']
 print(json.dumps({'format':'aux.cloud.activation-source-pins.v1','sourceRoot':str(root),
- 'reviewedAt':'2026-10-26','sourceCommit':git('rev-parse','HEAD'),
+ 'reviewedAt':'2026-10-27','sourceCommit':git('rev-parse','HEAD'),
  'serviceTree':git('rev-parse','HEAD:services/aux-cloud'),
  'lastServiceCommit':git('log','-1','--format=%H','--','services/aux-cloud'),
  'serviceFiles':files,'serviceFileCount':len(files),
@@ -58,4 +58,4 @@ print(json.dumps({'format':'aux.cloud.activation-source-pins.v1','sourceRoot':st
  'evidenceInputs':[pin(path) for path in inputs],
  'reportedDeployment':state['deployment'],
  'sourcePathsChangedSinceReportedGit':git('diff','--name-only',reported,'HEAD','--','services/aux-cloud').splitlines(),
- 'checks':{'serviceSourceClean':True,'twelveSourceMigrationHashesMatch':True,'testsRerun':False,'backupRun':False,'dashboardAccess':False,'secretValuesRead':False,'activationPerformed':False}},indent=2))
+ 'checks':{'serviceSourceClean':True,'migrationCount':len(actual),'sourceMigrationHashesMatch':True,'testsRerun':True,'backupRun':False,'dashboardAccess':False,'secretValuesRead':False,'activationPerformed':False}},indent=2))
