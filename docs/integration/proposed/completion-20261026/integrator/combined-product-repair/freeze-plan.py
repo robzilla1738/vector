@@ -13,6 +13,7 @@ p.add_argument('--framework');p.add_argument('--daemon-executable');p.add_argume
 p.add_argument('--shortcut-capture');p.add_argument('--extension-manifest');p.add_argument('--background');p.add_argument('--tabsearch');p.add_argument('--source-evidence',action='append',required=True)
 p.add_argument('--framework-resources-pak')
 p.add_argument('--resource',action='append',default=[],help='TARGET=SOURCE for an extension script or daemon skill leaf')
+p.add_argument('--remove',action='append',default=[],help='enumerated legacy leaf to delete')
 a=p.parse_args();assert Path(a.receipt_directory).name==a.receipt_directory
 receipt_pin=pin(a.signed_receipt);receipt=json.loads(Path(a.signed_receipt).read_text());assert receipt['passed']
 rows={r['path']:r for r in receipt['files']}
@@ -33,6 +34,7 @@ for target,source in inputs:
  assert pin(APP/target)['sha256']==rows[target]['sha256']
  replacements.append({'target':target,'input':pin(source),'beforeSha256':rows[target]['sha256']})
 executor=Path(__file__).resolve().with_name('repair-combined.py')
-plan={'format':'aux.combined-product.same-scope-repair.v1','app':str(APP),'approvedReviewSha256':'20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2','executor':pin(executor),'signedReceipt':receipt_pin,'replacements':replacements,'sourceEvidence':[pin(x) for x in a.source_evidence],'receiptDirectory':a.receipt_directory}
+removals=[{'target':x,'beforeSha256':rows[x]['sha256']} for x in a.remove]
+plan={'format':'aux.combined-product.same-scope-repair.v1','app':str(APP),'approvedReviewSha256':'20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2','executor':pin(executor),'signedReceipt':receipt_pin,'replacements':replacements,'removals':removals,'sourceEvidence':[pin(x) for x in a.source_evidence],'receiptDirectory':a.receipt_directory}
 with Path(a.out).open('x') as f:json.dump(plan,f,indent=2);f.write('\n')
 print(json.dumps(pin(a.out)))

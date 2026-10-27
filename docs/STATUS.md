@@ -10,8 +10,8 @@ The 2026-10-27 plan ran through Batch 1 (pipeline, daemon lifecycle, shutdown ra
 
 | Role | Path | Inventory |
 |---|---|---|
-| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `5f787d38b018a9bd4688016af1d9c6d30170ee7b21a64ec7e1236225a477ff83` (receipt `combined-identity-residuals-a1`) |
-| What that seal adds | Last extension brand string removed; shutdown races fixed and interrupted helper leases recoverable (`desktop/shutdown-authorization-a1`); bounded peer-loss shutdown (`runtime/daemon-peerloss-deadline-a1`); split menu without "Send Feedback" and a Framework built in the reconciled durable checkout (Batch 1 `0e79a582`). The JS lifeline edit is gone | On top of `2a215e71`: Phase 1 native batch, Aux product logos, multi-pane split metrics fix, brand-sweep `e0228418` |
+| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `3b9f9b6830e602313cdaf4084833cb94af193791c009dc38c063dc520baf8095` (receipt `combined-legacy-addon-removal-a1`) |
+| What that seal adds | Unreachable supplied addon and carrier removed; last extension brand string removed; shutdown races fixed and interrupted helper leases recoverable (`desktop/shutdown-authorization-a1`); bounded peer-loss shutdown (`runtime/daemon-peerloss-deadline-a1`); split menu without "Send Feedback" and a Framework built in the reconciled durable checkout (Batch 1 `0e79a582`). The JS lifeline edit is gone | On top of `2a215e71`: Phase 1 native batch, Aux product logos, multi-pane split metrics fix, brand-sweep `e0228418` |
 | Fallback | `out/provided-candidate-local-completion-20261025-a38/Aux.app` | Last broad acceptance. Launch with its adjacent `Launch Aux.command` |
 | Source selection | `docs/integration/proposed/completion-20261026/integrator/current-source-selection.json` | |
 | Native checkout | `/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src` | Default in `scripts/aux_chromium.py`. `AUX_CHROMIUM_SRC` overrides it |
@@ -40,7 +40,7 @@ Startup with the relinked PDF-ABI daemon, session restore, attached-PDF `read_fi
 
 ## Open
 
-### Fixed and observed on the current seal (`5f787d38`)
+### Fixed and observed on the current seal (`3b9f9b68`)
 
 - Startup, normal Quit (browser 6–8 s, daemon 1–3 s, including Quit 10 s after launch), a browser abort (daemon exits about 21 s later) and relaunch after an abort. Measurements are in `desktop/shutdown-authorization-a1/actual-result.json` and `runtime/daemon-peerloss-deadline-a1/`.
 - Interrupted memory-helper leases no longer block startup, after a full `aux-memory` census (`runtime/prepared-lease-recovery-a1`).
@@ -54,7 +54,7 @@ The bundled `aux-cli` refuses to run when invoked directly ("packaged state iden
 
 ### Identity, last piece (Batch 4)
 
-The CLI bundle's unchanged supplied addon `provided-native.node` (621 `AsideNative*` symbols, keychain group `8CPD4K4TBB.at.studio.AsideBrowser.cryptography`) is used only by the browser's carrier, for five commands. The replacement plan is in `runtime/addon-replacement-scope/README.md`: an Aux backend from the already-linked Swift ports, compiled for the group the boundary already maps to, so no data migration is needed. It touches Keychain items, so it needs owner approval before it is built and checked. Other residue that stays by design: the runtime-provenance path inside the daemon, the boundary's group remap, and legacy `aside.*` storage readers.
+The supplied addon (`provided-native.node`) and its carrier were unreachable in the shipped product, so they were removed. No `AsideNative` symbol remains; details are in `runtime/addon-replacement-scope/README.md`. What remains is internal Keychain storage naming: the boundary guard's original-group constant, and item names stored as `aux.<scope>.aside.*`. Renaming those is a Keychain data migration that needs owner approval. Also staying: the runtime-provenance path inside the daemon and legacy `aside.*` storage readers.
 
 ### External gates (Batch 5)
 

@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "5f787d38b018a9bd4688016af1d9c6d30170ee7b21a64ec7e1236225a477ff83",
+  "signedInventorySha256": "3b9f9b6830e602313cdaf4084833cb94af193791c009dc38c063dc520baf8095",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -304,5 +304,13 @@
   "identityResidualsRepair": {
     "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-identity-residuals-a1/receipt.json",
     "sha256": "7444adf6631d1b2cd29700b2520f286ebe5bf9ff420b1acfa1a5f4e2a0edad06"
+  },
+  "legacyAddonRemoval": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-legacy-addon-removal-a1/receipt.json",
+    "sha256": "7059df5860ee514c71a5e2145e637870b79a5194fcb4dd7d641723d205751747",
+    "removed": [
+      "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/provided-native.node",
+      "Contents/Resources/aux/native/aux-native-carrier"
+    ]
   }
 }

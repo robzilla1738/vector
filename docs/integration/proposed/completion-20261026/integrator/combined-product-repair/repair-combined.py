@@ -60,6 +60,14 @@ def resource_leaf(target):
 # Sealed by the Framework signature, so it may change only together with a Framework reseal.
 FRAMEWORK_RESOURCES_PAK = 'Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Resources/resources.pak'
 ENUMERATED = required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE, SESSION_ROUTE, DAEMON_EXECUTABLE, FRAMEWORK_RESOURCES_PAK}
+CLI_APP = 'Contents/Resources/aux/apps/cli/Aux CLI.app'
+# Legacy supplied-addon path. The selected native route owns installation
+# authority, so neither leaf is reachable; removal reseals the CLI object with
+# its exact approved command, in the original signing order.
+REMOVABLE = {CLI_APP+'/Contents/Resources/native/provided-native.node', 'Contents/Resources/aux/native/aux-native-carrier'}
+removals = plan.get('removals', [])
+require(all(item['target'] in REMOVABLE for item in removals) and len({item['target'] for item in removals})==len(removals), 'Only enumerated legacy leaves may be removed')
+cli_changes = any(item['target'].startswith(CLI_APP+'/') for item in removals)
 actual_targets = {item['target'] for item in replacements}
 require(FRAMEWORK_RESOURCES_PAK not in actual_targets or FRAMEWORK in actual_targets, 'Framework resources change only with a Framework reseal')
 require(len(actual_targets)==len(replacements) and required <= actual_targets and all(t in ENUMERATED or resource_leaf(t) for t in actual_targets), 'Only enumerated existing leaves may change')
@@ -87,12 +95,15 @@ p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 before=p.inventory(APP)
 require(before==previous['files'] and p.digest(before)==previous['inventorySha256'], 'Signed candidate changed')
 rows={row['path']:row for row in before}
-targets=[row for row in review['targetsInSigningOrder'] if row['codeObject'].endswith('.framework') or row['codeObject'].endswith('/Aux Daemon.app') or row['codeObject']=='.']
-require(len(targets)==3 and targets[0]['executable']==FRAMEWORK and targets[1]['codeObject'].endswith('/Aux Daemon.app') and targets[2]['codeObject']=='.', 'Only original framework, daemon, outer targets in original order')
-framework,daemon,outer=targets
+selected=[row for row in review['targetsInSigningOrder'] if row['codeObject'].endswith('.framework') or row['codeObject']==CLI_APP or row['codeObject'].endswith('/Aux Daemon.app') or row['codeObject']=='.']
+require(len(selected)==4 and selected[0]['executable']==FRAMEWORK and selected[1]['codeObject']==CLI_APP and selected[2]['codeObject'].endswith('/Aux Daemon.app') and selected[3]['codeObject']=='.', 'Only original framework, CLI, daemon, outer targets in original order')
+framework,cli,daemon,outer=selected
+targets=[framework,cli,daemon,outer] if cli_changes else [framework,daemon,outer]
 require(DAEMON_EXECUTABLE not in actual_targets or daemon['executable']==DAEMON_EXECUTABLE, 'Daemon executable must be the original signed daemon target')
 if FRAMEWORK not in actual_targets:
-    targets=[daemon,outer]
+    targets.remove(framework)
+for item in removals:
+    require(rows[item['target']]['type']=='file' and rows[item['target']]['sha256']==item['beforeSha256'], 'Changed removal preimage')
 for item in replacements:
     require(rows[item['target']]['sha256']==item['beforeSha256'], 'Changed diagnostic preimage')
 for row in targets:
@@ -138,9 +149,16 @@ try:
         shutil.copyfile(source,temporary);temporary.chmod(rows[item['target']]['mode'])
         require(sha(temporary)==item['input']['sha256'], 'Diagnostic resource copy differs')
         os.replace(temporary,target)
+    for item in removals:
+        target=APP/item['target']
+        require(not target.is_symlink() and target.is_file() and sha(target)==item['beforeSha256'], 'Regular unchanged removal required')
+        target.unlink()
     if FRAMEWORK in actual_targets: sign_verify(framework)
+    if cli_changes: sign_verify(cli)
     sign_verify(daemon)
     marker=APP/MARKER;bundle=read(marker);records={row['path']:row for row in bundle['files']}
+    for item in removals:
+        relative=str(Path(item['target']).relative_to(RES));require(relative in records,'Removed leaf missing from packaged records');del records[relative]
     actual=p.inventory(APP/RES)
     require(set(records)=={row['path'] for row in actual if row['path']!='bundle.json'},'Unexpected packaged resource coverage change')
     for leaf in actual:
@@ -155,8 +173,10 @@ try:
     write_new(temporary,bundle);temporary.chmod(rows[str(MARKER)]['mode']);os.replace(temporary,marker)
     sign_verify(outer)
     after=p.inventory(APP);old={row['path']:row for row in before};new={row['path']:row for row in after}
-    allowed={*(row['executable'] for row in targets),str(MARKER),*(x['target'] for x in replacements)}
+    allowed={*(row['executable'] for row in targets),str(MARKER),*(x['target'] for x in replacements),*(x['target'] for x in removals)}
     prefixes=['Contents/_CodeSignature/',str(Path(daemon['codeObject'])/'Contents/_CodeSignature')+'/']
+    if cli_changes:
+        prefixes.append(CLI_APP+'/Contents/_CodeSignature/')
     if FRAMEWORK in actual_targets:
         prefixes.append(str(Path(framework['executable']).parent/'_CodeSignature')+'/')
     valid=lambda name:name in allowed or any(name.startswith(prefix) for prefix in prefixes)

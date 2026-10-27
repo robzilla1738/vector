@@ -17,3 +17,11 @@ The last Aside identity in the delivered app is the supplied native addon, copie
 ## Gate
 
 This new code reads and writes Keychain items: installation keys, the CDP signing key and the agent inbox master key. AGENTS.md requires owner approval for anything touching Keychain material. The runtime checks are startup, daemon authorization, CDP signing, inbox key read, and Quit/reopen against existing state. Nothing here was built or run.
+
+## Result (2026-10-27): removed, no port needed
+
+The legacy addon path is unreachable in the shipped product. `RunCarrier` (`chrome/browser/aux/installation_auth.cc`) returns before doing anything whenever the selected native route is active, which every startup of this candidate requires. Installation public keys, daemon challenge signing and the inbox key all go through the daemon's linked Aux authority, and the CLI's native module is env-gated off. So `provided-native.node` and `aux-native-carrier` were removed (seal `3b9f9b68`, receipt `combined-legacy-addon-removal-a1`). The executor gained an enumerated two-leaf removal list and reseals the CLI object with its approved command in the original order.
+
+Observed afterwards: startup, Quit (daemon 2.4 to 2.9 s), and abort (daemon gone after 20.6 s) followed by relaunch. A clean Quit needs a daemon session exchange, so it also shows that daemon authorization works without the addon.
+
+There are no `AsideNative` symbols left anywhere in the app. What remains is internal Keychain storage naming. `libaux-native-boundary.dylib` still accepts the original group constant, and the ported Swift authority keeps the supplied logical item names, stored as `aux.<scope>.aside.*`. Renaming those items is a Keychain data migration and needs owner approval. A third-party content-filter list also mentions `at.studio`; that is data, not branding.
