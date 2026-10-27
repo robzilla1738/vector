@@ -49,8 +49,11 @@ DAEMON_EXECUTABLE = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/
 RESOURCE_ROOTS = ('Contents/Resources/aux/apps/extension/dist/', 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/static/skills/')
 def resource_leaf(target):
     return target.startswith(RESOURCE_ROOTS) and target.endswith(('.js', '.md')) and '/_CodeSignature/' not in target and '..' not in Path(target).parts
-ENUMERATED = required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE, SESSION_ROUTE, DAEMON_EXECUTABLE}
+# Sealed by the Framework signature, so it may change only together with a Framework reseal.
+FRAMEWORK_RESOURCES_PAK = 'Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Resources/resources.pak'
+ENUMERATED = required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE, SESSION_ROUTE, DAEMON_EXECUTABLE, FRAMEWORK_RESOURCES_PAK}
 actual_targets = {item['target'] for item in replacements}
+require(FRAMEWORK_RESOURCES_PAK not in actual_targets or FRAMEWORK in actual_targets, 'Framework resources change only with a Framework reseal')
 require(len(actual_targets)==len(replacements) and required <= actual_targets and all(t in ENUMERATED or resource_leaf(t) for t in actual_targets), 'Only enumerated existing leaves may change')
 for item in replacements:
     pin(item['input'])

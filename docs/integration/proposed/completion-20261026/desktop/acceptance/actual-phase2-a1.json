@@ -1,0 +1,37 @@
+{
+  "format": "aux.completion.acceptance-observations.v1",
+  "date": "2026-10-27",
+  "candidateInventorySha256": "d81855c4050f7b7b4de92f0e8e9cd78d1300ed7675aa42a99c9a3da8a6f53f30",
+  "profile": "Aux Completion Personal (disposable, mock keychain)",
+  "fixture": "desktop/acceptance/browser-fixture.py (loopback)",
+  "evidenceDirectory": "out/provided-candidate-completion-20261026-a1/phase2-acceptance-a1",
+  "observed": {
+    "spaceCreateNameSave": "Space 'Research' created via Create a Space, named and saved; became active with its own tab list",
+    "spaceSwitch": "Space menu lists Main/Research; switching changes the tab list",
+    "sameProfileSecondWindow": "second window shares the tab list and keeps its own active Space",
+    "cmdTPalette": "Cmd+T opens the palette without creating a tab; Return navigates",
+    "tabRenameUndo": "context-menu Rename to 'Gamma Renamed', then 'Undo organization change' restored 'Aux Gamma'",
+    "split2": "Add Tab to New Split View joins two panes",
+    "splitStacked": "Arrange split view > Show Stacked changes orientation",
+    "split3and4": "sidebar row-edge drop joins a third and fourth pane ('View 2 of 4')",
+    "splitResize": "resize handle drag changes pane widths (268 -> 316 px)",
+    "splitClosePane": "pane close button closes one view; tab remains in list ('View 1 of 3')",
+    "globalPin": "Pin to all Spaces moves the tab into Pins; visible from Research Space",
+    "archiveUndo": "Close tab everywhere (archive) removes the row; Undo restores it"
+  },
+  "demonstratedDefects": [
+    {
+      "id": "split-multipane-ukm-check",
+      "summary": "restoring (or navigating in) a 3-4 pane split aborts in split_tabs::LogSplitViewUpdatedUKM CHECK(size()==2)",
+      "evidence": "out/provided-candidate-completion-20261026-a1/product-logo-startup-a1/stderr2.log",
+      "repair": "desktop/split-multipane-metrics-a1"
+    }
+  ],
+  "notes": [
+    "Accessibility press on the pane close button does nothing; a real click works",
+    "Profile picker card press via accessibility does not open the profile; Profiles menu does",
+    "Active split remains displayed when switching to another Space (split follows the active view)",
+    "Split toolbar menu includes upstream 'Send Feedback' (CanShowFeedback); left unchanged as supplied behavior, owner review"
+  ],
+  "notRun": ["profile note isolation (interrupted by an OS security prompt)", "protected beforeunload", "file download/collision/drag", "capture", "PiP", "DevTools", "BYOK Muse journey", "Quit/reopen persistence with split", "Finder launch"]
+}

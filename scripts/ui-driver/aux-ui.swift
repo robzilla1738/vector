@@ -84,15 +84,23 @@ func chord(_ s: String) {
   guard let code = keyCodes[key] else { fail("unknown key \(key)") }
   postKey(code, flags)
 }
+let shifted: [Character: String] = [":":";","?":"/","_":"-","+":"=","\"":"'","<":",",">":".","{":"[","}":"]","|":"\\","~":"`",
+  "!":"1","@":"2","#":"3","$":"4","%":"5","^":"6","&":"7","*":"8","(":"9",")":"0"]
 func typeText(_ t: String) {
   let src = CGEventSource(stateID: .hidSystemState)
-  for ch in t.utf16 {
-    var c = ch
-    let d = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: true)!
-    d.keyboardSetUnicodeString(stringLength: 1, unicodeString: &c); d.post(tap: .cghidEventTap)
-    let u = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: false)!
-    u.keyboardSetUnicodeString(stringLength: 1, unicodeString: &c); u.post(tap: .cghidEventTap)
-    usleep(20000)
+  for ch in t {
+    let lower = String(ch).lowercased()
+    if ch == " " { postKey(49, []); continue }
+    if let base = shifted[ch], let code = keyCodes[base] { postKey(code, .maskShift); continue }
+    if let code = keyCodes[lower], lower.count == 1 { postKey(code, ch.isUppercase ? .maskShift : []); continue }
+    for unit in String(ch).utf16 {
+      var c = unit
+      let d = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: true)!
+      d.keyboardSetUnicodeString(stringLength: 1, unicodeString: &c); d.post(tap: .cghidEventTap)
+      let u = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: false)!
+      u.keyboardSetUnicodeString(stringLength: 1, unicodeString: &c); u.post(tap: .cghidEventTap)
+      usleep(20000)
+    }
   }
 }
 func mouse(_ type: CGEventType, _ p: CGPoint, _ button: CGMouseButton = .left, clicks: Int64 = 1) {
@@ -141,6 +149,8 @@ case "drag":
   let a = CGPoint(x: d(1), y: d(2)), b = CGPoint(x: d(3), y: d(4))
   mouse(.mouseMoved, a); usleep(80000); mouse(.leftMouseDown, a); usleep(150000)
   for s in 1...20 { let t = Double(s) / 20; mouse(.leftMouseDragged, CGPoint(x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t)); usleep(25000) }
+  let dwell = args.count > 5 ? Double(args[5]) ?? 0 : 0
+  if dwell > 0 { for _ in 0..<Int(dwell * 10) { mouse(.leftMouseDragged, CGPoint(x: b.x + 1, y: b.y)); usleep(50000); mouse(.leftMouseDragged, b); usleep(50000) } }
   usleep(150000); mouse(.leftMouseUp, b)
 case "scroll":
   if args.count > 3 { mouse(.mouseMoved, CGPoint(x: d(2), y: d(3))); usleep(50000) }

@@ -1,0 +1,8 @@
+[
+  {
+    "path": "chrome/browser/ui/tabs/split_tab_metrics.cc",
+    "baselineSha256": "101365c3736e2e4b71ba50e4869aa37a2eedf4062d01492bc37b75b01cc33778",
+    "sourceSha256": "ff026a98fb85b51b9bbb7bcf7df0c50514b7e2c6e965706963e670a2b068ea41",
+    "outputSha256": "ff026a98fb85b51b9bbb7bcf7df0c50514b7e2c6e965706963e670a2b068ea41"
+  }
+]

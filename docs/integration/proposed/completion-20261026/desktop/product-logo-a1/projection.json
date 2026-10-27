@@ -1,0 +1,53 @@
+{
+  "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/app/theme/chromium/product_logo.svg",
+      "baselineSha256": "8d258980e03725a15d842cce436f566ec9de945f9c306b547325458ac1efd900",
+      "sourceSha256": "56fb1afb830bcf884aac114c574c62f3fd99a85949be85c9800198a471680ec7",
+      "outputSha256": "56fb1afb830bcf884aac114c574c62f3fd99a85949be85c9800198a471680ec7"
+    },
+    {
+      "path": "chrome/app/theme/chromium/product_logo_animation.svg",
+      "baselineSha256": "922e5b03fb434b8d831bdac07c3fbd755bdc0c7fd6efeebdb95735af1120ad1f",
+      "sourceSha256": "c5c44e3b8610656d1c71ad8324ec455b387983c28fb71d6c9bb78ca04fadfbe0",
+      "outputSha256": "c5c44e3b8610656d1c71ad8324ec455b387983c28fb71d6c9bb78ca04fadfbe0"
+    },
+    {
+      "path": "chrome/app/vector_icons/chrome_product.icon",
+      "baselineSha256": "5e610010a0560a5a21e62c4b5ca91b5b81829a6d10e2d573211f1566c00fd0a4",
+      "sourceSha256": "13f345de557b327430b4a035b426904bc309c2886d0180560b5995effb3fcec3",
+      "outputSha256": "13f345de557b327430b4a035b426904bc309c2886d0180560b5995effb3fcec3"
+    },
+    {
+      "path": "components/omnibox/browser/vector_icons/chrome_product.icon",
+      "baselineSha256": "db69b786cac1ea2689d089321f0a5d171140c744f2f29b5fbbc1feebfc0ab3e5",
+      "sourceSha256": "d741f98e1e8a3fd9b50fb1efb8fa1c7411df942067a6a0cd9a44e09ba5917f0e",
+      "outputSha256": "d741f98e1e8a3fd9b50fb1efb8fa1c7411df942067a6a0cd9a44e09ba5917f0e"
+    },
+    {
+      "path": "components/omnibox/browser/vector_icons/product_chrome_refresh_old.icon",
+      "baselineSha256": "af795cb78254cd89a3ede581b020c597ad03f464ef8cbc10ac029ca9ac737df9",
+      "sourceSha256": "a4454507cba89f68572a5ca691d6097dbabb542c76e0f89680a7d990d4ed0aaa",
+      "outputSha256": "a4454507cba89f68572a5ca691d6097dbabb542c76e0f89680a7d990d4ed0aaa"
+    },
+    {
+      "path": "components/omnibox/browser/vector_icons/product_old.icon",
+      "baselineSha256": "82619e74662bd3b6f6ffda6741bac7dd7bb4c732869bd8e77bce957d00bce8ef",
+      "sourceSha256": "dd970d9f91f16b8afcd451b1b80753b4a422db2cfe8dd289fa563564a3e57e0a",
+      "outputSha256": "dd970d9f91f16b8afcd451b1b80753b4a422db2cfe8dd289fa563564a3e57e0a"
+    },
+    {
+      "path": "components/vector_icons/chromium/product.icon",
+      "baselineSha256": "2419fc10954b2c2dd0833db88939b5ef31b5744789df6888f2c9a19a2d9e8a10",
+      "sourceSha256": "62b0dea7ceb486ab9f87f2ce0f7a51e892424864f947618d13a8eefed9c570ee",
+      "outputSha256": "62b0dea7ceb486ab9f87f2ce0f7a51e892424864f947618d13a8eefed9c570ee"
+    },
+    {
+      "path": "components/vector_icons/chromium/product_refresh.icon",
+      "baselineSha256": "91e3544139181e47e24543a727f84369fd960a3d9f90affe8ab8a6c7b433ac50",
+      "sourceSha256": "cf7f47b2012da24e8f340f6f1233f7d0f81ee43909c10c448aa245b114d562d9",
+      "outputSha256": "cf7f47b2012da24e8f340f6f1233f7d0f81ee43909c10c448aa245b114d562d9"
+    }
+  ]
+}
