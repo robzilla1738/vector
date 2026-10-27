@@ -12,7 +12,7 @@ Aux reuses the implementation supplied by the owner, preserving its UI and behav
 
 ## Current build
 
-- Current candidate: `out/provided-candidate-completion-20261026-a1/Aux.app` (inventory `e0228418`). Start it with the adjacent `Launch Aux.command`.
+- Current candidate: `out/provided-candidate-completion-20261026-a1/Aux.app` (inventory `2a215e7185b3c755380b01735d36121f078e1c1c81c8f2788d5d018f9c679132`). Start it with the adjacent `Launch Aux.command`. Brand-sweep inventory `e0228418` is an earlier seal of this same app.
 - Fallback: `out/provided-candidate-local-completion-20261025-a38/Aux.app` with its adjacent `Launch Aux.command` and the **Aux A4 Work** / **Aux A4 Personal** disposable profiles.
 
 Neither is a release. What works and what remains open is in [STATUS](docs/STATUS.md).

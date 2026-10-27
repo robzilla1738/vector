@@ -41,7 +41,9 @@
     "sha256": "af474a8ae456b03f92fee7b0a677d977e5dc2441e438c56ef7f2a1f2fe2e7c9a"
   },
   "ordinaryAclRepairSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/ordinary-image-ancestor-acl-repair/source/AuxSignedFreshBootstrapPolicyLoader.swift",
-  "currentNativeBrowserProjection": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+  "currentNativeBrowserProjection": "/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+  "nativeCheckout": "/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src",
+  "legacyNativeCheckout": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
   "olderFrozenRecipesArePredecessors": true,
   "runtimeAccepted": false,
   "browserStartupRepair": {

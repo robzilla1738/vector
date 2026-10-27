@@ -1,5 +1,7 @@
 # Owner pause checkpoint — October 26, 2026
 
+Superseded as the live summary on 2026-10-27. Startup was repaired after this note. The current candidate, what was observed on it, and the resume list are in [docs/STATUS.md](../../../STATUS.md). The text below is the October 26 record.
+
 The owner requested: “after this step please stop work, get everything local updated and docs etc”. The approved two-addon step is complete. Both agents stopped at committed checkpoints. The goal is paused after local documentation/commit synchronization; the full completion objective is **not achieved**.
 
 ## Current product and result

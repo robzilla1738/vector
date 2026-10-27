@@ -1,5 +1,7 @@
 # Completion implementation — 2026-10-26
 
+Superseded on 2026-10-27. This file is the frozen history through 2026-10-26. Current state is [docs/STATUS.md](../STATUS.md).
+
 The approved local/full-pre-release split remains active for M-series/macOS27. The exact candidate/source selection is in `integration/proposed/completion-20261026/integrator/current-source-selection.json`; [the execution roadmap](ROADMAP-EXECUTION-GRAPH.md) is the sole current checklist. A38, the older accepted app and interrupted disposable state remain preserved. No known core-journey failure remains in the local checks run so far; the remaining local items are listed below.
 
 Current signed candidate `e0228418` (inventory) adds the brand sweep to `d2bb56be` (final polish) and `9910013f` (queued-send preservation, browser REPL event-loop guard, selected-file stat correction). Actual evidence: `integrator/brand-sweep-a1/actual-result.json`, `integrator/final-polish-a2/actual-result.json`; earlier `integrator/selected-file-stat-async-a1/actual-result.json`.

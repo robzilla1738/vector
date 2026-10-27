@@ -50,5 +50,6 @@
     "Finder launch"
   ],
   "repairedCandidateInventorySha256": "2a215e7185b3c755380b01735d36121f078e1c1c81c8f2788d5d018f9c679132",
-  "notRunReason": "owner is actively using the Mac (terminal frontmost); synthetic keyboard input would go to the owner's terminal"
+  "notRunReason": "Paused 2026-10-27 at the owner's request after the split-restore check. During the session the terminal was frontmost, so synthetic keyboard input would have gone there. A profile-note type was attempted and is inconclusive.",
+  "pause": "docs/STATUS.md is the resume point. notRun entries are unfinished, not failures."
 }
