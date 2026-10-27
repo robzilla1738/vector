@@ -2,11 +2,9 @@
 
 Last updated 2026-10-27. This is the single current-state page. Dated history through 2026-10-26 is in [archive/status-history-through-2026-10-26.md](archive/status-history-through-2026-10-26.md). The working plan is [2026-10-27 pre-release completion](plans/2026-10-27-pre-release-completion.md); [ROADMAP-EXECUTION-GRAPH.md](ROADMAP-EXECUTION-GRAPH.md) is the outcome inventory. [PAUSE-HANDOFF.md](integration/proposed/completion-20261026/PAUSE-HANDOFF.md) records the October 26 startup failure only.
 
-## Pause
+## Where things stand
 
-The owner stopped the pre-release pass here and asked for the docs and the local commits to match the tree. No candidate process, fixture server, or native build from this pass is running.
-
-Resume at the local journeys under Open. The Phase 1 link, the logo replacement, and the split-metrics repair stay as they are until a later change invalidates them.
+The 2026-10-27 plan ran through Batch 1 (pipeline, daemon lifecycle, shutdown races) and the identity audit. The rest is gated on UI access, owner approvals, Apple and OpenAI; see Open. No candidate process or native build is running.
 
 ## Artifacts
 
@@ -24,7 +22,7 @@ The older tree at `/private/tmp/aux-chromium-recovery-snapshot-20261023/src` was
 
 Screenshots and logs under `out/` stay local. The committed record is the JSON cited below.
 
-## Observed on this candidate
+## Observed on earlier seals of this app (`d81855c4`, `2a215e71`)
 
 On `d81855c4` (Phase 1 seal, before the logo and split reseals): profile picker, profile open with restored windows and the agent new-tab page, menu Quit with the daemon stopped, and no "Daemon installation authorization failed" line. Receipt: `desktop/phase1-native-a1/actual-result.json`.
 
@@ -34,7 +32,7 @@ On `2a215e71` after the split-metrics reseal: a saved 3-pane split restored ("Vi
 
 The organization journeys above were not repeated after that reseal. The repair relaxed `split_tabs::LogSplitViewUpdatedUKM` so a split may have more than two panes.
 
-## Earlier evidence, not repeated on `2a215e71`
+## Older evidence, not repeated on the current seal
 
 These passed on earlier seals of this same app path (brand sweep `e0228418`, final polish, `9910013f`). They are not a fresh acceptance of the current seal:
 
@@ -42,37 +40,38 @@ Startup with the relinked PDF-ABI daemon, session restore, attached-PDF `read_fi
 
 ## Open
 
-Local, on this candidate:
+### Fixed and observed on the current seal (`5f787d38`)
 
-- Profile-note isolation, protected close prompt, file download/collision/drag, capture, PiP, DevTools, BYOK Muse journey, REPL `aux.pdf`, site-rule routing, Quit/reopen persistence of Spaces/theme/remap, and Finder launch without the workspace launcher. A profile-note type was attempted and is inconclusive: the field did not show the typed value, and SecurityAgentHelper was frontmost.
-- **Daemon after a browser abort:** fixed on `03e13f8e` (`runtime/daemon-peerloss-deadline-a1`). The daemon exits 21 s after the abort and relaunch works. The cause was chokidar watchers the supplied shutdown never closes, plus a drain that waits for a browser that is gone.
-- **Shutdown races fixed (seal `b0f780b0`, `desktop/shutdown-authorization-a1/actual-result.json`):** Quit at +10 to +45 s exits the daemon in 1.8 to 2.9 s and the browser in 6.7 to 7.8 s. A crash ends the daemon in 21 s and relaunch works. A memory-helper lease interrupted between prepare and spawn no longer blocks startup forever: it settles only after a full census finds no `aux-memory` process. Quit within about 4 s of launch still waits for the first session token (daemon 11 s).
-- Split toolbar menu "Send Feedback": removed in the sealed Framework (`desktop/split-menu-feedback-a1`). Not yet looked at in the UI.
-- Shortcut-edit acceptance was not repeated on this seal. The validator source is in the linked Phase 1 batch.
-- Sidebar popup lifetime: `desktop/popup-lifetime-rebase-a1` found no source change. The current snapshot already contains the A32 fixes and calls `RetireAuxProfilePopup` from `OnOrdinaryWindowClosing`. The real-app checks in that README were not run.
-- **Identity audit (2026-10-27):** across the delivered app, the wire protocol (`AuxDaemonSessionToken`, `aux.daemon.auth.`, `Aux Daemon Auth v1`, `aux-daemon`, `Aux.*`) and key domains (`aux.dk.v2`) are Aux; no Aside wire string remains. Remaining Aside identity: the CLI's unchanged supplied addon `provided-native.node` (621 `AsideNative*` symbols, keychain group `8CPD4K4TBB.at.studio.AsideBrowser.cryptography`) that the carrier and CLI load, the boundary's group remap, a runtime-provenance path inside the daemon, legacy `aside.*` storage readers, and no others: the extension's `@at.studio` staff gate is now `@aux.invalid` (still closed for everyone; `desktop/identity-residuals-a1`). Everything else matching "aside" is the HTML element, OpenSSL `ASIdentifiers`, or text in filter lists.
-- A future resource cohort must keep the PDF-ABI correction, the final-polish rules, and the brand-sweep rules. `current-source-selection.json` records `futureResourcesLackRules` for final-polish and brand-sweep.
+- Startup, normal Quit (browser 6–8 s, daemon 1–3 s, including Quit 10 s after launch), a browser abort (daemon exits about 21 s later) and relaunch after an abort. Measurements are in `desktop/shutdown-authorization-a1/actual-result.json` and `runtime/daemon-peerloss-deadline-a1/`.
+- Interrupted memory-helper leases no longer block startup, after a full `aux-memory` census (`runtime/prepared-lease-recovery-a1`).
+- The identity audit found the wire protocol and key domains already Aux. The last extension brand string is removed.
 
-Repo and pipeline, found in the 2026-10-27 cleanup:
+### Local journeys not yet run (need someone to drive the UI)
 
-- A fresh `stage:provided` stops at the Agent revision review, for both the default profile and the candidate's (`--cloud-profile development --identity-profile aux-v1 --state-identity-version 2`, with or without `--feature-profile desktop-v1`). The candidate's Agent (`1.26.1016.1888`) came from the completion repair deltas, not from this stage path, and `vendor/provided/agent-revisions.json` has no review for a current fresh stage. So `pnpm check:provided` cannot pass until a new revision is reviewed. `scripts/lib/provided-ui.test.mjs` is skipped for the same reason.
-- A fresh Chromium checkout cannot be rebuilt from the repo. The `aux-chromium` setup tool had not run since 2026-10-18 and was removed. The durable checkout's Git is now self-contained: its object store borrowed from `aux-chromium-proof`, which moved to `~/Documents/Aux-archive` today, so the borrowed objects were repacked in and the alternates file was set aside as `alternates.dissociated-2026-10-27`.
-- `out/cleanup-2026-10-27/cleanup.sh` ran on 2026-10-27. It removed the 180 purged `/private/tmp` worktrees, 492 branches and 1,227 disposable `out/` entries, freeing about 181 GB; `out/` is now 114 GB in 78 entries, and 62 worktrees and 53 branches remain. All their commits are already under `refs/archive/` and in `~/Documents/Aux-archive/aux-all-refs-2026-10-27b.bundle`. The 50 worktrees in `~/Documents/Aux-archive/worktrees` and 11 in `~/.codex/worktrees` stay.
-- The repair executor and plan freezer (`integrator/combined-product-repair/`) still pointed at the pre-rename `/Users/rcourson/Documents/Vibe/web`. They now find the repository root from their own location and re-root the paths recorded in approved reviews; every pinned file is still checked by SHA-256.
-- `services/aux-cloud` already carries the confirmed company/contact copy (`confirmed-facts-routes.patch` applied); the product-information README said otherwise and is corrected. `runtime/selected-repl-fs/checkpoint.json` (v2: integrated, compiled, not activated) supersedes the pause note's "unjoined".
+The full Batch 3 pass: R01–R30 except R18 and R20, plus profile-note isolation, the protected close prompt, downloads (collision and drag), capture, PiP, DevTools, the BYOK Muse journey, REPL `aux.pdf`, site-rule routing, Quit/reopen persistence of Spaces, theme and remap, Finder launch, shortcut edits, sidebar popup lifetime, and "Send Feedback" being absent from the split menu. This session has no computer-use tools, osascript has no assistive access, and the shell has no Screen Recording permission. Any one of these unblocks it: Computer use enabled for a session, or Accessibility plus Screen Recording granted to the terminal running Claude.
+
+The bundled `aux-cli` refuses to run when invoked directly ("packaged state identity is unsupported or unaccepted"). It is meant to be reached through the product's installed CLI path, which also needs the UI to set up (R28).
+
+### Identity, last piece (Batch 4)
+
+The CLI bundle's unchanged supplied addon `provided-native.node` (621 `AsideNative*` symbols, keychain group `8CPD4K4TBB.at.studio.AsideBrowser.cryptography`) is used only by the browser's carrier, for five commands. The replacement plan is in `runtime/addon-replacement-scope/README.md`: an Aux backend from the already-linked Swift ports, compiled for the group the boundary already maps to, so no data migration is needed. It touches Keychain items, so it needs owner approval before it is built and checked. Other residue that stays by design: the runtime-provenance path inside the daemon, the boundary's group remap, and legacy `aside.*` storage readers.
+
+### External gates (Batch 5)
+
+- **REPL (Bash/PTY/CLI):** the source is complete and compiled but inactive. Waiting on Apple `2H4D7KNGUP`. Activation steps are in `runtime/repl-activation-ready/README.md`. The future cohort must be rebased onto the current seal and carry the PDF-ABI, final-polish and brand-sweep rules.
+- **1Password:** the candidate is already sealed with the Apple Development identity for team `9F2JXY8TCK`. The pairing check still needs the owner's choice of identity for the one `/Applications` install, a disposable vendor account, and someone to drive the UI. Native-host process and pipe cleanup is the remaining source item (`runtime/native-host`).
+- **Hosted service:** typecheck and 63/63 tests pass locally after fixing a stale catalog test, which now asserts the BYOK scope. The deploy review's source pins must be refreshed because of that test change. Production deploy, the schema comparison, J5, monitors, alert recipient, operator and rollback ID all need owner approval (`integration/cloud-activation/`).
+- **ChatGPT plan:** the eligibility form is not submitted; 5 fields are null in `integration/chatgpt-eligibility/request.pending.json`.
+- **Legal:** about 20 terms and privacy facts are missing (`integration/product-information/`).
+
+### Repo and pipeline
+
+- The candidate is reproducible as the A38 base plus the ordered repair chain. `python3 scripts/verify-candidate.py` checks every pin and the whole app inventory; it passes with 66 pins and 11,202 entries. A fresh `stage:provided` is the predecessor pipeline and stops at its Agent revision review (`provided-ui.test.mjs` stays skipped).
+- `chromium/tree/` is the complete Chromium delta: 1,609 tracked, 867 added and 31 deleted paths, verified by replay. It replaces the old patch series.
+- Inputs that receipts cite under `/private/tmp` are preserved in `out/live-inputs/tmp-preserved/` with a hash manifest.
 - `~/Applications/Aux.app` is the 2026-10-19 launcher for the retired independent build, not this candidate.
 
-Full pre-release. These external gates were not rechecked in this pause:
-
-- General Bash/PTY/CLI REPL: Apple EndpointSecurity request `2H4D7KNGUP` has no approval on record. Generic filesystem draft (`728e4e108`) is unjoined.
-- Official extension and 1Password autofill/companion. The companion needs an Apple-signed browser in `/Applications`. That signing is not authorized.
-- Hosted services: last recorded production health was 404; `dev-cloud.getaux.co` was on Production; J5 has not been run; production deploy is not approved.
-- ChatGPT plan usage: eligibility form not submitted.
-- Operations: readiness, alerts, and rollback are not live. Legal facts under `integration/proposed/completion-20261026/integration/product-information/` are drafts.
-
 Out of scope: backups, mobile, payments and Aux-funded inference, legacy migration, distribution, notarization, release, and a built-in Vault.
-
-Owner decisions that gate later phases: signing for vendor pairing, how to proceed if Apple delays `2H4D7KNGUP`, submitting the ChatGPT eligibility form, approving the production deploy and the alert recipient, and whether the R2 token (around 2026-11-22) matters while backups stay deferred.
 
 ## Progress log
 

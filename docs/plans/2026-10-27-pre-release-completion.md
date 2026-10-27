@@ -182,3 +182,24 @@ Batch 5 items start as soon as their approval lands (hosted can start after Batc
 - **After Batch 4:** focused keychain/auth/BYOK checks pass, and legacy state is read without mutation.
 - **After Batch 5:** J5 receipt; 1Password fill and pairing receipt; ChatGPT and REPL receipts if approved.
 - **After Batch 6:** packaged identity audit is clean.
+
+## Progress (2026-10-27)
+
+- **Batch 1: done.**
+  - Durable checkout reconciled and building; `chromium/tree/` is the complete verified delta (replaces the patch series).
+  - `/private/tmp` inputs are preserved, and the repair executor is re-rooted.
+  - "Send Feedback" is removed.
+  - Daemon lifecycle fixed: a bounded peer-loss shutdown, and `/shutdown` waits for its session token.
+  - The broker admits in-flight writes until producer stops settle, and the memory close waits for in-flight requests.
+  - Interrupted helper leases are recoverable.
+  - `scripts/verify-candidate.py` checks the repair chain. Lane A's stage-port was dropped by decision: the candidate is the A38 base plus the receipt chain, and the fresh-stage pipeline is its predecessor.
+- **Batch 2: already done in the candidate** (audit). Wire protocol and key domains are Aux. The last extension brand string was removed.
+- **Batch 3: blocked.** No way to drive the UI in this session: no computer-use tools, no assistive access, no Screen Recording.
+- **Batch 4: scoped** (`runtime/addon-replacement-scope/README.md`). Blocked on owner approval for Keychain-touching code.
+- **Batch 5:**
+  - REPL: source complete and inactive; waiting on Apple.
+  - Hosted service: green locally (63/63); deploy steps need owner approval.
+  - 1Password: needs an identity choice, a vendor account and UI access.
+  - ChatGPT: needs the form submitted.
+  - Legal: needs the missing facts.
+- **Batch 6:** STATUS, AGENTS.md, the contract and README updated to the current seal `5f787d38`.
