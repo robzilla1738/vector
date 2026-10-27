@@ -17,21 +17,38 @@
     "splitResize": "resize handle drag changes pane widths (268 -> 316 px)",
     "splitClosePane": "pane close button closes one view; tab remains in list ('View 1 of 3')",
     "globalPin": "Pin to all Spaces moves the tab into Pins; visible from Research Space",
-    "archiveUndo": "Close tab everywhere (archive) removes the row; Undo restores it"
+    "archiveUndo": "Close tab everywhere (archive) removes the row; Undo restores it",
+    "productLogo": "profile picker shows the Aux mark (product-logo-startup-a1/picker2.png)",
+    "quitAfterRestore": "menu Quit Aux; all candidate processes stopped"
   },
   "demonstratedDefects": [
     {
       "id": "split-multipane-ukm-check",
       "summary": "restoring (or navigating in) a 3-4 pane split aborts in split_tabs::LogSplitViewUpdatedUKM CHECK(size()==2)",
       "evidence": "out/provided-candidate-completion-20261026-a1/product-logo-startup-a1/stderr2.log",
-      "repair": "desktop/split-multipane-metrics-a1"
+      "repair": "desktop/split-multipane-metrics-a1",
+      "status": "repaired: restored 3-pane split ('View 1 of 3') and reloaded the active pane with no FATAL; evidence out/provided-candidate-completion-20261026-a1/split-restore-a1"
     }
   ],
   "notes": [
     "Accessibility press on the pane close button does nothing; a real click works",
     "Profile picker card press via accessibility does not open the profile; Profiles menu does",
     "Active split remains displayed when switching to another Space (split follows the active view)",
-    "Split toolbar menu includes upstream 'Send Feedback' (CanShowFeedback); left unchanged as supplied behavior, owner review"
+    "Split toolbar menu includes upstream 'Send Feedback' (CanShowFeedback); left unchanged as supplied behavior, owner review",
+    "After the split crash the candidate daemon outlived the browser and had to be stopped by PID (SIGTERM and SIGINT ignored; SIGKILL). Orphan-daemon cleanup after a browser abort is a lifecycle gap.",
+    "Web-content controls do not respond to accessibility press; remaining web journeys need real input with Aux frontmost"
   ],
-  "notRun": ["profile note isolation (interrupted by an OS security prompt)", "protected beforeunload", "file download/collision/drag", "capture", "PiP", "DevTools", "BYOK Muse journey", "Quit/reopen persistence with split", "Finder launch"]
+  "notRun": [
+    "profile note isolation",
+    "protected beforeunload",
+    "file download/collision/drag",
+    "capture",
+    "PiP",
+    "DevTools",
+    "BYOK Muse journey",
+    "Quit/reopen persistence of Spaces/theme/remap",
+    "Finder launch"
+  ],
+  "repairedCandidateInventorySha256": "2a215e7185b3c755380b01735d36121f078e1c1c81c8f2788d5d018f9c679132",
+  "notRunReason": "owner is actively using the Mac (terminal frontmost); synthetic keyboard input would go to the owner's terminal"
 }

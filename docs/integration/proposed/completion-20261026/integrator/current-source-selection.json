@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "d81855c4050f7b7b4de92f0e8e9cd78d1300ed7675aa42a99c9a3da8a6f53f30",
+  "signedInventorySha256": "2a215e7185b3c755380b01735d36121f078e1c1c81c8f2788d5d018f9c679132",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -266,5 +266,13 @@
     "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-phase1-native-a1/receipt.json",
     "sha256": "e243d902ce1763c187bff7fc69a0232b01c3b2cdaef1df72b7218c237972793e",
     "actualResult": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/phase1-native-a1/actual-result.json"
+  },
+  "productLogoRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-product-logo-a2/receipt.json",
+    "sha256": "6ef2b3c07194ca245cc7b4ef4b73a7205997553872ebb19db15af9bdb9a6497d"
+  },
+  "splitMultipaneRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-split-multipane-a1/receipt.json",
+    "sha256": "702f3b790b48dcb8e4fe254eabfd5571488fb0656c7157b51d228a909f854e80"
   }
 }
