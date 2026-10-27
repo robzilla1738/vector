@@ -43,8 +43,10 @@ required = {DAEMON+'index.mjs', DAEMON+'aux-native-entry.mjs'}
 BACKGROUND = 'Contents/Resources/aux/apps/extension/dist/background.js'
 EXTENSION_MANIFEST = 'Contents/Resources/aux/apps/extension/dist/manifest.json'
 SHORTCUT_CAPTURE = 'Contents/Resources/aux/apps/extension/dist/assets/use-shortcut-capture-DGr8Ws5Z.js'
+SESSION_ROUTE = 'Contents/Resources/aux/apps/extension/dist/assets/_sessionId-ClN_BWh5.js'
+DAEMON_EXECUTABLE = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon'
 actual_targets = {item['target'] for item in replacements}
-require(len(actual_targets)==len(replacements) and required <= actual_targets <= required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE}, 'Only enumerated existing leaves may change')
+require(len(actual_targets)==len(replacements) and required <= actual_targets <= required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE, SESSION_ROUTE, DAEMON_EXECUTABLE}, 'Only enumerated existing leaves may change')
 for item in replacements:
     pin(item['input'])
     if item['target'] == EXTENSION_MANIFEST:
@@ -72,6 +74,7 @@ rows={row['path']:row for row in before}
 targets=[row for row in review['targetsInSigningOrder'] if row['codeObject'].endswith('.framework') or row['codeObject'].endswith('/Aux Daemon.app') or row['codeObject']=='.']
 require(len(targets)==3 and targets[0]['executable']==FRAMEWORK and targets[1]['codeObject'].endswith('/Aux Daemon.app') and targets[2]['codeObject']=='.', 'Only original framework, daemon, outer targets in original order')
 framework,daemon,outer=targets
+require(DAEMON_EXECUTABLE not in actual_targets or daemon['executable']==DAEMON_EXECUTABLE, 'Daemon executable must be the original signed daemon target')
 if FRAMEWORK not in actual_targets:
     targets=[daemon,outer]
 for item in replacements:

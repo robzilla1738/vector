@@ -1,0 +1,42 @@
+{
+  "format": "aux.combined-product.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/combined-product-repair/repair-combined.py",
+    "sha256": "4c3c96000bf7e6c564126534ad65f64636a71944c9a8aea32b518a3c889d0c13"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-final-polish-a1/receipt.json",
+    "sha256": "62107a05ff4ab73ef296401cd793655d09201efe9950e19c1939026f4ee73526"
+  },
+  "replacements": [
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "input": {
+        "path": "/private/tmp/aux-final-polish-20261026-a2/index.mjs",
+        "sha256": "66efcff1bd9a1f80f23613e51f3b1ed4c6cf360d48857de19041c1e52363561a"
+      },
+      "beforeSha256": "391aba32c8c3745c84eb63063513c9fc5855e348e523e9c56f8e515cb0f6683a"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "input": {
+        "path": "/private/tmp/aux-final-polish-20261026-a2/aux-native-entry.mjs",
+        "sha256": "cec5745bb5aad80896d6e1d5d58c7638b078f64829a2263e59e0455de0541481"
+      },
+      "beforeSha256": "8066bcfb41258bba4437a918a0d7fdc6e593271635b5ad90bf1b91b93fc1a313"
+    }
+  ],
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/final-polish-a1/rules.json",
+      "sha256": "202b68ae583979e7d6c729794b73b48c7ee406c8bfd47681ac79c22d2320176d"
+    },
+    {
+      "path": "/private/tmp/aux-final-polish-20261026-a2/receipt.json",
+      "sha256": "4f17a2eeed14ad9a2feedc9a9a2a7394ca26a6a04bd82a1fac31a512a2641a2a"
+    }
+  ],
+  "receiptDirectory": "combined-final-polish-a2"
+}

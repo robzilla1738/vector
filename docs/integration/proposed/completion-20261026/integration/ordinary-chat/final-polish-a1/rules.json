@@ -1,0 +1,76 @@
+{
+  "daemon": [
+    {
+      "why": "routine summary reports whether it runs on this computer",
+      "find": "return{...ti,lastRunAt:ni?.createdAt??null}}function getRoutineDetail",
+      "replace": "return{...ti,lastRunAt:ni?.createdAt??null,isCurrentDevice:ti.environment===`device`&&!!ti.deviceId&&ti.deviceId===settings(Cn).get(`routineDeviceId`)}}function getRoutineDetail",
+      "count": 1
+    },
+    {
+      "why": "cache public installation keys; one helper process per session exchange exceeded the browser 2s timeout",
+      "find": "async function getPublicKeys(){if(assertAvailable(),process.platform===`darwin`){let Cn=runMacInstallHelper(`get-public-keys`);return{scheme:Cn.scheme,sig:Cn.sig,kem:Cn.kem}}",
+      "replace": "var auxInstallationPublicKeys;async function getPublicKeys(){if(assertAvailable(),process.platform===`darwin`){if(!auxInstallationPublicKeys){let Cn=runMacInstallHelper(`get-public-keys`),keys={scheme:Cn.scheme,sig:Cn.sig,kem:Cn.kem};if(!keys.scheme||!keys.sig)return keys;auxInstallationPublicKeys=keys}return{...auxInstallationPublicKeys}}",
+      "count": 1
+    },
+    {
+      "why": "new installation invalidates cached public keys",
+      "find": "let Cn=runMacInstallHelper(`install-init`);return{",
+      "replace": "let Cn=runMacInstallHelper(`install-init`);auxInstallationPublicKeys=void 0;return{",
+      "count": 1
+    },
+    {
+      "why": "destroyed installation invalidates cached public keys",
+      "find": "runMacInstallHelper(`install-destroy`);return}",
+      "replace": "auxInstallationPublicKeys=void 0;runMacInstallHelper(`install-destroy`);return}",
+      "count": 1
+    },
+    {
+      "why": "keys rotated outside this process: refetch once before refusing",
+      "find": "let ti=await getPublicKeys();return verifyInstallationSignature(ti.scheme,Buffer$1.concat([DAEMON_AUTH_SIGNATURE_PREFIX,ei.challenge]),Buffer$1.from(Cn.signedChallenge,`base64`),ti.sig)?ei:null}",
+      "replace": "let ti=await getPublicKeys(),auxMessage=Buffer$1.concat([DAEMON_AUTH_SIGNATURE_PREFIX,ei.challenge]),auxSignature=Buffer$1.from(Cn.signedChallenge,`base64`);if(verifyInstallationSignature(ti.scheme,auxMessage,auxSignature,ti.sig))return ei;auxInstallationPublicKeys=void 0;ti=await getPublicKeys();return verifyInstallationSignature(ti.scheme,auxMessage,auxSignature,ti.sig)?ei:null}",
+      "count": 1
+    },
+    {
+      "why": "warm the installation public-key cache before the browser first exchanges a session",
+      "find": "function createDaemonAuthHttpRouter(){let Cn=new Hono;",
+      "replace": "function createDaemonAuthHttpRouter(){setTimeout(()=>{getPublicKeys().catch(()=>{})},0);let Cn=new Hono;",
+      "count": 1
+    }
+  ],
+  "session": [
+    {
+      "why": "skip hosted device lookup for this computer",
+      "find": "enabled:n.kind===\"local\"&&a?.environment===\"device\"&&!!a.deviceId,staleTime:3e5",
+      "replace": "enabled:n.kind===\"local\"&&a?.environment===\"device\"&&!!a.deviceId&&!a.isCurrentDevice,staleTime:3e5",
+      "count": 1
+    },
+    {
+      "why": "Runs on shows This computer for local device routines",
+      "find": "isCurrent:i?.isCurrent,loading:l",
+      "replace": "isCurrent:i?.isCurrent??a.isCurrentDevice===!0,loading:l",
+      "count": 1
+    }
+  ],
+  "tabsearch": [
+    {
+      "why": "load current keyboard shortcuts whenever the palette becomes visible",
+      "find": "[auxNavError,auxNavSetError]=(0,i.useState)(\"\"),auxNavBusy=(0,i.useRef)(false);",
+      "replace": "[auxNavError,auxNavSetError]=(0,i.useState)(\"\"),[auxShortcutMap,auxSetShortcutMap]=(0,i.useState)(null),auxNavBusy=(0,i.useRef)(false);(0,i.useEffect)(()=>{let live=!0;const load=()=>{const api=typeof chrome>\"u\"?void 0:chrome.auxBrowserPreferences;typeof api?.getKeyboardShortcuts==\"function\"&&Promise.resolve(api.getKeyboardShortcuts()).then(list=>{live&&Array.isArray(list)&&auxSetShortcutMap(new Map(list.map(row=>[row.commandId,typeof row.serializedShortcut==\"string\"?row.serializedShortcut:\"\"])))}).catch(()=>{})},visible=()=>{document.visibilityState!==\"hidden\"&&load()};load();document.addEventListener(\"visibilitychange\",visible);return()=>{live=!1;document.removeEventListener(\"visibilitychange\",visible)}},[]);",
+      "count": 1
+    },
+    {
+      "why": "hint shows the remapped shortcut (or none when unassigned)",
+      "find": "(0,s.jsx)(ye,{children:xe(auxNavContext?.mode===\"new-tab\"?\"Meta+T\":auxNavContext?.mode===\"navigate\"?\"Meta+L\":auxNavContext?.mode===\"commands\"?\"Meta+K\":\"Meta+Shift+A\")})",
+      "replace": "(()=>{const mode=auxNavContext?.mode,[id,fallback]=mode===\"new-tab\"?[34014,\"Meta+T\"]:mode===\"navigate\"?[39001,\"Meta+L\"]:mode===\"commands\"?[39002,\"Meta+K\"]:[52500,\"Meta+Shift+A\"],hint=auxShortcutMap?.has(id)?auxShortcutMap.get(id):fallback;return hint?(0,s.jsx)(ye,{children:xe(hint)}):null})()",
+      "count": 1
+    }
+  ],
+  "manifest": [
+    {
+      "why": "advance bundled extension version so Chromium reloads changed resources",
+      "find": "\"version\": \"1.26.1016.1886\",",
+      "replace": "\"version\": \"1.26.1016.1887\",",
+      "count": 1
+    }
+  ]
+}

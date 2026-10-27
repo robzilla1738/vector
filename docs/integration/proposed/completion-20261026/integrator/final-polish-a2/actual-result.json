@@ -1,0 +1,13 @@
+{
+  "format": "aux.completion.actual-result.v1",
+  "candidateInventorySha256": "d2bb56be8e326397182ee0285f1650f6de5e35cdb7a78784a3d8cfc47c578763",
+  "repairs": ["combined-final-polish-a1 (inventory 855366f4)", "combined-final-polish-a2 (inventory d2bb56be)"],
+  "startup": "Accepted with the relinked PDF-ABI daemon (080844f5 unsigned); profile picker, session restore, extension bridge connected",
+  "pdf": "Muse Contributor read_file on attached document.pdf returned AUX_PDF_TEXT_CEDAR_742 VIOLET_RIVER_319; one read_file tool call, no tool error",
+  "routineRunsOn": "Routine details shows 'Runs on: This computer'",
+  "tabSearchHint": "Search tabs remapped to Option+Command+A: palette opened with the new shortcut and its hint showed the remap; reset restored Shift+Command+A",
+  "authorizationLog": "Not eliminated. One 'Daemon installation authorization failed' (and on a2 one 'challenge unavailable') still logs 3-4 s after daemon bootstrap, then recovers; the first logged session exchange took 1.8-2.6 s. The browser supervisor uses a 2 s loader timeout while the daemon event loop is busy right after bootstrap. A complete fix needs the native supervisor (framework) to treat a timed-out exchange as retryable; not done here",
+  "quit": "Menu Quit: daemon.exit, all candidate processes exited",
+  "credential": "Temporary AI Gateway connection added via Settings > Models and disconnected afterward; clipboard cleared",
+  "notChanged": "Settings > General footer still reads 'Copyright 2026 At Your Side Inc.' (legal notice; owner decision required). Future daemon resources do not carry these rules"
+}

@@ -1,0 +1,82 @@
+{
+  "format": "aux.combined-product.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/combined-product-repair/repair-combined.py",
+    "sha256": "4c3c96000bf7e6c564126534ad65f64636a71944c9a8aea32b518a3c889d0c13"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-selected-file-stat-async-a1/receipt.json",
+    "sha256": "ef45e633a2e407387a9af33e6bcf6e8f7ce5dcdf52f1c3b1dab2b37c318f57ba"
+  },
+  "replacements": [
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "input": {
+        "path": "/private/tmp/aux-pdf-abi-daemon-relink-20261026-new/Aux Daemon",
+        "sha256": "080844f51c2f2acbd94d1ecea6081ee172b1f29681da0db6360b826c768a8073"
+      },
+      "beforeSha256": "cbdebf5b831415571c319dd8e5e690f65821179e408f24220d353b5f40578b1d"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "input": {
+        "path": "/private/tmp/aux-final-polish-20261026-a1/index.mjs",
+        "sha256": "391aba32c8c3745c84eb63063513c9fc5855e348e523e9c56f8e515cb0f6683a"
+      },
+      "beforeSha256": "8288fc38a69d1983030b6234227b4cc6cd4f9a61a6b63c5765a8bce7b321a4a6"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "input": {
+        "path": "/private/tmp/aux-final-polish-20261026-a1/aux-native-entry.mjs",
+        "sha256": "8066bcfb41258bba4437a918a0d7fdc6e593271635b5ad90bf1b91b93fc1a313"
+      },
+      "beforeSha256": "7f8473737e3d8772e0a3709bf3b98b74288df969905ad0dce68a49753074d1b1"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/extension/dist/assets/_sessionId-ClN_BWh5.js",
+      "input": {
+        "path": "/private/tmp/aux-final-polish-20261026-a1/_sessionId-ClN_BWh5.js",
+        "sha256": "96469f75dab0d520484353e9e7987474e45881a0f2247b9386dc4945765e91f6"
+      },
+      "beforeSha256": "998d750aa961572ff0e4d5aa7d568360dfc397bf004fb7f5567e5c3fb44874a6"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+      "input": {
+        "path": "/private/tmp/aux-final-polish-20261026-a1/tabsearch-3k_2hgil.js",
+        "sha256": "f974d6a022ec961ad752f60ab097840a64c3563c47edb023a47271860c4df368"
+      },
+      "beforeSha256": "2581dc9bce21c7f3a049f8c24fce5b8f346565dfd62e5e6d0550b4d06454c218"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "input": {
+        "path": "/private/tmp/aux-final-polish-20261026-a1/manifest.json",
+        "sha256": "2b11aab8c83a06a0a6572d714599593bfe233aab31ab7ab5bc6cc65f52d215a9"
+      },
+      "beforeSha256": "2b395128cb2d11bff5c804c24591fe7c7cd63816ad733283434d3364f59da158"
+    }
+  ],
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/final-polish-a1/rules.json",
+      "sha256": "e3e21fac0c2744295a9ef929cd76475ab181e44bca9e444033d522c518268e5b"
+    },
+    {
+      "path": "/private/tmp/aux-final-polish-20261026-a1/receipt.json",
+      "sha256": "e162b30e0466f496e4b6c68d9cbb0030ea868f3fe0128a0f830902a093d5af57"
+    },
+    {
+      "path": "/private/tmp/aux-pdf-abi-daemon-relink-20261026-new/link-receipt.json",
+      "sha256": "972f15af1d8a675def4896fdc6a3e0ab17d10e6c0a8e46132197e4eea50d9f63"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/source/AuxFixedBuiltins.inc",
+      "sha256": "e849539ea1e4fbc235334539660cbc2c9e06cb1933afc52cc4fee0360b2ec181"
+    }
+  ],
+  "receiptDirectory": "combined-final-polish-a1"
+}

@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "9910013f1de2dff4bfea38b83626bae026035b5b38c876206c9e1256fd960075",
+  "signedInventorySha256": "d2bb56be8e326397182ee0285f1650f6de5e35cdb7a78784a3d8cfc47c578763",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -199,7 +199,7 @@
     "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-cold-input-worker-update-a1/receipt.json",
     "sha256": "53083968bc6b7f45606c0a29bee637f8efdf1aff8f0bda1886c1152347570fca"
   },
-  "currentComponentVersion": "1.26.1016.1886",
+  "currentComponentVersion": "1.26.1016.1887",
   "currentComponentPayloadReceipt": {
     "path": "/private/tmp/aux-completion-grouped-version-20261026-a2/receipt.json",
     "sha256": "baa8292d80f36d89514b8f312236057624da2cd36d1e8f48908d9e733495b9a0"
@@ -218,12 +218,12 @@
   },
   "currentDaemonResources": {
     "index": {
-      "path": "/private/tmp/aux-selected-file-stat-async-20261026-a1-current/index.mjs",
-      "sha256": "8288fc38a69d1983030b6234227b4cc6cd4f9a61a6b63c5765a8bce7b321a4a6"
+      "path": "/private/tmp/aux-final-polish-20261026-a2/index.mjs",
+      "sha256": "66efcff1bd9a1f80f23613e51f3b1ed4c6cf360d48857de19041c1e52363561a"
     },
     "entry": {
-      "path": "/private/tmp/aux-selected-file-stat-async-20261026-a1-current/aux-native-entry.mjs",
-      "sha256": "7f8473737e3d8772e0a3709bf3b98b74288df969905ad0dce68a49753074d1b1"
+      "path": "/private/tmp/aux-final-polish-20261026-a2/aux-native-entry.mjs",
+      "sha256": "cec5745bb5aad80896d6e1d5d58c7638b078f64829a2263e59e0455de0541481"
     }
   },
   "futureDaemonResources": {
@@ -235,5 +235,23 @@
       "path": "/private/tmp/aux-selected-file-stat-async-20261026-a1-future/aux-native-entry.mjs",
       "sha256": "798f0abc4d876fdb5d60a6b51759f9d6bd6c2dc31b17967c8106097432b023d4"
     }
-  }
+  },
+  "combinedFinalPolishRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-final-polish-a1/receipt.json",
+    "sha256": "62107a05ff4ab73ef296401cd793655d09201efe9950e19c1939026f4ee73526"
+  },
+  "combinedFinalPolishPrewarmRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-final-polish-a2/receipt.json",
+    "sha256": "a8359b31fd4b8a0a42f95d532f386058109ef559b633995d8880f51b8ebb4b0f"
+  },
+  "currentDaemonExecutable": {
+    "unsignedLink": {
+      "path": "/private/tmp/aux-pdf-abi-daemon-relink-20261026-new/Aux Daemon",
+      "sha256": "080844f51c2f2acbd94d1ecea6081ee172b1f29681da0db6360b826c768a8073"
+    },
+    "relinkRecipe": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/relink/relink.py",
+    "linkReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/relink/link-receipt.json",
+    "note": "Exact two-addon build-a2 link command with only worker-host.o swapped for the PDF-ABI build; packaged and re-signed by the bounded repair."
+  },
+  "futureDaemonResourcesLackFinalPolishRules": true
 }
