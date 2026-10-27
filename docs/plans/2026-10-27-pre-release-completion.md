@@ -61,7 +61,6 @@ Each batch ends in one combined native build (under `scripts/native-build.py`) a
 - Un-skip `scripts/lib/provided-ui.test.mjs` and fix its 1852 version assertion.
 - Export the durable checkout's native changes into `chromium/patches/` as new series areas. That covers the phase1, split-menu, multipane, logo and browser-policy patches; decide whether to keep or drop the never-applied 0106/0107.
 - Restore a small fetch/apply script, then prove a replay onto clean upstream 155.0.8059.85 matches the durable tree byte for byte. Don't do a full clean build yet: the Batch 2 build exercises the series.
-- Size: about 1–1.5 weeks.
 
 **Lane B: local corrections**
 - **Daemon lifecycle:**
@@ -71,7 +70,6 @@ Each batch ends in one combined native build (under `scripts/native-build.py`) a
 - Native-host reservation producer, startup consumer and process/pipe cleanup (needed for 1Password later).
 - Carry the PDF-ABI, final-polish and brand-sweep rules into the resource cohort rules, which clears `futureResourcesLackRules`.
 - Fix the two doc contradictions in STATUS.
-- Size: a few days.
 
 **Lane E (starts here, runs through Batch 3): REPL source, inactive**
 - Load PTY as a fixed built-in instead of `require('node-pty')`.
@@ -92,7 +90,6 @@ This follows `docs/plans/2026-10-22-complete-aux-identity.md` and the table in `
 - **Proof:** fixture tests for the migration, and old-format state refused or read without mutation.
 - No UI, CSS or geometry change.
 - **Why now:** the wire and state rename touches nearly every component, so it lands before the big acceptance pass. That way the pass runs once.
-- Size: about 1–1.5 weeks.
 
 ### Batch 3: The one local acceptance campaign → **Local product handoff**
 
@@ -124,7 +121,6 @@ This is the critical path and the hardest piece.
 - Add a versioned keychain migration with a legacy reader. No credential deletion, no owner Keychain access.
 - This needs a signing review, because it changes signed addon bytes.
 - **Verification is focused, not a rerun of Batch 3:** startup, daemon auth, BYOK credential save/read/remove, quit/reopen, and old-state legacy read. These are the only journeys this boundary touches.
-- Size: likely 2–3 weeks. Lane E keeps going in parallel.
 
 ### Batch 5: External gates (as approvals arrive; each item independent)
 
