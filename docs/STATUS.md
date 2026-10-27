@@ -61,8 +61,8 @@ The supplied addon (`provided-native.node`) and its carrier were unreachable in 
 - **REPL (Bash/PTY/CLI):** the source is complete, rebased onto the current seal (browser overlay, daemon JS with every current rule, and the daemon main with the peer-loss bound, which compiles), and inactive. Waiting on Apple `2H4D7KNGUP`; the remaining steps are in `runtime/repl-activation-ready/README.md`.
 - **1Password:** the candidate is already sealed with the Apple Development identity for team `9F2JXY8TCK`. The pairing check still needs the owner's choice of identity for the one `/Applications` install, a disposable vendor account, and someone to drive the UI. Native-host process and pipe cleanup is the remaining source item (`runtime/native-host`).
 - **Hosted service:** typecheck and 63/63 tests pass locally after fixing a stale catalog test, which now asserts the BYOK scope. The deploy review's source pins must be refreshed because of that test change. Production deploy, the schema comparison, J5, monitors, alert recipient, operator and rollback ID all need owner approval (`integration/cloud-activation/`).
-- **ChatGPT plan:** the eligibility form is not submitted; 5 fields are null in `integration/chatgpt-eligibility/request.pending.json`.
-- **Legal:** about 20 terms and privacy facts are missing (`integration/product-information/`).
+- **ChatGPT plan:** the eligibility form is not submitted. Proposed answers for its 5 empty fields and 3 status fields are in `integration/chatgpt-eligibility/request-packet/proposed-answers.md`, waiting for the owner to confirm them and submit.
+- **Legal:** proposed answers for every open terms and privacy decision are in `integration/product-information/proposed-decisions.md`, waiting for owner or legal confirmation. It also records package facts: no analytics sent and no crash upload configured. The only item that can't be proposed is the LLC's state of organization (governing law), plus processor regions.
 
 ### Repo and pipeline
 
