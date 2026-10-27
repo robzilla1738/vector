@@ -1,0 +1,47 @@
+--- docs/integration/proposed/completion-20261026/runtime/prepared-lease-recovery-a1/baseline/AuxNativeTaskLayout.swift	2026-10-27 15:00:49
++++ docs/integration/proposed/completion-20261026/runtime/prepared-lease-recovery-a1/source/AuxNativeTaskLayout.swift	2026-10-27 15:01:08
+@@ -177,9 +177,15 @@
+         guard Set(record.keys)==base.union(extra) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
+         let daemon=try process("daemon"),browser=try process("browser")
+         guard daemon.pid != browser.pid else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
+-        // A missing PID publication can hide a successful suspended spawn.
+-        // Parent absence alone cannot resolve that uncertainty.
+-        guard phase != "prepared" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        // A missing PID publication can hide a successful suspended spawn, and
++        // parent absence alone cannot resolve that. A hidden memory helper is
++        // still a live aux-memory process (reparented to launchd), so only a
++        // complete census with none settles it; the caller then requires the
++        // recorded daemon and browser to have exited.
++        if phase=="prepared" {
++            guard family == .memory,noLiveMemoryHelperImage() else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++            return [daemon,browser]
++        }
+         if phase=="not-spawned" {
+             _=try unsigned(record,"spawnError",UInt64(Int32.max),1)
+             return [daemon,browser]
+@@ -192,6 +198,25 @@
+         }
+         return [daemon,browser,helper]
+     }
++    // False unless every same-user process path was read and none is aux-memory.
++    private static func noLiveMemoryHelperImage()->Bool {
++        let estimate=proc_listallpids(nil,0)
++        guard estimate>0 else{return false}
++        var pids=[pid_t](repeating:0,count:Int(estimate)+256)
++        let count=proc_listallpids(&pids,Int32(pids.count*MemoryLayout<pid_t>.size))
++        guard count>0,Int(count)<pids.count else{return false}
++        var path=[CChar](repeating:0,count:4096)
++        for pid in pids.prefix(Int(count)) where pid>0 {
++            var info=proc_bsdinfo()
++            let size=proc_pidinfo(pid,PROC_PIDTBSDINFO,0,&info,Int32(MemoryLayout<proc_bsdinfo>.size))
++            if size<=0 {continue}  // exited, or not visible to this user
++            guard size==Int32(MemoryLayout<proc_bsdinfo>.size) else{return false}
++            if info.pbi_uid != geteuid() {continue}
++            guard proc_pidpath(pid,&path,UInt32(path.count))>0 else{return false}
++            if String(cString:path).hasSuffix("/aux-memory") {return false}
++        }
++        return true
++    }
+     private static func memoryHelperRecordNames(_ directory:Int32)throws->Set<String> {
+         let copied=openat(directory,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
+         guard copied>=0 else{throw AuxFreshColdGuardError.io(errno)}

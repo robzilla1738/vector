@@ -12,15 +12,15 @@ Resume at the local journeys under Open. The Phase 1 link, the logo replacement,
 
 | Role | Path | Inventory |
 |---|---|---|
-| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `03e13f8e6886f83ca2d81c484246252f8786f675e5be50d0282f0993ed09fef3` (receipt `combined-peerloss-deadline-a2`) |
-| What that seal adds | Bounded peer-loss shutdown in the daemon entry (`runtime/daemon-peerloss-deadline-a1`); split menu without "Send Feedback" and a Framework built in the reconciled durable checkout (Batch 1 `0e79a582`). The JS lifeline edit is gone | On top of `2a215e71`: Phase 1 native batch, Aux product logos, multi-pane split metrics fix, brand-sweep `e0228418` |
+| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `b0f780b0f82f5823b54cdde6bd18eb813b1955cb9a6d47de346fb521eef71b9e` (receipt `combined-prepared-lease-recovery-a1`) |
+| What that seal adds | Shutdown races fixed and interrupted helper leases recoverable (`desktop/shutdown-authorization-a1`); bounded peer-loss shutdown (`runtime/daemon-peerloss-deadline-a1`); split menu without "Send Feedback" and a Framework built in the reconciled durable checkout (Batch 1 `0e79a582`). The JS lifeline edit is gone | On top of `2a215e71`: Phase 1 native batch, Aux product logos, multi-pane split metrics fix, brand-sweep `e0228418` |
 | Fallback | `out/provided-candidate-local-completion-20261025-a38/Aux.app` | Last broad acceptance. Launch with its adjacent `Launch Aux.command` |
 | Source selection | `docs/integration/proposed/completion-20261026/integrator/current-source-selection.json` | |
 | Native checkout | `/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src` | Default in `scripts/aux_chromium.py`. `AUX_CHROMIUM_SRC` overrides it |
 
 `scripts/native-build.py` only holds `/tmp/aux-build.lock` around the command it is given. It does not choose the checkout.
 
-The older tree at `/private/tmp/aux-chromium-recovery-snapshot-20261023/src` was still on disk on 2026-10-27, and historical receipts and prepare scripts still name it. The `2a215e71` seal was built there, not in the durable checkout. The durable tree was missing the `phase1-native-a1`, `product-logo-a1` and `split-multipane-metrics-a1` projections, and its `out/AuxFast` had been copied with the wrong toolchain path depth. Both were reconciled on 2026-10-27 (`desktop/durable-checkout-a1`). Builds now run only in the durable checkout.
+The older tree at `/private/tmp/aux-chromium-recovery-snapshot-20261023/src` was still on disk on 2026-10-27, and historical receipts and prepare scripts still name it. The `2a215e71` seal was built there, not in the durable checkout. The durable tree was missing the `phase1-native-a1`, `product-logo-a1` and `split-multipane-metrics-a1` projections, and its `out/AuxFast` had been copied with the wrong toolchain path depth. Both were reconciled on 2026-10-27 (`desktop/durable-checkout-a1`). Builds now run only in the durable checkout, and `chromium/tree/` holds its complete verified delta from upstream (`scripts/chromium-tree.py`).
 
 Screenshots and logs under `out/` stay local. The committed record is the JSON cited below.
 
@@ -46,7 +46,7 @@ Local, on this candidate:
 
 - Profile-note isolation, protected close prompt, file download/collision/drag, capture, PiP, DevTools, BYOK Muse journey, REPL `aux.pdf`, site-rule routing, Quit/reopen persistence of Spaces/theme/remap, and Finder launch without the workspace launcher. A profile-note type was attempted and is inconclusive: the field did not show the typed value, and SecurityAgentHelper was frontmost.
 - **Daemon after a browser abort:** fixed on `03e13f8e` (`runtime/daemon-peerloss-deadline-a1`). The daemon exits 21 s after the abort and relaunch works. The cause was chokidar watchers the supplied shutdown never closes, plus a drain that waits for a browser that is gone.
-- **Quit right after launch is slow on `03e13f8e`** (browser 17 s, daemon 37 s). Quit once the daemon is idle is clean: daemon 1.2 to 2.9 s, browser 6.1 to 7.8 s (`runtime/daemon-peerloss-deadline-a1/shutdown-timing.json`). The watchers are not the cause; they close in every run. There are two startup races in Aux's shutdown code. First, the supervisor sends `/shutdown` before it holds a session token and the daemon answers 401. Second, `beginShutdown` closes broker admission before producer stops finish, so an in-flight memory-index write fails and the owner is retained. Either way the daemon exits only through the peer-loss bound.
+- **Shutdown races fixed (seal `b0f780b0`, `desktop/shutdown-authorization-a1/actual-result.json`):** Quit at +10 to +45 s exits the daemon in 1.8 to 2.9 s and the browser in 6.7 to 7.8 s. A crash ends the daemon in 21 s and relaunch works. A memory-helper lease interrupted between prepare and spawn no longer blocks startup forever: it settles only after a full census finds no `aux-memory` process. Quit within about 4 s of launch still waits for the first session token (daemon 11 s).
 - Split toolbar menu "Send Feedback": removed in the sealed Framework (`desktop/split-menu-feedback-a1`). Not yet looked at in the UI.
 - Shortcut-edit acceptance was not repeated on this seal. The validator source is in the linked Phase 1 batch.
 - Sidebar popup lifetime: `desktop/popup-lifetime-rebase-a1` found no source change. The current snapshot already contains the A32 fixes and calls `RetireAuxProfilePopup` from `OnOrdinaryWindowClosing`. The real-app checks in that README were not run.

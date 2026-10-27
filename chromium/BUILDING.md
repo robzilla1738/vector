@@ -19,7 +19,7 @@ Read the root `AGENTS.md` and `docs/STATUS.md` first.
   `python3 /Users/rcourson/Documents/Vibe/Aux/scripts/native-build.py <command> [args...]`.
   Do not clear a live lock or run a second build against the same output.
 
-The integrator applies lane patches to shared files and owns the patch series,
+The integrator applies lane patches to shared files and owns `chromium/tree/`,
 root GN integration, startup, preferences and API registration. A delivered patch
 may already be applied to the shared checkout. Check before applying it again.
 Record focused enabled-object compilation separately from full linkage, runtime
@@ -43,7 +43,7 @@ Use `node scripts/aux.mjs --temp-profile` for ordinary disposable development
 launches after assembly. Final acceptance also launches the app with only system
 tools on PATH, proving no external Node installation is needed.
 
-The final patch series must reconstruct current bytes from the upstream base.
+The complete Aux delta lives in [tree/](tree/README.md): re-export it with `scripts/chromium-tree.py export` after every native change, and `verify` replays it onto the base commit. Applying it to a clean 155.0.8059.85 checkout reproduces the durable tree.
 Forward/reverse patch checks are useful intermediate evidence; they do not replace
 fresh-series build, real disposable browser observation, provenance review, visual
 comparisons or the required model tasks. Current evidence and gaps are in

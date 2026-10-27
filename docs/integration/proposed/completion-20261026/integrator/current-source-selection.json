@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "03e13f8e6886f83ca2d81c484246252f8786f675e5be50d0282f0993ed09fef3",
+  "signedInventorySha256": "b0f780b0f82f5823b54cdde6bd18eb813b1955cb9a6d47de346fb521eef71b9e",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -258,7 +258,8 @@
       "compile": "out/live-inputs/completion-20261026/daemon-peerloss-a1/fix2/compile.json",
       "link": "out/live-inputs/completion-20261026/daemon-peerloss-a1/fix2/link.json",
       "source": "docs/integration/proposed/completion-20261026/runtime/daemon-peerloss-deadline-a1/source/AuxNativeDaemonMain.cc"
-    }
+    },
+    "preparedLeaseRelink": "out/live-inputs/completion-20261026/prepared-lease-recovery-a1/link.json"
   },
   "combinedBrandSweepRepair": {
     "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-brand-sweep-a1/receipt.json",
@@ -289,5 +290,15 @@
   "daemonPeerLossRepair": {
     "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-peerloss-deadline-a2/receipt.json",
     "sha256": "a9bf2f3b2f3cdff9f983b2febbb7d464a8d88467c08d1970fe27ee349dbb482d"
+  },
+  "shutdownRacesRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-prepared-lease-recovery-a1/receipt.json",
+    "sha256": "86bcea9d78266a31ad5f16f964584bd814e2ca95744ef413c3661507a78f706f",
+    "chain": [
+      "combined-shutdown-races-a1",
+      "combined-memory-close-settle-a1",
+      "combined-memory-revert-check-a1 (diagnostic: restored earlier JS to isolate the startup refusal)",
+      "combined-prepared-lease-recovery-a1"
+    ]
   }
 }

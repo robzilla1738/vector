@@ -1,0 +1,108 @@
+diff -ru baseline/chrome/browser/aux/daemon_supervisor.cc source/chrome/browser/aux/daemon_supervisor.cc
+--- baseline/chrome/browser/aux/daemon_supervisor.cc	2026-10-27 14:25:25
++++ source/chrome/browser/aux/daemon_supervisor.cc	2026-10-27 14:25:25
+@@ -479,7 +479,7 @@
+   Authenticate();
+ }
+ void DaemonSupervisor::Authenticate() {
+-  if (admission_closed_ || !CheckNativeSelection()) return;
++  if (AuthenticationClosed() || !CheckNativeSelection()) return;
+   SetState(State::kAuthenticating);
+   if (adopted_native_child_ && native_challenge_id_ && native_challenge_) {
+     ObserveNativeSignature();
+@@ -490,7 +490,7 @@
+       base::BindOnce(&DaemonSupervisor::DidReadChallenge, weak_.GetWeakPtr()));
+ }
+ void DaemonSupervisor::DidReadChallenge(std::optional<std::string> body) {
+-  if (admission_closed_ || !CheckNativeSelection()) return;
++  if (AuthenticationClosed() || !CheckNativeSelection()) return;
+   auto value = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+                     : std::nullopt;
+   const auto* id = value ? value->FindString("challengeId") : nullptr;
+@@ -517,7 +517,7 @@
+                      *id));
+ }
+ void DaemonSupervisor::ObserveNativeSignature() {
+-  if (admission_closed_ || native_sign_inflight_ || !native_challenge_id_ || !native_challenge_ ||
++  if (AuthenticationClosed() || native_sign_inflight_ || !native_challenge_id_ || !native_challenge_ ||
+       !CheckNativeSelection()) return;
+   if (native_completed_signature_) {
+     DidSignChallenge(*native_challenge_id_, native_completed_signature_);
+@@ -533,7 +533,7 @@
+ void DaemonSupervisor::DidObserveNativeSignature(
+     std::string id, std::string challenge, peer::NativeDaemonSignatureReply reply) {
+   native_sign_inflight_ = false;
+-  if (admission_closed_ || !native_challenge_id_ || !native_challenge_ ||
++  if (AuthenticationClosed() || !native_challenge_id_ || !native_challenge_ ||
+       *native_challenge_id_ != id || *native_challenge_ != challenge) return;
+   // Keep the genuine completed response before the UI-sequence publication
+   // fence. Another finite operation may advance its transport cache later.
+@@ -565,7 +565,7 @@
+ }
+ void DaemonSupervisor::DidSignChallenge(std::string id,
+                                         std::optional<std::string> signature) {
+-  if (admission_closed_ || state_ == State::kStopping || !CheckNativeSelection()) {
++  if (AuthenticationClosed() || state_ == State::kStopping || !CheckNativeSelection()) {
+     return;
+   }
+   if (!signature) {
+@@ -580,7 +580,7 @@
+       base::BindOnce(&DaemonSupervisor::DidReadSession, weak_.GetWeakPtr()));
+ }
+ void DaemonSupervisor::DidReadSession(std::optional<std::string> body) {
+-  if (admission_closed_ || !CheckNativeSelection()) return;
++  if (AuthenticationClosed() || !CheckNativeSelection()) return;
+   auto value = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+                     : std::nullopt;
+   const auto* type = value ? value->FindString("token_type") : nullptr;
+@@ -617,7 +617,7 @@
+   timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::Poll);
+ }
+ bool DaemonSupervisor::RetryAuthenticationAfterTransportFailure() {
+-  if (admission_closed_ || state_ != State::kAuthenticating ||
++  if (AuthenticationClosed() || state_ != State::kAuthenticating ||
+       auth_transport_retries_ >= 3) {
+     return false;
+   }
+@@ -643,6 +643,27 @@
+     return;
+   }
+   quiesce_waiters_.push_back(std::move(done));
++  if (state_ == State::kStopping || shutdown_authentication_) return;
++  // POST /shutdown needs a session token. Quitting before the first exchange
++  // completes would otherwise be refused (401), leaving the daemon to outlive
++  // the browser. Finish, or start, exactly one exchange first.
++  if ((authorization_.empty() || token_expires_ <= base::TimeTicks::Now()) &&
++      OwnedDaemonPid() && (state_ == State::kAuthenticating || healthy())) {
++    shutdown_authentication_ = true;
++    authorization_waiters_.push_back(base::BindOnce(
++        [](base::WeakPtr<DaemonSupervisor> self, std::optional<std::string>) {
++          if (self) self->StopForQuiesce();
++        }, weak_.GetWeakPtr()));
++    if (state_ != State::kAuthenticating) {
++      timer_.Stop();
++      loader_.reset();
++      Authenticate();
++    }
++    return;
++  }
++  StopForQuiesce();
++}
++void DaemonSupervisor::StopForQuiesce() {
+   if (state_ == State::kStopping) return;
+   healthy_ = false;
+   timer_.Stop();
+diff -ru baseline/chrome/browser/aux/daemon_supervisor.h source/chrome/browser/aux/daemon_supervisor.h
+--- baseline/chrome/browser/aux/daemon_supervisor.h	2026-10-27 14:25:25
++++ source/chrome/browser/aux/daemon_supervisor.h	2026-10-27 14:25:25
+@@ -116,6 +116,10 @@
+   bool launch_pending_ = false;
+   bool admission_closed_ = false;
+   bool drain_pending_ = false;
++  // Admission is closed, but one session exchange may finish for /shutdown.
++  bool shutdown_authentication_ = false;
++  bool AuthenticationClosed() const { return admission_closed_ && !shutdown_authentication_; }
++  void StopForQuiesce();
+   uint64_t launch_generation_ = 0;
+   const std::shared_ptr<DaemonLaunchAdmission> launch_admission_;
+   std::vector<DirectDaemonQuiesceCallback> quiesce_waiters_;

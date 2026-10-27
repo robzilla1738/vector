@@ -1,0 +1,21 @@
+{
+ "format": "aux.completion.actual-result.v1",
+ "batch": "shutdown-races-a1",
+ "seal": "b0f780b0f82f5823b54cdde6bd18eb813b1955cb9a6d47de346fb521eef71b9e",
+ "changes": [
+  "supervisor finishes or starts one session exchange before POST /shutdown (desktop/shutdown-authorization-a1)",
+  "broker refuses new resources during producer stops but admits writes from running work until they settle (desktop/broker-shutdown-order-a1)",
+  "memory close waits up to 3 s for in-flight requests before the native close (desktop/memory-close-settle-a1)",
+  "startup guard settles a memory helper lease left in phase prepared when a full same-user census finds no aux-memory process (runtime/prepared-lease-recovery-a1)"
+ ],
+ "found": "A Quit at +10 s on the race-fix seal still retained the owner; the run then left a prepared memory-helper lease that made every later launch refuse (\"paired daemon receipt\", bootstrap -1).",
+ "observed": {
+  "quit+4s": "browser 16.0 s, daemon 11.1 s",
+  "quit+10s": "browser 7.7 s, daemon 2.9 s",
+  "quit+20s": "browser 6.7 s, daemon 1.8 s",
+  "quit+30s": "browser 7.2 s, daemon 1.8 s",
+  "quit+45s": "browser 7.8 s, daemon 2.3 s",
+  "abort+30s": "daemon exited 21.1 s later; next launch normal",
+  "startupAfterPreparedLease": "normal"
+ }
+}
