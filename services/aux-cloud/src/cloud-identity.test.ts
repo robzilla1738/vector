@@ -40,18 +40,15 @@ test('actual CORS preflight admits Aux auth header within existing allowed origi
   assert.ok(allowed.includes('x-aux-auth-protocol')); assert.ok(!allowed.includes('x-aside-auth-protocol'));
 });
 
-test('actual hosted model catalog emits Aux provider without a paid request', async () => {
+test('hosted model catalog is empty and makes no request while Aux-funded inference is off', async () => {
+  // BYOK scope: no Aux-hosted credits, so the catalog must not reach the provider.
   const original = globalThis.fetch;
-  const target = process.env.AUX_AI_MODEL || 'openai/gpt-6-luna', fast = process.env.AUX_AI_FAST_MODEL || 'openai/gpt-6-luna';
   let reads = 0;
-  globalThis.fetch = async input => {
-    assert.match(String(input), /\/v1\/models$/); reads++;
-    return Response.json({ data: [...new Set([target, fast])].map(id => ({ id, type: 'language', zdr: 'all', name: 'Fixture' })) });
-  };
+  globalThis.fetch = async () => { reads++; return Response.json({ data: [] }); };
   try {
     const response = await inferenceRoutes.request('/ai/catalog/v1');
     assert.equal(response.status, 200);
-    const body = await response.json() as { provider: string; models: unknown[] };
-    assert.equal(body.provider, 'aux'); assert.equal(body.models.length, 2); assert.ok(reads >= 1 && reads <= 2);
+    assert.deepEqual(await response.json(), { provider: 'aux', models: [], visibleModelIds: [], imageModels: [] });
+    assert.equal(reads, 0);
   } finally { globalThis.fetch = original; }
 });
