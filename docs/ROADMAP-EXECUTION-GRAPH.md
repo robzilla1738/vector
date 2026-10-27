@@ -2,7 +2,7 @@
 
 Owner approved implementation of the two-milestone plan after the October 26 pause checkpoint. On 2026-10-27 the owner stopped again and asked for the docs and local commits to match the tree. [STATUS](STATUS.md) is the live summary. Historical plans and receipts remain in Git and their existing evidence directories; they are not current dispatch instructions.
 
-Next work is the unfinished local journeys in STATUS. Startup repair, the Phase 1 native batch, the Aux product logos, and the multi-pane split-metrics fix are already in candidate `2a215e7185b3c755380b01735d36121f078e1c1c81c8f2788d5d018f9c679132`.
+The current plan is [2026-10-27 pre-release completion](plans/2026-10-27-pre-release-completion.md) (owner-approved 2026-10-27). It supersedes the batch list below; the table stays as the outcome inventory. Next work is the unfinished local journeys in STATUS. Startup repair, the Phase 1 native batch, the Aux product logos, and the multi-pane split-metrics fix are already in candidate `2a215e7185b3c755380b01735d36121f078e1c1c81c8f2788d5d018f9c679132`.
 
 ## Milestones
 

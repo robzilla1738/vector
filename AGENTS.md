@@ -25,7 +25,7 @@ Read first: [README](README.md), [STATUS](docs/STATUS.md) (the only live state p
 
 ## Working rules
 
-- Stay local. Do not push, run hosted Actions, sign, provision, notarize or release. Earlier signing authorizations are historical.
+- Stay local. Do not push, run hosted Actions, provision, notarize or release. Signing is limited to local candidate reseals through the approved repair executor (`integrator/combined-product-repair/`): the existing local identity, the same targets, identifiers and entitlements, no Developer ID (owner, 2026-10-27). Other earlier signing authorizations are historical.
 - Commit coherent slices to local `main`. Parallel lanes use separate worktrees under `/Users/rcourson/Documents/Vibe/aux-worktrees/`, never `/private/tmp`: macOS purges it. Remove a worktree once its commits are delivered.
 - Never hard-code the repository path. Use `scripts/lib/repo-root.mjs` (JS) or a path relative to the script. Live build inputs never live under `/private/tmp`.
 - Chromium checkout: `/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src` (`scripts/aux_chromium.py`, `scripts/lib/aux-chromium.mjs`; `AUX_CHROMIUM_SRC` overrides). It holds owner changes: never reset it or delete unrelated files. Serialize native builds with `python3 scripts/native-build.py <command>`, which holds `/tmp/aux-build.lock`. See [chromium/BUILDING.md](chromium/BUILDING.md).
