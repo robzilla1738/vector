@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import{createHash}from'node:crypto';import{DatabaseSync}from'node:sqlite';import{readFileSync}from'node:fs';
+import {frozenDaemonCodeFile} from '../../scripts/lib/frozen-daemon-code.mjs';
 import{prepareSubagentTrackingJson,prepareSqliteSubagentTrackingIdentity}from'./aux-subagent-tracking-identity.mjs';import{PINNED_PROVIDER_STATE_TARGET_DDL}from'./aux-sqlite-provider-identity-schema.mjs';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const capability={id:'tracking-fixture-scope',disposable:true,exclusive:true,rollbackJournalAbsent:true,assertStopped:async()=>true};
@@ -17,5 +18,5 @@ test('private SQLite tracking column CAS preserves every other table/column with
  await assert.rejects(prepareSqliteSubagentTrackingIdentity({databaseBytes:input,expectedSha256:sha(input),walBytes:Buffer.from([1]),capability}),/WAL/);
  await assert.rejects(prepareSqliteSubagentTrackingIdentity({databaseBytes:input,expectedSha256:sha(input),walBytes:null,capability:{...capability,assertStopped:async()=>false}}),/capability/);
 });
-const pinned=process.env.AUX_PINNED_DAEMON_SOURCE;
+const pinned=(process.env.AUX_PINNED_DAEMON_SOURCE ?? frozenDaemonCodeFile());
 test('actual producer, column, update and model-selection source anchors match',{skip:!pinned},()=>{const source=readFileSync(pinned,'utf8'),audit=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-subagent-tracking-identity/source-audit.json',import.meta.url)));assert.equal(sha(Buffer.from(source)),audit.daemonSourceSha256);for(const anchor of audit.anchors)assert.equal(source.split(anchor.find).length-1,anchor.count,anchor.name)});

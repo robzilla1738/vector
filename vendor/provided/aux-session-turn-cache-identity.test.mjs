@@ -6,6 +6,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {prepareSessionTurnCacheIdentity} from './aux-session-turn-cache-identity.mjs';
 import {PINNED_SESSION_TURN_CACHE_DDL} from './aux-session-turn-cache-schema.mjs';
+import {frozenDaemonCodeFile} from '../../scripts/lib/frozen-daemon-code.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const capability={id:'synthetic-cache-scope',disposable:true,exclusive:true,rollbackJournalAbsent:true,assertStopped:async()=>true};
 const message={role:'assistant',provider:'aside',api:'aside-provider',model:'keep-model',timestamp:1,usage:{totalTokens:7},content:[{type:'text',text:'aside prose remains',textSignature:'keep-signature'}],stopReason:'stop'};
@@ -27,7 +28,7 @@ test('unknown cache variants, duplicate keys, changed schema, WAL and lost stopp
  const bytes=fixture();await assert.rejects(prepareSessionTurnCacheIdentity({databaseBytes:bytes,expectedSha256:sha(bytes),walBytes:Buffer.from([1]),capability}),/WAL/);
  await assert.rejects(prepareSessionTurnCacheIdentity({databaseBytes:bytes,expectedSha256:sha(bytes),walBytes:null,capability:{...capability,assertStopped:async()=>false}}),/capability/);
 });
-const pinned=process.env.AUX_PINNED_DAEMON_SOURCE;
+const pinned=(process.env.AUX_PINNED_DAEMON_SOURCE ?? frozenDaemonCodeFile());
 test('schema derivation and single-element projection confirmed against pinned actual extractor',{skip:!pinned},()=>{
  const source=readFileSync(pinned,'utf8'),audit=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-session-turn-cache-identity/source-audit.json',import.meta.url)));assert.equal(sha(Buffer.from(source)),audit.daemonSourceSha256);
  for(const anchor of audit.anchors)assert.equal(source.split(anchor.find).length-1,anchor.count,anchor.name);

@@ -6,6 +6,7 @@ import { mkdtempSync, writeFileSync, readFileSync, readdirSync, statSync, chmodS
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { adaptDaemonCode, DAEMON_CODE_SHA256 } from './daemon-adapter.mjs';
+import {frozenDaemonCodeFile} from '../../scripts/lib/frozen-daemon-code.mjs';
 const { createAdapter, run } = createRequire(import.meta.url)('./daemon-native.cjs');
 
 test('browser P256 identity, encrypted test storage, domain separation and refusal boundaries', () => {
@@ -49,7 +50,7 @@ test('unknown supplied bundle rejected before any rewrite', () => {
   assert.throws(() => adaptDaemonCode('export {};'), /hash mismatch/);
 });
 
-const source = process.env.AUX_PROVIDED_DAEMON_CODE;
+const source = (process.env.AUX_PROVIDED_DAEMON_CODE ?? frozenDaemonCodeFile());
 test('pinned actual daemon keeps real plan checks and count-checked Aux branding with supplied wire spellings', { skip: !source }, () => {
   const original = readFileSync(source, 'utf8');
   assert.equal(createHash('sha256').update(original).digest('hex'), DAEMON_CODE_SHA256);

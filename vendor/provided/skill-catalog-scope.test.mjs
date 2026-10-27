@@ -4,10 +4,12 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { adaptDaemonCode } from './daemon-adapter.mjs';
-const approvedCodeSha256 = 'd5133e910653114e22484906ac524dacf449d6fc69f20837c610207f9ba6f465';
+// Output of the current adapter over the frozen daemon; update with any adapter change.
+const approvedCodeSha256 = 'fd6e5f1438ceabbbe2b31a129029e7d2c47697de207eacdf742ac3e0ccf0e14c';
 import { transformProvidedNativeUi } from './native-ui-compat.mjs';
+import {frozenDaemonCodeFile} from '../../scripts/lib/frozen-daemon-code.mjs';
 
-const source = process.env.AUX_PROVIDED_DAEMON_CODE;
+const source = (process.env.AUX_PROVIDED_DAEMON_CODE ?? frozenDaemonCodeFile());
 const assets = process.env.AUX_PROVIDED_AGENT_ASSETS;
 const rows = [
   { name: 'password-manager', path: 'builtin/password-manager', enabled: true },

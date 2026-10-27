@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {prepareAuxTranscriptProviderIdentity,AUX_TRANSCRIPT_SOURCE_SHA256} from './aux-transcript-provider-identity.mjs';
+import {frozenDaemonCodeFile} from '../../scripts/lib/frozen-daemon-code.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const capability={id:'synthetic-transcript-only',disposable:true,exclusive:true,assertStopped:async()=>true};
 const prepare=bytes=>prepareAuxTranscriptProviderIdentity({bytes,expectedSha256:sha(bytes),capability});
@@ -30,7 +31,7 @@ test('refuses ambiguous, corrupt, incomplete, unsupported and no-longer-stopped 
  const bytes=Buffer.from(JSON.stringify(assistant)+'\n');let calls=0;await assert.rejects(prepareAuxTranscriptProviderIdentity({bytes,expectedSha256:sha(bytes),capability:{...capability,assertStopped:async()=>++calls===1}}),/capability/);
  await assert.rejects(prepareAuxTranscriptProviderIdentity({bytes,expectedSha256:'0'.repeat(64),capability}),/hash mismatch/);
 });
-const pinned=process.env.AUX_PINNED_DAEMON_SOURCE;
+const pinned=(process.env.AUX_PINNED_DAEMON_SOURCE ?? frozenDaemonCodeFile());
 test('pinned actual JSONL parse and context transformer retain signatures after fixed-offset migration',{skip:!pinned},async()=>{
  const source=readFileSync(pinned,'utf8');assert.equal(sha(Buffer.from(source)),AUX_TRANSCRIPT_SOURCE_SHA256);
  const audit=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-transcript-provider-identity/source-audit.json',import.meta.url)));
