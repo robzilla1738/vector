@@ -11,6 +11,7 @@ p=argparse.ArgumentParser()
 for name in ['index','entry','signed-receipt','receipt-directory','out']:p.add_argument('--'+name,required=True)
 p.add_argument('--framework');p.add_argument('--daemon-executable');p.add_argument('--session-route')
 p.add_argument('--shortcut-capture');p.add_argument('--extension-manifest');p.add_argument('--background');p.add_argument('--tabsearch');p.add_argument('--source-evidence',action='append',required=True)
+p.add_argument('--resource',action='append',default=[],help='TARGET=SOURCE for an extension script or daemon skill leaf')
 a=p.parse_args();assert Path(a.receipt_directory).name==a.receipt_directory
 receipt_pin=pin(a.signed_receipt);receipt=json.loads(Path(a.signed_receipt).read_text());assert receipt['passed']
 rows={r['path']:r for r in receipt['files']}
@@ -22,6 +23,8 @@ if a.tabsearch:inputs.append(('Contents/Resources/aux/apps/extension/dist/assets
 if a.background:inputs.append(('Contents/Resources/aux/apps/extension/dist/background.js',a.background))
 if a.extension_manifest:inputs.append(('Contents/Resources/aux/apps/extension/dist/manifest.json',a.extension_manifest))
 if a.shortcut_capture:inputs.append(('Contents/Resources/aux/apps/extension/dist/assets/use-shortcut-capture-DGr8Ws5Z.js',a.shortcut_capture))
+for item in a.resource:
+ target,source=item.split('=',1);assert target not in {t for t,_ in inputs};inputs.append((target,source))
 replacements=[]
 for target,source in inputs:
  assert rows[target]['type']=='file' and not (APP/target).is_symlink()

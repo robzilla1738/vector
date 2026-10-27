@@ -1,0 +1,11 @@
+{
+  "format": "aux.completion.actual-result.v1",
+  "candidateInventorySha256": "e022841886a8425a267e5e45ecda2bf1ec7ee543eed557b7e1e93d1fa3b84b23",
+  "repairs": ["combined-brand-sweep-a1 (inventory e0228418; framework, daemon and outer re-signed; 20 changed leaves)"],
+  "preparation": "integration/ordinary-chat/brand-sweep-a1/prepare.py; all rules matched their counts; node --check passes for both daemon modules and all ten changed extension scripts",
+  "startup": "Accepted: codesign --verify --deep --strict passes; profile picker, session restore, extension bridge connected, background service running normally. Startup log has the same known lines as before (one 'Daemon installation authorization failed', GCM DEPRECATED_ENDPOINT, session tab reconciliation warnings)",
+  "footer": "Settings > General reads 'Copyright © 2026 Courson Digital LLC. All rights reserved.'",
+  "quit": "Menu Quit: all candidate processes exited",
+  "notExercised": "Import progress icon (would read another browser's data), onboarding skill (experimental gate off), Windows-only paths, billing (out of scope)",
+  "credential": "No AI credential used"
+}

@@ -1,0 +1,99 @@
+{
+  "format": "aux.brand-sweep-preparation.v1",
+  "rulesSha256": "c011e89e413087a9fbd5a8455d86c36c4024a985488727403084b4fd4b160b92",
+  "resources": [
+    {
+      "name": "index.mjs",
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "beforeSha256": "66efcff1bd9a1f80f23613e51f3b1ed4c6cf360d48857de19041c1e52363561a",
+      "afterSha256": "25dd4fff0aab1cc75014dcc45fa324216ddd2434c415dded82061e48bf565e53"
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "beforeSha256": "cec5745bb5aad80896d6e1d5d58c7638b078f64829a2263e59e0455de0541481",
+      "afterSha256": "740091f898072a2ee4da59db3ba84db5a605c7c0eb317f2428a797562bdaf50c"
+    },
+    {
+      "name": "onboarding-SKILL.md",
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/static/skills/builtin/onboarding/SKILL.md",
+      "beforeSha256": "e09a588a0fcfc7253006e2d210b09c00943bbf45323181259d641d6852eacdd1",
+      "afterSha256": "1979d42b93f375e2a06a2b31110b13fbf0b500e9f00c8f69818c426f55ee01b0"
+    },
+    {
+      "name": "notion-SKILL.md",
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/static/skills/builtin/notion/SKILL.md",
+      "beforeSha256": "96230bdac7ef3bc4d1fc4d552a39720aa1fef6b5d05b332de256d83a6705a254",
+      "afterSha256": "14c2f2edc61171544b7ebe0bcbe35b34b1574060240c7d9fa53b5a0bc213917e"
+    },
+    {
+      "name": "general-3dgRbrRk.js",
+      "target": "Contents/Resources/aux/apps/extension/dist/assets/general-3dgRbrRk.js",
+      "beforeSha256": "231ffd603754999e7601393b18dc0b03d177bbbfc01650da795991b214dae9f4",
+      "afterSha256": "43d6dda39dd3997260ab635b0cafc691df7836e97b833ca4c0d42a145545ab47"
+    },
+    {
+      "name": "mcps-DmPp5oo9.js",
+      "target": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "beforeSha256": "9677c647f3537abcf90dd5cf707229e5fb6f83cd185ae19c5f4fcb72060b0d03",
+      "afterSha256": "3bc723558d96ca6dfe16808434ccee3f1b434c8c0f08af066764ad59763d5f08"
+    },
+    {
+      "name": "queries-ldd77hNk.js",
+      "target": "Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+      "beforeSha256": "1d92d3847f80b83b38f124663f40b62a0ca97419d8f5358a69131b6283581063",
+      "afterSha256": "50bf651324e1be5bd601c3d2e49e7329dfa0ad1b396d17a7e725b8fc8cff6f89"
+    },
+    {
+      "name": "recovery-key-CPOQuYx2.js",
+      "target": "Contents/Resources/aux/apps/extension/dist/assets/recovery-key-CPOQuYx2.js",
+      "beforeSha256": "b6e6ef4ed1b7dd26b4b5dbea31ed7ad20b2824b5ad62bdcf5ff88274328c377c",
+      "afterSha256": "9bb0ffad41e8cef57b0c626cf6ac1b63337c3801e724541d162fe5fc8acf3d44"
+    },
+    {
+      "name": "content.js",
+      "target": "Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "beforeSha256": "ee45b3083e1b2fe712836b585b4d4fa5120cb797d052da1a22c89d9628d7e0de",
+      "afterSha256": "69ff9d1081d63a25b3951de4c84a142906fdd4f73a54918e62428ef23939409c"
+    },
+    {
+      "name": "background.js",
+      "target": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "beforeSha256": "5878bfc73f19bc07c31cea0e33da6ae5ef005ce434b891b9975b732285a28fe4",
+      "afterSha256": "58a5ce56e5474c354b5ac1b9bf97d04f7c5693cd5dfe58634053553ff0db09e2"
+    },
+    {
+      "name": "google-sign-in-C6OIqXPh.js",
+      "target": "Contents/Resources/aux/apps/extension/dist/assets/google-sign-in-C6OIqXPh.js",
+      "beforeSha256": "4bcbf7de84a6e5f98f6208fbc8a876d69b6c6206956e4d3144973ff9e9ac7690",
+      "afterSha256": "216979a6a5a3833c82a2d242f26c3dd906f625296b81cd39815ada1a9caa8168"
+    },
+    {
+      "name": "browser-icon-DvnonVC4.js",
+      "target": "Contents/Resources/aux/apps/extension/dist/assets/browser-icon-DvnonVC4.js",
+      "beforeSha256": "c3fb45292979d9df78a24cdf1d518f999b64d773b93c7ddc5c3e3d3e5fc4a7e0",
+      "afterSha256": "aa9987af0eacb35967a5aeca1c65c4b5d5b63ad4aabf9d388cf5d02bf6eee452"
+    },
+    {
+      "name": "password-LjdLcSRV.js",
+      "target": "Contents/Resources/aux/apps/extension/dist/assets/password-LjdLcSRV.js",
+      "beforeSha256": "585025e66ae4f36f08fd86148f99a1131905f35791840bcbde3d79d753d29d9d",
+      "afterSha256": "3c13458733789fb057a9c519401c0fad3b375ad4ce61de553f2e0bcf4e13baa3"
+    },
+    {
+      "name": "manifest.json",
+      "target": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "beforeSha256": "2b11aab8c83a06a0a6572d714599593bfe233aab31ab7ab5bc6cc65f52d215a9",
+      "afterSha256": "09343141a18521bbc4c9846159668a534fc885c19288cdd91a3556febc24f556"
+    },
+    {
+      "name": "Aux Framework",
+      "target": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "beforeSha256": "4ebbd4707703d5c998e866329dbed4917850224490e43c013c6d27f24e73d857",
+      "afterSha256": "c9e5b716921b7693ae39ae4b67688a8e2b4190e55103544afd275b5a38092d7d"
+    }
+  ],
+  "appModified": false,
+  "signed": false,
+  "modelCalls": 0
+}

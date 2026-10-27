@@ -45,8 +45,13 @@ EXTENSION_MANIFEST = 'Contents/Resources/aux/apps/extension/dist/manifest.json'
 SHORTCUT_CAPTURE = 'Contents/Resources/aux/apps/extension/dist/assets/use-shortcut-capture-DGr8Ws5Z.js'
 SESSION_ROUTE = 'Contents/Resources/aux/apps/extension/dist/assets/_sessionId-ClN_BWh5.js'
 DAEMON_EXECUTABLE = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon'
+# Plain-text script/skill leaves sealed by the daemon or outer signature; never code objects or seals.
+RESOURCE_ROOTS = ('Contents/Resources/aux/apps/extension/dist/', 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/static/skills/')
+def resource_leaf(target):
+    return target.startswith(RESOURCE_ROOTS) and target.endswith(('.js', '.md')) and '/_CodeSignature/' not in target and '..' not in Path(target).parts
+ENUMERATED = required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE, SESSION_ROUTE, DAEMON_EXECUTABLE}
 actual_targets = {item['target'] for item in replacements}
-require(len(actual_targets)==len(replacements) and required <= actual_targets <= required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE, SESSION_ROUTE, DAEMON_EXECUTABLE}, 'Only enumerated existing leaves may change')
+require(len(actual_targets)==len(replacements) and required <= actual_targets and all(t in ENUMERATED or resource_leaf(t) for t in actual_targets), 'Only enumerated existing leaves may change')
 for item in replacements:
     pin(item['input'])
     if item['target'] == EXTENSION_MANIFEST:

@@ -1,0 +1,228 @@
+{
+  "daemon": [
+    {
+      "why": "Windows helper publisher identifies the Aux owner",
+      "find": "CN=AT YOUR SIDE INC, O=AT YOUR SIDE INC, L=San Francisco, S=California, C=US",
+      "replace": "CN=Courson Digital LLC, O=Courson Digital LLC, C=US",
+      "count": 3
+    },
+    {
+      "why": "Windows helper package identity uses the Aux owner",
+      "find": "@('AtYourSide.AuxComputerUse', 'AtYourSide.AuxComputerUse.Canary')",
+      "replace": "@('CoursonDigital.AuxComputerUse', 'CoursonDigital.AuxComputerUse.Canary')",
+      "count": 1
+    },
+    {
+      "why": "Windows computer-use app matcher follows the Aux package identity and AuxComputerUse.exe",
+      "find": "/^aumid:atyourside\\.asidecomputeruse(?:\\.canary)?_[^!]+!computeruse$/.test(ri)||/^win32:.*[\\\\/]asidecomputeruse\\.exe$/.test(ri)",
+      "replace": "/^aumid:coursondigital\\.auxcomputeruse(?:\\.canary)?_[^!]+!computeruse$/.test(ri)||/^win32:.*[\\\\/]auxcomputeruse\\.exe$/.test(ri)",
+      "count": 1
+    },
+    {
+      "why": "experimental settings schema no longer declares the pre-Aux alias",
+      "find": "auxCode:boolean$1().optional(),asideCode:boolean$1().optional(),",
+      "replace": "auxCode:boolean$1().optional(),",
+      "count": 1
+    },
+    {
+      "why": "drop the pre-Aux asideCode settings alias; Aux only writes aux.experimental.v2",
+      "find": "  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};",
+      "replace": "  const {auxCode, format: storedFormat, ...settings} = value;\n  return {...settings, format, auxCode: auxCode ?? false};",
+      "count": 1
+    },
+    {
+      "why": "bundled source region name",
+      "find": "//#region src/browser-v3/injected/aside-world.ts",
+      "replace": "//#region src/browser-v3/injected/aux-world.ts",
+      "count": 1
+    },
+    {
+      "why": "default CLI session title is aux cli",
+      "find": "LEGACY_CLI_SESSION_TITLES=/* @__PURE__ */ new Set([`aside cli`,`daemon cli`])",
+      "replace": "LEGACY_CLI_SESSION_TITLES=/* @__PURE__ */ new Set([`aux cli`,`daemon cli`])",
+      "count": 1
+    },
+    {
+      "why": "billing lookup keys match the Aux cloud enum",
+      "find": "stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`])",
+      "replace": "stripePriceLookupKeySchema=_enum([`aux_pro_month`,`aux_pro_year`,`aux_max_month`,`aux_max_year`])",
+      "count": 1
+    },
+    {
+      "why": "password-manager memory block uses only the Aux marker",
+      "find": "    ['<!-- aux:password-manager-preference:v2:start -->', '<!-- aux:password-manager-preference:v2:end -->'],\n    ['<!-- aside:password-manager-preference:start -->', '<!-- aside:password-manager-preference:end -->'],\n",
+      "replace": "    ['<!-- aux:password-manager-preference:v2:start -->', '<!-- aux:password-manager-preference:v2:end -->'],\n",
+      "count": 1
+    },
+    {
+      "why": "signed-in account owner kind is aux (schema)",
+      "find": "kind:literal(`aside`)",
+      "replace": "kind:literal(`aux`)",
+      "count": 1
+    },
+    {
+      "why": "signed-in account owner kind is aux (checks)",
+      "find": "kind===`aside`",
+      "replace": "kind===`aux`",
+      "count": 18
+    },
+    {
+      "why": "signed-in account owner kind is aux (negated checks)",
+      "find": "kind!==`aside`",
+      "replace": "kind!==`aux`",
+      "count": 11
+    },
+    {
+      "why": "signed-in account owner kind is aux (records)",
+      "find": "{kind:`aside`",
+      "replace": "{kind:`aux`",
+      "count": 4
+    }
+  ],
+  "general": [
+    {
+      "why": "settings footer names the Aux owner",
+      "find": "Copyright © 2026 At Your Side Inc. All rights reserved.",
+      "replace": "Copyright © 2026 Courson Digital LLC. All rights reserved.",
+      "count": 1
+    }
+  ],
+  "mcps": [
+    {
+      "why": "experimental settings schema no longer declares the pre-Aux alias",
+      "find": "auxCode:m().optional(),asideCode:m().optional(),",
+      "replace": "auxCode:m().optional(),",
+      "count": 1
+    },
+    {
+      "why": "drop the pre-Aux asideCode settings alias; Aux only writes aux.experimental.v2",
+      "find": "  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};",
+      "replace": "  const {auxCode, format: storedFormat, ...settings} = value;\n  return {...settings, format, auxCode: auxCode ?? false};",
+      "count": 1
+    }
+  ],
+  "apiTimeout": [
+    {
+      "why": "daemon reports only AUX_API_TIMEOUT",
+      "find": "[\"AUX_API_TIMEOUT\",\"ASIDE_API_TIMEOUT\"].includes(",
+      "replace": "[\"AUX_API_TIMEOUT\"].includes(",
+      "count": 1
+    }
+  ],
+  "background": [
+    {
+      "why": "daemon reports only AUX_API_TIMEOUT",
+      "find": "[\"AUX_API_TIMEOUT\",\"ASIDE_API_TIMEOUT\"].includes(",
+      "replace": "[\"AUX_API_TIMEOUT\"].includes(",
+      "count": 1
+    },
+    {
+      "why": "daemon streams only the Aux lasso error prefix",
+      "find": "Object.freeze([\"__AUX_LASSO_ERROR__:\", \"__ASIDE_LASSO_ERROR__:\"])",
+      "replace": "Object.freeze([\"__AUX_LASSO_ERROR__:\"])",
+      "count": 1
+    }
+  ],
+  "googleSignIn": [
+    {
+      "why": "OAuth popup carries only the Aux callback marker",
+      "find": "auxAuthCallback:O(\"google\").optional(),asideAuthCallback:O(\"google\").optional(),",
+      "replace": "auxAuthCallback:O(\"google\").optional(),",
+      "count": 1
+    },
+    {
+      "why": "OAuth popup requires the Aux callback marker",
+      "find": ".refine(value=>(value.auxAuthCallback===\"google\")!==(value.asideAuthCallback===\"google\"),\"Ambiguous Aux Google OAuth callback marker\")",
+      "replace": ".refine(value=>value.auxAuthCallback===\"google\",\"Missing Aux Google OAuth callback marker\")",
+      "count": 1
+    }
+  ],
+  "browserIcon": [
+    {
+      "why": "import progress renders value \"aux\"; the map keyed the Aux icon as \"aside\"",
+      "find": "new Map([[\"aside\",B],",
+      "replace": "new Map([[\"aux\",B],",
+      "count": 1
+    }
+  ],
+  "password": [
+    {
+      "why": "signed-in account owner kind is aux",
+      "find": "owner.kind!==\"aside\"",
+      "replace": "owner.kind!==\"aux\"",
+      "count": 1
+    }
+  ],
+  "manifest": [
+    {
+      "why": "advance bundled extension version so Chromium reloads changed resources",
+      "find": "\"version\": \"1.26.1016.1887\",",
+      "replace": "\"version\": \"1.26.1016.1888\",",
+      "count": 1
+    }
+  ],
+  "onboarding": [
+    {
+      "why": "Passwords/Vault is not part of Aux; its settings route redirects away",
+      "find": "| Aux vault not set up                                           | I can sign into sites for you only if I can hold your logins safely | `{\"label\":\"Set up Passwords\",\"to\":\"/u/$userId/settings/password\"}` |\n| Another password manager found (1Password, Chrome, …)            | Import once and I sign in everywhere you already do             | `{\"label\":\"Import from 1Password\",\"to\":\"/u/$userId/settings/password\",\"search\":{\"dialog\":\"import\"}}` |\n",
+      "replace": "",
+      "count": 1
+    },
+    {
+      "why": "the message renderer handles aux-cta-v2 blocks only",
+      "find": "```aside-cta\n{\"label\":\"Set up Passwords\",\"description\":\"Takes about a minute.\",\"to\":\"/u/$userId/settings/password\"}\n```",
+      "replace": "```aux-cta-v2\n{\"label\":\"Import from Chrome\",\"description\":\"Takes about a minute.\",\"to\":\"/onboarding/import-browser\"}\n```",
+      "count": 1
+    },
+    {
+      "why": "import dialog example referred to the removed password settings",
+      "find": "optional query state (`{\"dialog\":\"import\"}` opens the password import dialog directly). Use the detected manager's real\nname in the label (\"Import from Bitwarden\"), never a placeholder.",
+      "replace": "optional query state passed to the route. Use the detected browser's real name in the label (\"Import from Arc\"),\nnever a placeholder.",
+      "count": 1
+    }
+  ],
+  "notion": [
+    {
+      "why": "no @aside package ships with Aux",
+      "find": "The returned client is `NotionClient` from `@aside/notion` — a full-featured Notion internal API client.",
+      "replace": "The returned client is `NotionClient`, the full-featured Notion internal API client bundled with Aux.",
+      "count": 1
+    }
+  ],
+  "framework": [
+    {
+      "why": "embedded resource comments name the Aux owner (same byte length)",
+      "find": "Copyright 2026 At Your Side Inc.",
+      "replace": "Copyright Courson Digital LLC   ",
+      "count": 7
+    }
+  ],
+  "queries": [
+    {
+      "why": "daemon reports only AUX_API_TIMEOUT",
+      "find": "[\"AUX_API_TIMEOUT\",\"ASIDE_API_TIMEOUT\"].includes(",
+      "replace": "[\"AUX_API_TIMEOUT\"].includes(",
+      "count": 1
+    },
+    {
+      "why": "network error matcher follows the daemon Aux message",
+      "find": "Ar=/aside couldn't connect from this network|could not reach aside servers|",
+      "replace": "Ar=/aux couldn't connect from this network|could not reach aux servers|",
+      "count": 1
+    }
+  ],
+  "recoveryKey": [
+    {
+      "why": "only Aux recovery key blocks are accepted",
+      "find": "const formats=[['BEGIN AUX RECOVERY KEY V2','END AUX RECOVERY KEY V2'],['BEGIN ASIDE RECOVERY KEY','END ASIDE RECOVERY KEY']];",
+      "replace": "const formats=[['BEGIN AUX RECOVERY KEY V2','END AUX RECOVERY KEY V2']];",
+      "count": 1
+    },
+    {
+      "why": "unknown-version detection names Aux blocks only",
+      "find": "/^(?:BEGIN|END)\\s+(?:AUX|ASIDE)\\s+RECOVERY\\s+KEY/",
+      "replace": "/^(?:BEGIN|END)\\s+AUX\\s+RECOVERY\\s+KEY/",
+      "count": 1
+    }
+  ]
+}

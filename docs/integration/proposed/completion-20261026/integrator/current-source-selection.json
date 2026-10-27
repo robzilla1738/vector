@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "d2bb56be8e326397182ee0285f1650f6de5e35cdb7a78784a3d8cfc47c578763",
+  "signedInventorySha256": "e022841886a8425a267e5e45ecda2bf1ec7ee543eed557b7e1e93d1fa3b84b23",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -199,7 +199,7 @@
     "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-cold-input-worker-update-a1/receipt.json",
     "sha256": "53083968bc6b7f45606c0a29bee637f8efdf1aff8f0bda1886c1152347570fca"
   },
-  "currentComponentVersion": "1.26.1016.1887",
+  "currentComponentVersion": "1.26.1016.1888",
   "currentComponentPayloadReceipt": {
     "path": "/private/tmp/aux-completion-grouped-version-20261026-a2/receipt.json",
     "sha256": "baa8292d80f36d89514b8f312236057624da2cd36d1e8f48908d9e733495b9a0"
@@ -218,12 +218,12 @@
   },
   "currentDaemonResources": {
     "index": {
-      "path": "/private/tmp/aux-final-polish-20261026-a2/index.mjs",
-      "sha256": "66efcff1bd9a1f80f23613e51f3b1ed4c6cf360d48857de19041c1e52363561a"
+      "path": "/private/tmp/aux-brand-sweep-20261026-a1/index.mjs",
+      "sha256": "25dd4fff0aab1cc75014dcc45fa324216ddd2434c415dded82061e48bf565e53"
     },
     "entry": {
-      "path": "/private/tmp/aux-final-polish-20261026-a2/aux-native-entry.mjs",
-      "sha256": "cec5745bb5aad80896d6e1d5d58c7638b078f64829a2263e59e0455de0541481"
+      "path": "/private/tmp/aux-brand-sweep-20261026-a1/aux-native-entry.mjs",
+      "sha256": "740091f898072a2ee4da59db3ba84db5a605c7c0eb317f2428a797562bdaf50c"
     }
   },
   "futureDaemonResources": {
@@ -253,5 +253,13 @@
     "linkReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/relink/link-receipt.json",
     "note": "Exact two-addon build-a2 link command with only worker-host.o swapped for the PDF-ABI build; packaged and re-signed by the bounded repair."
   },
-  "futureDaemonResourcesLackFinalPolishRules": true
+  "combinedBrandSweepRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-brand-sweep-a1/receipt.json",
+    "sha256": "f0559655a1692d713fff74c53530f4029f69315cdaba76f46ffef69ec8470f4d",
+    "rules": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/brand-sweep-a1/rules.json"
+  },
+  "futureResourcesLackRules": [
+    "final-polish-a1",
+    "brand-sweep-a1"
+  ]
 }
