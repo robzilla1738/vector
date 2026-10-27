@@ -1,1 +1,0 @@
-Add the genuine profiles.ini parser and Firefox importer helper dependencies to the existing migrator target. One count-checked dependency anchor, following the private-byte header registration. No alternate source scanner or runtime behavior is introduced.

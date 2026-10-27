@@ -1,2 +1,0 @@
-11294	Collapse Tabs
-11295	Expand Tabs

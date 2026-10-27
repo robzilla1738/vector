@@ -1,1 +1,0 @@
-Register the private encrypted-byte DTO header with the existing migrator target. The existing base public dependency and service migrator dependency cover its actual includes. One counted source-list anchor; no runtime API, target or behavior change.

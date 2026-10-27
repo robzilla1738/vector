@@ -1,1 +1,0 @@
-Compile the upstream password-filling implementation only for non-Aux builds. This avoids unreachable code after the explicit Aux extension-only return. No behavior change beyond the approved password-manager scope.
