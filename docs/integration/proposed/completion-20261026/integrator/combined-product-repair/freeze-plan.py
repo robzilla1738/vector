@@ -2,7 +2,7 @@
 """Freeze exact replacement inputs and receipt; does not modify or sign the app."""
 import argparse,hashlib,json
 from pathlib import Path
-ROOT=Path('/Users/rcourson/Documents/Vibe/web')
+ROOT=Path(__file__).resolve().parents[6]
 APP=ROOT/'out/provided-candidate-completion-20261026-a1/Aux.app'
 BASE='Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/'
 def pin(path):

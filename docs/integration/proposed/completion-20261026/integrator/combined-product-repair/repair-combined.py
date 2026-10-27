@@ -3,8 +3,11 @@
 import argparse, hashlib, importlib.util, json, os, plistlib, shutil, subprocess, sys
 from pathlib import Path
 sys.dont_write_bytecode = True
-HERE = Path("/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review")
-ROOT = Path('/Users/rcourson/Documents/Vibe/web')
+ROOT = Path(__file__).resolve().parents[6]
+HERE = ROOT/'docs/integration/proposed/completion-20261026/runtime/authority-review'
+# Approved reviews and receipts predate the repository rename; their recorded
+# paths are re-rooted here. Every pinned file is still checked by SHA-256.
+LEGACY_ROOT = '/Users/rcourson/Documents/Vibe/web'
 APP = ROOT/'out/provided-candidate-completion-20261026-a1/Aux.app'
 APPROVED = '20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2'
 MARKER = Path('Contents/Resources/aux/bundle.json')
@@ -12,7 +15,12 @@ RES = MARKER.parent
 def require(value, message):
     if not value: raise RuntimeError(message)
 def sha(path): return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-def read(path): return json.loads(Path(path).read_text())
+def relocate(value):
+    if isinstance(value, str): return str(ROOT)+value[len(LEGACY_ROOT):] if value==LEGACY_ROOT or value.startswith(LEGACY_ROOT+'/') else value
+    if isinstance(value, list): return [relocate(item) for item in value]
+    if isinstance(value, dict): return {key: relocate(item) for key, item in value.items()}
+    return value
+def read(path): return relocate(json.loads(Path(path).read_text()))
 def pin(item):
     path = Path(item['path'])
     require(path.is_file() and not path.is_symlink() and sha(path)==item['sha256'], 'Changed repair input: '+str(path))
