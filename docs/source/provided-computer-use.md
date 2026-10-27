@@ -1,5 +1,7 @@
 # Supplied Computer Use helper: faithful static adaptation
 
+Static adaptation record. It does not set the live candidate. See [STATUS](../STATUS.md).
+
 The input is the static `~/.aside/runtime-computer-use/Aside Computer Use.app`, version `1.26.1020`, build `1.26.1020.23`. Its arm64 executable is pinned at SHA-256 `a17241d3149df77a8b05b17853053ca0318c7f78e6449800bafcfd3e14c97026`. `provided-computer-use-inputs.json` pins all 11 files / 2,876,377 bytes and their modes. No helper launch, live attachment, TCC grant, Keychain read, owner Messages access or external communication was performed. This updates the earlier partial identity checkpoint; it does not establish runtime acceptance.
 
 ## API and staging

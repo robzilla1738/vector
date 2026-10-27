@@ -1,6 +1,6 @@
 # Supplied Agent and Vault UI staging
 
-The active reuse plan authorizes these static installed packages. No profile, account database, credential, Keychain item or live process is an input.
+The active reuse plan authorizes these static installed packages. No profile, account database, credential, Keychain item or live process is an input. The Vault package is pinned here as a static input. The product does not ship it. See the [contract](../design/aside-contract.md).
 
 | Component | Source package | Version | Files | Bytes |
 | --- | --- | --- | ---: | ---: |

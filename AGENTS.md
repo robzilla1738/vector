@@ -2,7 +2,7 @@
 
 Aux reuses the implementation supplied by the owner, preserving its UI and behavior while changing branding, assets and identifiers to Aux. Independently recreating the product is not the objective. The owner's explicit direction on 2026-10-19 supersedes the clean-room rebuild plan and its source-reading/copying restrictions.
 
-Read `README.md`, `docs/design/aside-contract.md`, `docs/plans/2026-10-19-supplied-implementation-reuse.md` and `docs/STATUS.md` first. Earlier independent components remain recoverable in Git; they are not the default product implementation merely because they already exist.
+Read `README.md`, `docs/README.md`, `docs/design/aside-contract.md`, `docs/plans/2026-10-19-supplied-implementation-reuse.md` and `docs/STATUS.md` first. Earlier independent components remain recoverable in Git; they are not the default product implementation merely because they already exist.
 
 ## Owner branding override — 2026-10-22
 
@@ -33,7 +33,7 @@ Do not ship a built-in Aux password manager or the supplied Vault product. Users
 - Current development priority: preserve Aside UI and behavior 1:1 with Aux branding. Do not run signing, provisioning or release preparation as part of this work; the owner explicitly removed them from the development path. Existing scoped signing evidence is historical.
 - Commit coherent slices to local `main`; parallel lanes use separate worktrees and deliver commits. Integrator owns root manifests, packaging, patch series, shared native registration/GN files and startup.
 - Stay local. Never push, run hosted Actions, sign, provision, notarize or release during current development. Earlier authorization for the three disposable Aux authentication helpers and its resulting evidence are historical; do not resume that signing workflow as part of the current UI/behavior fidelity work.
-- Preserve owner changes in the Chromium checkout. Never reset it or delete unrelated files. Serialize native builds with `scripts/native-build.py` and `/tmp/aux-build.lock`.
+- The Chromium checkout for builds is `/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src` (`scripts/aux_chromium.py`; override with `AUX_CHROMIUM_SRC`). Preserve owner changes there. Never reset it or delete unrelated files. Serialize native builds with `scripts/native-build.py` and `/tmp/aux-build.lock`. Historical receipts may still name `/private/tmp/aux-chromium-recovery-snapshot-20261023/src`.
 - Use disposable profiles/state homes. Ask before touching the owner's real profiles, credentials, Keychain material or OS grants. Reusing static code does not authorize reading owner data.
 - Keep Aux home/app data, daemon/bridge/CDP ports and installation identity isolated from Aside. Do not connect to, stop or replace the owner's Aside daemon.
 - Never print or commit credentials. AI tests use only `vercel-ai-gateway/meta/muse-spark-1.3-contributor`; configure through the actual implementation's credential API and remove test credentials afterward.

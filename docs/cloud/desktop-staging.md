@@ -1,5 +1,7 @@
 # Supplied desktop cloud integration
 
+Build-option reference. Whether cloud is accepted on the current candidate is in [STATUS](../STATUS.md).
+
 Cloud access is an explicit build option. Omitting `--cloud-profile` preserves the local-only implementation; shell environment variables do not enable cloud access. The current accepted desktop app is not replaced by staging.
 
 ```sh

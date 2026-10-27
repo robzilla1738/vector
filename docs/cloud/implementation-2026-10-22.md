@@ -1,6 +1,8 @@
 # Aux cloud implementation and acceptance
 
-Owner objective: complete sign-in, subscriptions, sync, sharing, hosted AI/speech and production preparation; preserve the existing desktop UI and existing provider data. No final desktop release, notarization or distribution. Work remains active until actual service and desktop behavior is verified.
+The launch objective below was superseded on 2026-10-23. Payments and Aux-funded inference are deferred. See [remaining work](remaining-2026-10-23.md) and [STATUS](../STATUS.md).
+
+Owner objective at the time: complete sign-in, subscriptions, sync, sharing, hosted AI/speech and production preparation; preserve the existing desktop UI and existing provider data. No final desktop release, notarization or distribution. Work remains active until actual service and desktop behavior is verified.
 
 ## Production recovery schema prepared — later 2026-10-22
 

@@ -1,6 +1,8 @@
 # Aux behavior specifications
 
-The rebuild uses a spec team and a separate build team. Spec agents inspect reference artifacts and express behavior in original words; fresh build agents implement from these documents, screenshots and public documentation only. No reference code, UI prose, fonts or assets ship.
+Historical. The 2026-10-19 owner direction replaced this clean-room build method. The product reuses the supplied implementation. See [the docs map](../README.md) and [STATUS](../STATUS.md). Do not implement the product from these pages.
+
+The rebuild used a spec team and a separate build team. Spec agents inspect reference artifacts and express behavior in original words; fresh build agents implement from these documents, screenshots and public documentation only. No reference code, UI prose, fonts or assets ship.
 
 Each document identifies its status (`draft` or `ready`), behavior, inputs/outputs, failures, state transitions, measurement evidence, and unresolved questions. A ready section must be independently implementable. Put all reference-source citations in `provenance.md`, using document/section identifiers here. Screenshots and reference hashes are gitignored under `out/reference/`.
 

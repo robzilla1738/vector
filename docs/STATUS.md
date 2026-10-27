@@ -66,6 +66,7 @@ Owner decisions that gate later phases: signing for vendor pairing, how to proce
 
 ## Progress log
 
+- 2026-10-27: Entry-point docs point here. Historical plans, the clean-room spec, and evidence receipts stay as dated records. See [docs/README.md](README.md).
 - 2026-10-27: Paused at the owner's request. Docs aligned to seal `2a215e71`. Popup lifetime review recorded as no source change. Acceptance stopped.
 - 2026-10-27: Native checkout copied to the durable path. Previous STATUS archived.
 - 2026-10-27: Phase 1 native batch linked (`desktop/phase1-native-a1/actual-result.json`): daemon auth timeout/retry, `aside` scheme removed, `aux_profile_indicator_icon`, copyright strings, plus the shortcut validator and cold-input fixes already in the tree.

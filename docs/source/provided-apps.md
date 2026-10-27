@@ -1,5 +1,7 @@
 # Supplied stack staging and preservation
 
+Procedure. It does not set the live candidate. See [STATUS](../STATUS.md).
+
 `node scripts/stage-provided.mjs [--output <directory>] [--app-path <final-Aux.app>] [--replace]` stages the pinned supplied Agent/Vault UI, daemon, CLI, agent runtime and memory distributions atomically. It never launches those components, requests OS grants, reads adjacent profiles/settings/credentials or inserts independently reconstructed screens/runtime components. The default output is ignored `out/provided-reuse`. An existing destination is refused unless `--replace` verifies its supplied-stage marker; the old stage is then retained in a uniquely named sibling backup until manually retired. An invalid or incomplete new stage leaves the prior output intact. The final app path defaults to `~/Applications/Aux.app` and controls exact runtime relocation only; staging does not install or launch that app.
 
 UI pinning and branding policy: `docs/source/provided-ui.md`. Actual native consumer mappings and remaining capability gaps: `docs/integration/provided-native-ui.md`. Daemon/CLI boundaries: `docs/reuse/daemon-runtime.md` and `docs/reuse/cli-runtime.md`.

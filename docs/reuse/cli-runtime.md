@@ -1,5 +1,7 @@
 # Supplied CLI reuse
 
+Adapter record, not the live candidate. Product state is in [STATUS](../STATUS.md).
+
 `vendor/provided/cli-adapter.mjs` adapts the actual supplied CLI, version `1.26.1015` (bundle build `1.26.1015.732`). It does not substitute the independently implemented CLI.
 
 Static input: `~/.aside/cli/Aside CLI.app/Contents/MacOS/aside`. The complete executable SHA-256 is `17a9477fd0e3fe523ff439b76823d7d44e8f3de49cca38b79bc7bed3c599320a`; its SEA JavaScript SHA-256 is `013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62`. Both must match before adaptation. The input is implementation code, not the adjacent CLI authentication/settings files; those are never read.

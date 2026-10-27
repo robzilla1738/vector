@@ -1,5 +1,7 @@
 # Exact pinned source recovery after installed auto-update
 
+Recovery procedure for the pinned static snapshot. It does not set the live candidate. See [STATUS](../STATUS.md).
+
 The pinned source versions are recovered in the project-owned static snapshot:
 
 `/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852`

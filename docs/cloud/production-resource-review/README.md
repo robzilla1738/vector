@@ -1,5 +1,7 @@
 # Separate Aux production resources
 
+Resource review. Production deploy is not approved. See [STATUS](../../STATUS.md).
+
 Prepared2026-10-22; owner approved and bootstrap executed2026-10-22. Exact requested bootstrap: [plan.json](plan.json). Nonsecret execution receipt: [execution.json](execution.json). This bootstrap does not activate production, change the accepted desktop or represent production readiness.
 
 ## Executed bootstrap

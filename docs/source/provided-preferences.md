@@ -1,5 +1,7 @@
 # About, preferences and experimental eligibility audit
 
+Historical audit, 2026-10-19. It does not describe the live candidate. See [STATUS](../STATUS.md).
+
 2026-10-19. Static pinned Agent/Vault1.26.1016.1852 and supplied daemon source audit, with current Aux native proposals. No UI changes, source execution, browser launch, network, owner profile, Keychain or OS-grant access. `provided-preferences-inputs.json` records all33 declared preference methods, literal-reference counts across both pinned UI packages, ten referenced files and seven targeted flow-source records with exact offsets/counts/hashes. This is source compatibility evidence, not native acceptance.
 
 ## Real versions and update results

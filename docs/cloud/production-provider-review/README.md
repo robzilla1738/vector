@@ -1,5 +1,7 @@
 # Aux production auth and billing preparation
 
+Preparation record. Production deploy is not approved, and Aux payments are deferred. See [STATUS](../../STATUS.md).
+
 This is an unexecuted provider review, not activation. `plan.json` pins the actual backend consumers, intended Aux prices/events and Production-only credential destinations. It creates no account, credential, endpoint, customer or payment. The accepted desktop/UI is unchanged.
 
 Read-only logged-in dashboard inspection found zero endpoints in the existing Aux production Clerk instance. The existing Aux Development Stripe sandbox belongs to a parent live account labelled Joyflow. That live account is not assumed to be Aux, and none of its existing configuration, customers, payments or keys was modified. The browser was returned to the Aux Development sandbox. Raw dashboard/payment data is not stored here.

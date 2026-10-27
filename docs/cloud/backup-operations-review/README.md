@@ -1,5 +1,7 @@
 # Aux independent backup setup review
 
+Backups are deferred. Do not provision from this review. See [STATUS](../../STATUS.md).
+
 Prepared locally on 2026-10-23. No Cloudflare account, bucket, credential, schedule, alert, or paid resource has been created. The existing Vercel/Neon/Resend/Clerk/Stripe projects and accepted desktop UI stay unchanged.
 
 ## Destination decision

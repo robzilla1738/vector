@@ -1,5 +1,7 @@
 # Pass 1: integrated UI completion
 
+Historical pass. It is not the live checklist. The current candidate and resume list are in [STATUS](../STATUS.md).
+
 Authorized by owner 2026-10-20. Baseline local main47b0e50fd, built and observed native533, supplied Agent1852 snapshot. Working tree clean. Scope: sidebar, toolbar/address bar, native material, hover lifecycle, supplied chat panel and settings. Preserve Aux artwork, Vault exclusion, owner-data isolation and existing scoped runtime. No release or provisioning. Root retains shared native/build/package/desktop ownership.
 
 ```mermaid

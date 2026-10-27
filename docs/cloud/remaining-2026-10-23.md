@@ -1,5 +1,7 @@
 # Cloud work remaining — provider-funded launch, 2026-10-23
 
+Policy still stands. Production health was last recorded as 404 and was not rechecked on 2026-10-27. Desktop resume state is [STATUS](../STATUS.md).
+
 Owner direction now defers Aux payments and Aux-funded hosted inference: launch with BYOK and eligible ChatGPT/Codex plan connections. The [active launch plan](../plans/2026-10-23-provider-funded-launch.md) supersedes older payment/hosted-inference launch gates. Stripe setup is stopped; the one newly created Pro product was archived. Source defaults now require neither Stripe credentials nor hosted credit allowances. Both mode flags are explicitly false in all three Vercel environments and the corresponding1Password Development/Production Environments, for future builds only. Existing Preview/desktop artifacts have not been replaced by those source changes.
 
 Current launch work: preserve/verify the actual supplied BYOK path; migrate and accept the ChatGPT subscription connection using the official permitted flow and protected local tokens; integrate the remaining native startup/authority/lifetime work; then verify the same candidate's provider-only UI/account behavior. Auth/sync/storage/sharing and independent operating backups remain relevant. Paid subscriptions, credit purchases, Aux-funded speech and live Stripe acceptance are later-release work.

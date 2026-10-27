@@ -1,5 +1,7 @@
 # Aux names and local boundaries
 
+These names belong to the retired independent components. The shipping product follows the [supplied contract](aside-contract.md). Live boundaries and the candidate are in [STATUS](../STATUS.md).
+
 All independently built components use Aux-owned names:
 
 | Component | Name |

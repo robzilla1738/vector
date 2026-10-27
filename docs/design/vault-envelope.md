@@ -1,5 +1,7 @@
 # Aux local Vault format, version 1
 
+Not shipped. The product has no built-in Vault. This is the retired independent format.
+
 This is an independently designed format for `docs/spec/daemon/services.md` (Vault and password security) and `docs/spec/ui/vault.md`. It is not compatible with another application's ciphertext. Status: implemented local crypto/storage and API first slice; native biometric/passkey/credential-exchange features and visual parity remain outstanding.
 
 ## Cryptographic construction

@@ -1,5 +1,7 @@
 # Supplied runtime distribution staging
 
+Staging procedure. It does not set the live candidate. See [STATUS](../STATUS.md).
+
 This slice stages the owner's supplied static runtime, rather than substituting the independent Aux runtime. It executes no supplied program and requests no OS permission. Root owns packaging, CLI and daemon integration.
 
 ## Pinned inputs

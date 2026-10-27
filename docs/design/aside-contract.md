@@ -23,7 +23,7 @@ This exception supersedes Vault preservation and acceptance requirements elsewhe
 
 ## Complete Aux identity — owner override 2026-10-22
 
-The owner now requires all delivered product names, identifiers, endpoints and internal protocol names to use Aux, with the current UI preserved exactly. This supersedes the prior instruction to retain supplied wire spellings. The accepted app still uses the compatibility baseline; the migration is not yet integrated or accepted.
+The owner requires delivered product names, identifiers, and endpoints to use Aux, with the current UI preserved exactly. Visible branding on the current candidate is Aux. That candidate still uses the compatibility wire bytes and `aside.dk.*` HKDF domains in the existing-contract column below. Changing those bytes or domains is a versioned migration, not a branding edit. [STATUS](../STATUS.md) records which Aside identifiers remain and why. The target column is not activated.
 
 | Existing compatibility contract | Target Aux contract |
 | --- | --- |
@@ -36,7 +36,7 @@ The owner now requires all delivered product names, identifiers, endpoints and i
 | `Aside.*` | `Aux.*` |
 | `aside.dk.*` / persisted installation records | Versioned Aux formats; migration design and fixture verification required before activation |
 
-Update both sides, schemas, dispatch, health checks and byte-length calculations together. Never brand a challenge without changing its verifier. Never rename an HKDF domain and attempt to decrypt old ciphertext under the new domain. Existing Aux state needs an explicit migration or supported legacy-reader transition; neither owner-state access nor destructive resets are authorized. Original static inputs and historical evidence stay unchanged and accurately attributed. HTML's standard `aside` element and required upstream legal notices remain valid and must not be broken or erased.
+When that migration is authorized, update both sides, schemas, dispatch, health checks and byte-length calculations together. Never brand a challenge without changing its verifier. Never rename an HKDF domain and attempt to decrypt old ciphertext under the new domain. Existing Aux state needs an explicit migration or supported legacy-reader transition; neither owner-state access nor destructive resets are authorized. Original static inputs and historical evidence stay unchanged and accurately attributed. HTML's standard `aside` element and required upstream legal notices remain valid and must not be broken or erased.
 
 See [complete identity migration](../plans/2026-10-22-complete-aux-identity.md). No UI redesign, geometry, CSS, glass, typography, icon or interaction changes are part of this migration.
 

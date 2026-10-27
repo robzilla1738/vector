@@ -1,5 +1,7 @@
 # Aux provider-funded launch
 
+Launch policy still stands. Which candidate has been observed, and what provider journeys remain, is in [STATUS](../STATUS.md).
+
 Owner direction, October23, 2026: launch Aux without payments. Users bring an AI-provider API key or connect an eligible ChatGPT/Codex plan. Aux subscriptions, paid tiers, credit purchases and Aux-funded hosted inference are deferred. Preserve the current supplied UI styling, native geometry, glass, sidebars and interactions; change only availability and copy needed for this launch scope.
 
 This supersedes launch-blocking Stripe/paid-plan requirements in the older cloud roadmap. Keep completed resources and implementation recoverable for a later explicit paid release. Do not delete accounts, credentials, historical evidence or user data. Cloud account/sync/private storage/share operations remain separate services with real operating costs; payment deferral does not remove their readiness or backup requirements.

@@ -1,5 +1,7 @@
 # Supplied Agent/Vault hosted-service boundary
 
+Static audit of the pinned distributions. The product does not ship Vault. It does not set the live candidate. See [STATUS](../STATUS.md).
+
 This is a static audit of the pinned `1.26.1016.1852` Agent/Vault distributions. No URL was requested, browser opened, supplied code executed, credentials read or owner profile accessed. `provided-ui-hosted-inputs.json` records 29 first-party domain occurrences across 15 files, their source hashes, byte offsets and bounded caller context. `provided-ui-inputs.json` remains the complete source pin.
 
 ## Actual direct network consumers

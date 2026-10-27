@@ -1,5 +1,7 @@
 # Complete Aux identity, preserve the accepted UI
 
+Owner direction still stands. The evidence section below is the 2026-10-22 successor chain. It is not the current candidate. Live artifact and remaining Aside identifiers: [STATUS](../STATUS.md). Wire bytes and `aside.dk.*` domains stay until a versioned migration.
+
 Active owner direction, 2026-10-22: “Everything that is currently pointing to aside or mentions them needs to be Aux. No trace of Aside or their brand anywhere”, followed by “while preserving our UI that we currently have - do not change that”.
 
 This supersedes the earlier compatibility-name exceptions in the reuse plan. Reuse remains the implementation strategy. The accepted app stays intact during migration. This is an implementation migration, not permission to sign, inspect owner credentials, delete profiles, modify the installed reference product or activate production.
@@ -17,7 +19,7 @@ Preserve current component structure, assets derived from the canonical Aux SVG,
 5. Produce a separate unsigned successor with matching native and resource receipts. Audit actual packaged JS/SEA/native/PAK/compressed resources and file names, not just transform helpers. Do not reuse acceptance or signing receipts from older bytes. Any new signing request needs its own concrete exact-byte review.
 6. Lean acceptance: parser/schema and auth-challenge fixtures, one disposable startup/handshake, profile switching and key-format migration, then real UI comparison and unchanged visual asset hashes. No paid provider call is needed for renaming. Record implementation versus runtime gaps honestly.
 
-## Current evidence and gaps
+## Evidence and gaps as of 2026-10-22
 
 The accepted app remains unchanged. The eight-file native protocol proposal has compiled and the complete daemon/CLI/Agent protocol pairing is activated only in the explicit `aux-v1` successor stage. The new unsigned, unlaunched candidate is `out/provided-candidate-aux-protocol-v1/Aux.app`; its packaged135 visual assets and five stylesheets match the accepted baseline. Protocol parsers derive22-byte HTTP/16-byte WebSocket prefix lengths, and the complete native challenge domains include their NUL. Static pairing is not an actual authenticated runtime handshake.
 

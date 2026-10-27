@@ -1,5 +1,7 @@
 # Pinned Agent live-tab webview: conditional contract and bounded native audit
 
+Bounded audit of the pinned Agent. It does not set the live candidate. See [STATUS](../STATUS.md).
+
 The pinned Agent `1.26.1016.1852` has one `attachTab` reference across all1074 JavaScript/JSON/HTML files: its Experimental settings pane. A fresh anonymous local account has no email and does **not** instantiate that pane, even if a general experimental feature flag permits the settings route. Preserve these original gates and the fallback. Do not fake an internal email, force feature flags, register a fake custom element, substitute ordinary tab navigation, or activate the old guessed native adapter to make this conditional experiment appear available.
 
 This is a bounded static conclusion for the actual supplied default local account, **not** a claim that all accounts/builds can never reach the experiment. Internal `@at.studio` accounts can pass the extra gate; the native implementation of their requested contract has not been recovered from the reviewed older framework. That conditional fidelity gap remains explicit.

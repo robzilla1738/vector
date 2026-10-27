@@ -1,6 +1,6 @@
 # Aux
 
-Aux reuses the implementation supplied by the owner, preserving its UI and behavior while changing branding, assets and identifiers to Aux. Read [AGENTS.md](AGENTS.md), the [supplied contract](docs/design/aside-contract.md), the [reuse plan](docs/plans/2026-10-19-supplied-implementation-reuse.md), the [current status](docs/STATUS.md) and the [completion checklist](docs/ROADMAP-EXECUTION-GRAPH.md) first.
+Aux reuses the implementation supplied by the owner, preserving its UI and behavior while changing branding, assets and identifiers to Aux. Read [AGENTS.md](AGENTS.md), the [docs map](docs/README.md), the [supplied contract](docs/design/aside-contract.md), the [reuse plan](docs/plans/2026-10-19-supplied-implementation-reuse.md), the [current status](docs/STATUS.md) and the [completion checklist](docs/ROADMAP-EXECUTION-GRAPH.md) first.
 
 ## Scope
 

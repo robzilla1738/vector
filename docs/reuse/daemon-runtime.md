@@ -1,6 +1,6 @@
 # Supplied daemon runtime adaptation
 
-This slice adapts the owner's supplied daemon itself, not the earlier independent backend. It is not production-ready: the native binding, automatic skill writes and real local onboarding gates still need integration.
+This slice adapts the owner's supplied daemon itself, not the earlier independent backend. It is the adapter record, not the live candidate. Product state is in [STATUS](../STATUS.md).
 
 ## Pinned input
 

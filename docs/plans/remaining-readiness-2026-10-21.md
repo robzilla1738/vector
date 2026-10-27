@@ -4,7 +4,7 @@ Current scope update — 2026-10-23: the provider-funded launch supersedes older
 
 # Aux completion and setup checklist
 
-This is the current implementation checklist, replacing the stale open-item summaries in older build records. Preserve the supplied UI and existing Aux glass, corners, spacing and interactions. Aux excludes the built-in Vault/password manager. A successful local browser build is not hosted-service or release readiness.
+This was the implementation checklist on 2026-10-21. The live checklist is the [execution graph](../ROADMAP-EXECUTION-GRAPH.md), and the live artifact summary is [STATUS](../STATUS.md). The rows below are that date's evidence. Preserve the supplied UI and existing Aux glass, corners, spacing and interactions. Aux excludes the built-in Vault/password manager. A successful local browser build is not hosted-service or release readiness.
 
 ## Completed local implementation and remaining acceptance
 

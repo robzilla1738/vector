@@ -1,5 +1,7 @@
 # Aux dedicated backup runner review
 
+Backups are deferred. Do not provision from this review. See [STATUS](../../STATUS.md).
+
 Prepared October 23, 2026 at the owner's request. **Review only:** no server, provider account, SSH credential, schedule, monitor or new recurring charge has been created. Existing Aux hosting remains on Vercel/Neon/private Blob. This runner performs encrypted backup operations separately.
 
 ## Proposed resources and cost

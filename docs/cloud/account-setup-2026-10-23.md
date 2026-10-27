@@ -1,5 +1,7 @@
 # Aux account setup — 2026-10-23
 
+Dated account-setup record. It does not authorize a production deploy. See [STATUS](../STATUS.md).
+
 ## Completed in the actual accounts
 
 The owner approved the 1Password desktop client connection. The current desktop MCP account and Agents-vault service account were verified to have the same account ID. Three Developer Environments were created through the 1Password MCP server:

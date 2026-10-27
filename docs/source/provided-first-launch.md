@@ -1,5 +1,7 @@
 # Supplied first launch and local-account observation
 
+Historical audit. It does not describe the live candidate. See [STATUS](../STATUS.md).
+
 Current source audit: pinned Agent/Vault `1.26.1016.1852`, resources `out/provided-reuse-v241-brand`, and native v257 while its full build runs. Static inspection only; no browser/daemon/helper execution, requests, profile/home access, credentials, Keychain, signing, provisioning or OS changes occurred. [Current source hashes and bounded anchors](provided-first-launch-current-inputs.json) support these findings. Packaged observation remains integrator work.
 
 **The earlier independent local Vault setup/unlock wrapper recommendation is retired.** Original `AsideAccountPasswordGate` reader/admission and the real Agent splash now win. The earlier 31-anchor `provided-first-launch-inputs.json` remains historical evidence for individual APIs, not authority to restore that independent policy. `docs/integration/proposed/local-vault-bootstrap/` is historical and must not be applied as the current startup route.
