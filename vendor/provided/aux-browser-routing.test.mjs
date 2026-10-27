@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -7,7 +8,7 @@ import {findMachOSeaSection,readSeaBlob} from '../aside/lib/sea.mjs';
 import {applyAuxBrowserRouting,transformAuxRoutingSettings,ROUTING_SETTINGS_ASSET} from './aux-browser-routing.mjs';
 import {pathToFileURL} from 'node:url';
 const {adaptCliCode}=await import(process.env.AUX_CLI_ADAPTER?pathToFileURL(process.env.AUX_CLI_ADAPTER):new URL('./cli-adapter.mjs',import.meta.url));
-const root='/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852';
+const root=repoRoot+'/out/provided-source-snapshot-1.26.1016.1852';
 const code=component=>{const b=readFileSync(`${root}/${component}/Contents/MacOS/${component==='cli'?'aside':'aside-daemon'}`),s=findMachOSeaSection(b);return readSeaBlob(b.subarray(s.offset,s.offset+s.size)).code};
 const originalCli=code('cli'),originalDaemon=code('daemon'),agent=readFileSync(`${root}/agent/background.js`,'utf8');
 let cli;

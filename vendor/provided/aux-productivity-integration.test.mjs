@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
@@ -46,7 +47,7 @@ test('review applies native retained ID only and undo uses revision plus indepen
  assert.equal(productivitySections(context,result.receipt)[0].items[0].kind,'aux-tidy-undo');
 });
 test('counted transforms parse on actual supplied handlers and keep existing UI classes',()=>{
- const base='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux';
+ const base=repoRoot+'/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux';
  const directory=mkdtempSync(join(tmpdir(),'aux-productivity-fixture-'));
  try{
   for(const relative of ['background.js','assets/tabsearch-3k_2hgil.js']) {

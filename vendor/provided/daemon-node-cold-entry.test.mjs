@@ -1,10 +1,11 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {isBuiltin} from 'node:module';
 import {SourceTextModule,SyntheticModule,createContext} from 'node:vm';
 import test from 'node:test';
 import {AUX_COLD_ENTRY_REFUSAL} from './aux-cold-entry-admission.mjs';
-const root='/Users/rcourson/Documents/Vibe/web';
+const root=repoRoot;
 const binary=readFileSync(root+'/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon');
 const baseline=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-node-cold-entry/state1-baseline.json',import.meta.url)));
 // Use the actual root composed adapter, including its new direct-entry guard,

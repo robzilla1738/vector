@@ -75,7 +75,7 @@ test('explicit UI restage keeps all helper bytes, modes and capabilities exact',
   assert.throws(() => reviewedUiResourceInventory(inventory, [review[0], review[0]]));
   assert.throws(() => reviewedUiResourceInventory(inventory, [{ ...review[0], beforeSha256: 'd'.repeat(64) }]));
   assert.throws(() => reviewedUiResourceInventory(inventory, [{ ...review[0], path: helper.path, beforeSha256: helper.sha256 }]));
-  const manifest = { ...ui, path: base + 'apps/extension/dist/manifest.json' };
-  assert.throws(() => reviewedUiResourceInventory([manifest], [{ ...review[0], path: manifest.path }]));
+  const unlisted = { ...ui, path: base + 'apps/extension/dist/assets/unlisted.js' };
+  assert.throws(() => reviewedUiResourceInventory([unlisted], [{ ...review[0], path: unlisted.path }]));
   assert.throws(() => reviewedUiResourceInventory([{ ...ui, link: '/outside' }], review));
 });

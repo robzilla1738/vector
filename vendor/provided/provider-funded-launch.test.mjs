@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
@@ -11,7 +12,7 @@ import {adaptProviderLaunchCode as adaptDaemonCode} from './provider-launch-stag
 import {applyAuxProviderIdentity} from './aux-provider-identity.mjs';
 import {applyAuxRuntimeContractIdentity} from './aux-runtime-contract-identity.mjs';
 import {findMachOSeaSection,readSeaBlob} from '../aside/lib/sea.mjs';
-const snapshot=process.env.AUX_TEST_SOURCE_SNAPSHOT??'/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852';
+const snapshot=process.env.AUX_TEST_SOURCE_SNAPSHOT??repoRoot+'/out/provided-source-snapshot-1.26.1016.1852';
 const sha=t=>createHash('sha256').update(t).digest('hex');
 const classes=t=>[...t.matchAll(/className:("(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`)/g)].map(m=>m[1]);
 function syntax(text){const d=mkdtempSync(join(tmpdir(),'aux-launch-source-'));try{const p=join(d,'entry.mjs');writeFileSync(p,text);execFileSync(process.execPath,['--check',p],{stdio:'pipe'});}finally{rmSync(d,{recursive:true,force:true});}}

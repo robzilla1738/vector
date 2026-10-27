@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -7,7 +8,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { applyCloudInferenceUploadAdapter, cloudInferenceUploadHelpers } from './cloud-inference-upload-adapter.mjs';
-const sourcePath='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-browser-pass/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs';
+const sourcePath=repoRoot+'/out/provided-candidate-local-browser-pass/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs';
 test('count-checked actual shipped1852 patch parses as a complete module',async()=>{
  const source=await readFile(sourcePath,'utf8'),result=applyCloudInferenceUploadAdapter(source);
  assert.equal(result.anchors.length,3);assert.throws(()=>applyCloudInferenceUploadAdapter(result.text),/anchor changed/);

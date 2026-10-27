@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -158,4 +159,4 @@ test('restart checkpoint rolls back a file-only replacement and refuses a later 
   } finally {await fs.rm(root,{recursive:true,force:true});}
 });
 
- test('actual pinned1852 JSONL writer and turn reducer restore historical content with local authority',async()=>{const root=await fs.mkdtemp(path.join(os.tmpdir(),'aux-session-actual1852-'));try{const actual=await fs.readFile('/Users/rcourson/Documents/Vibe/web/out/provided-source-audit/daemon-original.mjs','utf8'),device=fixture(root,randomBytes(32),actual),payload=snapshot();await device.context.auxCloudRestoreSessionSnapshot(1,payload);assert.equal(device.sessions.get(payload.session.id).cwd,root);assert.equal(device.sessions.get(payload.session.id).browserBinding,null);assert.equal(device.turns.get(payload.session.id).length,1);assert.ok(device.turns.get(payload.session.id)[0].finishedAt);assert.equal((await device.context.SessionStore.listAllMessageRows(1,payload.session.id)).length,payload.rows.length);}finally{await fs.rm(root,{recursive:true,force:true});}});
+ test('actual pinned1852 JSONL writer and turn reducer restore historical content with local authority',async()=>{const root=await fs.mkdtemp(path.join(os.tmpdir(),'aux-session-actual1852-'));try{const actual=await fs.readFile(repoRoot+'/out/provided-source-audit/daemon-original.mjs','utf8'),device=fixture(root,randomBytes(32),actual),payload=snapshot();await device.context.auxCloudRestoreSessionSnapshot(1,payload);assert.equal(device.sessions.get(payload.session.id).cwd,root);assert.equal(device.sessions.get(payload.session.id).browserBinding,null);assert.equal(device.turns.get(payload.session.id).length,1);assert.ok(device.turns.get(payload.session.id)[0].finishedAt);assert.equal((await device.context.SessionStore.listAllMessageRows(1,payload.session.id)).length,payload.rows.length);}finally{await fs.rm(root,{recursive:true,force:true});}});

@@ -58,9 +58,10 @@ test('guardian refuses launch queued after stop', { timeout: 10000 }, async () =
 
 test('launcher waits for a pending controller on SIGTERM and preserves state', { timeout: 20000 }, async () => {
   const { spawn } = await import('node:child_process');
-  const { mkdir, copyFile, access } = await import('node:fs/promises');
+  const { mkdir, copyFile, access, realpath } = await import('node:fs/promises');
   const { setTimeout: delay } = await import('node:timers/promises');
-  const directory = await mkdtemp(join(tmpdir(), 'aux-launch-start-race-'));
+  // The launcher reports canonical paths; tmpdir() is /var, which resolves to /private/var.
+  const directory = await realpath(await mkdtemp(join(tmpdir(), 'aux-launch-start-race-')));
   const scripts = join(directory, 'scripts');
   const library = join(scripts, 'lib');
   const app = join(directory, 'Aux Fixture.app');
@@ -80,6 +81,8 @@ test('launcher waits for a pending controller on SIGTERM and preserves state', {
     await copyFile(new URL('../aux.mjs', import.meta.url), join(scripts, 'aux.mjs'));
     await copyFile(new URL('./owned-process.mjs', import.meta.url), join(library, 'real-owned-process.mjs'));
     await copyFile(new URL('./owned-process-guardian.mjs', import.meta.url), join(library, 'owned-process-guardian.mjs'));
+    for (const name of ['aux-launch-identity.mjs', 'aux-fresh-launch.mjs', 'aux-user-launch.mjs'])
+      await copyFile(new URL(`./${name}`, import.meta.url), join(library, name));
     await writeFile(join(library, 'owned-process.mjs'), `
       import {launchOwnedProcess as actual} from './real-owned-process.mjs';
       import {writeFile,access} from 'node:fs/promises';
@@ -105,7 +108,7 @@ test('launcher waits for a pending controller on SIGTERM and preserves state', {
       for (let count = 0; count < 250; count++) {
         try { await access(path); return; } catch { await delay(20); }
       }
-      assert.fail('Disposable startup fixture did not become ready');
+      assert.fail(`Disposable startup fixture did not become ready: ${stderr}`);
     };
     await waitFor(acknowledged);
     await waitFor(started);

@@ -1,5 +1,6 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import {test} from 'node:test';import {createRequire} from 'node:module';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {createHash,randomBytes} from 'node:crypto';import {applyCloudDrive1852Adapter,cloudDrive1852Helpers,cloudDrive1852OriginalSourceSha256} from './cloud-drive-1852-adapter.mjs';import {applyCloudSessionAdapter} from './cloud-session-adapter.mjs';import {applyCloudAttachmentAdapter} from './cloud-attachment-adapter.mjs';
-const original=await fs.readFile('/Users/rcourson/Documents/Vibe/web/out/provided-source-audit/daemon-original.mjs','utf8'),shipped=await fs.readFile('/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-browser-pass/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs','utf8');
+const original=await fs.readFile(repoRoot+'/out/provided-source-audit/daemon-original.mjs','utf8'),shipped=await fs.readFile(repoRoot+'/out/provided-candidate-local-browser-pass/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs','utf8');
 const {z}=createRequire(new URL('../../services/aux-cloud/package.json',import.meta.url))('zod');
 function cookieParamSchemaFromSource(){
  const start=original.indexOf('cookieParamSchema=object('),end=original.indexOf(',discriminatedUnion(`encryption`',start);

@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
@@ -122,7 +123,7 @@ test('a context changed during physical attachment detaches only its exact new s
  assert.equal(calls.length,2);
 });
 test('counted adapters apply to both actual paired daemon entries and authenticated extension dispatch',()=>{
- const root='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux';
+ const root=repoRoot+'/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux';
  const dir=mkdtempSync(join(tmpdir(),'aux-context-read-'));
  try{
   for(const file of ['index.mjs','aux-native-entry.mjs']){

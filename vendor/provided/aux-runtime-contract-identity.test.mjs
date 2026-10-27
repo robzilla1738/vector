@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import{readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync}from'node:fs';
 import{createHash}from'node:crypto';
@@ -10,7 +11,7 @@ import{findMachOSeaSection,readSeaBlob}from'../aside/lib/sea.mjs';
 import{applyAuxProviderIdentity}from'./aux-provider-identity.mjs';
 import{adaptDaemonCode}from'./daemon-adapter.mjs';
 import{applyAuxRuntimeContractIdentity,auxRuntimeContractInputs,migrateAuxRuntimeReference,migrateAuxRuntimeStorage,migrateAuxSkillMetadata}from'./aux-runtime-contract-identity.mjs';
-const root='/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852';
+const root=repoRoot+'/out/provided-source-snapshot-1.26.1016.1852';
 const binary=readFileSync(root+'/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(binary),daemon=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
 const cliBinary=readFileSync(root+'/cli/Contents/MacOS/aside'),cliSection=findMachOSeaSection(cliBinary),cli=readSeaBlob(cliBinary.subarray(cliSection.offset,cliSection.offset+cliSection.size)).code;
 const brand=t=>t.replaceAll('ASIDE_','AUX_').replaceAll('Aside','Aux');

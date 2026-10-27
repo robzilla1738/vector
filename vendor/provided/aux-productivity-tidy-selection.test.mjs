@@ -1,9 +1,10 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {spawnSync} from 'node:child_process';
 import {transformAuxProductivityUi,prepareTidyProposal} from './aux-productivity-integration.mjs';
 import {createTidyProposal,eligibleTidyTabs,validateTidyPlan} from './aux-productivity-proposals.mjs';
 import {transformAuxNavigation} from './aux-navigation-command-bar.mjs';
 import {transformAuxTidySelection,assertNativeTidyScope} from './aux-productivity-tidy-selection.mjs';
-const base='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux/apps/extension/dist/';
+const base=repoRoot+'/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux/apps/extension/dist/';
 test('actual supplied background and review compose once without CSS changes',()=>{
  for(const relative of ['background.js','assets/tabsearch-3k_2hgil.js']){
   let text=readFileSync(base+relative,'utf8');if(relative.includes('tabsearch'))text=transformAuxNavigation({relative,text}).text;

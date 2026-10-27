@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
@@ -16,7 +17,7 @@ test('each immutable original addon is confined to its fixed canonical role; swa
  assert.ok(Object.isFrozen(bindings)&&Object.isFrozen(bindings.cli));
 });
 test('available actual static original role files match distinct pins without loading either addon',()=>{
- const root='/Users/rcourson/Documents/Vibe/web/out/provided-resources';
+ const root=repoRoot+'/out/provided-resources';
  if(!fs.existsSync(root))return;
  for(const pin of Object.values(bindings))assert.equal(createHash('sha256').update(fs.readFileSync(root+pin.suffix+'/provided-native.node')).digest('hex'),pin.sha256);
  assert.notEqual(bindings.cli.sha256,bindings.daemon.sha256);

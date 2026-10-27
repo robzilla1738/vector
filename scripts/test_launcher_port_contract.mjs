@@ -10,6 +10,8 @@ try {
   await writeFile(join(root, 'lib/owned-process.mjs'), 'export function launchOwnedProcess() { throw new Error("Fixture must never launch"); }\n');
   const proposal = new URL('./aux.mjs', import.meta.url);
   await writeFile(join(root, 'aux.mjs'), await readFile(proposal));
+  for (const name of ['aux-launch-identity.mjs', 'aux-fresh-launch.mjs', 'aux-user-launch.mjs'])
+    await writeFile(join(root, 'lib', name), await readFile(new URL(`./lib/${name}`, import.meta.url)));
   const run = (...args) => spawnSync(process.execPath, [join(root, 'aux.mjs'), '--app', join(root, 'Missing.app'), ...args], {
     env: { ...process.env, HOME: root, AUX_HOME: join(root, 'state') }, encoding: 'utf8', timeout: 3000,
   });

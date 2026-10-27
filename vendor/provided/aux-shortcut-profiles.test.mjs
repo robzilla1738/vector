@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -6,7 +7,7 @@ import {SourceTextModule} from 'node:vm';
 import {pathToFileURL} from 'node:url';
 import {AUX_FEATURE_SHORTCUTS,SHORTCUT_PROFILE_ASSETS,transformAuxShortcutProfiles,parseAuxShortcutProfile,createAuxShortcutProfileSession} from './aux-shortcut-profiles.mjs';
 const {transformAuxNavigation}=await import(process.env.AUX_NAVIGATION_ADAPTER?pathToFileURL(process.env.AUX_NAVIGATION_ADAPTER):new URL('./aux-navigation-command-bar.mjs',import.meta.url));
-const root=process.env.AUX_SUPPLIED_SOURCE_ROOT??'/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent';
+const root=process.env.AUX_SUPPLIED_SOURCE_ROOT??repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/agent';
 const state=(revision='r1',ownerGeneration='a')=>({success:true,format:'aux-shortcuts',version:1,platform:'mac',ownerGeneration,revision,bindings:[]});
 const envelope=mappings=>({format:'aux-shortcuts',version:1,platform:'mac',mappings});
 

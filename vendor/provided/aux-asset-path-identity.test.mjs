@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -6,7 +7,7 @@ import test from 'node:test';
 import { applyAuxProviderIdentity } from './aux-provider-identity.mjs';
 import { applyAuxRuntimeContractIdentity } from './aux-runtime-contract-identity.mjs';
 import { auxAssetIdentityRelocations,auxAssetIdentityImporters,relocateAuxAssetPath,applyAuxAssetReferenceIdentity,relocateAuxVisualBaseline,canonicalizeAuxVisualAssetInventory } from './aux-asset-path-identity.mjs';
-const root='/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent';
+const root=repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/agent';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const brand=text=>text.replaceAll('ASIDE_','AUX_').replaceAll('Aside','Aux');
 

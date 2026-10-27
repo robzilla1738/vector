@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
@@ -5,7 +6,7 @@ import test from 'node:test';
 import {applyAuxSelectionContractIdentity} from './aux-selection-contract-identity.mjs';
 import {applyAuxCaptureContractIdentity} from './aux-capture-contract-identity.mjs';
 import {transformProvidedNativeUi} from './native-ui-compat.mjs';
-const base='/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent';
+const base=repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/agent';
 const paths=['content/content.js','background.js'];
 const originals=Object.fromEntries(paths.map(p=>[p,readFileSync(base+'/'+p,'utf8')]));
 const predecessor=path=>applyAuxCaptureContractIdentity({component:'agent',path,text:transformProvidedNativeUi({component:'agent',path,text:originals[path]}).text,original:originals[path]}).text;

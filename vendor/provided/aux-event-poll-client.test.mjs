@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -45,7 +46,7 @@ test('oversized or malformed snapshots stay offline with bounded retries and no 
 });
 
 test('both current source leaves compose after cloud/identity and parse with one account queue and stop owner',()=>{
-  const root='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development';
+  const root=repoRoot+'/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development';
   for(const file of ['index.mjs','aux-native-entry.mjs']){
     const raw=readFileSync(root+'/'+file,'utf8'),cloud=upgradeCloudTransfers(raw).text,identity=transformAuxFinalRuntimeIdentity({component:'daemon',path:file,text:cloud}).text;
     const result=transformAuxEventPolling({text:identity});assert.equal(result.anchors.length,8);assert.equal(result.text.includes('EVENTS_PROTOCOL=`aside-events`'),false);assert.ok(result.text.includes('case`sessions`:{if(!isSyncEnabled(Cn))break;const state=await auxCloudSessionState(Cn)'));

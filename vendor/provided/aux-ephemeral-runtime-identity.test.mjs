@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
@@ -10,7 +11,7 @@ import {applyAuxRuntimeContractIdentity} from './aux-runtime-contract-identity.m
 import {applyAuxAutomationIdentity} from './aux-automation-identity.mjs';
 import {applyAuxPrivateDaemonIdentity} from './aux-private-daemon-identity.mjs';
 import {applyAuxEphemeralRuntimeIdentity} from './aux-ephemeral-runtime-identity.mjs';
-const binary=readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon');
+const binary=readFileSync(repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon');
 const section=findMachOSeaSection(binary),original=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
 const run=text=>applyAuxEphemeralRuntimeIdentity({component:'daemon',path:'entry.mjs',text,original});
 const between=(text,start,end)=>{const offset=text.indexOf(start);assert.ok(offset>=0,start);const stop=text.indexOf(end,offset+start.length);assert.ok(stop>offset,end);return text.slice(offset,stop);};

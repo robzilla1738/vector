@@ -6,14 +6,16 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { assembleProvidedResources } from './provided-assembly.mjs';
 
+const identity = { identityProfile: 'compatibility', stateIdentityVersion: 1 };
+
 async function fixture(t) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'aux-resource-test-')));
   t.after(() => rm(root, { recursive: true, force: true }));
   const stageRoot = join(root, 'stage'), outputRoot = join(root, 'assembled');
   const save = async (path, data) => { await mkdir(join(stageRoot, path, '..'), { recursive: true }); await writeFile(join(stageRoot, path), JSON.stringify(data)); };
-  await save('manifest.json', { version: 1, implementation: 'supplied', finalApp: '/Applications/Aux.app', brandInputs: [], blockers: ['fixture'] });
-  await save('ui/manifest.json', { components: { agent: { files: [] }, vault: { files: [] } } });
-  await save('apps/manifest.json', { components: { daemon: { app: 'daemon/Aux Daemon.app', files: [] }, cli: { app: 'cli/Aux CLI.app', files: [] } } });
+  await save('manifest.json', { ...identity, version: 1, implementation: 'supplied', finalApp: '/Applications/Aux.app', brandInputs: [], blockers: ['fixture'] });
+  await save('ui/manifest.json', { ...identity, components: { agent: { files: [] }, vault: { files: [] } } });
+  await save('apps/manifest.json', { ...identity, components: { daemon: { app: 'daemon/Aux Daemon.app', files: [] }, cli: { app: 'cli/Aux CLI.app', files: [] } } });
   await save('computer-use/manifest.json', { files: [] });
   const bytes = Buffer.from('catalog verified immutable runtime\n'), sha = createHash('sha256').update(bytes).digest('hex');
   await save('distribution/manifest.json', { runtimeRoot: '/Applications/Aux.app/Contents/Resources/aux/agent-runtime', components: { runtime: { files: [

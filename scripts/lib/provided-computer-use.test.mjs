@@ -1,3 +1,4 @@
+import { frozenRoots } from './provided-frozen-sources.mjs';
 import assert from 'node:assert/strict';
 import { access, readFile, mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -24,16 +25,16 @@ const identities = {
 };
 let missing = false;
 try {
-  await access(inventory.inputRoot);
+  await access(frozenRoots.computerUse);
 } catch {
   missing = true;
 }
 test('pinned helper branding updates exact strings/counts and preserves all bytes outside44 ranges', {
   skip: missing ? 'Pinned static helper is unavailable' : false,
 }, async () => {
-  await verifyProvidedComputerUse(inventory.inputRoot);
+  await verifyProvidedComputerUse(frozenRoots.computerUse);
   const source = await readFile(
-    join(inventory.inputRoot, 'Contents/MacOS/aside-computer-use'),
+    join(frozenRoots.computerUse, 'Contents/MacOS/aside-computer-use'),
   );
   const { bytes, report } = patchProvidedComputerUseIdentity(
     source,
@@ -141,7 +142,7 @@ test('pinned helper branding updates exact strings/counts and preserves all byte
     assert.equal(report.productionReady, false);
     const originalSymbols = spawnSync(
       '/usr/bin/nm',
-      ['-nm', join(inventory.inputRoot, 'Contents/MacOS/aside-computer-use')],
+      ['-nm', join(frozenRoots.computerUse, 'Contents/MacOS/aside-computer-use')],
       { encoding: 'utf8' },
     );
     const candidateSymbols = spawnSync('/usr/bin/nm', ['-nm', candidate], {
@@ -160,7 +161,7 @@ test('static bundle staging changes only identity/prose/art, preserves resources
 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'aux-helper-bundle-'));
   const options = {
-    sourceRoot: inventory.inputRoot,
+    sourceRoot: frozenRoots.computerUse,
     outputRoot: join(directory, 'Aux Computer Use.app'),
     identities: { ...identities, bundleId: 'dev.aux.browser.computer-use' },
   };
@@ -176,7 +177,7 @@ test('static bundle staging changes only identity/prose/art, preserves resources
         'json',
         '-o',
         '-',
-        join(inventory.inputRoot, 'Contents/Info.plist'),
+        join(frozenRoots.computerUse, 'Contents/Info.plist'),
       ],
       { encoding: 'utf8' },
     );
@@ -224,7 +225,7 @@ test('static bundle staging changes only identity/prose/art, preserves resources
     assert.equal(report.files.filter((f) => !f.changeKinds.length).length, 6);
     await assert.rejects(stageProvidedComputerUse(options), /EEXIST/);
     await assert.rejects(
-      stageProvidedComputerUse({ ...options, outputRoot: inventory.inputRoot }),
+      stageProvidedComputerUse({ ...options, outputRoot: frozenRoots.computerUse }),
       /disjoint/,
     );
   } finally {

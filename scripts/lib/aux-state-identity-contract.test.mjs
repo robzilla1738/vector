@@ -1,3 +1,4 @@
+import {repoRoot} from './repo-root.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, mkdtemp, realpath, mkdir, writeFile, rm } from 'node:fs/promises';
@@ -60,7 +61,7 @@ test('runtime events reject the previously admitted mixed producer/receiver gene
   const noReceiver=fixture();noReceiver.agentBackground=noReceiver.agentBackground.replace('if (e?.type === "aux.inboxNotification")','if (other === "aux.inboxNotification")');assert.throws(()=>assertAuxStateIdentityPairing(noReceiver),/actual Agent event receiver/);
   const real=fixture();
   for(const path of new Set(auxNativeEventContracts.map(event=>event.path)))real.nativeSources[path]=await readFile(new URL('../../docs/integration/proposed/aux-runtime-contract-identity/source/'+path,import.meta.url),'utf8');
-  const original=await readFile('/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent/background.js','utf8');
+  const original=await readFile(repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/agent/background.js','utf8');
   const {applyAuxRuntimeContractIdentity}=await import('../../vendor/provided/aux-runtime-contract-identity.mjs');
   real.agentBackground=applyAuxRuntimeContractIdentity({component:'agent',path:'background.js',text:original,original,branding:'supplied'}).text;
   const actual=assertAuxStateIdentityPairing(real);assert.equal(actual.staticRuntimeEventPairing,true);assert.equal(actual.nativeEventFiles.length,2);assert.equal(actual.nativeRuntimeEvents,3);assert.equal(actual.agentRuntimeEvents.sha256,hash(real.agentBackground));

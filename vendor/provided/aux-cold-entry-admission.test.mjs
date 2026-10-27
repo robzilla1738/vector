@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {isBuiltin} from 'node:module';
@@ -6,7 +7,7 @@ import test from 'node:test';
 import {findMachOSeaSection,readSeaBlob} from '../aside/lib/sea.mjs';
 import {applyAuxColdEntryAdmission,AUX_COLD_ENTRY_REFUSAL} from './aux-cold-entry-admission.mjs';
 const pins=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-cold-entry-admission/inputs.json',import.meta.url)));
-const source=component=>{const b=readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/'+component+'/Contents/MacOS/'+(component==='daemon'?'aside-daemon':'aside')),s=findMachOSeaSection(b);return readSeaBlob(b.subarray(s.offset,s.offset+s.size)).code};
+const source=component=>{const b=readFileSync(repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/'+component+'/Contents/MacOS/'+(component==='daemon'?'aside-daemon':'aside')),s=findMachOSeaSection(b);return readSeaBlob(b.subarray(s.offset,s.offset+s.size)).code};
 for(const component of ['daemon','cli'])test('actual '+component+' refuses before bundled initialization without user modules or state I/O',async()=>{
  const original=source(component),result=applyAuxColdEntryAdmission({component,text:original,original,stateIdentityVersion:2}),context=createContext({});
  const module=new SourceTextModule(result.text,{context});assert.deepEqual(module.dependencySpecifiers,pins.inputs.find(p=>p.component===component).staticBuiltinImports);

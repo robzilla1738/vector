@@ -1,10 +1,11 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {SourceTextModule,runInNewContext} from 'node:vm';
 import test from 'node:test';
 import {findMachOSeaSection,readSeaBlob} from '../aside/lib/sea.mjs';
 import {applyAuxProfileContextIdentity} from './aux-profile-context-identity.mjs';
-const base='/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852';
+const base=repoRoot+'/out/provided-source-snapshot-1.26.1016.1852';
 const binary=readFileSync(base+'/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(binary);
 const daemon=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
 const paths=['background.js','assets/queries-ldd77hNk.js','assets/-types-Wy38XkNB.js'];
@@ -22,10 +23,10 @@ test('all four actual modules pair24 fields, parse and preserve every other byte
  }
  assert.equal(count,24);
  assert.throws(()=>applyAuxProfileContextIdentity({component:'daemon',path:'entry.mjs',text:daemon,original:daemon+' '}),/pin mismatch/);
- const stagedBinary=readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-reuse-aux-parallel-identity/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon');
+ const stagedBinary=readFileSync(repoRoot+'/out/provided-reuse-aux-parallel-identity/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon');
  const stagedSection=findMachOSeaSection(stagedBinary),staged=readSeaBlob(stagedBinary.subarray(stagedSection.offset,stagedSection.offset+stagedSection.size)).code;
  new SourceTextModule(apply('daemon','entry.mjs',staged).text);
- for(const path of paths)new SourceTextModule(apply('agent',path,readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-reuse-aux-parallel-identity/ui/agent/'+path,'utf8')).text);
+ for(const path of paths)new SourceTextModule(apply('agent',path,readFileSync(repoRoot+'/out/provided-reuse-aux-parallel-identity/ui/agent/'+path,'utf8')).text);
 });
 
 test('actual Agent account guards and context serializers preserve binding and sign-in rejection',async()=>{

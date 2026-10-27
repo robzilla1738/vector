@@ -6,9 +6,9 @@
   "files": [
     {
       "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
-      "bytes": 12133776,
+      "bytes": 12133704,
       "mode": 420,
-      "sha256": "d6363fcffbd26acd97125cb84c159eba29aeb56481d453e89db3071ae0b0d8e2"
+      "sha256": "0988953d1c6fd49445ba625b4c4e59f229099edd3bc1babdc3aebc70490cfbee"
     },
     {
       "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/assets.mjs",

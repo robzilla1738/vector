@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {SourceTextModule,runInNewContext} from 'node:vm';
@@ -8,7 +9,7 @@ import {applyAuxProviderIdentity} from './aux-provider-identity.mjs';
 import {applyAuxRuntimeContractIdentity} from './aux-runtime-contract-identity.mjs';
 import {applyAuxAutomationIdentity} from './aux-automation-identity.mjs';
 import {applyAuxPrivateDaemonIdentity} from './aux-private-daemon-identity.mjs';
-const bytes=readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon');
+const bytes=readFileSync(repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon');
 const section=findMachOSeaSection(bytes),original=readSeaBlob(bytes.subarray(section.offset,section.offset+section.size)).code;
 const run=text=>applyAuxPrivateDaemonIdentity({component:'daemon',path:'entry.mjs',text,original});
 const count=(text,token)=>text.split(token).length-1;

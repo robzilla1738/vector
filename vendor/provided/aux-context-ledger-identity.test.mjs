@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import{readFileSync}from'node:fs';
 import{createHash}from'node:crypto';
@@ -12,8 +13,8 @@ import{adaptDaemonCode}from'./daemon-adapter.mjs';
 import{applyAuxProviderIdentity}from'./aux-provider-identity.mjs';
 import{applyAuxRuntimeContractIdentity}from'./aux-runtime-contract-identity.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
-const z=createRequire('/Users/rcourson/Documents/Vibe/web/services/aux-cloud/package.json')('zod').z;
-const binary=readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(binary),original=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
+const z=createRequire(repoRoot+'/services/aux-cloud/package.json')('zod').z;
+const binary=readFileSync(repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(binary),original=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
 const transformed=applyAuxContextLedgerIdentity({text:original,original}).text;
 const capability=(phases=[])=>({id:'synthetic-ledger-fixture',disposable:true,exclusive:true,rollbackJournalAbsent:true,assertStopped:async value=>{phases.push(value.phase);return true}});
 const options=(databaseBytes,overrides={})=>({databaseBytes,expectedSha256:hash(databaseBytes),walBytes:null,rollbackJournalBytes:null,capability:capability(),...overrides});

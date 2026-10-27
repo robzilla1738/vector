@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -6,7 +7,7 @@ import {runInNewContext, SourceTextModule} from 'node:vm';
 import {findMachOSeaSection, readSeaBlob} from '../aside/lib/sea.mjs';
 import {adaptCliCode} from './cli-adapter.mjs';
 import {applyAuxCliDeviceRegistration} from './aux-cli-device-registration.mjs';
-const binary = readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/cli/Contents/MacOS/aside');
+const binary = readFileSync(repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/cli/Contents/MacOS/aside');
 const section = findMachOSeaSection(binary);
 const original = readSeaBlob(binary.subarray(section.offset, section.offset + section.size)).code;
 const transform = text => applyAuxCliDeviceRegistration({component: 'cli', path: 'entry.mjs', text, original});

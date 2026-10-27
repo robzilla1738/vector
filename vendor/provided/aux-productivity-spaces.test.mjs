@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {spawnSync} from 'node:child_process';
 import {loadMentionSpaces,addMentionSpaces,captureMentionSpace,transformAuxMentionSpaces} from './aux-productivity-spaces.mjs';
 import {transformAuxTabContext} from './aux-productivity-tab-context.mjs';
@@ -17,7 +18,7 @@ test('account switch and refused native membership preserve explicit selection; 
  assert.equal(selected[0].documentCapability,'native-cap');assert.ok(!group.tabs[0].documentCapability);
 });
 test('actual supplied menu composes after document guards, retains classes and parses once',()=>{
- const relative='assets/provider-Cw0zhujt.js',baseline=readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux/apps/extension/dist/'+relative,'utf8');
+ const relative='assets/provider-Cw0zhujt.js',baseline=readFileSync(repoRoot+'/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux/apps/extension/dist/'+relative,'utf8');
  const guarded=transformAuxTabContext({relative,text:baseline}).text;const result=transformAuxMentionSpaces({relative,text:guarded});
  assert.deepEqual([...result.text.matchAll(/className:"([^"]*)"/g)].map(m=>m[1]),[...guarded.matchAll(/className:"([^"]*)"/g)].map(m=>m[1]));
  assert.equal(spawnSync(process.execPath,['--check','--input-type=module'],{input:result.text,encoding:'utf8'}).status,0);

@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Script, SourceTextModule, runInNewContext } from 'node:vm';
@@ -7,7 +8,7 @@ import { adaptDaemonCode } from './daemon-adapter.mjs';
 import { applyAuxProviderIdentity } from './aux-provider-identity.mjs';
 import { applyAuxRuntimeContractIdentity } from './aux-runtime-contract-identity.mjs';
 import { applyAuxAutomationIdentity } from './aux-automation-identity.mjs';
-const binary = readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon');
+const binary = readFileSync(repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon');
 const section = findMachOSeaSection(binary), original = readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
 const run = text => applyAuxAutomationIdentity({component:'daemon',path:'entry.mjs',text,original});
 

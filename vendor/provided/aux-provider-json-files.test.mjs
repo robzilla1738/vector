@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import{readFileSync}from'node:fs';
 import{createRequire}from'node:module';
@@ -6,10 +7,10 @@ import test from'node:test';
 import{findMachOSeaSection,readSeaBlob}from'../aside/lib/sea.mjs';
 import{prepareAuxProviderJsonFile,prepareAuxProviderRendererStorage,stripProvidedModelsJsonComments,verifyAuxProviderJsonSource}from'./aux-provider-json-files.mjs';
 import{migrateAuxProviderState}from'./aux-provider-identity.mjs';
-const root='/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852',bytes=readFileSync(root+'/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(bytes),daemon=readSeaBlob(bytes.subarray(section.offset,section.offset+section.size)).code;
+const root=repoRoot+'/out/provided-source-snapshot-1.26.1016.1852',bytes=readFileSync(root+'/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(bytes),daemon=readSeaBlob(bytes.subarray(section.offset,section.offset+section.size)).code;
 const agentSettingsText=readFileSync(root+'/agent/assets/use-agent-settings-DiedG0R1.js','utf8');
 const fixture=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-provider-json-files/virtual-fixture.json',import.meta.url)));
-const z=createRequire('/Users/rcourson/Documents/Vibe/web/services/aux-cloud/package.json')('zod').z;
+const z=createRequire(repoRoot+'/services/aux-cloud/package.json')('zod').z;
 const input=value=>Buffer.from(JSON.stringify(value));
 
 test('actual1852 loaders, fields and source hashes authenticate the reviewed layout',()=>{

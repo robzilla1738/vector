@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -6,7 +7,7 @@ import {SourceTextModule} from 'node:vm';
 import {pathToFileURL} from 'node:url';
 import {createAuxThemeSession,parseAuxThemeImport,transformAuxThemeEditor,THEME_APPEARANCE_ASSET} from './aux-theme-editor.mjs';
 
-const root=process.env.AUX_SUPPLIED_SOURCE_ROOT??'/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent';
+const root=process.env.AUX_SUPPLIED_SOURCE_ROOT??repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/agent';
 const source=await readFile(`${root}/${THEME_APPEARANCE_ASSET}`,'utf8');
 const navigation=await import(process.env.AUX_NAVIGATION_ADAPTER?pathToFileURL(process.env.AUX_NAVIGATION_ADAPTER):new URL('./aux-navigation-command-bar.mjs',import.meta.url));
 

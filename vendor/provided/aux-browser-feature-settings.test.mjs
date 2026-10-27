@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -8,7 +9,7 @@ import {createAuxFeatureSettingsSession,transformAuxBrowserFeatureSettings,FEATU
 import {transformAuxThemeEditor} from './aux-theme-editor.mjs';
 import {transformAuxRoutingSettings} from './aux-browser-routing.mjs';
 const {transformAuxNavigation}=await import(process.env.AUX_NAVIGATION_ADAPTER?pathToFileURL(process.env.AUX_NAVIGATION_ADAPTER):new URL('./aux-navigation-command-bar.mjs',import.meta.url));
-const sourceRoot=process.env.AUX_SUPPLIED_SOURCE_ROOT??'/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent';
+const sourceRoot=process.env.AUX_SUPPLIED_SOURCE_ROOT??repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/agent';
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return{promise,resolve}};
 const state=(revision='1',enabled=false,ownerGeneration='owner-a')=>({success:true,revision,ownerGeneration,cleanup:{enabled,inactivityDays:30}});
 

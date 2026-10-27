@@ -13,7 +13,7 @@
   "cloudContractSources": [
     {
       "path": "services/aux-cloud/src/billing.ts",
-      "sha256": "1895c2a40a249b5d08e34196064417e658923bfc5c157a2ca1b8232d73d7083c"
+      "sha256": "afc8d76d6922edeab9e9e1917513342e4934754112f829d10c481e6e87e49529"
     },
     {
       "path": "services/aux-cloud/app/account/page.tsx",
@@ -21,7 +21,7 @@
     },
     {
       "path": "services/aux-cloud/config/deployment-resources.json",
-      "sha256": "852a514287b3dc55472555889a8960092a3fa74e4bae672c551aa42b1dabd911"
+      "sha256": "6d5babd4e20b63ab0bf35566e0c97c403fc1b7cd8c6397fefeb5a7caccc5a8d5"
     },
     {
       "path": "services/aux-cloud/evidence/production-public-origins.json",

@@ -1,9 +1,10 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {readFile} from 'node:fs/promises';
 import {spawnSync} from 'node:child_process';
 import {commitNavigation,navigationSections,NAVIGATION_ASSETS,transformAuxNavigation} from './aux-navigation-command-bar.mjs';
-const baseline='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux/apps/extension/dist/';
+const baseline=repoRoot+'/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux/apps/extension/dist/';
 const context={success:true,generation:'owned-generation',mode:'new-tab',commands:[]};
 test('opening and blank input create no navigation; existing sections retained',()=>{
  const sections=[{id:'tabs',items:[{id:'t1'}]}];

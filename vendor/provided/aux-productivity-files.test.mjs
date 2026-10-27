@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
@@ -30,7 +31,7 @@ test('actual generation and opaque file capability reach native apply; unavailab
  await assert.rejects(runFileAction({listRecentFiles:async()=>({success:false,error:'Profile closed'})},null,null,{generation:'x'},null,'',{kind:'aux-files-open'}),/Profile closed/);
 });
 test('supplied command UI and paired daemon adapters compose and parse without changing CSS classes',()=>{
- const root='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux',dir=mkdtempSync(join(tmpdir(),'aux-files-'));
+ const root=repoRoot+'/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux',dir=mkdtempSync(join(tmpdir(),'aux-files-'));
  try{
   const relative='assets/tabsearch-3k_2hgil.js',source=readFileSync(join(root,'apps/extension/dist',relative),'utf8');
   let text=transformAuxNavigation({relative,text:source}).text;text=transformAuxProductivityUi({relative,text}).text;text=transformAuxFilesUi({relative,text}).text;

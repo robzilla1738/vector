@@ -1,3 +1,4 @@
+import { frozenRoots } from './provided-frozen-sources.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
@@ -139,8 +140,8 @@ test('memory distribution requires catalog hashes and rejects metadata symlinks'
 
 let missing = false;
 try {
-  await access(pinned.components.runtime.inputRoot);
-  await access(join(pinned.components.memory.inputRoot, 'memory-catalog.json'));
+  await access(frozenRoots.runtime);
+  await access(join(frozenRoots.memory, 'memory-catalog.json'));
 } catch {
   missing = true;
 }
@@ -154,8 +155,8 @@ test('one actual supplied runtime stage preserves distribution bytes/links and r
     const finalRuntime =
       '/Applications/Aux.app/Contents/Resources/aux/agent-runtime';
     const report = await stageProvidedRuntime({
-      sourceRoot: pinned.components.runtime.inputRoot,
-      memoryRoot: pinned.components.memory.inputRoot,
+      sourceRoot: frozenRoots.runtime,
+      memoryRoot: frozenRoots.memory,
       outputRoot: join(root, 'staged'),
       runtimeRoot: finalRuntime,
     });
@@ -170,7 +171,7 @@ test('one actual supplied runtime stage preserves distribution bytes/links and r
           assert.equal((await lstat(output)).mode & 0o777, file.mode);
         if (file.anchors?.length) {
           let expected = await readFile(
-            join(component.inputRoot, file.path),
+            join(frozenRoots[name], file.path),
             'utf8',
           );
           for (const anchor of file.anchors)
@@ -182,7 +183,7 @@ test('one actual supplied runtime stage preserves distribution bytes/links and r
     assert.equal(
       report.components.runtime.files.filter((file) => file.anchors?.length)
         .length,
-      9,
+      10,
     );
     assert.equal(
       report.components.memory.files.filter((file) => file.changeKinds.length)

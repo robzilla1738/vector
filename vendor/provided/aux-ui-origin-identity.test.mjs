@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {SourceTextModule} from 'node:vm';
@@ -5,7 +6,7 @@ import test from 'node:test';
 import {transformProvidedUiBoundary} from '../../scripts/lib/provided-ui-boundary.mjs';
 import {transformReviewedCloudServicePolicy} from './cloud-service-policy.mjs';
 import {applyAuxUiOriginIdentity,assertAuxUiOriginPairing} from './aux-ui-origin-identity.mjs';
-const root='/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent/';
+const root=repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/agent/';
 const source=path=>readFileSync(root+path,'utf8');
 const manifestOriginal=source('manifest.json');
 const paths=['background.js','assets/strip-markdown-DRcmtuJc.js'];

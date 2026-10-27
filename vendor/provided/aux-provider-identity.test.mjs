@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
@@ -5,7 +6,7 @@ import {runInNewContext,SourceTextModule} from 'node:vm';
 import test from 'node:test';
 import {findMachOSeaSection,readSeaBlob} from '../aside/lib/sea.mjs';
 import {applyAuxProviderIdentity,auxProviderIdentityInputs,migrateAuxProviderState} from './aux-provider-identity.mjs';
-const root='/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852';
+const root=repoRoot+'/out/provided-source-snapshot-1.26.1016.1852';
 const binary=readFileSync(root+'/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(binary);
 const daemon=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
 const cliBinary=readFileSync(root+'/cli/Contents/MacOS/aside'),cliSection=findMachOSeaSection(cliBinary);

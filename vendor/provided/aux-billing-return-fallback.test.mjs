@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -5,7 +6,7 @@ import {stripTypeScriptTypes} from 'node:module';
 import {SourceTextModule,runInNewContext} from 'node:vm';
 import test from 'node:test';
 import {applyAuxBillingReturnFallback} from './aux-billing-return-fallback.mjs';
-const repository='/Users/rcourson/Documents/Vibe/web/';
+const repository=repoRoot+'/';
 const pin=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-billing-return-fallback/inputs.json',import.meta.url),'utf8'));
 const original=readFileSync(repository+'out/provided-source-snapshot-1.26.1016.1852/agent/'+pin.path,'utf8');
 const composed=readFileSync(repository+'out/provided-reuse-aux-runtime-envelope/ui/agent/'+pin.path,'utf8');

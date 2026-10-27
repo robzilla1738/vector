@@ -1,10 +1,11 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import test from 'node:test';
 import {findMachOSeaSection,readSeaBlob} from '../aside/lib/sea.mjs';
 import {applyAuxRuntimeCorrectnessIdentity} from './aux-runtime-correctness-identity.mjs';
-const binary=readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(binary),original=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
+const binary=readFileSync(repoRoot+'/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(binary),original=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
 const apply=text=>applyAuxRuntimeCorrectnessIdentity({text,original,scope:'complete-review'});
 const result=apply(original);
 test('default behavior scope leaves process recovery matcher inactive',()=>{

@@ -1,3 +1,4 @@
+import { frozenRoots } from './provided-frozen-sources.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
@@ -29,7 +30,7 @@ test('actual pinned consumers replay counted boundary anchors without changing t
         path = parts.join('/');
       const snapshot = pins.components[component];
       const pin = snapshot.files.find((file) => file.path === path);
-      const bytes = await readFile(join(snapshot.inputRoot, path));
+      const bytes = await readFile(join(frozenRoots[component], path));
       assert.equal(sha256(bytes), pin.sourceSha256);
       const text = bytes.toString('utf8'),
         output = transformProvidedUiBoundary({ component, path, text });
@@ -102,7 +103,7 @@ test('unaffected docs/legal hyperlinks, first-party samples, third-party provide
   assert.equal(inventory.files.length, 15);
   for (const file of inventory.files) {
     const bytes = await readFile(
-      join(pins.components[file.component].inputRoot, file.path),
+      join(frozenRoots[file.component], file.path),
     );
     assert.equal(sha256(bytes), file.sourceSha256);
     for (const occurrence of file.occurrences)
@@ -126,7 +127,7 @@ test('unaffected docs/legal hyperlinks, first-party samples, third-party provide
     'manifest.json',
   ]) {
     const text = await readFile(
-      join(pins.components.agent.inputRoot, path),
+      join(frozenRoots.agent, path),
       'utf8',
     );
     assert.deepEqual(

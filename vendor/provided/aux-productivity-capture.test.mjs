@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {spawnSync} from 'node:child_process';
 import {installNativeCaptureListener,captureBoundPage,transformAuxCaptureUi,transformAuxCaptureDaemon,transformAuxCaptureNative} from './aux-productivity-capture.mjs';
@@ -25,7 +26,7 @@ test('commands target the native document and developer policy controls visibili
  assert.deepEqual(sent,[9,{type:'capture:open'},{documentId:'native-doc'}]);
 });
 test('supplied capture/full-page/command/settings adapters compose and parse',()=>{
- const root='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux',out=mkdtempSync(join(tmpdir(),'aux-capture-'));
+ const root=repoRoot+'/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux',out=mkdtempSync(join(tmpdir(),'aux-capture-'));
  try{
  const files=[];
  for(const relative of ['background.js','assets/capture-result-nUfmrYC9.js'])files.push([relative.replaceAll('/','-'),transformAuxCaptureUi({relative,text:readFileSync(join(root,'apps/extension/dist',relative),'utf8')}).text]);

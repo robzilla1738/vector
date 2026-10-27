@@ -1,3 +1,4 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
@@ -20,7 +21,7 @@ test('missing, restored, navigated or foreign-profile references refuse without 
  assert.deepEqual(request,{references:[{targetId:tab.targetId,url:tab.url,documentCapability:'old-document'}]});
 });
 test('actual supplied picker, editor, mention, current-tab and submit sources parse with unchanged classes',()=>{
- const root='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux/apps/extension/dist';
+ const root=repoRoot+'/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux/apps/extension/dist';
  const directory=mkdtempSync(join(tmpdir(),'aux-tab-context-fixture-'));
  try{
   for(const name of ['provider-Cw0zhujt.js','create-editor-B-Br5Wz9.js','utils-Cl9zfMcr.js','browser-binding-CzDmxQNA.js','permission-approval-D-GTf91U.js']){

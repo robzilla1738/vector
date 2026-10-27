@@ -6,10 +6,11 @@ import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
+import { frozenRoots } from '../../scripts/lib/provided-frozen-sources.mjs';
 import { buildDaemonNodeDevelopment, daemonNodeDevelopmentPaths } from './daemon-node-development.mjs';
 
-const input = process.env.AUX_PROVIDED_DAEMON_STATIC_BINARY;
-if (!input) throw new Error('Set AUX_PROVIDED_DAEMON_STATIC_BINARY to the pinned static daemon binary; no daemon is executed');
+// No daemon is executed; the frozen pinned binary is only parsed.
+const input = process.env.AUX_PROVIDED_DAEMON_STATIC_BINARY ?? path.join(frozenRoots.daemon, 'Contents/MacOS/aside-daemon');
 const original = await readFile(input);
 const output = buildDaemonNodeDevelopment(original);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -20,7 +21,7 @@ test('exact original implementation/assets retained with counted resource edits'
   assert.equal(output.manifest.sourceCodeSha256, '5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5');
   assert.equal(output.manifest.runtimeTested, false);
   assert.equal(output.manifest.dpRuntimeAccepted, false);
-  assert.equal(output.manifest.developmentEdits.length, 12);
+  assert.equal(output.manifest.developmentEdits.length, 13);
   const code = output.files.find(file => file.path === daemonNodeDevelopmentPaths.script).bytes.toString();
   const parsed = spawnSync(process.execPath, ['--input-type=module', '--check'], { input: code, encoding: 'utf8', maxBuffer: 1024 * 1024 });
   assert.equal(parsed.status, 0, parsed.stderr); // Syntax only: no imports/main/native execute.

@@ -1,10 +1,11 @@
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import test from 'node:test';
 import {findMachOSeaSection,readSeaBlob} from '../aside/lib/sea.mjs';
 import {applyAuxCaptureContractIdentity} from './aux-capture-contract-identity.mjs';
-const base='/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852',b=readFileSync(base+'/daemon/Contents/MacOS/aside-daemon'),s=findMachOSeaSection(b);
+const base=repoRoot+'/out/provided-source-snapshot-1.26.1016.1852',b=readFileSync(base+'/daemon/Contents/MacOS/aside-daemon'),s=findMachOSeaSection(b);
 const originals={daemon:readSeaBlob(b.subarray(s.offset,s.offset+s.size)).code,agent:readFileSync(base+'/agent/content/content.js','utf8')};
 const paths={daemon:'entry.mjs',agent:'content/content.js'},results=Object.fromEntries(Object.entries(originals).map(([component,original])=>[component,applyAuxCaptureContractIdentity({component,path:paths[component],text:original,original})]));
 test('actual complete custom capture tag producer and reader pairs change together',()=>{

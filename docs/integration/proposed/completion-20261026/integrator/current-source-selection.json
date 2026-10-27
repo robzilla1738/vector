@@ -1,280 +1,280 @@
 {
   "format": "aux.completion.current-source-selection.v1",
-  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
   "signedInventorySha256": "2a215e7185b3c755380b01735d36121f078e1c1c81c8f2788d5d018f9c679132",
   "sourceSnapshots": [
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
       "sha256": "f01fd950bd53ea2ec48a89d2833909cdb545fa846260ff1c32193b2920419ce5"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/browser-policy.swift",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/browser-policy.swift",
       "sha256": "93dca4241b8fb397feed796fec73c8ae3c28dcbeb66779345a321a9923e48c2b"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/pdf-lifetime.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/pdf-lifetime.cc",
       "sha256": "dd09495967252592068643f921800dd7d6953550e66bda577a809b1f83c3ec1d"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/utility-lifetime.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/utility-lifetime.cc",
       "sha256": "58c3cfd194e2cdf933de4218d9605721a42711438f8881fa1b548402dd3cf708"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/AuxSelectedStateHome.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/AuxSelectedStateHome.cc",
       "sha256": "2e25c7f4b67380c73559d6cdb30e463518c95c1aa417a65dff39d37a3c834713"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-menu-startup/source/chrome/browser/ui/tabs/split_tab_menu_model.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/split-menu-startup/source/chrome/browser/ui/tabs/split_tab_menu_model.cc",
       "sha256": "1be240cb726c09a009d0fee3781ffb4ecbc67e23d2ddb43b311ac8a6bb571f94"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-menu-startup/source/chrome/browser/ui/views/toolbar/split_tabs_button.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/split-menu-startup/source/chrome/browser/ui/views/toolbar/split_tabs_button.cc",
       "sha256": "e54f121304f7593cf99e54089fcfcc9ee09c3e095d92f8999b22e41b50b77805"
     }
   ],
   "descriptor": {
-    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/AuxFreshBootstrapPolicy.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/AuxFreshBootstrapPolicy.json",
     "sha256": "d29979e1a2b9d6d6ebfa3eb213e030188fa45e1d52649da0b2e1c0f318652ee2"
   },
   "actualMatchingBuild": {
-    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/build-receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/build-receipt.json",
     "sha256": "af474a8ae456b03f92fee7b0a677d977e5dc2441e438c56ef7f2a1f2fe2e7c9a"
   },
-  "ordinaryAclRepairSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/ordinary-image-ancestor-acl-repair/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+  "ordinaryAclRepairSource": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/ordinary-image-ancestor-acl-repair/source/AuxSignedFreshBootstrapPolicyLoader.swift",
   "currentNativeBrowserProjection": "/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
   "nativeCheckout": "/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src",
   "legacyNativeCheckout": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
   "olderFrozenRecipesArePredecessors": true,
   "runtimeAccepted": false,
   "browserStartupRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-startup-diagnostic-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/browser-startup-diagnostic-a1/receipt.json",
     "sha256": "095217041b87f313b5ac97c0e271c20bdf76c5ed3888fa39b1ff00fa16e320c9"
   },
   "browserSplitStartupRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-split-startup-repair-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/browser-split-startup-repair-a1/receipt.json",
     "sha256": "b08d22febdf72ace9cf1211b8768d2f68f3a659bd0c7713833fa8f62cfd1e479"
   },
   "agentStartDiagnostic": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/agent-start-diagnostic-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/agent-start-diagnostic-a1/receipt.json",
     "sha256": "414204ab9d2531510e4831193a85f0a9f7580cf429cdd896d767dd1385ae3e67"
   },
   "agentStartGroupedRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/agent-start-grouped-repair-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/agent-start-grouped-repair-a1/receipt.json",
     "sha256": "deaf196d3cdc55580cb7ebd1f18216631d0b57e892367b255db621569e18a977"
   },
   "browserGroupedStartupSplitCliRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-grouped-startup-split-cli-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/browser-grouped-startup-split-cli-a1/receipt.json",
     "sha256": "b404d46fa2d434a02e4b008babf560c087ba9ebc44c7d3382237406526af4512"
   },
   "currentGroupedNativeSources": [
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.h",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.h",
       "sha256": "4ccef428e661568605464d0c202cf355e8357ac0343645071bcd553ee8a9181c"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.cc",
       "sha256": "1c2996c7c3b8931330033688b7c6997749e4d3a7c2908b97dab6e9450ac1784b"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxSelectedStateHome.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxSelectedStateHome.cc",
       "sha256": "d5ef5387e492c80836e31553b8e1af7e2e48ee962e61d60212c7866637841399"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-background-query/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/cli-background-query/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
       "sha256": "0cd55bc066b2678f4c29e6389dd3390a0a67731ff18e4a6c9e051e3aa7a2f562"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/recent-download-restore/source/chrome/browser/ui/aux_recent_files_service.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/recent-download-restore/source/chrome/browser/ui/aux_recent_files_service.cc",
       "sha256": "0f6abb229821b9c8fff2f8a871a8f2ceb71ca42dd25e2f3a586cd2528d7f1e0f"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc",
       "sha256": "d6e24db4506041c2eff9e27b973952e86a37bade9b22a033d9b4c2a7b81ca449"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
       "sha256": "55adba32a3fcd550a3b64fd19ab05444e415b6fef9522c9ed24bd5db5c8980e6"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
       "sha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/resting-full-url/source/chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/resting-full-url/source/chrome/browser/ui/views/location_bar/location_bar_view.cc",
       "sha256": "6aa4ae321848fdaad974f2b60a7dd6452045ea87dd242c6d9c06988b767eeec8"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-cold-input-compile/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/palette-cold-input-compile/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
       "sha256": "43a2a4370b8185ccf8c8df197cd879a388269a1e1b0181303cfb0b5b58869081"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-observation/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/palette-observation/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
       "sha256": "e090ace177c520e3cbd3a3e58738242669398725998c5b7f9b10067d323fe9a1"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxNativePeerTransport.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxNativePeerTransport.cc",
       "sha256": "2e37de722dd6ee22a3a81c83e86032d5a64d51738000cdc82a46b26f80ae81a8"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-cold-input/source/chrome/common/extensions/api/aux_browser_preferences.json",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/palette-cold-input/source/chrome/common/extensions/api/aux_browser_preferences.json",
       "sha256": "76e67487819bf2bbf3a3e849cdeb7e13d678560713e1e9ecd0adc349f40e4a28"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/extensions/browser/extension_event_histogram_value.h",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/extensions/browser/extension_event_histogram_value.h",
       "sha256": "306fa70ef50b9c1a567f4448aeba76762993e1c5bb88455e86c897a7490da04c"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/tools/metrics/histograms/metadata/extensions/enums.xml",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/tools/metrics/histograms/metadata/extensions/enums.xml",
       "sha256": "8183d534f9c5ec132546234489842cde96d1606c72f3be667885b3b058d63bcb"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxNativePeerTransport.h",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxNativePeerTransport.h",
       "sha256": "d8e87471aa6a24634f3466edd198b58389e1f91e76d7d48c245dd75743eb1f9f"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxSelectedStateHome.h",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxSelectedStateHome.h",
       "sha256": "8e3cd3b57ce7097a13b982ae4450e97b3cbc136e0cd45cffa5f3d749311050f1"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/aux_account_api.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/aux_account_api.cc",
       "sha256": "b6b048319171055ba697d9ff3df9a63d23f7823f41237f63a2bf83107e051886"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/aux_account_api.h",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/aux_account_api.h",
       "sha256": "0145a76803e99466b9d77c250638f7626064ec440c551c8d1722e00d6e8d0578"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/daemon_supervisor.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/daemon_supervisor.cc",
       "sha256": "c7b2f5b173929970f2b9221833005390bd88c93bd5fa365e600a0d406db2eb8f"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/installation_auth.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/installation_auth.cc",
       "sha256": "57d2ca83e22972fb0f626f59787709bdc9a6a57e5342ffd67b9a07c28d8645cf"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/installation_auth.h",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/installation_auth.h",
       "sha256": "0d8ce7494408859677079df1697c25c29132adbccd4e1d201b819572a6490c1a"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-cold-input/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.h",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/palette-cold-input/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.h",
       "sha256": "582393d901aa90339e9fbb6bafd3cbefee41579b996b49bfcd20dff4ed0b4508"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-cold-input-compile/source/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/palette-cold-input-compile/source/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
       "sha256": "7705fb6dcc216f4fdb6fd3c895c76a00781fe52871c0e17e8b9818b76d7a44d9"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxOwnedNativePeerChild.h",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxOwnedNativePeerChild.h",
       "sha256": "b749d065f411385ad0a4733274868b7973a68e567cb7d39ad2a3e6e4ff20a743"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxOwnedNativePeerChild.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxOwnedNativePeerChild.cc",
       "sha256": "d25edf02478e97766ae3e6cbec5866cb51ce3145422c85f054cb56436373de1b"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/local-native-account/source/chrome/browser/aux/account_profile_source.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/integration/local-native-account/source/chrome/browser/aux/account_profile_source.cc",
       "sha256": "ee8af51869770943f4343fee8b8b85c7b8f7776e5b8c6d2da084497cc65bfcba"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/local-native-account/source/chrome/browser/aux/account_profile_updater.cc",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/integration/local-native-account/source/chrome/browser/aux/account_profile_updater.cc",
       "sha256": "7fd746e7f1cc12e6cc97dc61623bc97a743c836fc38a89361243e9b2bc9c9ccc"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/shortcut-existing-reservation/source/chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/shortcut-existing-reservation/source/chrome/browser/ui/aux_keyboard_shortcuts.mm",
       "sha256": "72885e0ee08726bcdf07e1a026a89684cb5c93868d353a2f4099b5355a075978"
     }
   ],
   "olderNativeSnapshotsArePredecessorsWhereSuperseded": true,
   "browserSidebarFilesUrlRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-sidebar-files-url-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/browser-sidebar-files-url-a1/receipt.json",
     "sha256": "b4742ce9110e18f61a3988a7bad9b7942de4edb32388de0cf08944038e4c2f36"
   },
   "combinedPalettePeerToolsRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-palette-peer-tools-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-palette-peer-tools-a1/receipt.json",
     "sha256": "5cf59fcd25c782e2a97793e35eb0dcdaa428e1fd04b3dea2f9664f3c9ade69e1"
   },
   "combinedPaletteCaptureSettlementRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-palette-capture-settlement-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-palette-capture-settlement-a1/receipt.json",
     "sha256": "0cbb848287897518aab38649aefef8e8ed6f45258597e07ec74dfecdd4a0cd47"
   },
   "combinedColdInputWorkerUpdateRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-cold-input-worker-update-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-cold-input-worker-update-a1/receipt.json",
     "sha256": "53083968bc6b7f45606c0a29bee637f8efdf1aff8f0bda1886c1152347570fca"
   },
   "currentComponentVersion": "1.26.1016.1888",
   "currentComponentPayloadReceipt": {
-    "path": "/private/tmp/aux-completion-grouped-version-20261026-a2/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/live-inputs/completion-20261026/aux-completion-grouped-version-20261026-a2/receipt.json",
     "sha256": "baa8292d80f36d89514b8f312236057624da2cd36d1e8f48908d9e733495b9a0"
   },
   "combinedLocalAccountShortcutRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-local-account-shortcut-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-local-account-shortcut-a1/receipt.json",
     "sha256": "c2896b750db21d49a2655514e2fdb20c59fca221db718ce6ec8fddae5acbae95"
   },
   "combinedReplEventLoopGuardRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-repl-event-loop-guard-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-repl-event-loop-guard-a1/receipt.json",
     "sha256": "710eac50f084c6de7c4ad4e08140607a5e44087590020082ed484522fb644590"
   },
   "combinedSelectedFileStatAsyncRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-selected-file-stat-async-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-selected-file-stat-async-a1/receipt.json",
     "sha256": "ef45e633a2e407387a9af33e6bcf6e8f7ce5dcdf52f1c3b1dab2b37c318f57ba"
   },
   "currentDaemonResources": {
     "index": {
-      "path": "/private/tmp/aux-brand-sweep-20261026-a1/index.mjs",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/out/live-inputs/completion-20261026/aux-brand-sweep-20261026-a1/index.mjs",
       "sha256": "25dd4fff0aab1cc75014dcc45fa324216ddd2434c415dded82061e48bf565e53"
     },
     "entry": {
-      "path": "/private/tmp/aux-brand-sweep-20261026-a1/aux-native-entry.mjs",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/out/live-inputs/completion-20261026/aux-brand-sweep-20261026-a1/aux-native-entry.mjs",
       "sha256": "740091f898072a2ee4da59db3ba84db5a605c7c0eb317f2428a797562bdaf50c"
     }
   },
   "futureDaemonResources": {
     "index": {
-      "path": "/private/tmp/aux-selected-file-stat-async-20261026-a1-future/index.mjs",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/out/live-inputs/completion-20261026/aux-selected-file-stat-async-20261026-a1-future/index.mjs",
       "sha256": "e4fd6745c1111ccdf0eef2cc1e27075853de7804297c8cce05c828fe3f94e51f"
     },
     "entry": {
-      "path": "/private/tmp/aux-selected-file-stat-async-20261026-a1-future/aux-native-entry.mjs",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/out/live-inputs/completion-20261026/aux-selected-file-stat-async-20261026-a1-future/aux-native-entry.mjs",
       "sha256": "798f0abc4d876fdb5d60a6b51759f9d6bd6c2dc31b17967c8106097432b023d4"
     }
   },
   "combinedFinalPolishRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-final-polish-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-final-polish-a1/receipt.json",
     "sha256": "62107a05ff4ab73ef296401cd793655d09201efe9950e19c1939026f4ee73526"
   },
   "combinedFinalPolishPrewarmRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-final-polish-a2/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-final-polish-a2/receipt.json",
     "sha256": "a8359b31fd4b8a0a42f95d532f386058109ef559b633995d8880f51b8ebb4b0f"
   },
   "currentDaemonExecutable": {
     "unsignedLink": {
-      "path": "/private/tmp/aux-pdf-abi-daemon-relink-20261026-new/Aux Daemon",
+      "path": "/Users/rcourson/Documents/Vibe/Aux/out/live-inputs/completion-20261026/aux-pdf-abi-daemon-relink-20261026-new/Aux Daemon",
       "sha256": "080844f51c2f2acbd94d1ecea6081ee172b1f29681da0db6360b826c768a8073"
     },
-    "relinkRecipe": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/relink/relink.py",
-    "linkReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/relink/link-receipt.json",
+    "relinkRecipe": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/relink/relink.py",
+    "linkReceipt": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/relink/link-receipt.json",
     "note": "Exact two-addon build-a2 link command with only worker-host.o swapped for the PDF-ABI build; packaged and re-signed by the bounded repair."
   },
   "combinedBrandSweepRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-brand-sweep-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-brand-sweep-a1/receipt.json",
     "sha256": "f0559655a1692d713fff74c53530f4029f69315cdaba76f46ffef69ec8470f4d",
-    "rules": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/brand-sweep-a1/rules.json"
+    "rules": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/integration/ordinary-chat/brand-sweep-a1/rules.json"
   },
   "futureResourcesLackRules": [
     "final-polish-a1",
     "brand-sweep-a1"
   ],
   "phase1NativeRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-phase1-native-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-phase1-native-a1/receipt.json",
     "sha256": "e243d902ce1763c187bff7fc69a0232b01c3b2cdaef1df72b7218c237972793e",
-    "actualResult": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/phase1-native-a1/actual-result.json"
+    "actualResult": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/phase1-native-a1/actual-result.json"
   },
   "productLogoRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-product-logo-a2/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-product-logo-a2/receipt.json",
     "sha256": "6ef2b3c07194ca245cc7b4ef4b73a7205997553872ebb19db15af9bdb9a6497d"
   },
   "splitMultipaneRepair": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-split-multipane-a1/receipt.json",
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-split-multipane-a1/receipt.json",
     "sha256": "702f3b790b48dcb8e4fe254eabfd5571488fb0656c7157b51d228a909f854e80"
   }
 }
