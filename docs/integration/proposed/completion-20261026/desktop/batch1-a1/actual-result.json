@@ -1,0 +1,32 @@
+{
+ "format": "aux.completion.actual-result.v1",
+ "batch": "batch1-a1",
+ "date": "2026-10-27",
+ "changes": [
+  "split toolbar menu no longer adds upstream Send Feedback (split-menu-feedback-a1)",
+  "daemon SIGTERM/SIGINT bounded exit and AUX_BROWSER_PID lifeline in node-development/index.mjs (daemon-lifeline-a1)",
+  "Framework built in the reconciled durable checkout (durable-checkout-a1)"
+ ],
+ "build": {
+  "command": "ninja -C out/AuxFast chrome native_cli_open",
+  "exit": 0,
+  "log": "out/live-inputs/completion-20261026/batch1-a1/build.log",
+  "resourcesPakUnchanged": true
+ },
+ "repairReceipt": {
+  "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-batch1-a1/receipt.json",
+  "sha256": "4e13ef22d2a8143827bd05de81e1e386ec680db3e9be53f58bdf517a2614dfd7"
+ },
+ "inventorySha256": "0e79a58274ba005e8e0d57ce457372ae24cbcaf4ca5721b9e23206b1e15c96c4",
+ "observed": {
+  "startup": "observed: Launch Aux.command started browser and daemon; daemon parent is the browser and its environment carries AUX_BROWSER_PID",
+  "abort": "FAILED: after SIGABRT to the browser the daemon stopped listening on 21520 but kept running (0% CPU, main thread idle in uv_run, no sockets). A direct SIGTERM 5 min later was also ignored. No daemon log lines after the abort. The lifeline/bounded-exit edit did not make it exit.",
+  "relaunchWithOrphan": "FAILED: relaunch refused (\"Aux native daemon refused at bootstrap (status -1)\", \"Aux fresh startup refused: paired daemon receipt\") while the orphan was alive",
+  "orphanTeardown": "exact owned path verified, no children, SIGKILL",
+  "relaunchAfterTeardown": "observed: browser and daemon started; daemon listening after 25 s",
+  "quit": "observed: AppleScript quit; browser and daemon exited within 8 s",
+  "sendFeedback": "not observed in the UI (no split menu was opened); source change is in the sealed Framework"
+ },
+ "screenshots": "not captured: this shell has no Screen Recording permission and none was granted",
+ "next": "Native fix in the daemon entry: after the existing peer-loss shutdown (RequestPeerLossShutdown), the JS loop stays alive and neither process.exit nor SIGTERM ends it. Instrument the shutdown with stderr markers in a disposable run, then bound it natively (node::Stop after a deadline, already the no-listener behavior). The JS lifeline edit is ineffective and should be dropped in that seal."
+}

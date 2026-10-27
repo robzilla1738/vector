@@ -1,0 +1,8 @@
+[
+  {
+    "path": "chrome/browser/ui/tabs/split_tab_menu_model.cc",
+    "baselineSha256": "1be240cb726c09a009d0fee3781ffb4ecbc67e23d2ddb43b311ac8a6bb571f94",
+    "sourceSha256": "a6df65bbb34b657976a75b5cbdec96231501fc4548fa0047365361eae6a8bcc2",
+    "outputSha256": "a6df65bbb34b657976a75b5cbdec96231501fc4548fa0047365361eae6a8bcc2"
+  }
+]

@@ -1,6 +1,6 @@
 # Aux status
 
-Last updated 2026-10-27. This is the single current-state page. Dated history through 2026-10-26 is in [archive/status-history-through-2026-10-26.md](archive/status-history-through-2026-10-26.md). The working checklist is [ROADMAP-EXECUTION-GRAPH.md](ROADMAP-EXECUTION-GRAPH.md). [PAUSE-HANDOFF.md](integration/proposed/completion-20261026/PAUSE-HANDOFF.md) records the October 26 startup failure only.
+Last updated 2026-10-27. This is the single current-state page. Dated history through 2026-10-26 is in [archive/status-history-through-2026-10-26.md](archive/status-history-through-2026-10-26.md). The working plan is [2026-10-27 pre-release completion](plans/2026-10-27-pre-release-completion.md); [ROADMAP-EXECUTION-GRAPH.md](ROADMAP-EXECUTION-GRAPH.md) is the outcome inventory. [PAUSE-HANDOFF.md](integration/proposed/completion-20261026/PAUSE-HANDOFF.md) records the October 26 startup failure only.
 
 ## Pause
 
@@ -12,15 +12,15 @@ Resume at the local journeys under Open. The Phase 1 link, the logo replacement,
 
 | Role | Path | Inventory |
 |---|---|---|
-| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `2a215e7185b3c755380b01735d36121f078e1c1c81c8f2788d5d018f9c679132` |
-| What that seal adds | Phase 1 native batch, Aux product logos (including the two `resources.pak` logo entries), multi-pane split metrics fix | On top of brand-sweep `e0228418`. Split repair receipt `combined-split-multipane-a1` records before-inventory `e1d68d96` |
+| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `0e79a58274ba005e8e0d57ce457372ae24cbcaf4ca5721b9e23206b1e15c96c4` (Batch 1 seal, receipt `combined-batch1-a1`) |
+| What that seal adds | Split menu without "Send Feedback", Framework built in the reconciled durable checkout, and the daemon lifeline edit (observed ineffective, see Open) | On top of `2a215e71`: Phase 1 native batch, Aux product logos, multi-pane split metrics fix, brand-sweep `e0228418` |
 | Fallback | `out/provided-candidate-local-completion-20261025-a38/Aux.app` | Last broad acceptance. Launch with its adjacent `Launch Aux.command` |
 | Source selection | `docs/integration/proposed/completion-20261026/integrator/current-source-selection.json` | |
 | Native checkout | `/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src` | Default in `scripts/aux_chromium.py`. `AUX_CHROMIUM_SRC` overrides it |
 
 `scripts/native-build.py` only holds `/tmp/aux-build.lock` around the command it is given. It does not choose the checkout.
 
-The older tree at `/private/tmp/aux-chromium-recovery-snapshot-20261023/src` was still on disk on 2026-10-27. Historical receipts and prepare scripts still name it. Builds use the durable checkout. On this date the reviewed sidebar file `chrome/browser/ui/views/frame/aux_sidebar_view.cc` was SHA256 `1fd991f83b88158b2df5424644efd5252267ba189b45a2e1791780afd0fa38e5` in both trees.
+The older tree at `/private/tmp/aux-chromium-recovery-snapshot-20261023/src` was still on disk on 2026-10-27, and historical receipts and prepare scripts still name it. The `2a215e71` seal was built there, not in the durable checkout. The durable tree was missing the `phase1-native-a1`, `product-logo-a1` and `split-multipane-metrics-a1` projections, and its `out/AuxFast` had been copied with the wrong toolchain path depth. Both were reconciled on 2026-10-27 (`desktop/durable-checkout-a1`). Builds now run only in the durable checkout.
 
 Screenshots and logs under `out/` stay local. The committed record is the JSON cited below.
 
@@ -45,8 +45,8 @@ Startup with the relinked PDF-ABI daemon, session restore, attached-PDF `read_fi
 Local, on this candidate:
 
 - Profile-note isolation, protected close prompt, file download/collision/drag, capture, PiP, DevTools, BYOK Muse journey, REPL `aux.pdf`, site-rule routing, Quit/reopen persistence of Spaces/theme/remap, and Finder launch without the workspace launcher. A profile-note type was attempted and is inconclusive: the field did not show the typed value, and SecurityAgentHelper was frontmost.
-- After a browser abort the candidate daemon can outlive the browser and ignore SIGTERM and SIGINT. Seen when the split crash left the daemon up. Lifecycle fix not started.
-- Split toolbar menu still offers upstream "Send Feedback". Left as supplied behavior for an owner decision.
+- **Daemon after a browser abort (observed on `0e79a582`, `desktop/batch1-a1/actual-result.json`):** the daemon stops listening but keeps running, idle, and ignores SIGTERM. While it lives, relaunch is refused ("paired daemon receipt"), so a crash leaves Aux unable to reopen until the daemon is killed. The sealed JS lifeline/bounded-exit edit (`desktop/daemon-lifeline-a1`) did not change this. The native peer-loss shutdown already starts the supplied shutdown; the JS loop then stays alive. Next: instrument that path in a disposable run and bound it natively. Normal Quit stops both processes.
+- Split toolbar menu "Send Feedback": removed in the sealed Framework (`desktop/split-menu-feedback-a1`). Not yet looked at in the UI.
 - Shortcut-edit acceptance was not repeated on this seal. The validator source is in the linked Phase 1 batch.
 - Sidebar popup lifetime: `desktop/popup-lifetime-rebase-a1` found no source change. The current snapshot already contains the A32 fixes and calls `RetireAuxProfilePopup` from `OnOrdinaryWindowClosing`. The real-app checks in that README were not run.
 - Remaining Aside identifiers that stay until a versioned migration: `AsideNativeSwift` / `AsideNativeRun` and keychain group `8CPD4K4TBB.at.studio.AsideBrowser.cryptography` live in the immutable supplied addon and are remapped at runtime. `aside.*` storage keys are legacy migration readers. The `aside` scheme was removed in Phase 1.
@@ -57,6 +57,8 @@ Repo and pipeline, found in the 2026-10-27 cleanup:
 - A fresh `stage:provided` stops at the Agent revision review, for both the default profile and the candidate's (`--cloud-profile development --identity-profile aux-v1 --state-identity-version 2`, with or without `--feature-profile desktop-v1`). The candidate's Agent (`1.26.1016.1888`) came from the completion repair deltas, not from this stage path, and `vendor/provided/agent-revisions.json` has no review for a current fresh stage. So `pnpm check:provided` cannot pass until a new revision is reviewed. `scripts/lib/provided-ui.test.mjs` is skipped for the same reason.
 - A fresh Chromium checkout cannot be rebuilt from the repo. The `aux-chromium` setup tool had not run since 2026-10-18 and was removed. The durable checkout's Git is now self-contained: its object store borrowed from `aux-chromium-proof`, which moved to `~/Documents/Aux-archive` today, so the borrowed objects were repacked in and the alternates file was set aside as `alternates.dissociated-2026-10-27`.
 - `out/cleanup-2026-10-27/cleanup.sh` ran on 2026-10-27. It removed the 180 purged `/private/tmp` worktrees, 492 branches and 1,227 disposable `out/` entries, freeing about 181 GB; `out/` is now 114 GB in 78 entries, and 62 worktrees and 53 branches remain. All their commits are already under `refs/archive/` and in `~/Documents/Aux-archive/aux-all-refs-2026-10-27b.bundle`. The 50 worktrees in `~/Documents/Aux-archive/worktrees` and 11 in `~/.codex/worktrees` stay.
+- The repair executor and plan freezer (`integrator/combined-product-repair/`) still pointed at the pre-rename `/Users/rcourson/Documents/Vibe/web`. They now find the repository root from their own location and re-root the paths recorded in approved reviews; every pinned file is still checked by SHA-256.
+- `services/aux-cloud` already carries the confirmed company/contact copy (`confirmed-facts-routes.patch` applied); the product-information README said otherwise and is corrected. `runtime/selected-repl-fs/checkpoint.json` (v2: integrated, compiled, not activated) supersedes the pause note's "unjoined".
 - `~/Applications/Aux.app` is the 2026-10-19 launcher for the retired independent build, not this candidate.
 
 Full pre-release. These external gates were not rechecked in this pause:
@@ -72,6 +74,8 @@ Out of scope: backups, mobile, payments and Aux-funded inference, legacy migrati
 Owner decisions that gate later phases: signing for vendor pairing, how to proceed if Apple delays `2H4D7KNGUP`, submitting the ChatGPT eligibility form, approving the production deploy and the alert recipient, and whether the R2 token (around 2026-11-22) matters while backups stay deferred.
 
 ## Progress log
+
+- 2026-10-27: The owner approved the plan to full pre-release, in six batches. Decisions: signing, notarization and distribution stay deferred; the versioned identity migration is in scope; REPL source is built now, and Apple gates only its activation; one local Developer ID signing is allowed for the 1Password pairing test; "Send Feedback" is removed; local candidate reseals through the approved repair executor are allowed (AGENTS.md). Batch 1: durable checkout reconciled and built, executor re-rooted, Batch 1 seal `0e79a582` (feedback removal, lifeline edit). Abort test failed and is recorded under Open. 93 `/private/tmp` directories referenced by receipts were APFS-cloned to `out/live-inputs/tmp-preserved/` (`runtime/repl-activation-ready/README.md`).
 
 - 2026-10-27: Repo cleanup. Fixed the paths the `web`→`Aux` rename broke (launchers, live source selection, 39 tests) and moved six live inputs out of `/private/tmp` into `out/live-inputs/`. `pnpm test` now runs every test: 406 pass, 0 fail, 12 opt-in skips (it was 218 pass, 55 fail). Retired `apps/`, `packages/` and their tooling, removed 760 unreferenced receipt folders and 542 uncited archive/acceptance files, and rewrote AGENTS.md and the entry docs as current rules. Everything removed is at tag `archive/pre-cleanup-2026-10-27`.
 - 2026-10-27: Entry-point docs point here. Historical plans, the clean-room spec, and evidence receipts stay as dated records. See [docs/README.md](README.md).

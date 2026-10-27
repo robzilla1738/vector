@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "2a215e7185b3c755380b01735d36121f078e1c1c81c8f2788d5d018f9c679132",
+  "signedInventorySha256": "0e79a58274ba005e8e0d57ce457372ae24cbcaf4ca5721b9e23206b1e15c96c4",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -276,5 +276,9 @@
   "splitMultipaneRepair": {
     "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-split-multipane-a1/receipt.json",
     "sha256": "702f3b790b48dcb8e4fe254eabfd5571488fb0656c7157b51d228a909f854e80"
+  },
+  "batch1Repair": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-batch1-a1/receipt.json",
+    "sha256": "4e13ef22d2a8143827bd05de81e1e386ec680db3e9be53f58bdf517a2614dfd7"
   }
 }

@@ -1,0 +1,20 @@
+--- /Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/split-menu-feedback-a1/baseline/chrome/browser/ui/tabs/split_tab_menu_model.cc	2026-10-27 12:53:34
++++ /Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/desktop/split-menu-feedback-a1/source/chrome/browser/ui/tabs/split_tab_menu_model.cc	2026-10-27 12:53:34
+@@ -182,16 +182,7 @@
+       GetIndexOfCommandId(GetCommandIdInt(CommandId::kExitSplit)).value(),
+       kExitSplitMenuItem);
+ 
+-  // Only render feedback in the toolbar button menu.
+-  if (menu_source == MenuSource::kToolbarButton &&
+-      chrome::CanShowFeedback(tab_strip_model->profile())) {
+-    AddSeparator(ui::MenuSeparatorType::NORMAL_SEPARATOR);
+-    AddItemWithStringIdAndIcon(
+-        GetCommandIdInt(CommandId::kSendFeedback), IDS_SPLIT_TAB_SEND_FEEDBACK,
+-        ui::ImageModel::FromVectorIcon(features::IsRoundedIconsEnabled()
+-                                           ? kFeedbackIcon
+-                                           : kReportOldIcon));
+-  }
++  // Aux: no upstream Chrome "Send Feedback" entry; it would report to Google.
+ }
+ 
+ SplitTabMenuModel::~SplitTabMenuModel() = default;
