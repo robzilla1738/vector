@@ -16,7 +16,7 @@ for (let i = 0; i < args.length; i++) {
   if (!['--app', '--chromium', '--bin'].includes(flag) || !args[i + 1] || args[i + 1].startsWith('--')) throw new Error('Usage: package-aux.mjs [--development] [--app PATH] [--chromium Aux.app] [--install-cli] [--bin PATH]');
   options[flag.slice(2)] = resolve(args[++i]);
 }
-const native = options.chromium ?? join(homedir(), `Documents/Code/aux-chromium-security-155/chromium/src/out/${options.development ? 'AuxAside' : 'AuxFast'}/Aux.app`);
+const native = options.chromium ?? join(homedir(), `Documents/Vibe/aux-chromium-durable/snapshot-20261023/src/out/${options.development ? 'AuxAside' : 'AuxFast'}/Aux.app`);
 const destination = options.app ?? (options.development ? join(root, 'out/local/Aux.app') : join(homedir(), 'Applications/Aux.app'));
 if (resolve(native) === destination) throw new Error('Package destination must differ from the native build.');
 const flags = readFileSync(join(dirname(native), 'args.gn'), 'utf8');

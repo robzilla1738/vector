@@ -1,7 +1,8 @@
 # Building Aux locally
 
-Aux uses Chromium155.0.8059.85 on macOS arm64. The shared checkout is
-`/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src`.
+Aux uses Chromium 155.0.8059.85 on macOS arm64. The shared checkout is
+`/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src`.
+`depot_tools` for that checkout is `/Users/rcourson/Documents/Vibe/aux-chromium-durable/depot_tools`.
 The existing dirty checkout contains owner work: never reset it or remove its changes.
 Read the root `AGENTS.md`, `docs/design/names.md` and `docs/STATUS.md` first.
 The earlier runtime/shell development commands are retired; their history remains
