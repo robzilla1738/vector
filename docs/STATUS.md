@@ -54,7 +54,7 @@ The bundled `aux-cli` refuses to run when invoked directly ("packaged state iden
 
 ### Identity, last piece (Batch 4)
 
-The supplied addon (`provided-native.node`) and its carrier were unreachable in the shipped product, so they were removed. No `AsideNative` symbol remains; details are in `runtime/addon-replacement-scope/README.md`. What remains is internal Keychain storage naming: the boundary guard's original-group constant, and item names stored as `aux.<scope>.aside.*`. Renaming those is a Keychain data migration that needs owner approval. Also staying: the runtime-provenance path inside the daemon and legacy `aside.*` storage readers.
+The supplied addon (`provided-native.node`) and its carrier were unreachable in the shipped product, so they were removed. No `AsideNative` symbol remains; details are in `runtime/addon-replacement-scope/README.md`. No delivered code writes Aside-named Keychain items either: the JS uses `AUX_KEYCHAIN_ID_PREFIX=aux`, and the daemon and its Swift code contain no `aside.` item names. What remains is only the boundary guard's legacy acceptance list in `libaux-native-boundary.dylib`: the original group constant and `aside.` prefixes. The daemon's Swift queries pass their own access group through that guard, so narrowing it needs a runtime check against the Keychain, which needs owner approval. Also staying: the runtime-provenance path inside the daemon.
 
 ### External gates (Batch 5)
 
@@ -68,6 +68,8 @@ The supplied addon (`provided-native.node`) and its carrier were unreachable in 
 
 - The candidate is reproducible as the A38 base plus the ordered repair chain. `python3 scripts/verify-candidate.py` checks every pin and the whole app inventory; it passes with 66 pins and 11,202 entries. A fresh `stage:provided` is the predecessor pipeline and stops at its Agent revision review (`provided-ui.test.mjs` stays skipped).
 - `chromium/tree/` is the complete Chromium delta: 1,609 tracked, 867 added and 31 deleted paths, verified by replay. It replaces the old patch series.
+- Acceptance driver: `scripts/acceptance/aux_drive.py` (check, launch, quit, abort, key, menu, click, drag, open, shot, record) and the journey list `scripts/acceptance/JOURNEYS.md`. `aux_drive.py check` reports Screen Recording ok, but Accessibility and Automation still refused (2026-10-27).
+- Worktrees (2026-10-27, read-only inventory): of 61, only 4 are clean and already merged into `main`, so safe to remove: `~/.codex/worktrees/aux-protected-startup`, `~/.codex/worktrees/aux-runtime-publication-audit`, `~/.codex/worktrees/visual-isolation-spec`, and `~/Documents/Aux-archive/worktrees/aux-readiness-chromium`. Five merged ones have uncommitted changes. The other 52 hold commits that are not in `main`; some, such as the detached Codex worktrees, are reachable only from the worktree itself. Keep those.
 - Inputs that receipts cite under `/private/tmp` are preserved in `out/live-inputs/tmp-preserved/` with a hash manifest.
 - `~/Applications/Aux.app` is the 2026-10-19 launcher for the retired independent build, not this candidate.
 

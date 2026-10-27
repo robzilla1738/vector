@@ -1,5 +1,24 @@
 # Exact deployment, schema and rollback proposal
 
+## Run order (summary, 2026-10-27)
+
+**Owner fills first** in `approval-record.pending.json`. The backup fields under `o1` stay deferred and are not needed.
+- `serviceOperations.serviceOperator`, `serviceOperations.confirmedNotificationRecipient` and `serviceOperations.monitorProviderAccount`
+- `serviceOperations.activationApproved: true`
+- either `c1.compatibleRollbackDeploymentId`, or `c1.failClosedRollbackDispositionApproved: true` (no compatible rollback exists today)
+
+**Then, in order** (each step is detailed below):
+1. **Metadata:** record team, project, deployments, aliases and cron state, payload-free.
+2. **Cron hold:** hold the maintenance cron (every 5 min) and let running invocations finish.
+3. **Schema:** read-only comparison of `aux_migrations` against the 12 pinned hashes. If they match, change nothing.
+4. **Deploy:** `vercel deploy --prod --skip-domain --cwd services/aux-cloud --scope robzilla1738s-projects` from a clean checkout matching `source-pins.json` (refreshed 2026-10-27; 222 files; local typecheck and 63/63 tests pass). Record the deployment ID.
+5. **Readiness:** on the unique URL, expect 401 without the header. With it, expect `aux-cloud`, the current schema, and `paymentsEnabled=false` / `hostedAiEnabled=false`.
+6. **Aliases:** move exactly `app.`, `api.` and `share.getaux.co`. Leave `dev-cloud` and everything else as they are.
+7. **Resume cron:** resume the maintenance cron.
+8. **J5:** run the 11-step hosted test (`J5.md`). It also proves the four public pages that return 404 today.
+9. **Operations:** set up the monitor (every 5 min, alert after 2 failures), the error alert and the rollback record (`SERVICE-OPERATIONS.md`).
+
+
 This sequence is for later explicit approval. None has been executed by this packet. Its source is the pinned service tree in `source-pins.json`, not a redeploy of the older reported deployment.
 
 ## Before the first write
