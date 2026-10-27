@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "3b9f9b6830e602313cdaf4084833cb94af193791c009dc38c063dc520baf8095",
+  "signedInventorySha256": "7f8108518052c8b0fb4fafc537b2fe9ea0824043dcc78de52d6833aa073065dd",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -259,7 +259,11 @@
       "link": "out/live-inputs/completion-20261026/daemon-peerloss-a1/fix2/link.json",
       "source": "docs/integration/proposed/completion-20261026/runtime/daemon-peerloss-deadline-a1/source/AuxNativeDaemonMain.cc"
     },
-    "preparedLeaseRelink": "out/live-inputs/completion-20261026/prepared-lease-recovery-a1/link.json"
+    "preparedLeaseRelink": "out/live-inputs/completion-20261026/prepared-lease-recovery-a1/link.json",
+    "daemonLivenessCensus": {
+      "path": "/Users/rcourson/Documents/Vibe/Aux/out/live-inputs/completion-20261026/daemon-liveness-census-a1/receipt.json",
+      "sha256": "910a196e592707e466c90996d031b32a9092e0d3e7998167337c29130aabd8d7"
+    }
   },
   "combinedBrandSweepRepair": {
     "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-brand-sweep-a1/receipt.json",
@@ -311,6 +315,17 @@
     "removed": [
       "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/provided-native.node",
       "Contents/Resources/aux/native/aux-native-carrier"
+    ]
+  },
+  "excellenceRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-excellence-a1/receipt.json",
+    "sha256": "0850155126f2fa255dba449a7937b76e52cacf3829053c40bb419ff2e9d6d42f",
+    "sources": [
+      "integration/local-daemon-a1",
+      "integration/extension-ui-a1",
+      "runtime/daemon-parent-liveness-a1",
+      "runtime/memory-census-scope-a1",
+      "native/shell-retirement-a1"
     ]
   }
 }

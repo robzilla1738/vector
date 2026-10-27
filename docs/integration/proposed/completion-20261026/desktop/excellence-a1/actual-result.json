@@ -1,0 +1,22 @@
+{
+  "format": "aux.desktop.observation.v1",
+  "date": "2026-10-27",
+  "seal": "7f8108518052c8b0fb4fafc537b2fe9ea0824043dcc78de52d6833aa073065dd",
+  "receipt": "out/provided-candidate-completion-20261026-a1/combined-excellence-a1/receipt.json",
+  "launcher": "out/provided-candidate-completion-20261026-a1/Launch Aux.command (candidate namespace, mock keychain)",
+  "observed": {
+    "startup": "daemon listening and /health ready:true, service aux-daemon, about 30 s after launch (launcher included)",
+    "cors": {
+      "http://localhost:3000": "no Access-Control-Allow-Origin",
+      "https://dev-cloud.getaux.co": "no Access-Control-Allow-Origin",
+      "chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm": "allowed"
+    },
+    "sigtermQuit": "browser exits in 0.5 s; daemon sees peer loss and exits in 10.9 s (was about 21 s before the parent-liveness deadline)",
+    "abort": "SIGABRT to the browser 15 s after listen: browser 0.5 s, daemon 10.9 s, no candidate process left",
+    "relaunchAfterAbort": "ready:true after 32 s; then quit cleanly, no process left"
+  },
+  "notObserved": [
+    "Menu Quit (Automation is refused, so the graceful /shutdown handshake path was not driven)",
+    "Any UI journey: extension surfaces, settings, help menu, version page, palette (Accessibility is refused)"
+  ]
+}

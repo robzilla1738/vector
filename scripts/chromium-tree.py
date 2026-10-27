@@ -8,7 +8,7 @@ verify  <src> <dest>   replay aux.patch onto the base commit in a temporary inde
                        check every resulting blob, plus the archive, against the manifest.
 apply   <src> <dest>   apply onto a clean checkout of the base commit, then verify.
 """
-import hashlib, json, os, subprocess, sys, tarfile, tempfile
+import gzip, hashlib, json, os, subprocess, sys, tarfile, tempfile
 from pathlib import Path
 
 BASE = '0e66b94549a8bd85f03fbdf189b752d6e7b63c32'  # Chromium 155.0.8059.85
@@ -54,7 +54,8 @@ def export(src, dest):
     dest.mkdir(parents=True, exist_ok=True)
     tracked, added, deleted = changes(src)
     (dest/'aux.patch').write_bytes(git(src, 'diff', 'HEAD', '--binary', '--full-index', '--', '.', ':!out'))
-    with tarfile.open(dest/'added.tar.gz', 'w:gz') as archive:
+    # A fixed gzip header time keeps identical additions byte-identical across exports.
+    with gzip.GzipFile(dest/'added.tar.gz', 'wb', mtime=0) as compressed, tarfile.open(fileobj=compressed, mode='w') as archive:
         for path in added:
             info = archive.gettarinfo(src/path, arcname=path)
             info.uid = info.gid = 0

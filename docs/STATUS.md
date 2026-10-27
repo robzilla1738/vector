@@ -1,17 +1,18 @@
 # Aux status
 
-Last updated 2026-10-27. This is the single current-state page. Dated history through 2026-10-26 is in [archive/status-history-through-2026-10-26.md](archive/status-history-through-2026-10-26.md). The working plan is [2026-10-27 pre-release completion](plans/2026-10-27-pre-release-completion.md); [ROADMAP-EXECUTION-GRAPH.md](ROADMAP-EXECUTION-GRAPH.md) is the outcome inventory. [PAUSE-HANDOFF.md](integration/proposed/completion-20261026/PAUSE-HANDOFF.md) records the October 26 startup failure only.
+Last updated 2026-10-27. This is the single current-state page. Dated history through 2026-10-26 is in [archive/status-history-through-2026-10-26.md](archive/status-history-through-2026-10-26.md). The working plan is the [2026-10-27 excellence audit](plans/2026-10-27-excellence-audit.md) (decisions D1–D12, owner: take the recommendations), which follows the [pre-release completion plan](plans/2026-10-27-pre-release-completion.md); [ROADMAP-EXECUTION-GRAPH.md](ROADMAP-EXECUTION-GRAPH.md) is the outcome inventory. [PAUSE-HANDOFF.md](integration/proposed/completion-20261026/PAUSE-HANDOFF.md) records the October 26 startup failure only.
 
 ## Where things stand
 
-The 2026-10-27 plan ran through Batch 1 (pipeline, daemon lifecycle, shutdown races) and the identity audit. The rest is gated on UI access, owner approvals, Apple and OpenAI; see Open. No candidate process or native build is running.
+The excellence-audit batch is sealed as `7f810851`: the cloud service without payments or hosted AI, a local-only daemon, extension and native fixes, and the retired shell removed from the native tree. Its real launch check passed (below). What remains is gated on UI access, owner approvals, Apple and OpenAI; see Open. No candidate process or native build is running.
 
 ## Artifacts
 
 | Role | Path | Inventory |
 |---|---|---|
-| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `3b9f9b6830e602313cdaf4084833cb94af193791c009dc38c063dc520baf8095` (receipt `combined-legacy-addon-removal-a1`) |
-| What that seal adds | Unreachable supplied addon and carrier removed; last extension brand string removed; shutdown races fixed and interrupted helper leases recoverable (`desktop/shutdown-authorization-a1`); bounded peer-loss shutdown (`runtime/daemon-peerloss-deadline-a1`); split menu without "Send Feedback" and a Framework built in the reconciled durable checkout (Batch 1 `0e79a582`). The JS lifeline edit is gone | On top of `2a215e71`: Phase 1 native batch, Aux product logos, multi-pane split metrics fix, brand-sweep `e0228418` |
+| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `7f8108518052c8b0fb4fafc537b2fe9ea0824043dcc78de52d6833aa073065dd` (receipt `combined-excellence-a1`) |
+| What that seal adds | Local-only daemon with narrowed trusted origins, a shutdown budget and no inherited provider keys (`integration/local-daemon-a1`); daemon drain watches the browser and both peer-loss deadlines start at first loss (`runtime/daemon-parent-liveness-a1`); memory census limited to this installation (`runtime/memory-census-scope-a1`); extension without billing, Pro, Remote Control, dev-cloud or Aside's Discord, one feedback entry (`integration/extension-ui-a1`); Framework with the real Keychain by default (D2), Gemini/Lens/Compose off, Help to Aux docs, Aux product logos, 47 strings rebranded, supervisor backoff and retry, and the shell retired (`native/shell-retirement-a1`) | On top of `3b9f9b68` |
+| What `3b9f9b68` added | Unreachable supplied addon and carrier removed; last extension brand string removed; shutdown races fixed and interrupted helper leases recoverable (`desktop/shutdown-authorization-a1`); bounded peer-loss shutdown (`runtime/daemon-peerloss-deadline-a1`); split menu without "Send Feedback" and a Framework built in the reconciled durable checkout (Batch 1 `0e79a582`). The JS lifeline edit is gone | On top of `2a215e71`: Phase 1 native batch, Aux product logos, multi-pane split metrics fix, brand-sweep `e0228418` |
 | Fallback | `out/provided-candidate-local-completion-20261025-a38/Aux.app` | Last broad acceptance. Launch with its adjacent `Launch Aux.command` |
 | Source selection | `docs/integration/proposed/completion-20261026/integrator/current-source-selection.json` | |
 | Native checkout | `/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src` | Default in `scripts/aux_chromium.py`. `AUX_CHROMIUM_SRC` overrides it |
@@ -40,7 +41,11 @@ Startup with the relinked PDF-ABI daemon, session restore, attached-PDF `read_fi
 
 ## Open
 
-### Fixed and observed on the current seal (`3b9f9b68`)
+### Observed on the current seal (`7f810851`)
+
+Recorded in `desktop/excellence-a1/actual-result.json`: startup to `/health` ready; CORS refuses `localhost:3000` and dev-cloud and admits the Agent extension; SIGTERM quit and a browser abort both end the daemon in 10.9 s (was about 21 s); relaunch after the abort reaches ready; no process left behind. Menu Quit and every UI surface were not driven (Automation and Accessibility are refused).
+
+### Observed on the previous seal (`3b9f9b68`)
 
 - Startup, normal Quit (browser 6–8 s, daemon 1–3 s, including Quit 10 s after launch), a browser abort (daemon exits about 21 s later) and relaunch after an abort. Measurements are in `desktop/shutdown-authorization-a1/actual-result.json` and `runtime/daemon-peerloss-deadline-a1/`.
 - Interrupted memory-helper leases no longer block startup, after a full `aux-memory` census (`runtime/prepared-lease-recovery-a1`).
@@ -60,13 +65,13 @@ The supplied addon (`provided-native.node`) and its carrier were unreachable in 
 
 - **REPL (Bash/PTY/CLI):** the source is complete, rebased onto the current seal (browser overlay, daemon JS with every current rule, and the daemon main with the peer-loss bound, which compiles), and inactive. Waiting on Apple `2H4D7KNGUP`; the remaining steps are in `runtime/repl-activation-ready/README.md`.
 - **1Password:** the candidate is already sealed with the Apple Development identity for team `9F2JXY8TCK`. The pairing check still needs the owner's choice of identity for the one `/Applications` install, a disposable vendor account, and someone to drive the UI. Native-host process and pipe cleanup is the remaining source item (`runtime/native-host`).
-- **Hosted service:** typecheck and 63/63 tests pass locally after fixing a stale catalog test, which now asserts the BYOK scope. The deploy review's source pins must be refreshed because of that test change. Production deploy, the schema comparison, J5, monitors, alert recipient, operator and rollback ID all need owner approval (`integration/cloud-activation/`).
+- **Hosted service:** billing, Stripe and hosted AI are removed (D4) with read-only stubs; account deletion purges every user table, blobs and the Clerk user (D9); migration 013; share limits, report link and operator revoke script (D10); separate readiness token; final terms, privacy, docs and support pages. Typecheck, `next build` and 63/63 tests pass. The deploy review's source pins must be refreshed for this source. Production deploy, the schema comparison, J5, monitors, alert recipient, operator and rollback ID all need owner approval (`integration/cloud-activation/`).
 - **ChatGPT plan:** the eligibility form is not submitted. Proposed answers for its 5 empty fields and 3 status fields are in `integration/chatgpt-eligibility/request-packet/proposed-answers.md`, waiting for the owner to confirm them and submit.
 - **Legal:** proposed answers for every open terms and privacy decision are in `integration/product-information/proposed-decisions.md`, waiting for owner or legal confirmation. It also records package facts: no analytics sent and no crash upload configured. The only item that can't be proposed is the LLC's state of organization (governing law), plus processor regions.
 
 ### Repo and pipeline
 
-- The candidate is reproducible as the A38 base plus the ordered repair chain. `python3 scripts/verify-candidate.py` checks every pin and the whole app inventory; it passes with 66 pins and 11,202 entries. A fresh `stage:provided` is the predecessor pipeline and stops at its Agent revision review (`provided-ui.test.mjs` stays skipped).
+- The candidate is reproducible as the A38 base plus the ordered repair chain. `python3 scripts/verify-candidate.py` checks every pin and recomputes the whole app inventory with the executor's helper; it passes with 69 pins and 11,200 entries. A fresh `stage:provided` is the predecessor pipeline and stops at its Agent revision review (`provided-ui.test.mjs` stays skipped).
 - `chromium/tree/` is the complete Chromium delta: 1,609 tracked, 867 added and 31 deleted paths, verified by replay. It replaces the old patch series.
 - Acceptance driver: `scripts/acceptance/aux_drive.py` (check, launch, quit, abort, key, menu, click, drag, open, shot, record) and the journey list `scripts/acceptance/JOURNEYS.md`. `aux_drive.py check` reports Screen Recording ok, but Accessibility and Automation still refused (2026-10-27).
 - Worktrees (2026-10-27): the 4 clean worktrees already merged into `main` were removed, and their branches kept. 57 remain: 5 merged with uncommitted changes, and 52 holding commits not in `main`. Some, such as the detached Codex worktrees, are reachable only from the worktree itself. Keep those.
@@ -76,6 +81,8 @@ The supplied addon (`provided-native.node`) and its carrier were unreachable in 
 Out of scope: backups, mobile, payments and Aux-funded inference, legacy migration, distribution, notarization, release, and a built-in Vault.
 
 ## Progress log
+
+- 2026-10-27: Excellence-audit batch sealed as `7f810851` (see Artifacts) and launch-checked. `pnpm test`: 413 pass, 0 fail, 5 skips (7 former skips now run against the frozen snapshot). New tools: `scripts/candidate/prepare_edits.py`, `relink_daemon.py`, `scripts/prepare-product-logos.py`.
 
 - 2026-10-27: Daemon peer-loss shutdown bounded natively (seal `03e13f8e`); abort no longer blocks relaunch. Shutdown stages traced: idle Quit is clean; Quit right after launch hits two startup races (Open).
 - 2026-10-27: The owner approved the plan to full pre-release, in six batches. Decisions: signing, notarization and distribution stay deferred; the versioned identity migration is in scope; REPL source is built now, and Apple gates only its activation; one local Developer ID signing is allowed for the 1Password pairing test; "Send Feedback" is removed; local candidate reseals through the approved repair executor are allowed (AGENTS.md). Batch 1: durable checkout reconciled and built, executor re-rooted, Batch 1 seal `0e79a582` (feedback removal, lifeline edit). Abort test failed and is recorded under Open. 93 `/private/tmp` directories referenced by receipts were APFS-cloned to `out/live-inputs/tmp-preserved/` (`runtime/repl-activation-ready/README.md`).
