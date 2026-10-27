@@ -1,0 +1,25 @@
+{
+  "format": "aux.selected-file-stat-async-proposal.v1",
+  "variant": "future",
+  "resources": [
+    {
+      "path": "/private/tmp/aux-repl-event-loop-guard-20261026-a1-future/index.mjs",
+      "name": "index.mjs",
+      "beforeSha256": "83e180982aa4885b1a780e75f695c887d301a127f1eec8314d51470744136837",
+      "afterSha256": "e4fd6745c1111ccdf0eef2cc1e27075853de7804297c8cce05c828fe3f94e51f"
+    },
+    {
+      "path": "/private/tmp/aux-repl-event-loop-guard-20261026-a1-future/aux-native-entry.mjs",
+      "name": "aux-native-entry.mjs",
+      "beforeSha256": "5f03ff33426a21ac9f112f83d3a55d4f8e34d795652a3a80f085674538662f8f",
+      "afterSha256": "798f0abc4d876fdb5d60a6b51759f9d6bd6c2dc31b17967c8106097432b023d4"
+    }
+  ],
+  "rules": [
+    {
+      "find": "function auxSelectedReadFileStat(file){\n const scope=auxSelectedReadScopeContext.getStore();",
+      "replace": "async function auxSelectedReadFileStat(file){\n const scope=auxSelectedReadScopeContext.getStore();",
+      "count": 1
+    }
+  ]
+}

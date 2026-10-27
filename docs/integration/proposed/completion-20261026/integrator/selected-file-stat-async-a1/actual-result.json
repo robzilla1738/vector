@@ -1,0 +1,36 @@
+{
+  "format": "aux.completion.actual-result.v1",
+  "date": "2026-10-26",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "signedInventorySha256": "9910013f1de2dff4bfea38b83626bae026035b5b38c876206c9e1256fd960075",
+  "repairs": [
+    "integration/ordinary-chat/repl-event-loop-guard (inventory 2ed31bad)",
+    "integration/ordinary-chat/selected-file-stat-async (inventory 9910013f)"
+  ],
+  "model": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+  "deviceRoutine": {"routine": "GQKfEPY5nmmKb9lu", "session": "c7IE5q52Ajs0Y850", "reply": "AUX_DEVICE_ROUTINE_OK", "notificationToParentChat": true, "repausedAfterRun": true, "minorDefect": "Runs on shows Unknown device"},
+  "shortcut": {"assignInvokeConflictReset": "pass (prior session)", "minorDefect": "tab-search hint shows default during remap"},
+  "combinedMusePass1": {
+    "session": "6QGxKCV8KuMw6xf2",
+    "candidateInventory": "2ed31bad",
+    "readFile": "failed: auxSelectedReadFileStat(...).catch is not a function (fixed by selected-file-stat-async)",
+    "replStopWhileRunning": "pass; REPL interrupted, daemon responsive",
+    "quitAfter": "failed: latched operationFailure from read_file TypeError; daemon retained, stopped with SIGKILL after SIGTERM was ignored"
+  },
+  "combinedMusePass2": {
+    "session": "6j2XR4QYbLMwCVxz",
+    "candidateInventory": "9910013f",
+    "attachments": ["tab /capture", "document.pdf", "image.heic"],
+    "replSnapshotMarkers": "pass (amber-cedar-742, violet-river-319)",
+    "memorySearch": "pass (USER.md#L1-L5 synthetic fact quoted)",
+    "getTime": "pass",
+    "heicReadFile": "pass: native selected utility conversion returned PNG; model color description partly wrong (white square/green correct, right half violet misreported)",
+    "pdfReadFile": "failed: Cannot read properties of undefined (reading 'pages')",
+    "pdfRootCause": "InitializeFixed (runtime/selected-builtin-owner/source/AuxFixedBuiltins.inc) reads PDF methods from the addon's top-level exports; the PDF image publishes them on exports.pdf. Scoped facade call then returns undefined without exception.",
+    "pdfNativeFix": "runtime/final-daemon-pdf-abi: patched inc, daemon build pass (Aux Daemon 200f8c6d). Packaged attempt refused at startup: 'Aux fresh startup refused: paired daemon receipt' because the signed browser policy pins the daemon image. Previous signed app restored exactly (9910013f); refused copy retained."
+  },
+  "lifecycle": {"cleanQuitAfterPass2": "pass (daemon.exit, operationFailure false, all processes exited)", "reopen": "pass", "finalQuit": "pass"},
+  "cleanup": {"temporaryAiGatewayConnection": "disconnected via Settings > Models", "fixtureServerStopped": true},
+  "transientObservation": "Daemon installation authorization failed appears at many startups and self-recovers",
+  "runtimeAccepted": false
+}

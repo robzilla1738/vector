@@ -1,0 +1,42 @@
+{
+  "format": "aux.combined-product.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/combined-product-repair/repair-combined.py",
+    "sha256": "207c9c8a4cc0ef4131df1bee06d49d6b6c822a1f27b24166ed8f2f5f774c06b8"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-repl-event-loop-guard-a1/receipt.json",
+    "sha256": "710eac50f084c6de7c4ad4e08140607a5e44087590020082ed484522fb644590"
+  },
+  "replacements": [
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "input": {
+        "path": "/private/tmp/aux-selected-file-stat-async-20261026-a1-current/index.mjs",
+        "sha256": "8288fc38a69d1983030b6234227b4cc6cd4f9a61a6b63c5765a8bce7b321a4a6"
+      },
+      "beforeSha256": "5549eed1a1c98c89109633d0f86f6c03000ec3c0e2e266db78b98ed3cba0d6d6"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "input": {
+        "path": "/private/tmp/aux-selected-file-stat-async-20261026-a1-current/aux-native-entry.mjs",
+        "sha256": "7f8473737e3d8772e0a3709bf3b98b74288df969905ad0dce68a49753074d1b1"
+      },
+      "beforeSha256": "1f04eed7505d3cf65c7a4e65fc203154b7e789afd77da8a659c7fb3de7eb0fed"
+    }
+  ],
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/selected-file-stat-async/proposal.json",
+      "sha256": "061fd37b7460dd062262055b37c0ab9c7ce40c384068a4ef05a8ecff4ef35eae"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/repl-event-loop-guard/proposal.json",
+      "sha256": "201aaa88f404c1faa1f3612948a049469e637a2fcf17ced6deb705d192675c7c"
+    }
+  ],
+  "receiptDirectory": "combined-selected-file-stat-async-a1"
+}

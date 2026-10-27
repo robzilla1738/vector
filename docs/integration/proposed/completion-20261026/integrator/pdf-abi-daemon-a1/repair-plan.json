@@ -1,0 +1,54 @@
+{
+  "format": "aux.combined-product.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/combined-product-repair/repair-combined.py",
+    "sha256": "1040160d1901854f6954e3c9463050749fe54761956601c56d554d0e02c1b7ec"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-selected-file-stat-async-a1/receipt.json",
+    "sha256": "ef45e633a2e407387a9af33e6bcf6e8f7ce5dcdf52f1c3b1dab2b37c318f57ba"
+  },
+  "replacements": [
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "input": {
+        "path": "/private/tmp/aux-selected-file-stat-async-20261026-a1-current/index.mjs",
+        "sha256": "8288fc38a69d1983030b6234227b4cc6cd4f9a61a6b63c5765a8bce7b321a4a6"
+      },
+      "beforeSha256": "8288fc38a69d1983030b6234227b4cc6cd4f9a61a6b63c5765a8bce7b321a4a6"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "input": {
+        "path": "/private/tmp/aux-selected-file-stat-async-20261026-a1-current/aux-native-entry.mjs",
+        "sha256": "7f8473737e3d8772e0a3709bf3b98b74288df969905ad0dce68a49753074d1b1"
+      },
+      "beforeSha256": "7f8473737e3d8772e0a3709bf3b98b74288df969905ad0dce68a49753074d1b1"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "input": {
+        "path": "/private/tmp/aux-completion-final-daemon-pdf-abi-20261026-a1/Aux Daemon",
+        "sha256": "200f8c6d4ccd77149a3fc2295be55103062e076066031cffb31660f84b721bf0"
+      },
+      "beforeSha256": "cbdebf5b831415571c319dd8e5e690f65821179e408f24220d353b5f40578b1d"
+    }
+  ],
+  "sourceEvidence": [
+    {
+      "path": "/private/tmp/aux-completion-final-daemon-pdf-abi-20261026-a1/build-receipt.json",
+      "sha256": "a0f6db80ed534680a21436fca816e900c8d967e3db0c753c56480340c6f351ac"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/daemon-recipe.json",
+      "sha256": "4c185e415131b10113e9c0ac933b359b9f93b1518db803bf0cf5fb9e8c39e338"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/source/AuxFixedBuiltins.inc",
+      "sha256": "e849539ea1e4fbc235334539660cbc2c9e06cb1933afc52cc4fee0360b2ec181"
+    }
+  ],
+  "receiptDirectory": "combined-pdf-abi-daemon-a1"
+}

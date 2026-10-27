@@ -1,0 +1,3 @@
+# Refused daemon-only repair (historical)
+
+`repair-plan.json` replaced only the daemon executable with the PDF ABI build from `runtime/final-daemon-pdf-abi`, using a temporary executor variant that allowed that one target. Signing passed (inventory 30fa00af), but startup refused it: "Aux fresh startup refused: paired daemon receipt". The previous signed app (9910013f) was restored byte-for-byte from the repair's own backup. The refused copy and `restoration.json` are in `out/provided-candidate-completion-20261026-a1/combined-pdf-abi-daemon-a1/`. The executor variant was reverted; daemon changes must ship with the paired policy/framework cohort.
