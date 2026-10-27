@@ -1,4 +1,3 @@
-import { paymentsEnabled } from './launch-mode';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { del, get, head, issueSignedToken, presignUrl } from '@vercel/blob';
@@ -15,8 +14,11 @@ export const attachmentRoutes = new Hono<{ Variables: AuthVariables }>();
 export const blobCallbackRoutes = new Hono();
 const MAX_FILE = 100 * 1024 * 1024;
 const MAX_SHARE = 50_000_000;
+const MAX_FEEDBACK = 8 * 1024 * 1024;
+// One storage tier: Aux takes no payments, so every account gets the same limits.
+const ATTACHMENT_QUOTA_BYTES = 104_857_600;
 const types = ['application/octet-stream', 'application/pdf', 'application/json', 'text/plain', 'text/markdown', 'text/csv', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'audio/mpeg', 'audio/wav', 'audio/webm', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/mp3', 'audio/x-wav', 'audio/ogg', 'audio/flac'] as const;
-const intentSchema = z.object({ name: z.string().min(1).max(255).refine(v => !/[\r\n\0]/.test(v)), contentType: z.enum(types), size: z.number().int().min(0).max(MAX_FILE), sha256: z.string().regex(/^[a-f0-9]{64}$/), purpose: z.enum(['attachment', 'share', 'inference']).default('attachment') }).strict();
+const intentSchema = z.object({ name: z.string().min(1).max(255).refine(v => !/[\r\n\0]/.test(v)), contentType: z.enum(types), size: z.number().int().min(0).max(MAX_FILE), sha256: z.string().regex(/^[a-f0-9]{64}$/), purpose: z.enum(['attachment', 'share', 'feedback']).default('attachment') }).strict();
 const uuid = z.string().uuid();
 type Attachment = { id: string; user_id: string; pathname: string; name: string; content_type: string; expected_size: number | string; expected_sha256: string; purpose: string; state: string; expires_at: string };
 function reject(status: 400 | 403 | 404 | 409 | 413 | 416 | 503, code: string, message: string): never { throw new HTTPException(status, { res: Response.json({ error: { code, message } }, { status }) }); }
@@ -68,7 +70,7 @@ async function verifiedBytes(row: Attachment) {
   return row.purpose === 'share' ? Buffer.concat(chunks) : null;
 }
 async function complete(row: Attachment) {
-  if (row.state === 'ready') { if (row.purpose === 'inference' && new Date(row.expires_at).getTime() <= Date.now()) reject(409, 'UPLOAD_EXPIRED', 'Inference input expired.'); return; }
+  if (row.state === 'ready') return;
   if (row.state !== 'issued' || new Date(row.expires_at).getTime() <= Date.now()) {
     await del(row.pathname);
     reject(409, 'UPLOAD_EXPIRED', 'Upload reservation expired or was canceled.');
@@ -84,14 +86,14 @@ attachmentRoutes.post('/attachments/intents', async c => {
   if (!parsed.success) reject(400, 'INVALID_INPUT', 'Provide name, permitted MIME type, size and SHA-256.');
   const value = parsed.data, user = c.get('user').id, attachmentId = randomUUID();
   if (value.purpose === 'share' && (value.size > MAX_SHARE || value.contentType !== 'application/json')) reject(400, 'INVALID_SHARE_UPLOAD', 'Shared transcript imports must be application/json and no larger than 50 MB.');
-  if (value.purpose === 'inference' && (value.size < 1 || value.size > 20 * 1024 * 1024 || !/^(?:image\/(?:png|jpeg|webp)|audio\/(?:webm|mp4|m4a|x-m4a|mpeg|mp3|wav|x-wav|ogg|flac))$/.test(value.contentType))) reject(400, 'INVALID_INFERENCE_UPLOAD', 'Inference inputs must be supported image/audio files no larger than 20 MiB.');
+  if (value.purpose === 'feedback' && (value.size > MAX_FEEDBACK || value.contentType !== 'application/json')) reject(400, 'INVALID_FEEDBACK_UPLOAD', 'Feedback reports must be application/json and no larger than 8 MiB.');
   const pathname = `aux/${user}/${attachmentId}/content`;
   const results = await sql.transaction([
     sql`SELECT pg_advisory_xact_lock(hashtextextended(${user}, 0))`,
-    sql`INSERT INTO aux_attachments (id, user_id, pathname, name, content_type, expected_size, expected_sha256, purpose, expires_at) SELECT ${attachmentId}, ${user}, ${pathname}, ${value.name}, ${value.contentType}, ${value.size}, ${value.sha256}, ${value.purpose}, now() + interval '15 minutes' WHERE (SELECT coalesce(sum(expected_size), 0) FROM aux_attachments WHERE user_id = ${user} AND (state = 'ready' OR ((state IN ('pending','issued') OR (purpose = 'inference' AND state = 'failed')) AND expires_at > now()))) + ${value.size} <= (SELECT CASE WHEN plan = 'max' AND status IN ('active','trialing') THEN 21474836480::bigint WHEN plan = 'pro' AND status IN ('active','trialing') THEN 5368709120::bigint ELSE 104857600::bigint END FROM (SELECT (SELECT plan FROM aux_subscriptions WHERE user_id = ${user}) AS plan, (SELECT status FROM aux_subscriptions WHERE user_id = ${user}) AS status) subscription) AND (SELECT count(*) FROM aux_attachments WHERE user_id = ${user} AND (state = 'ready' OR ((state IN ('pending','issued') OR (purpose = 'inference' AND state = 'failed')) AND expires_at > now()))) < 10000 RETURNING *`,
+    sql`INSERT INTO aux_attachments (id, user_id, pathname, name, content_type, expected_size, expected_sha256, purpose, expires_at) SELECT ${attachmentId}, ${user}, ${pathname}, ${value.name}, ${value.contentType}, ${value.size}, ${value.sha256}, ${value.purpose}, now() + interval '15 minutes' WHERE (SELECT coalesce(sum(expected_size), 0) FROM aux_attachments WHERE user_id = ${user} AND (state = 'ready' OR (state IN ('pending','issued') AND expires_at > now()))) + ${value.size} <= ${ATTACHMENT_QUOTA_BYTES} AND (SELECT count(*) FROM aux_attachments WHERE user_id = ${user} AND (state = 'ready' OR (state IN ('pending','issued') AND expires_at > now()))) < 10000 RETURNING *`,
   ]);
   const row = results[1]?.[0] as Attachment | undefined;
-  if (!row) reject(413, 'STORAGE_QUOTA', paymentsEnabled() ? 'Attachment quota reached. Delete files or choose a larger plan.' : 'Attachment storage limit reached. Delete files and retry.');
+  if (!row) reject(413, 'STORAGE_QUOTA', 'Attachment storage limit reached. Delete files and retry.');
   return c.json({ ...metadata(row), pathname, access: 'private', uploadUrl: '/attachments/upload', expiresAt: row.expires_at, clientPayload: JSON.stringify({ intentId: row.id }) }, 201);
 });
 attachmentRoutes.post('/attachments/upload', async c => {
@@ -144,9 +146,15 @@ attachmentRoutes.post('/attachments/:id/commit', async c => {
   await complete(row);
   if (row.purpose === 'share') {
     const bytes = await verifiedBytes({ ...row, state: 'ready' });
-    let payload: unknown;
-    try { payload = JSON.parse(bytes!.toString('utf8')); } catch { reject(400, 'INVALID_SHARE_UPLOAD', 'Shared transcript must contain valid JSON.'); }
-    return c.json({ ...metadata({ ...row, state: 'ready' }), share: await publishShareForUser(row.user_id, payload) });
+    // The upload only carries the transcript into the share row; never keep it as a file.
+    try {
+      let payload: unknown;
+      try { payload = JSON.parse(bytes!.toString('utf8')); } catch { reject(400, 'INVALID_SHARE_UPLOAD', 'Shared transcript must contain valid JSON.'); }
+      return c.json({ ...metadata({ ...row, state: 'ready' }), share: await publishShareForUser(row.user_id, payload) });
+    } finally {
+      await del(row.pathname);
+      await sql`UPDATE aux_attachments SET state = 'deleted' WHERE id = ${row.id} AND user_id = ${row.user_id}`;
+    }
   }
   return c.json(metadata({ ...row, state: 'ready' }));
 });
@@ -217,7 +225,6 @@ export function rangeStream(source: ReadableStream<Uint8Array>, start: number, e
 }
 attachmentRoutes.get('/attachments/:id/content', async c => {
   const row = await owned(c.get('user').id, c.req.param('id'));
-  if (row.purpose === 'inference') reject(403, 'EPHEMERAL_INPUT', 'Ephemeral inputs are only readable by an inference operation.');
   if (row.state !== 'ready') reject(409, 'UPLOAD_INCOMPLETE', 'Commit the verified upload before reading it.');
   const size = Number(row.expected_size), range = parseByteRange(c.req.header('Range'), size);
   blobReady();
@@ -244,7 +251,7 @@ attachmentRoutes.delete('/attachments/:id', async c => {
   blobReady();
   const row = await owned(c.get('user').id, c.req.param('id'));
   await del(row.pathname);
-  await sql`UPDATE aux_attachments SET state = CASE WHEN purpose = 'inference' AND expires_at > now() THEN 'failed' ELSE 'deleted' END WHERE id = ${row.id} AND user_id = ${row.user_id}`;
+  await sql`UPDATE aux_attachments SET state = 'deleted' WHERE id = ${row.id} AND user_id = ${row.user_id}`;
   return c.json({ ok: true });
 });
 
@@ -252,14 +259,25 @@ attachmentRoutes.delete('/attachments/:id', async c => {
 export async function cleanExpiredAttachmentUploads(limit = 50) {
   blobReady();
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('Cleanup limit must be between 1 and 100');
-  const rows = await sql`SELECT id, pathname FROM aux_attachments WHERE (state IN ('pending','issued','failed') OR (purpose = 'inference' AND state = 'ready')) AND expires_at < now() ORDER BY expires_at LIMIT ${limit}`;
+  const rows = await sql`SELECT id, pathname FROM aux_attachments WHERE state IN ('pending','issued','failed') AND expires_at < now() ORDER BY expires_at LIMIT ${limit}`;
   let cleaned = 0;
   for (const row of rows) {
     await del(row.pathname);
-    await sql`UPDATE aux_attachments SET state = 'deleted' WHERE id = ${row.id} AND (state IN ('pending','issued','failed') OR (purpose = 'inference' AND state = 'ready')) AND expires_at < now()`;
+    await sql`UPDATE aux_attachments SET state = 'deleted' WHERE id = ${row.id} AND state IN ('pending','issued','failed') AND expires_at < now()`;
     cleaned += 1;
   }
   return { cleaned };
+}
+
+/** The privacy policy keeps feedback reports for 90 days. */
+export async function cleanExpiredFeedback(limit = 50) {
+  blobReady();
+  const rows = await sql`SELECT id, pathname FROM aux_attachments WHERE purpose = 'feedback' AND state <> 'deleted' AND created_at < now() - interval '90 days' ORDER BY created_at LIMIT ${limit}`;
+  for (const row of rows) {
+    await del(row.pathname);
+    await sql`UPDATE aux_attachments SET state = 'deleted' WHERE id = ${row.id}`;
+  }
+  return { cleaned: rows.length };
 }
 
 /** Account deletion must finish these batches before cascading away the owner metadata. */

@@ -12,10 +12,6 @@
   "route": "/account",
   "cloudContractSources": [
     {
-      "path": "services/aux-cloud/src/billing.ts",
-      "sha256": "afc8d76d6922edeab9e9e1917513342e4934754112f829d10c481e6e87e49529"
-    },
-    {
       "path": "services/aux-cloud/app/account/page.tsx",
       "sha256": "e1c9bcea8fa4756aae14872738a48cf69b01eaba07002e0b8cb5792d49423de2"
     },

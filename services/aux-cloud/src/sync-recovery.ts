@@ -46,9 +46,9 @@ export class SyncRecoveryService {
  }
 }
 export const syncRecoveryRoutes=new Hono<{Variables:AuthVariables}>();
-syncRecoveryRoutes.use('*',bodyLimit({maxSize:16384,onError:c=>c.json({error:{code:'RECOVERY_INVALID_REQUEST',message:'Recovery request exceeds 16 KiB.'}},413)}));
-syncRecoveryRoutes.use('*',requireUser);
-syncRecoveryRoutes.use('*',async(c,next)=>{c.header('Cache-Control','no-store');if(c.get('user').sessionId.startsWith('clerk:'))throw new HTTPException(403,{message:'A bound Aux installation session is required.'});if(!await rateLimit('sync-recovery:'+c.get('user').id,30,60))throw new HTTPException(429,{message:'Wait before retrying recovery.'});await next();});
+syncRecoveryRoutes.use('/sync/recovery/v2/*',bodyLimit({maxSize:16384,onError:c=>c.json({error:{code:'RECOVERY_INVALID_REQUEST',message:'Recovery request exceeds 16 KiB.'}},413)}));
+syncRecoveryRoutes.use('/sync/recovery/v2/*',requireUser);
+syncRecoveryRoutes.use('/sync/recovery/v2/*',async(c,next)=>{c.header('Cache-Control','no-store');if(!await rateLimit('sync-recovery:'+c.get('user').id,30,60))throw new HTTPException(429,{message:'Wait before retrying recovery.'});await next();});
 const service=new SyncRecoveryService();
 syncRecoveryRoutes.post('/sync/recovery/v2/challenge',async c=>c.json(await service.challenge(c.get('user'),await c.req.json())));
 syncRecoveryRoutes.post('/sync/recovery/v2/submit',async c=>c.json(await service.submit(c.get('user'),await c.req.json())));

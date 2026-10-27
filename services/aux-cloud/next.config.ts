@@ -14,6 +14,10 @@ const config: NextConfig = {
       { key: 'Referrer-Policy', value: 'no-referrer' },
       { key: 'X-Frame-Options', value: 'DENY' },
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+    ] }, { source: '/s/:path*', headers: [
+      // Shared transcripts are user content: no external loads, no forms, no framing, no indexing.
+      { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" },
+      { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
     ] }, { source: '/builtin-skills/v1/:path*', headers: [
       { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
       { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },

@@ -7,6 +7,7 @@ import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import { sql } from './db';
+import { TERMS_VERSION } from './legal';
 
 export type AuthUser = { id: string; clerkId: string; email: string; sessionId: string };
 export type AuthVariables = { user: AuthUser };
@@ -106,8 +107,16 @@ async function mapUser(user: { id: string; emailAddresses: {id:string;emailAddre
   if (user.banned || user.locked) throw new AuthIdentityError('Account is not available');
   const email = user.emailAddresses.find(e => verifiedEmail ? e.emailAddress.toLowerCase() === verifiedEmail : e.id === user.primaryEmailAddressId);
   if (!email || email.verification?.status !== 'verified') throw new AuthIdentityError('Verified email address required');
-  const rows = await sql`INSERT INTO aux_users(clerk_id,email,name) VALUES (${user.id},${email.emailAddress.toLowerCase()},${[user.firstName,user.lastName].filter(Boolean).join(' ')})
-    ON CONFLICT(clerk_id) DO UPDATE SET email=excluded.email,updated_at=now() WHERE aux_users.deleted_at IS NULL RETURNING *`;
+  let rows;
+  try {
+    // Touch the row only when the email changed: updated_at drives "account changed" events.
+    rows = await sql`INSERT INTO aux_users(clerk_id,email,name,terms_version,terms_accepted_at) VALUES (${user.id},${email.emailAddress.toLowerCase()},${[user.firstName,user.lastName].filter(Boolean).join(' ')},${TERMS_VERSION},now())
+      ON CONFLICT(clerk_id) DO UPDATE SET email=excluded.email,updated_at=now() WHERE aux_users.deleted_at IS NULL AND aux_users.email IS DISTINCT FROM excluded.email RETURNING *`;
+  } catch (cause) {
+    if ((cause as {code?:string}).code === '23505') throw new AuthIdentityError('Email belongs to another Aux account');
+    throw cause;
+  }
+  if (!rows[0]) rows = await sql`SELECT * FROM aux_users WHERE clerk_id=${user.id} AND deleted_at IS NULL`;
   if (!rows[0]) throw new AuthIdentityError('Account was deleted');
   return rows[0] as Row;
 }
@@ -149,6 +158,11 @@ export const requireUser = createMiddleware<AuthEnv>(async (c,next) => {
   }
   await next();
 });
+// Keys, files and sessions belong to a bound desktop installation, never a web sign-in.
+export const requireInstallation = createMiddleware<AuthEnv>(async (c,next) => {
+  if (c.get('user').sessionId.startsWith('clerk:')) return error(c,'Use an installation-authenticated desktop session.','DEVICE_REQUIRED',403);
+  await next();
+});
 export const authRoutes = new Hono<AuthEnv>();
 authRoutes.use('*',async(c,next)=>{c.header('Cache-Control','no-store');await next();});
 authRoutes.onError((err,c) => {
@@ -160,9 +174,11 @@ authRoutes.onError((err,c) => {
   return error(c,'Authentication is temporarily unavailable. Please try again.','AUTH_UNAVAILABLE',503);
 });
 
+// Caps total sign-in mail so requests spread across many addresses and IPs cannot exhaust the sender.
+const OTP_SENDS_PER_HOUR = 300;
 authRoutes.post('/email/start', async c => {
   const body = await input(c,z.object({email:emailSchema,accountId:z.number().int().nonnegative().optional(),intent:z.string().max(40).optional(),signInAttemptId:z.string().uuid().optional()}));
-  if (!await rateLimit(`otp-ip:${ip(c)}`,15,3600) || !await rateLimit(`otp-email:${body.email}`,5,3600) || !await rateLimit(`otp-resend:${body.email}`,1,60)) return error(c,'Please wait before requesting another code.','RATE_LIMITED',429);
+  if (!await rateLimit(`otp-ip:${ip(c)}`,15,3600) || !await rateLimit(`otp-email:${body.email}`,5,3600) || !await rateLimit(`otp-resend:${body.email}`,1,60) || !await rateLimit('otp-global',OTP_SENDS_PER_HOUR,3600)) return error(c,'Please wait before requesting another code.','RATE_LIMITED',429);
   const code = String(randomInt(0,1_000_000)).padStart(6,'0');
   const hash = secretHash('otp',`${body.email}:${code}`);
   await sql`INSERT INTO aux_email_challenges(email,code_hash,expires_at) VALUES (${body.email},${hash},now()+interval '10 minutes')
@@ -267,7 +283,7 @@ authRoutes.post('/signout', async c => {
 authRoutes.use('/me',requireUser);
 authRoutes.use('/me/*',requireUser);
 async function currentUser(id:string) {
-  const rows=await sql`SELECT u.*,COALESCE((SELECT plan FROM aux_subscriptions WHERE user_id=u.id AND status IN ('active','trialing') LIMIT 1),'free') AS plan FROM aux_users u WHERE u.id=${id} AND deleted_at IS NULL`;
+  const rows=await sql`SELECT u.* FROM aux_users u WHERE u.id=${id} AND deleted_at IS NULL`;
   const u=rows[0];
   if(!u)throw new Error('Account unavailable');
   let profileUrl=u.profile_url??null;
@@ -275,7 +291,7 @@ async function currentUser(id:string) {
     const capability=await new SignJWT({path:u.avatar_path}).setProtectedHeader({alg:'HS256',typ:'JWT'}).setSubject(u.id).setIssuer(ownIssuer).setAudience('aux-avatar').setIssuedAt().setExpirationTime('2h').sign(new TextEncoder().encode(pepper()));
     profileUrl=`${process.env.AUX_API_ORIGIN||ownIssuer}/auth/avatar/${u.id}?cap=${capability}`;
   }
-  return {userId:u.id,name:u.name||u.email,email:u.email,plan:u.plan,profileUrl,onboardingCompletedAt:u.onboarding_completed_at??null,features:[]};
+  return {userId:u.id,name:u.name||u.email,email:u.email,plan:'free',profileUrl,onboardingCompletedAt:u.onboarding_completed_at??null,features:[]};
 }
 authRoutes.get('/me',async c=>c.json(await currentUser(c.get('user').id)));
 authRoutes.post('/me',async c=>{
@@ -285,15 +301,11 @@ authRoutes.post('/me',async c=>{
 });
 authRoutes.delete('/me',async c=>{
   const user=c.get('user');
-  // Preserve account access if its owned subscription cannot be stopped.
-  // Retrying after a database failure is safe: billing uses an idempotency key.
-  const {cancelUserSubscription}=await import('./billing');
-  await cancelUserSubscription(user.id);
   await sql`WITH removed AS (UPDATE aux_users SET deleted_at=now(),updated_at=now() WHERE id=${user.id} RETURNING id),
     revoked AS (UPDATE aux_sessions SET revoked_at=now() WHERE user_id IN (SELECT id FROM removed))
     UPDATE shared_sessions SET revoked_at=now() WHERE user_id IN (SELECT id FROM removed)`;
   let purgePending=true;
-  try{purgePending=!(await purgeDeletedUserData(user.id)).complete;}catch{ /* Daily maintenance retries safely; account access is already revoked. */ }
+  try{purgePending=!(await purgeDeletedUserData(user.id)).complete;}catch{ /* Maintenance retries safely; account access is already revoked. */ }
   return c.json({success:true,purgePending});
 });
 authRoutes.post('/onboarding/complete',requireUser,async c=>{
@@ -374,9 +386,12 @@ authRoutes.post('/me/avatar',async c=>{
   const webp=bytes.subarray(0,4).toString()==='RIFF'&&bytes.subarray(8,12).toString()==='WEBP';
   const type=png?'image/png':jpeg?'image/jpeg':webp?'image/webp':null;
   if(!type)return error(c,'Choose a PNG, JPEG or WebP image.','INVALID_IMAGE',400);
-  const {put}=await import('@vercel/blob');
+  const {put,del}=await import('@vercel/blob');
   const result=await put(`avatars/${user.id}/${randomUUID()}`,bytes,{access:'private',contentType:type,addRandomSuffix:false});
-  await sql`UPDATE aux_users SET avatar_path=${result.pathname},avatar_mime=${type},updated_at=now() WHERE id=${user.id} AND deleted_at IS NULL`;
+  const [replaced]=await sql`UPDATE aux_users u SET avatar_path=${result.pathname},avatar_mime=${type},updated_at=now() FROM aux_users old
+    WHERE u.id=${user.id} AND old.id=u.id AND u.deleted_at IS NULL RETURNING old.avatar_path AS previous`;
+  // A leftover old image is harmless: account deletion clears the whole avatar prefix.
+  if(replaced?.previous)await del(replaced.previous).catch(cause=>console.error(JSON.stringify({event:'aux.avatar.replace_cleanup_failed',error:String(cause)})));
   return c.json(await currentUser(user.id));
 });
 authRoutes.get('/avatar/:id',async c=>{
@@ -418,18 +433,14 @@ authWebhooks.post('/',async c=>{
       await sql`WITH removed AS (UPDATE aux_users SET deleted_at=COALESCE(deleted_at,now()),updated_at=now() WHERE clerk_id=${event.data.id} RETURNING id),
         revoked AS (UPDATE aux_sessions SET revoked_at=now() WHERE user_id IN (SELECT id FROM removed))
         UPDATE shared_sessions SET revoked_at=now() WHERE user_id IN (SELECT id FROM removed)`;
-      const users=await sql`SELECT id FROM aux_users WHERE clerk_id=${event.data.id}`;
-      const {cancelUserSubscription}=await import('./billing');
-      for(const user of users)await cancelUserSubscription(user.id);
-      // A billing outage leaves access revoked and this delivery unacknowledged,
-      // so Clerk retries instead of leaving a deleted identity renewing forever.
     }
   }else if(event.type==='user.updated'){
     // Fetch current state instead of applying potentially reordered profile payloads.
-    const client=clerk(),account=await client.users.getUser(event.data.id);
-    if(account.banned||account.locked){
+    // A 404 means the identity was deleted after this event was queued; user.deleted handles it.
+    const account=await clerk().users.getUser(event.data.id).catch(cause=>{if((cause as {status?:number}).status===404)return null;throw cause;});
+    if(account?.banned||account?.locked){
       await sql`UPDATE aux_sessions SET revoked_at=now() WHERE user_id IN (SELECT id FROM aux_users WHERE clerk_id=${account.id})`;
-    }else{
+    }else if(account){
       // Do not create a product account merely because a Clerk profile changed.
       const known=await sql`SELECT id FROM aux_users WHERE clerk_id=${account.id} AND deleted_at IS NULL`;
       if(known[0])await mapUser(account);
@@ -459,37 +470,40 @@ profileRoutes.post('/metadata', async c => {
   return c.json(await currentUser(user.id));
 });
 
+// Every table holding a user's rows, children before parents. A test checks this
+// against the migrated schema so a new table cannot be missed.
+export const userDataTables=['aux_attachment_bindings','aux_retired_session_blobs','aux_session_snapshots','aux_drive_cookies','aux_drive_files','aux_drive_heads',
+  'sync_heads','sync_objects','sync_entities','aux_sync_recovery_challenges_v2','aux_sync_recovery_v2','sync_keys','shared_sessions','aux_device_requests',
+  'aux_credit_refunds','aux_credit_grants','aux_credit_periods','aux_checkout_requests','aux_usage','aux_wallets','aux_subscriptions','aux_attachments'] as const;
+
+/** Retryable: blobs first, then rows, then the identity. Completes only when nothing remains. */
 export async function purgeDeletedUserData(userId:string) {
   z.string().uuid().parse(userId);
-  const rows=await sql`SELECT id,avatar_path FROM aux_users WHERE id=${userId} AND deleted_at IS NOT NULL`;
+  const rows=await sql`SELECT id,clerk_id,email FROM aux_users WHERE id=${userId} AND deleted_at IS NOT NULL`;
   if(!rows[0])throw new Error('Account must be soft-deleted before purging data');
-  const {cancelUserSubscription}=await import('./billing');
-  await cancelUserSubscription(userId);
-  await sql`DELETE FROM aux_session_snapshots WHERE user_id=${userId}`;
-  await sql`DELETE FROM aux_retired_session_blobs WHERE user_id=${userId}`;
-  await sql`DELETE FROM aux_drive_cookies WHERE user_id=${userId}`;
-  await sql`DELETE FROM aux_drive_files WHERE user_id=${userId}`;
-  await sql`DELETE FROM aux_drive_heads WHERE user_id=${userId}`;
-  await sql`DELETE FROM sync_heads WHERE user_id=${userId}`;
-  await sql`DELETE FROM sync_objects WHERE user_id=${userId}`;
-  await sql`DELETE FROM sync_entities WHERE user_id=${userId}`;
-  await sql`DELETE FROM aux_sync_recovery_challenges_v2 WHERE user_id=${userId}`;
-  await sql`DELETE FROM aux_sync_recovery_v2 WHERE user_id=${userId}`;
-  await sql`DELETE FROM sync_keys WHERE user_id=${userId}`;
+  await sql`UPDATE aux_users SET purge_attempted_at=now() WHERE id=${userId}`;
   await sql`UPDATE shared_sessions SET revoked_at=COALESCE(revoked_at,now()),messages='[]'::jsonb,title='' WHERE user_id=${userId}`;
-  const count=await sql`SELECT count(*) FILTER (WHERE state<>'deleted') AS remaining,max(expires_at) FILTER (WHERE expires_at>now()) AS safe_after FROM aux_attachments WHERE user_id=${userId}`;
-  let remaining=Number(count[0].remaining),safeAfter=count[0].safe_after;
-  if(remaining>0){
-    const {purgeUserAttachments}=await import('./attachments');
-    const result=await purgeUserAttachments(userId,100);
-    remaining=result.remaining;safeAfter=result.safeToDeleteAccountAfter;
+  const {purgeUserAttachments}=await import('./attachments');
+  const attachments=await purgeUserAttachments(userId,100);
+  // Uploads still in flight can complete until their token expires; keep their rows until then.
+  if(attachments.remaining>0||attachments.safeToDeleteAccountAfter)return {complete:false,remaining:attachments.remaining,safeToDeleteAccountAfter:attachments.safeToDeleteAccountAfter};
+  const {list,del}=await import('@vercel/blob');
+  for(let cursor:string|undefined;;){
+    const page=await list({prefix:`avatars/${userId}/`,cursor});
+    if(page.blobs.length)await del(page.blobs.map(blob=>blob.url));
+    if(!page.hasMore)break;
+    cursor=page.cursor;
   }
-  if(rows[0].avatar_path){
-    const {del}=await import('@vercel/blob');
-    await del(rows[0].avatar_path);
-    await sql`UPDATE aux_users SET avatar_path=NULL,avatar_mime=NULL WHERE id=${userId} AND deleted_at IS NOT NULL`;
+  await sql`DELETE FROM aux_refresh_tokens WHERE session_id IN (SELECT id FROM aux_sessions WHERE user_id=${userId})`;
+  await sql`DELETE FROM aux_sessions WHERE user_id=${userId}`;
+  for(const table of userDataTables)await sql.query(`DELETE FROM ${table} WHERE user_id=$1`,[userId]);
+  await sql`DELETE FROM aux_email_challenges WHERE email=${rows[0].email}`;
+  if(!String(rows[0].clerk_id).startsWith('deleted:')){
+    try{await clerk().users.deleteUser(rows[0].clerk_id);}
+    catch(cause){if((cause as {status?:number}).status!==404)throw cause;}
   }
-  const complete=remaining===0&&!safeAfter;
-  if(complete)await sql`UPDATE aux_users SET data_purged_at=now() WHERE id=${userId} AND deleted_at IS NOT NULL`;
-  return {complete,remaining,safeToDeleteAccountAfter:safeAfter??null};
+  // Keep the row as a tombstone for audit only; free the email and identity for a new account.
+  await sql`UPDATE aux_users SET clerk_id='deleted:'||id::text,email='deleted+'||id::text||'@invalid',name='',profile_url=NULL,avatar_path=NULL,avatar_mime=NULL,
+    onboarding_completed_at=NULL,data_purged_at=now(),updated_at=now() WHERE id=${userId} AND deleted_at IS NOT NULL`;
+  return {complete:true,remaining:0,safeToDeleteAccountAfter:null};
 }

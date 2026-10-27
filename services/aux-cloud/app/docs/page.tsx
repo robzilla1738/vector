@@ -1,25 +1,26 @@
 import Link from 'next/link';
 import InformationPage from "../information-page";
 
-export const metadata={title:"Getting started with Aux" + ' | Aux'};
+export const metadata={title:'Getting started | Aux'};
 
 export default function Page() {
   return <InformationPage title="Getting started with Aux">
-    <p>Aux combines a browser, separate profiles and AI-assisted work. This development preview targets Apple Silicon Macs running macOS 27. Final package verification is still in progress; support for older macOS releases or Intel Macs is not established.</p>
-    <section><h2>Start with a fresh profile</h2>
-    <p>Create a fresh Aux profile and keep work and personal browsing in separate profiles. Check the active profile before signing in to a site, opening a chat or selecting page context. This preview does not migrate another browser's profiles, passwords or AI credentials automatically.</p>
+    <p>Aux is a browser with separate profiles and an AI agent that works with your pages, tabs and files. It runs on Apple silicon Macs with macOS 27 and is a development preview.</p>
+    <section><h2>Profiles</h2>
+    <p>Keep work and personal browsing in separate profiles. Each profile has its own sites, sign-ins, chats and settings. Check which profile is active before you sign in to a site or start a chat. Aux does not import profiles or passwords from another browser.</p>
     </section>
-    <section><h2>Connect your AI provider</h2>
-    <p>Open Aux's provider settings, add your own provider credential through the secure input, then select an available model. Provider availability, permissions and charges follow your own provider account. Aux-hosted AI and Aux payments are disabled in the current launch configuration. A ChatGPT identity sign-in alone does not establish access to plan-based model usage; that integration remains subject to eligibility and consent.</p>
-    <p>Use a small test request before relying on a new connection. If a request fails or a capability is unavailable, keep the error visible and use feedback; a connected account or populated model list does not mean a request completed. Disconnect a disposable connection when finished.</p>
+    <section><h2>Connect an AI provider</h2>
+    <p>Open Settings, add an API key from the AI provider you use, and pick a model. Requests go straight to that provider and are billed to your account there; Aux sells no AI and takes no payments. Send a short test message to confirm the connection works.</p>
     </section>
-    <section><h2>Choose context and permissions</h2>
-    <p>Select the page, tab or file you intend to use. Review permission requests and the destination account. Browser actions and native features require their corresponding supported path and, where applicable, your OS permission. General shell/interactive-terminal capability is still awaiting its required platform entitlement and acceptance. Desktop observation requires explicit consent; it is not enabled simply by opening these pages.</p>
-    <p>Use your existing password manager through its browser extension. Aux does not provide a built-in password vault. Official extension, autofill and native companion compatibility are still being verified for this preview.</p>
+    <section><h2>Context and permissions</h2>
+    <p>Choose the page, tab or file you want the agent to use, and review any action before it runs. Features that use macOS capabilities ask for permission first.</p>
     </section>
-    <section><h2>Cloud features</h2>
-    <p>Hosted sign-in, encrypted sync, private files, sharing and scheduled recovery require the configured Aux cloud service. Their final hosted activation and acceptance remain pending. Do not treat this development preview as a guaranteed backup service. Keep your own recoverable copies of important material.</p>
-    <p>For updates and feedback, see <Link href="/community">Community and feedback</Link>. Read the reviewed <Link href="/policy/privacy">Privacy information</Link> and <Link href="/policy/terms">Terms</Link> before using a public service; their current drafts require owner and legal approval.</p>
+    <section><h2>Passwords</h2>
+    <p>Aux has no built-in password manager. Install your own, such as 1Password, from its official browser extension.</p>
     </section>
+    <section><h2>Aux cloud</h2>
+    <p>Aux works fully on your Mac without an account. Signing in to Aux cloud is optional and adds encrypted sync, shared conversations and private feedback reports. Read the <Link href="/policy/privacy">Privacy policy</Link> for what the cloud stores, and keep your own copies of important work.</p>
+    </section>
+    <p>Questions or problems: see <Link href="/community">Feedback and support</Link>.</p>
   </InformationPage>;
 }

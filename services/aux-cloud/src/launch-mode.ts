@@ -1,4 +1,3 @@
-// Deliberate opt-ins: saved credentials never enable purchases or Aux-funded AI.
-export const paymentsEnabled = () => process.env.AUX_PAYMENTS_ENABLED === 'true';
-export const hostedAiEnabled = () => process.env.AUX_HOSTED_AI_ENABLED === 'true';
-export const launchCapabilities = () => ({ paymentsEnabled: paymentsEnabled(), hostedAiEnabled: hostedAiEnabled() });
+// Aux launches bring-your-own-provider only: no payments and no Aux-funded AI.
+// Clients still read these flags, so they stay part of every billing and readiness reply.
+export const launchCapabilities = () => ({ paymentsEnabled: false, hostedAiEnabled: false });

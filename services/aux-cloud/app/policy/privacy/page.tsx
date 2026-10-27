@@ -1,27 +1,40 @@
 import InformationPage from "../../information-page";
+import { TERMS_EFFECTIVE } from "../../../src/legal";
 
-export const metadata={title:"Privacy information \u2014 review draft" + ' | Aux'};
+export const metadata={title:'Privacy | Aux'};
 
 export default function Page() {
-  return <InformationPage title="Privacy information \u2014 review draft">
-    <p>Aux is operated by Courson Digital LLC. Public support and privacy requests: hello@getaux.co. This policy remains a review draft; these confirmed facts do not establish public approval or hosted availability.</p>
-    <p>This draft describes the implemented architecture and proposed service configuration. It has not been approved as Aux's public privacy policy. Public hosted activation remains pending. The owner must complete the decisions below before publication.</p>
-    <section><h2>Local browser and AI activity</h2>
-    <p>Aux profiles hold browser data and account-scoped app state on your Mac. Provider credentials use the application's account-scoped secure credential path; they should not be included in diagnostics, screenshots or shared content. When you choose to use an AI provider, your request and the context you select are sent through the configured provider integration. Your provider's own processing and retention policies apply. Aux-hosted AI is disabled in the current launch configuration.</p>
-    <p>Optional desktop observation and OS integrations require their supported implementation and explicit permissions. This draft does not authorize desktop capture or access to Messages, Contacts, the Keychain or unrelated private files. Aux does not ship a built-in password vault; an external password-manager extension has its own privacy terms and permissions.</p>
+  return <InformationPage title="Privacy">
+    <p className="muted">Effective {TERMS_EFFECTIVE}</p>
+    <p>Courson Digital LLC operates Aux. This page explains what Aux keeps on your Mac, what reaches our cloud service and what we do with it. Requests and questions: <a href="mailto:hello@getaux.co">hello@getaux.co</a>.</p>
+    <section><h2>On your Mac</h2>
+    <p>Your profiles, browsing data, chats, memories and AI provider credentials stay on your Mac. Credentials are kept in the macOS Keychain. The desktop app sends no product analytics, and crash reports stay on your Mac. Aux has no built-in password manager; a password-manager extension you install follows its own privacy policy.</p>
     </section>
-    <section><h2>Hosted accounts, sync and files</h2>
-    <p>The proposed Aux cloud uses Clerk for identity/session services, Vercel for the web/API application, Neon Postgres for service records, Vercel private Blob for file storage and Resend for transactional email. The source includes encrypted sync/content records and private file access controls. Some account, device, synchronization, timestamp and file-size metadata must remain available for the service to authenticate requests, resolve conflicts and operate. Encryption of a content record does not mean every service record is unreadable to the operator; no blanket claim of anonymous operation or zero operator access is made.</p>
-    <p>Private files are not intended to be public by default. Creating a share gives access through the chosen sharing capability; revocation and deletion require their actual service operations. Do not share material you lack permission to disclose. Email sign-in and other transactional messages necessarily pass their addressing/delivery information to the configured email or identity provider.</p>
+    <section><h2>AI requests</h2>
+    <p>When you ask Aux to use AI, your request and the context you select go directly to the provider you connected. We do not receive or relay them, and Aux offers no AI of its own. Your provider&rsquo;s privacy policy applies.</p>
     </section>
-    <section><h2>Feedback reports</h2>
-    <p>If you explicitly save session feedback, the source adapter submits your comment and the existing session-data export as a bounded JSON report through authenticated private attachment storage. Aux service operators with the existing private-store custody can read that report for review; it is not hidden from the operator by client-only encryption. The success message confirms verified private storage, not an email, response or human review. Actual storage and operator readback acceptance remain pending for this preview. Reports follow existing attachment quota, account access and deletion/purge handling and can be included in approved recovery captures. A distinct feedback review/retention policy still requires owner/legal approval; the upload token's expiry is not a ready report's deletion deadline.</p>
+    <section><h2>Aux cloud</h2>
+    <p>Signing in to Aux cloud is optional. If you sign in, we store your email address, name and profile picture, your device sessions, and the content you choose to sync, upload, share or send as feedback.</p>
+    <p>Synced content is encrypted before storage. Its key is held by our service, wrapped with a service key, so that a new device can resume sync after sign-in. This means Courson Digital LLC could technically decrypt synced content. We access it only to operate the service or when the law requires it. History sync is off unless you turn it on.</p>
+    <p>A shared conversation is public to anyone with its link until you unshare it. Feedback reports, including any session data you attach, are private files our team can read to investigate the report.</p>
     </section>
-    <section><h2>Recovery and diagnostics</h2>
-    <p>Recovery source can encrypt a database/private-file capture for storage in the configured Cloudflare R2 recovery bucket. Scheduled operation, alerts, independent recovery-key custody and isolated restore are not yet accepted for the production service. A configured retention target is not proof that a deletion or backup deadline has been met. Operational records may be needed to investigate failed requests and incomplete writes; credentials and private payloads must be excluded from diagnostic output.</p>
+    <section><h2>Service providers</h2>
+    <p>We use Clerk for sign-in, Vercel for the application and private file storage, Neon for the database and Resend for sign-in email. They process data in the United States on our behalf under their data-processing terms, with standard contractual clauses or equivalent safeguards for international transfers. We do not sell your data or use it for advertising.</p>
     </section>
-    <section><h2>Decisions required before public publication</h2>
-    <p>Confirm the exact purposes and legal bases for each data category; actual provider agreements and processing locations; log and content retention periods; deletion/export and backup-expiry handling; request-verification procedures; international transfer safeguards; age rules; and how policy changes are communicated. Confirm any analytics/crash reporting and browser network services present in the final delivered package rather than claiming they are absent from this source review.</p>
+    <section><h2>Why we use your data</h2>
+    <p>We use account and sync data to provide the service you asked for, and sign-in email to deliver codes. We use limited technical records for security, abuse prevention and fixing problems, which is in our legitimate interest.</p>
+    </section>
+    <section><h2>How long we keep it</h2>
+    <p>Service logs: 30 days. Feedback reports: 90 days. Shared conversations: until you unshare them or delete your account. When you delete your account, we remove its content within 30 days and keep only an anonymized record that the account existed.</p>
+    </section>
+    <section><h2>Your choices</h2>
+    <p>You can delete your account from your account page at any time. To ask for a copy of your synced data, a correction or deletion, email <a href="mailto:hello@getaux.co">hello@getaux.co</a> from your account&rsquo;s address, or we will confirm the request with a code sent there. We answer within 30 days.</p>
+    </section>
+    <section><h2>Children</h2>
+    <p>Aux is not for children under 13, or under 16 in the European Union. We delete accounts we learn belong to younger children.</p>
+    </section>
+    <section><h2>Changes</h2>
+    <p>We will tell you about material changes in the app and by email at least 14 days before they take effect.</p>
     </section>
   </InformationPage>;
 }

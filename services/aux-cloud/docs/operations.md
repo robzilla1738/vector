@@ -6,7 +6,7 @@ The current activation procedure is [DEPLOYMENT.md](../../../docs/integration/pr
 
 ## Deployment checks
 
-`pnpm build` checks the target database hostname, app/API origins, provider modes, allowed web origins and auth/encryption/cron key formats. Both `AUX_PAYMENTS_ENABLED` and `AUX_HOSTED_AI_ENABLED` remain false; Stripe and Gateway setup are not launch prerequisites. Environment presence does not establish secret pairing, real delivery or live behavior.
+`pnpm build` checks the target database hostname, app/API origins, provider modes, allowed web origins and auth/encryption/cron key formats. Aux takes no payments and funds no AI, so the service has no payment or hosted-AI code and no Stripe or Gateway settings; readiness always reports both launch flags false. Environment presence does not establish secret pairing, real delivery or live behavior.
 
 Source has twelve immutable migrations. Historical Production evidence records all twelve applied. Compare their exact hashes before activation; no DDL is expected. A genuine missing or mismatched migration needs a separate exact review, never a reset or a rerun of altered applied SQL.
 
@@ -20,7 +20,7 @@ The remote Root Directory is empty, Node is24.x, and Git is disconnected. Upload
 
 The corrected `scripts/check-readiness.mts` requires an explicit target review and a new output path. It no longer guesses that dev-cloud is Development, loads `.env.local`, requires all provider secrets, or compares the obsolete response shape. A review records `format: aux.readiness-target.v1`, the existing project/team IDs, `environment: development|production`, exact HTTPS `origin`, actual `deploymentId`, and `assignmentVerifiedAt`. The operator must verify those facts against the intended deployment first. Only the matching API alias or the Aux project's unique deployment hostname is accepted; the target review is evidence, not authorization.
 
-Supply only the already authorized internal header through a private process environment, with `AUX_READINESS_SECRET_ENVIRONMENT` matching the reviewed environment. Never place its value in argv, a URL, Git or evidence. Then, from the service directory:
+Readiness accepts only `AUX_READINESS_SECRET`, never `CRON_SECRET`, so the monitor cannot invoke maintenance. Supply it through a private process environment, with `AUX_READINESS_SECRET_ENVIRONMENT` matching the reviewed environment. Never place its value in argv, a URL, Git or evidence. Then, from the service directory:
 
 ```sh
 pnpm exec tsx scripts/check-readiness.mts --target-review /absolute/review.json --output /absolute/new-readiness-receipt.json

@@ -19,9 +19,9 @@ export async function auxSubmitSessionFeedback(accountId, session, comment) {
       submittedAt: new Date().toISOString(), comment, sessionId: session.id, sessionDump: dump }));
     if (bytes.length > 8 * 1024 * 1024) throw Error('Session feedback exceeds the 8 MiB private report limit.');
     const name = 'session-feedback-' + randomUUID() + '.json';
-    const committed = await auxCloudUploadBytes(accountId, bytes, name, 'application/json', 'attachment', identity);
+    const committed = await auxCloudUploadBytes(accountId, bytes, name, 'application/json', 'feedback', identity);
     check();
-    if (committed.state !== 'ready' || committed.purpose !== 'attachment' || committed.name !== name ||
+    if (committed.state !== 'ready' || committed.purpose !== 'feedback' || committed.name !== name ||
         committed.mimeType !== 'application/json' || committed.contentUrl !== '/attachments/' + committed.id + '/content')
       throw Error('Private feedback receipt was not confirmed; no delivery is claimed.');
     return { ok: true };

@@ -3,8 +3,8 @@ import { cors } from 'hono/cors';
 import { bodyLimit } from 'hono/body-limit';
 import { HTTPException } from 'hono/http-exception';
 import { ZodError } from 'zod';
-import { authRoutes, authWebhooks, profileRoutes, requireUser, type AuthVariables } from './auth';
-import { billingRoutes, billingWebhooks } from './billing';
+import { authRoutes, authWebhooks, profileRoutes, requireInstallation, requireUser, type AuthVariables } from './auth';
+import { billingRoutes } from './billing';
 import { inferenceRoutes } from './inference';
 import { syncRoutes } from './sync';
 import { syncRecoveryRoutes } from './sync-recovery';
@@ -26,7 +26,6 @@ app.use('*',cors({origin:origin=>{
 app.use('*',async(c,next)=>{c.header('Cache-Control','no-store');c.header('X-Content-Type-Options','nosniff');await next();});
 app.get('/health',c=>c.json({service:'aux-cloud',status:'ok',version:1}));
 app.route('/auth',authRoutes);
-app.route('/webhooks',billingWebhooks);
 app.route('/webhooks/clerk',authWebhooks);
 app.route('/',blobCallbackRoutes);
 app.route('/internal',maintenanceRoutes);
@@ -36,6 +35,7 @@ app.get('/ai/catalog/v1',c=>inferenceRoutes.fetch(new Request(new URL('/ai/catal
 app.get('/ai/models/v2',c=>inferenceRoutes.fetch(new Request(new URL('/ai/models/v2',c.req.url))));
 app.get('/ai/model-catalog/v1/providers/:providerId',c=>c.json({error:'No catalog override.'},404));
 app.use('*',requireUser);
+for(const path of ['/sync/key/*','/sync/recovery/*','/sync/agent-files/*','/sync/sessions','/sync/sessions/*','/drive/*'])app.use(path,requireInstallation);
 app.route('/profile',profileRoutes);
 app.route('/',eventsRoutes);
 app.route('/billing',billingRoutes);

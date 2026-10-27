@@ -24,7 +24,8 @@ test('private runner freezes interrupted capture and never automatically capture
 test('actual authenticated frozen job resume publishes ciphertext, then expiry removes remote before local and preserves uncertainty',async()=>{
  const {root,config}=await fixture(),key=randomBytes(32),data=new Map(),events=[];let job,captures=0,failRemote=true,failDelete=true;
  const remote={async list(prefix){return {keys:[...data.keys()].filter(k=>k.startsWith(prefix))};},async get(key){return data.has(key)?{body:Readable.from([data.get(key)]),size:data.get(key).length}:null;},async put(key,body){if(failRemote)throw Error('unknown synthetic outcome');const pieces=[];for await(const p of body)pieces.push(p);data.set(key,Buffer.concat(pieces));},async delete(key){events.push('delete:'+key.split('/').at(-1));data.delete(key);if(failDelete){failDelete=false;throw Error('Unknown deletion outcome');}}};
- const now=Date.now(),expires=now+1000;
+ // Long enough that capture and resume finish first even when the suite runs in parallel.
+ const now=Date.now(),expires=now+3000;
  config.credentialExpiresAt=new Date(now+30*86400000).toISOString();
  const input={config,key,now,capture:async()=>{captures++;job=await createBackupJob(config.jobsRoot,config.deliveryRoot,key);await writeBundle({directory:join(job.path,'bundle'),key,maxBytes:config.maxBytes,entries:[{name:'database.dump',source:Readable.from([Buffer.from('small synthetic archive')])}],metadata:{retentionDeadline:new Date(expires).toISOString()}});await authenticateCapturedJob(job,key,config.maxBytes);await deliverBackupJob(job,key);},remoteFactory:async()=>remote,monitor:async(c,p)=>events.push(c+':'+p)};
  try{

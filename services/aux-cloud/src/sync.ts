@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { sql } from './db';
+import { rateLimit } from './auth';
 
 type User = { id: string; clerkId: string; email: string; sessionId: string };
 export const syncRoutes = new Hono<{ Variables: { user: User } }>();
@@ -10,6 +11,7 @@ const MAX_OBJECT = 3_145_728;
 const MAX_PLAINTEXT = 2_097_152;
 const MAX_JSON = 4_000_000;
 const MAX_ACCOUNT_OBJECTS = 1000;
+const SYNC_QUOTA_BYTES = 104_857_600;
 const encryptedObject = z.object({ version: z.literal(1), alg: z.literal('aes-256-gcm'), nonce: z.string().regex(/^[A-Za-z0-9+/]{16}$/), ciphertext: z.string().max(2_796_204).regex(/^[A-Za-z0-9+/]*={0,2}$/), tag: z.string().regex(/^[A-Za-z0-9+/]{22}==$/) }).strict();
 type FileEncryptionContext = { userId: string; path: string; generation: number };
 function fileAAD(context: FileEncryptionContext) {
@@ -43,7 +45,7 @@ const path = z.string().min(1).max(1024).refine(value => !value.startsWith('/') 
 const manifest = z.object({ formatVersion: z.literal(1), files: z.array(z.object({ path, sha256: sha, size: z.number().int().min(0).max(MAX_PLAINTEXT), objectSha256: sha, objectSize: z.number().int().min(0).max(MAX_OBJECT), encryption: z.literal('aes-256-gcm'), generation: z.number().int().nonnegative() }).strict()).max(1000) }).strict().refine(value => new Set(value.files.map(file => file.path)).size === value.files.length, 'Duplicate logical path');
 const project = z.object({ id, name: z.string().min(1).max(500), icon: z.string().min(1).max(500), color: z.string().min(1).max(100), workspaceKind: z.enum(['managed', 'external']), archivedAt: iso.nullable(), createdAt: iso, updatedAt: iso }).strict();
 
-function fail(status: 400 | 403 | 404 | 409 | 412 | 413 | 428 | 503, code: string, message: string): never {
+function fail(status: 400 | 403 | 404 | 409 | 412 | 413 | 428 | 429 | 503, code: string, message: string): never {
   throw new HTTPException(status, { res: Response.json({ error: { code, message } }, { status }) });
 }
 async function readBytes(request: Request, limit: number) {
@@ -125,7 +127,7 @@ syncRoutes.put('/sync/agent-files/objects/:hash', async c => {
   // A single owner-scoped advisory lock bounds concurrent object uploads and quota checks.
   const results = await sql.transaction([
     sql`SELECT pg_advisory_xact_lock(hashtextextended(${user}, 0))`,
-    sql`INSERT INTO sync_objects (user_id, sha256, content) SELECT ${user}, ${hash.data}, decode(${bytes.toString('base64')}, 'base64') WHERE EXISTS (SELECT 1 FROM sync_objects WHERE user_id = ${user} AND sha256 = ${hash.data}) OR ((SELECT count(*) FROM sync_objects WHERE user_id = ${user}) < ${MAX_ACCOUNT_OBJECTS} AND (SELECT coalesce(sum(octet_length(content)), 0) FROM sync_objects WHERE user_id = ${user}) + ${bytes.length} <= (SELECT CASE WHEN plan = 'max' AND status IN ('active','trialing') THEN 21474836480::bigint WHEN plan = 'pro' AND status IN ('active','trialing') THEN 5368709120::bigint ELSE 104857600::bigint END FROM (SELECT (SELECT plan FROM aux_subscriptions WHERE user_id = ${user}) AS plan, (SELECT status FROM aux_subscriptions WHERE user_id = ${user}) AS status) subscription)) ON CONFLICT (user_id, sha256) DO UPDATE SET sha256 = EXCLUDED.sha256 RETURNING sha256`,
+    sql`INSERT INTO sync_objects (user_id, sha256, content) SELECT ${user}, ${hash.data}, decode(${bytes.toString('base64')}, 'base64') WHERE EXISTS (SELECT 1 FROM sync_objects WHERE user_id = ${user} AND sha256 = ${hash.data}) OR ((SELECT count(*) FROM sync_objects WHERE user_id = ${user}) < ${MAX_ACCOUNT_OBJECTS} AND (SELECT coalesce(sum(octet_length(content)), 0) FROM sync_objects WHERE user_id = ${user}) + ${bytes.length} <= ${SYNC_QUOTA_BYTES}) ON CONFLICT (user_id, sha256) DO UPDATE SET sha256 = EXCLUDED.sha256 RETURNING sha256`,
   ]);
   if (!results[1]?.length) fail(413, 'STORAGE_QUOTA', 'Sync object quota reached.');
   return c.json({ ok: true });
@@ -232,9 +234,17 @@ const message = z.discriminatedUnion('role', [
   z.object({ role: z.literal('assistant'), content: z.string().max(100_000), tools: z.array(tool).max(500), runItems: z.array(z.discriminatedUnion('type', [z.object({ type: z.literal('text'), content: z.string().min(1).max(100_000) }).strict(), z.object({ type: z.literal('tool'), tool }).strict()])).max(1000).optional(), timestamp: z.number().int().nonnegative(), elapsedMs: z.number().int().nonnegative() }).strict(),
 ]);
 const share = z.object({ sourceSessionId: id, title: z.string().trim().min(1).max(200), messages: z.array(message).max(2000) }).strict().refine(body => body.messages.every(entry => entry.role === 'user' || entry.content.length > 0 || entry.tools.length > 0), 'Assistant messages require content or tools');
+// Public pages are free hosting for anyone signed in, so each account gets a bounded share.
+const SHARE_LIMIT = 500, SHARE_QUOTA_BYTES = 104_857_600, SHARES_PER_HOUR = 60;
 export async function publishShareForUser(userId: string, value: unknown) {
-  const payload = share.parse(value);
-  if (JSON.stringify(payload).length > 50_000_000) fail(413, 'PAYLOAD_TOO_LARGE', 'Shared transcript exceeds 50 million characters.');
+  const payload = share.parse(value), size = Buffer.byteLength(JSON.stringify(payload.messages));
+  if (size > 50_000_000) fail(413, 'PAYLOAD_TOO_LARGE', 'Shared transcript exceeds 50 MB.');
+  if (!await rateLimit(`share:${userId}`, SHARES_PER_HOUR, 3600)) fail(429, 'RATE_LIMITED', 'Too many shares this hour. Try again later.');
+  // Republishing the same conversation replaces its page, so it does not count against itself.
+  const [used] = await sql`SELECT count(*) AS count, coalesce(sum(octet_length(messages::text)), 0) AS bytes FROM shared_sessions
+    WHERE user_id = ${userId} AND revoked_at IS NULL AND source_session_id <> ${payload.sourceSessionId}`;
+  if (Number(used.count) >= SHARE_LIMIT) fail(409, 'SHARE_LIMIT_REACHED', `You can keep up to ${SHARE_LIMIT} shared conversations. Unshare one and retry.`);
+  if (Number(used.bytes) + size > SHARE_QUOTA_BYTES) fail(413, 'SHARE_STORAGE_FULL', 'Shared conversations are using all 100 MB. Unshare some and retry.');
   const [row] = await sql`INSERT INTO shared_sessions (id, user_id, source_session_id, title, messages) VALUES (${randomBytes(18).toString('base64url')}, ${userId}, ${payload.sourceSessionId}, ${payload.title}, ${JSON.stringify(payload.messages)}::jsonb) ON CONFLICT (user_id, source_session_id) DO UPDATE SET title = EXCLUDED.title, messages = EXCLUDED.messages, revoked_at = NULL, id = CASE WHEN shared_sessions.revoked_at IS NOT NULL THEN EXCLUDED.id ELSE shared_sessions.id END, created_at = CASE WHEN shared_sessions.revoked_at IS NOT NULL THEN now() ELSE shared_sessions.created_at END RETURNING id, title, created_at`;
   return { id: row.id, title: row.title, createdAt: new Date(row.created_at).toISOString() };
 }

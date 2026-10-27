@@ -1,13 +1,17 @@
 import Link from 'next/link';
 import InformationPage from "../information-page";
 
-export const metadata={title:"Community and feedback" + ' | Aux'};
+export const metadata={title:'Feedback and support | Aux'};
 
 export default function Page() {
-  return <InformationPage title="Community and feedback">
-    <p>Aux does not currently have a verified public community forum or a published support service-level commitment. No public forum or response-time guarantee is claimed.</p>
-    <p>The feedback dialog is intended to save a private report, including session data, through your connected Aux cloud account. This preview has not yet completed end-to-end private report storage and operator readback acceptance. A confirmed save means private storage for review; it does not promise inbox delivery, a response or human review.</p>
-    <p>Describe what you expected, what happened and which app version you used. Include only material you intend to submit. Remove provider credentials, sign-in codes, private page content and personal files from the session or any report or screenshot before saving. Review the dialog before proceeding. If cloud feedback is unavailable, the operation must show an error rather than claim the report was saved.</p>
-    <p>If you need help getting started, read <Link href="/docs">Getting started</Link>. Development-preview capabilities that remain under verification are listed there. Aux is operated by Courson Digital LLC. Public support and privacy requests: hello@getaux.co. Moderation policy and support commitments remain subject to approval.</p>
+  return <InformationPage title="Feedback and support">
+    <p>Email <a href="mailto:hello@getaux.co">hello@getaux.co</a> with questions, problems, privacy requests or a shared conversation to report. Aux is a development preview run by a small team, so replies are best effort.</p>
+    <section><h2>Sending feedback from Aux</h2>
+    <p>If you are signed in to Aux cloud, use Send Feedback in the chat menu. It saves your comment and that conversation as a private report for the Aux team, kept for 90 days. Remove anything you do not want to share, such as keys, codes or private page content, before you send it.</p>
+    </section>
+    <section><h2>A useful report</h2>
+    <p>Say what you expected, what happened instead and which Aux version you use (Aux &rsaquo; About Aux).</p>
+    </section>
+    <p>New to Aux? Start with <Link href="/docs">Getting started</Link>.</p>
   </InformationPage>;
 }

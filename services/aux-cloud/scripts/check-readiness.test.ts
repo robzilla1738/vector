@@ -9,9 +9,9 @@ const review={format:'aux.readiness-target.v1',projectId:'prj_WLAGrKLQ42G5unZOI5
 const ready={service:'aux-cloud',status:'ready',database:'reachable',schema:'current',mismatches:0,requiredMigrations:Object.keys(manifest).length,schemaManifestSha256,paymentsEnabled:false,hostedAiEnabled:false};
 
 test('scoped probe accepts actual readiness handler and never calls maintenance or exposes the header',async()=>{
-  const keys=['CRON_SECRET','AUX_PAYMENTS_ENABLED','AUX_HOSTED_AI_ENABLED'] as const;
+  const keys=['AUX_READINESS_SECRET','CRON_SECRET'] as const;
   const previous=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
-  process.env.CRON_SECRET=secret;process.env.AUX_PAYMENTS_ENABLED='false';process.env.AUX_HOSTED_AI_ENABLED='false';
+  process.env.AUX_READINESS_SECRET=secret;process.env.CRON_SECRET='a-different-cron-secret';
   try{
     const route=createReadinessRoutes(async()=>Object.entries(manifest).map(([name,sha256])=>({name,sha256})));
     const calls:{url:string;privateHeader:boolean}[]=[];

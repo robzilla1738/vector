@@ -54,7 +54,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
     const args=process.argv.slice(2);
     if(args.length!==4||args[0]!=='--target-review'||args[2]!=='--output')refuse('USAGE_TARGET_REVIEW_AND_NEW_OUTPUT_REQUIRED');
     const review=JSON.parse(await readFile(args[1],'utf8'));
-    const result=await checkDeployedReadiness(review,process.env.CRON_SECRET,process.env.AUX_READINESS_SECRET_ENVIRONMENT);
+    const result=await checkDeployedReadiness(review,process.env.AUX_READINESS_SECRET,process.env.AUX_READINESS_SECRET_ENVIRONMENT);
     await writeFile(args[3],JSON.stringify(result,null,2)+'\n',{flag:'wx',mode:0o600});
     console.log(JSON.stringify(result));
   }catch(error){
