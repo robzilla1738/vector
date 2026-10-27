@@ -17,18 +17,16 @@ Aux reuses the owner's supplied Aside implementation on Chromium: its UI, behavi
 
 ## Identity
 
-Visible branding on the candidate is Aux. Its wire bytes and derivation domains are still the compatibility contract below. The Aux column is the target; it is not active.
+Visible branding, the wire protocol and key domains on the candidate are Aux (audit 2026-10-27):
 
-| Compatibility contract (current) | Aux target |
+| Former compatibility contract | Current |
 | --- | --- |
-| `AsideDaemonSessionToken` | `AuxDaemonSessionToken` |
-| `AsideSessionToken` | `AuxSessionToken` |
-| `aside.daemon.auth.` | `aux.daemon.auth.` |
-| `Aside Daemon Auth v1\0` | `Aux Daemon Auth v1\0` (19 bytes including NUL) |
-| `Aside Daemon Dev Auth v1\0` | `Aux Daemon Dev Auth v1\0` (23 bytes including NUL) |
-| `aside-daemon` | `aux-daemon` |
-| `Aside.*` | `Aux.*` |
-| `aside.dk.*` / persisted installation records | Versioned Aux formats; needs a migration design and fixture verification first |
+| `AsideDaemonSessionToken`, `AsideSessionToken` | `AuxDaemonSessionToken`, `AuxSessionToken` |
+| `aside.daemon.auth.`, `Aside Daemon Auth v1\0`, `Aside Daemon Dev Auth v1\0` | `aux.daemon.auth.`, `Aux Daemon Auth v1\0` (19 bytes), `Aux Daemon Dev Auth v1\0` (23 bytes) |
+| `aside-daemon`, `Aside.*` | `aux-daemon`, `Aux.*` |
+| `aside.dk.*` | `aux.dk.v2` |
+
+Remaining: the supplied addon copied unchanged as the CLI's `provided-native.node`, with `AsideNative*` exports, Swift symbols and the hard-coded keychain group, which the native boundary remaps. Replacing it means an Aux-built addon from the recovered Swift ports (`aux-native-p256-envelope-port`, `aux-native-pq-continuation`, `aux-native-signing-port`) with the same command ABI, compiled for the group the boundary already maps to, so existing items stay readable. That code reads and writes Keychain items and needs owner approval before any runtime check.
 
 When the migration is authorized, change both sides, schemas, dispatch, health checks and byte-length calculations together. Never brand a challenge without its verifier. Never decrypt old ciphertext under a renamed HKDF domain. Existing state needs an explicit migration or a legacy reader; resets and owner-state access are not allowed. The migration includes no UI, geometry, CSS, typography, icon or interaction change. See [complete identity](../plans/2026-10-22-complete-aux-identity.md).
 

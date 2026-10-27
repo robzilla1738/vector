@@ -13,8 +13,8 @@ Read first: [README](README.md), [STATUS](docs/STATUS.md) (the only live state p
 
 ## Identity
 
-- Every delivered name, endpoint, identifier and protocol should end up Aux. The current candidate still uses the compatibility protocol bytes (`AsideDaemonSessionToken`, `AsideSessionToken`, `aside.daemon.auth.`, `Aside Daemon Auth v1\0`, health `service:"aside-daemon"`, `Aside.*` commands) and `aside.dk.*` HKDF domains. The contract lists the Aux targets.
-- Renaming those is a versioned migration, not a branding edit: change every caller and receiver together, never decrypt old ciphertext under a renamed domain, and never reset keys, delete credentials or read owner state to make it work. Keep the current accepted app intact until its successor is verified.
+- Every delivered name, endpoint, identifier and protocol should end up Aux. On the current candidate the wire protocol (`AuxDaemonSessionToken`, `AuxSessionToken`, `aux.daemon.auth.`, `Aux Daemon Auth v1\0`, health `service:"aux-daemon"`, `Aux.*` commands) and the key domains (`aux.dk.v2`) are already Aux (audit 2026-10-27). What remains is the CLI's byte-for-byte supplied addon `provided-native.node` (`AsideNative*` symbols and keychain group `8CPD4K4TBB.at.studio.AsideBrowser.cryptography`), which the carrier and CLI load and the boundary remaps at runtime. Legacy `aside.*` storage keys survive only as readers beside their `aux.*` successors.
+- Replacing that addon or any persisted format is a versioned migration, not a branding edit: change every caller and receiver together, never decrypt old ciphertext under a renamed domain, and never reset keys, delete credentials or read owner state to make it work. Keep the current accepted app intact until its successor is verified.
 - HTML's `aside` element and required third-party legal notices are not branding. Original source inventories and historical evidence stay truthful.
 
 ## Inputs and owner data
