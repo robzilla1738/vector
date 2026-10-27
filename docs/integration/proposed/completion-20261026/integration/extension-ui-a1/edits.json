@@ -1,0 +1,250 @@
+{
+ "format": "aux.candidate-edits.v1",
+ "purpose": "Agent extension UI: local-only cloud origins (no dev-cloud); unreachable billing and playground routes; no referral, Pro, Remote Control/relay, Discord, undeployed docs/community or dead help links; Send feedback only in the chat session menu; English-only locale formatting.",
+ "files": [
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/extension-main-Dz1-AsCT.js",
+   "edits": [
+    {
+     "find": "n(\"/_web/(settings)/u/$userId/settings/billing/\")({component:",
+     "replace": "n(\"/_web/(settings)/u/$userId/settings/billing/\")({beforeLoad:({params:{userId:e}})=>{throw c({to:\"/u/$userId/settings/general\",params:{userId:e},replace:!0})},component:",
+     "count": 1,
+     "why": "D4/D6: guard the Plan & Usage route; redirect to General like the password route does"
+    },
+    {
+     "find": "Zt=n(\"/artifact-test/\")({",
+     "replace": "Zt=n(\"/artifact-test/\")({beforeLoad:()=>{throw c({to:\"/\",replace:!0})},",
+     "count": 1,
+     "why": "Playground: /artifact-test redirects to the index route"
+    },
+    {
+     "find": "Yt=n(\"/error-test/\")({",
+     "replace": "Yt=n(\"/error-test/\")({beforeLoad:()=>{throw c({to:\"/\",replace:!0})},",
+     "count": 1,
+     "why": "Playground: /error-test redirects to the index route"
+    },
+    {
+     "find": "er=n(\"/liquid-glass-playground/\")({",
+     "replace": "er=n(\"/liquid-glass-playground/\")({beforeLoad:()=>{throw c({to:\"/\",replace:!0})},",
+     "count": 1,
+     "why": "Playground: /liquid-glass-playground redirects to the index route"
+    },
+    {
+     "find": "e.indexedChunks.toLocaleString()",
+     "replace": "e.indexedChunks.toLocaleString(\"en-US\")",
+     "count": 1,
+     "why": "D8: memory chunk count formats in English"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+   "edits": [
+    {
+     "find": "{path:\"/u/$userId/settings/billing\",title:\"Plan & Usage\",sections:[\"Plan\",\"Credits\",\"Aux credits usage\"],fields:[{title:\"Auto-reload\"},{title:\"Invite your friends to Aux\",description:\"You both get 100 credits after signup\"},{title:\"Share a free week of Aux Pro with friends\"}]},",
+     "replace": "",
+     "count": 1,
+     "why": "D4/D6: drop the Plan & Usage entry from settings search"
+    },
+    {
+     "find": "{title:\"Invite your friends to Aux\",description:\"You both get 100 credits after signup\"},{title:\"Share a free week of Aux Pro with friends\"},",
+     "replace": "",
+     "count": 1,
+     "why": "D4/D6: drop referral and Aux Pro guest-pass fields from General search"
+    },
+    {
+     "find": "sections:[\"Personal Assistants\",\"Messengers\"]",
+     "replace": "sections:[\"Messengers\"]",
+     "count": 1,
+     "why": "Relay: Personal Assistants section is hidden on Channels"
+    },
+    {
+     "find": "sections:[\"Skill & MCP\",\"Remote Control\",\"FAQs\"]",
+     "replace": "sections:[\"Skill & MCP\",\"FAQs\"]",
+     "count": 1,
+     "why": "Relay: Remote Control section is hidden on Developers"
+    },
+    {
+     "find": ",{label:\"Docs\",icon:h2,kind:\"external\",to:\"https://app.getaux.co/docs\"},{label:\"Community\",icon:N2,kind:\"external\",to:\"https://app.getaux.co/community\"}",
+     "replace": "",
+     "count": 1,
+     "why": "Links: drop undeployed getaux.co Docs and Community sidebar links"
+    },
+    {
+     "find": "(0,t.jsx)(\"li\",{children:(0,t.jsx)(K2,{children:(0,t.jsxs)(n1,{render:(0,t.jsx)(m,{className:v,nativeButton:!0,size:\"lg\",variant:\"ghost\"}),children:[(0,t.jsx)(g2,{\"data-icon\":\"inline-start\"}),(0,t.jsx)(\"span\",{className:\"grow\",children:\"Send feedback\"})]})})}),",
+     "replace": "",
+     "count": 1,
+     "why": "D5: remove the settings sidebar Send feedback entry"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/island-C0ouZ54e.js",
+   "edits": [
+    {
+     "find": ",(0,e.jsx)(c,{render:(0,e.jsx)(\"a\",{href:p(`/u/${t}/settings/general?open_send_feedback=1`),onClick:m}),children:(0,e.jsx)(\"span\",{className:\"grow\",children:\"Send feedback\"})}),(0,e.jsxs)(c,{render:(0,e.jsx)(ce,{to:\"https://discord.gg/2h4cNW6ayc\"}),children:[(0,e.jsx)(\"span\",{className:\"grow\",children:\"Join community\"}),(0,e.jsx)(Q,{className:\"text-muted-foreground -mr-1\"})]})",
+     "replace": "",
+     "count": 1,
+     "why": "D5 + Discord: remove new-tab menu Send feedback and Aside Discord Join community items"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/general-3dgRbrRk.js",
+   "edits": [
+    {
+     "find": "(0,A.jsx)(at.Suspense,{fallback:(0,A.jsx)(Xm,{}),children:(0,A.jsx)(ym,{children:(0,A.jsx)(Ic,{place:\"general_settings\"})})}),",
+     "replace": "",
+     "count": 1,
+     "why": "D4/D6: stop rendering the referral / Aux Pro guest-pass rows on General"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+   "edits": [
+    {
+     "find": "(0,e.jsx)(L,{title:\"Remote Control\",children:(0,e.jsx)(k,{children:(0,e.jsx)(Pe,{})})}),",
+     "replace": "",
+     "count": 1,
+     "why": "Relay/Pro: stop rendering the Remote Control section (PRO badge, Upgrade to Pro, relay copy)"
+    },
+    {
+     "find": "{id:\"remote-control\",question:\"What is Remote Control?\",answer:'Remote Control lets your *other* devices run browser tasks on *this* machine. Your logins, cookies, and browser stay here \u2014 the other device only sends the request and streams the result.\\n\\nTypical use: your laptop at home stays signed in to your accounts, and from a work machine or a server you run `aux exec --host <this-device> \"...\"`.\\n\\nTurn it on above, sign the CLI in on the other device with `aux login`, then target this machine with `--host`. Requires the Pro plan.'},{id:\"remote-machine\",question:\"How do I connect to Aux from a remote machine (e.g. Linux, Hermes)?\",answer:\"Remote Control lets a Linux box, a server, or an agent runtime such as Hermes drive *this* machine's browser. Nothing is copied over: the remote side runs Aux CLI and reaches this machine through Aux's relay.\\n\\n1. Turn on **Remote Control** above (Pro plan) and keep Aux Browser running here.\\n2. On the remote machine, install the CLI and sign in with the same Aux account:\\n\\n```bash\\ncurl -fsSL http://127.0.0.1:9/aux-unavailable/releases/install.sh | bash\\naux login\\naux host list           # this device should show as online\\naux host use <device>   # make it the default host\\n```\\n\\n3. Give your coding agent the skill, then run a task:\\n\\n```bash\\naux skills install                       # Codex, Claude Code, Cursor, OpenCode\\naux skills install --path <skills-dir>   # any other agent's skills directory\\naux exec --host <device> \\\"Find a hotel in SF for 9/12-9/14\\\"\\n```\\n\\n`aux exec`, `aux repl`, and `aux mcp` all accept `--host <device>`; after `aux host use` you can omit it.\"},",
+     "replace": "",
+     "count": 1,
+     "why": "Relay/Pro: drop the Remote Control FAQs, incl. the unavailable CLI install command"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/channels-CJn5l9_T.js",
+   "edits": [
+    {
+     "find": "(0,e.jsx)(et,{userId:s,showUpgrade:!r})",
+     "replace": "(0,e.jsx)(et,{userId:s,showUpgrade:!1})",
+     "count": 1,
+     "why": "D4/D6: never show Upgrade to Pro on the Channels banner"
+    },
+    {
+     "find": ",(0,e.jsx)(ce,{label:\"Personal Assistants\",title:(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(\"span\",{children:\"Personal Assistants\"}),(0,e.jsx)(\"span\",{className:\"bg-brand rounded-sm px-1.5 py-px text-[10px] leading-none font-semibold text-white select-none\",children:\"PRO\"})]}),children:(0,e.jsx)(Z,{children:St.map(o=>(0,e.jsx)(wt,{...o},o.id))})})",
+     "replace": "",
+     "count": 1,
+     "why": "Relay/Pro: hide the PRO Personal Assistants section, which needs Remote Control"
+    },
+    {
+     "find": "t.split(\"-\")[1]}}.md`",
+     "replace": "t.split(\"-\")[1]}.md`",
+     "count": 1,
+     "why": "Fix the stray } in the personal-assistant help URL"
+    },
+    {
+     "find": "[d,h]=(0,S.useState)(\"create-with-aux-v2\"),u=(0,S.useRef)(!1)",
+     "replace": "[d,h]=(0,S.useState)(\"manual\"),u=(0,S.useRef)(!1)",
+     "count": 1,
+     "why": "Help links: messenger setup defaults to manual"
+    },
+    {
+     "find": "automaticDescription:`Aux opens ${n} and sets it up for you.`,manualDescription:\"Set permissions yourself",
+     "replace": "automaticDescription:null,manualDescription:\"Set permissions yourself",
+     "count": 1,
+     "why": "Help links: disable Ask Aux setup, which sends the agent an unavailable help URL"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+   "edits": [
+    {
+     "find": "e.pastedText.characterCount.toLocaleString()",
+     "replace": "e.pastedText.characterCount.toLocaleString(\"en-US\")",
+     "count": 1,
+     "why": "D8: pasted-text character count formats in English"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/conversation-D9Q3VEsl.js",
+   "edits": [
+    {
+     "find": "toLocaleTimeString([],{hour:\"numeric\",minute:\"2-digit\"})",
+     "replace": "toLocaleTimeString(\"en-US\",{hour:\"numeric\",minute:\"2-digit\"})",
+     "count": 1,
+     "why": "D8: Read receipt time formats in English"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/detect-tools-Bq1QGFUu.js",
+   "edits": [
+    {
+     "find": "s.scannedVisits.toLocaleString()",
+     "replace": "s.scannedVisits.toLocaleString(\"en-US\")",
+     "count": 1,
+     "why": "D8: visit count formats in English"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/utils-Cl9zfMcr.js",
+   "edits": [
+    {
+     "find": "feedback:{argsPlaceholder:\"feedback note...\",description:\"Send this task to Aux for debugging.\",keywords:[\"feedback\",\"/feedback\",\"report\",\"report task\"],label:\"Feedback\",name:\"Feedback\",text:\"/feedback\"},",
+     "replace": "",
+     "count": 1,
+     "why": "D5: drop the /feedback slash command; the chat session menu entry stays"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/strip-markdown-DRcmtuJc.js",
+   "edits": [
+    {
+     "find": "var Zt=\"https://dev-cloud.getaux.co\";",
+     "replace": "var Zt=\"http://127.0.0.1:9/aux-unavailable/api\";",
+     "count": 1,
+     "why": "D1: local-only API origin placeholder (cloud-service-policy localUnavailableOrigins.api)"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+   "edits": [
+    {
+     "find": "if(typeof window>\"u\")return\"https://dev-cloud.getaux.co/account\";",
+     "replace": "if(typeof window>\"u\")return\"http://127.0.0.1:9/aux-unavailable/share/account\";",
+     "count": 1,
+     "why": "D1: SSR-only web account fallback uses the local share/web placeholder"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/background.js",
+   "edits": [
+    {
+     "find": "bw = \"https://dev-cloud.getaux.co\";",
+     "replace": "bw = \"http://127.0.0.1:9/aux-unavailable/api\";",
+     "count": 1,
+     "why": "D1: local-only API origin placeholder (cloud-service-policy localUnavailableOrigins.api)"
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+   "edits": [
+    {
+     "find": ",\n    {\n      \"resources\": [\n        \"main.html\"\n      ],\n      \"matches\": [\n        \"https://dev-cloud.getaux.co/*\"\n      ]\n    }",
+     "replace": "",
+     "count": 1,
+     "why": "D1: drop the dev-cloud main.html exposure, matching the local-mode output of aux-ui-origin-identity"
+    },
+    {
+     "find": "\"version\": \"1.26.1016.1888\"",
+     "replace": "\"version\": \"1.26.1016.1889\"",
+     "count": 1,
+     "why": "A newer version makes Chromium reload the changed component extension."
+    }
+   ]
+  }
+ ]
+}

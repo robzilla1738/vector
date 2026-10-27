@@ -22,14 +22,29 @@ def mask_literals(text):
 
 
 def cpp_value(condition):
+    """True or False when the retired flags decide the condition, else the
+    simplified condition text with them removed."""
     value = re.sub(r'\s+', '', condition)
-    if value == '!BUILDFLAG(ENABLE_AUX_SHELL)':
-        return True
-    atoms = value.split('&&')
-    if all(re.fullmatch(r'!?BUILDFLAG\([A-Z_]+\)', atom) for atom in atoms):
-        if any(atom == f'BUILDFLAG({flag})' for flag in OLD_FLAGS for atom in atoms):
+    operator = '&&' if '&&' in value else '||'
+    if '&&' in value and '||' in value:
+        raise ValueError(f'Unreviewed preprocessor condition: {condition.strip()}')
+    kept = []
+    for atom in value.split(operator):
+        if not re.fullmatch(r'!?BUILDFLAG\([A-Z_]+\)', atom):
+            raise ValueError(f'Unreviewed preprocessor condition: {condition.strip()}')
+        flag = atom.lstrip('!')[len('BUILDFLAG('):-1]
+        if flag not in OLD_FLAGS:
+            kept.append(atom)
+            continue
+        # Retired flags are always off.
+        truth = atom.startswith('!')
+        if operator == '&&' and not truth:
             return False
-    raise ValueError(f'Unreviewed preprocessor condition: {condition.strip()}')
+        if operator == '||' and truth:
+            return True
+    if not kept:
+        return operator == '&&'
+    return f' {operator} '.join(kept)
 
 
 def prune_cpp(text):
@@ -42,6 +57,9 @@ def prune_cpp(text):
         index = candidates[-1]
         start = directives[index]
         value = cpp_value(start[2])
+        if isinstance(value, str):
+            text = text[:start.start(2)] + ' ' + value + text[start.end(2):]
+            continue
         depth = 0
         alternative = None
         for end in directives[index + 1:]:
@@ -162,8 +180,20 @@ def cpp_projection(text):
             spans.append((match.start(), match.end(), '1' if match[0].startswith('!') else '0'))
     for start, end, value in sorted(spans, reverse=True):
         text = text[:start] + value + text[end:]
+    # unifdef keeps directives it cannot decide; drop the identities `0 ||` and
+    # `1 &&` that the retired flags leave in them.
+    def identities(match):
+        line = match[0]
+        while True:
+            reduced = re.sub(r'\b0\s*\|\|\s*|\s*\|\|\s*0\b|\b1\s*&&\s*|\s*&&\s*1\b', '', line)
+            if reduced == line:
+                return line
+            line = reduced
+    text = re.sub(r'^[ \t]*#[ \t]*(?:if|elif)\b[^\n]*', identities, text, flags=re.M)
     text = text.replace('#include "components/surface_embed/common/aux_buildflags.h"\n', '')
     text = text.replace('#include "chrome/browser/ui/aux/profile_prefs.h"\n', '')
+    # unifdef cannot parse raw strings; empty them identically on both sides.
+    text = re.sub(r'R"(?P<delimiter>[^\s()\\]{0,16})\([\s\S]*?\)(?P=delimiter)"', '""', text)
     result = subprocess.run(['/usr/bin/unifdef', '-k'], input=text.encode(), capture_output=True)
     if result.returncode not in (0, 1):
         raise ValueError('Independent text-preprocessor failed: ' + result.stderr.decode())
@@ -175,6 +205,51 @@ def cpp_projection(text):
             continue
         tokens.append({'true': '1', 'false': '0'}.get(value, value))
     return tokens
+
+
+def retire_file(name, old):
+    """The shell-free text of one tracked file; equal to `old` when untouched."""
+    new = old
+    if name.endswith(('.cc', '.h', '.mm')) and any(flag in old for flag in OLD_FLAGS):
+        new = prune_cpp(old)
+    if name.endswith(('.gn', '.gni')) and 'enable_aux_shell' in old:
+        new = prune_gn(new)
+        if name == 'chrome/browser/buildflags.gni':
+            declaration = '  # Aux shell is built only for the Aux distribution.\n  enable_aux_shell = false\n\n'
+            if declaration not in new:
+                raise ValueError('Unexpected shell argument declaration')
+            new = new.replace(declaration, '', 1).replace('Independent local browser integration; retired shell stays disabled.', 'Independent local browser integration.')
+        new = re.sub(r'^[ \t]*"ENABLE_AUX_(?:SHELL|RESULT_SCHEME|ISOLATED_WORLDS)=\$enable_aux_shell",\n', '', new, flags=re.M)
+        if name == 'components/surface_embed/common/BUILD.gn':
+            tokens = gn_tokens(new)
+            target = next(i for i, token in enumerate(tokens) if token[0] == 'buildflag_header' and tokens[i + 2][0] == '"aux_buildflags"')
+            opening = target + 4
+            end = close_token(tokens, opening, '{', '}')
+            new = new[:tokens[target].start()] + new[tokens[end].end():]
+            for value in ['import("//build/buildflag_header.gni")\n', 'import("//chrome/browser/buildflags.gni")\n', '    ":aux_buildflags",\n']:
+                if value not in new:
+                    raise ValueError(f'Unexpected surface-embed dependency: {value}')
+                new = new.replace(value, '', 1)
+        # Remaining flag tokens are asserts in disabled legacy release/utility targets.
+        tokens = gn_tokens(new)
+        for token in reversed(tokens):
+            if token[0] == 'enable_aux_shell':
+                line = new[new.rfind('\n', 0, token.start()) + 1:token.start()].lstrip()
+                if not line.startswith('assert('):
+                    raise ValueError('Unreviewed remaining GN flag expression')
+                new = new[:token.start()] + 'false' + new[token.end():]
+    if name in ('chrome/browser/ui/webui/bookmarks/bookmarks_ui.cc', 'chrome/browser/ui/webui_browser/webui_browser_ui.cc'):
+        if 'aux::' in mask_literals(new):
+            raise ValueError('Legacy preference symbols still used after pruning')
+        new = new.replace('#include "chrome/browser/ui/aux/profile_prefs.h"\n', '', 1)
+        new = new.replace("  // The Aux build replaces Webium's top chrome with the packaged Aux shell.\n", '')
+    if name == 'components/surface_embed/common/features.cc':
+        new = new.replace('#include "components/surface_embed/common/aux_buildflags.h"\n', '', 1)
+    if name == 'chrome/browser/aux/passkeys/README.md':
+        new = new.replace('`enable_aux_shell=false`, under', 'the retired shell omitted, under')
+    if new != old and name.endswith(('.cc', '.h', '.mm')) and cpp_projection(old) != cpp_projection(new):
+        raise ValueError(f'Independent preprocessor-token mismatch: {name}')
+    return new
 
 
 def stage(proof, output):
@@ -193,48 +268,9 @@ def stage(proof, output):
         if not source.is_file() or source.is_symlink() or source.suffix not in ('.cc', '.h', '.mm', '.gn', '.gni', '.md'):
             continue
         old = source.read_text()
-        new = old
-        if source.suffix in ('.cc', '.h', '.mm') and any(flag in old for flag in OLD_FLAGS):
-            new = prune_cpp(old)
-        if source.suffix in ('.gn', '.gni') and 'enable_aux_shell' in old:
-            new = prune_gn(new)
-            if name == 'chrome/browser/buildflags.gni':
-                declaration = '  # Aux shell is built only for the Aux distribution.\n  enable_aux_shell = false\n\n'
-                if declaration not in new:
-                    raise ValueError('Unexpected shell argument declaration')
-                new = new.replace(declaration, '', 1).replace('Independent local browser integration; retired shell stays disabled.', 'Independent local browser integration.')
-            new = re.sub(r'^[ \t]*"ENABLE_AUX_(?:SHELL|RESULT_SCHEME|ISOLATED_WORLDS)=\$enable_aux_shell",\n', '', new, flags=re.M)
-            if name == 'components/surface_embed/common/BUILD.gn':
-                tokens = gn_tokens(new)
-                target = next(i for i, token in enumerate(tokens) if token[0] == 'buildflag_header' and tokens[i + 2][0] == '"aux_buildflags"')
-                opening = target + 4
-                end = close_token(tokens, opening, '{', '}')
-                new = new[:tokens[target].start()] + new[tokens[end].end():]
-                for value in ['import("//build/buildflag_header.gni")\n', 'import("//chrome/browser/buildflags.gni")\n', '    ":aux_buildflags",\n']:
-                    if value not in new:
-                        raise ValueError(f'Unexpected surface-embed dependency: {value}')
-                    new = new.replace(value, '', 1)
-            # Remaining flag tokens are asserts in disabled legacy release/utility targets.
-            tokens = gn_tokens(new)
-            for token in reversed(tokens):
-                if token[0] == 'enable_aux_shell':
-                    line = new[new.rfind('\n', 0, token.start()) + 1:token.start()].lstrip()
-                    if not line.startswith('assert('):
-                        raise ValueError('Unreviewed remaining GN flag expression')
-                    new = new[:token.start()] + 'false' + new[token.end():]
-        if name in ('chrome/browser/ui/webui/bookmarks/bookmarks_ui.cc', 'chrome/browser/ui/webui_browser/webui_browser_ui.cc'):
-            if 'aux::' in mask_literals(new):
-                raise ValueError('Legacy preference symbols still used after pruning')
-            new = new.replace('#include "chrome/browser/ui/aux/profile_prefs.h"\n', '', 1)
-            new = new.replace("  // The Aux build replaces Webium's top chrome with the packaged Aux shell.\n", '')
-        if name == 'components/surface_embed/common/features.cc':
-            new = new.replace('#include "components/surface_embed/common/aux_buildflags.h"\n', '', 1)
-        if name == 'chrome/browser/aux/passkeys/README.md':
-            new = new.replace('`enable_aux_shell=false`, under', 'the retired shell omitted, under')
+        new = retire_file(name, old)
         if new != old:
             if source.suffix in ('.cc', '.h', '.mm'):
-                if cpp_projection(old) != cpp_projection(new):
-                    raise ValueError(f'Independent preprocessor-token mismatch: {name}')
                 projection_checks.append(name)
             target = output / 'files' / name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -251,9 +287,39 @@ def stage(proof, output):
     print(json.dumps({'changed': len(changed), 'remainingOldFlagPaths': remaining}))
 
 
+def apply_tree(tree, names, patch_path):
+    """Retire the shell in place in a checkout, writing the combined patch first.
+
+    Every file is transformed and checked before any is written, so a refusal
+    leaves the checkout untouched."""
+    results = []
+    for name in names:
+        source = tree / name
+        if source.suffix not in ('.cc', '.h', '.mm', '.gn', '.gni', '.md') or not source.is_file():
+            continue
+        old = source.read_text()
+        results.append((name, old, retire_file(name, old)))
+    patch = []
+    for name, old, new in results:
+        if new != old:
+            patch.extend(difflib.unified_diff(old.splitlines(True), new.splitlines(True), fromfile='a/' + name, tofile='b/' + name))
+    patch_path.write_text(''.join(patch))
+    for name, old, new in results:
+        if new != old:
+            (tree / name).write_text(new)
+    remaining = [name for name, _, new in results if any(flag in new for flag in OLD_FLAGS) or 'enable_aux_shell' in new]
+    print(json.dumps({'changed': sum(new != old for _, old, new in results), 'remainingOldFlagPaths': remaining}))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--proof', type=Path, required=True)
-    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--proof', type=Path)
+    parser.add_argument('--output', type=Path)
+    parser.add_argument('--tree', type=Path, help='retire in place in this checkout')
+    parser.add_argument('--paths', type=Path, help='with --tree: file listing checkout-relative paths')
+    parser.add_argument('--patch', type=Path, help='with --tree: where to write the combined patch')
     args = parser.parse_args()
-    stage(args.proof.resolve(strict=True), args.output.resolve())
+    if args.tree:
+        apply_tree(args.tree.resolve(strict=True), args.paths.read_text().split(), args.patch.resolve())
+    else:
+        stage(args.proof.resolve(strict=True), args.output.resolve())

@@ -1,0 +1,100 @@
+{
+ "format": "aux.candidate-edits.v1",
+ "purpose": "Local-only daemon (D1, D3), narrowed trusted origins, bounded shutdown, no inherited provider keys, no analytics key, supplied loadBinding contract, dead index.mjs reduced to its refusal line.",
+ "files": [
+  {
+   "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+   "edits": [
+    {
+     "find": "function isAllowedCorsOrigin(Cn){return Cn===`https://dev-cloud.getaux.co`||Cn===`https://dev-cloud.getaux.co`||isTrustedLocalUiOrigin(Cn)}",
+     "replace": "function isAllowedCorsOrigin(Cn){return isTrustedLocalUiOrigin(Cn)}",
+     "count": 1
+    },
+    {
+     "find": "AUX_API_BASE_URL=`https://dev-cloud.getaux.co`,",
+     "replace": "AUX_API_BASE_URL=`http://127.0.0.1:9/aux-unavailable/api`,",
+     "count": 1
+    },
+    {
+     "find": "issuer:literal(`https://dev-cloud.getaux.co`)",
+     "replace": "issuer:literal(`http://127.0.0.1:9/aux-unavailable/api`)",
+     "count": 1
+    },
+    {
+     "find": "issuer:`https://dev-cloud.getaux.co`,",
+     "replace": "issuer:`http://127.0.0.1:9/aux-unavailable/api`,",
+     "count": 4
+    },
+    {
+     "find": "SHARED_SESSION_WEB_BASE_URL=process.env.AUX_SHARED_SESSION_WEB_URL??`https://dev-cloud.getaux.co`",
+     "replace": "SHARED_SESSION_WEB_BASE_URL=`http://127.0.0.1:9/aux-unavailable/share`",
+     "count": 1
+    },
+    {
+     "find": "function isTrustedLocalUiOrigin(Cn){if(Cn===AGENT_MANAGER_EXTENSION_ORIGIN)return!0;try{let ei=new URL(Cn);return ei.origin===Cn&&(ei.protocol===`http:`||ei.protocol===`https:`)&&[`localhost`,`127.0.0.1`,`[::1]`].includes(ei.hostname)}catch{return!1}}",
+     "replace": "function isTrustedLocalUiOrigin(Cn){return Cn===AGENT_MANAGER_EXTENSION_ORIGIN||[`http://127.0.0.1:${PORT}`,`http://localhost:${PORT}`,`http://[::1]:${PORT}`].includes(Cn)}",
+     "count": 1
+    },
+    {
+     "find": "ri?.cloudSyncAllowed&&isSyncEnabled(Cn)&&(startHistorySync(Cn),startCookieSync(Cn)),ri&&(ri.applying=!0)",
+     "replace": "/* Aux: history sync and cookie backup are off in this release. */ri&&(ri.applying=!0)",
+     "count": 1
+    },
+    {
+     "find": "AUX_POSTHOG_PROJECT_API_KEY=`phc_ssjtXvHujJVavBpcxmoT9Mti9daerig7EHdBnPQJtJqr`",
+     "replace": "AUX_POSTHOG_PROJECT_API_KEY=`aux-analytics-disabled`",
+     "count": 1
+    },
+    {
+     "find": "bindingLoadError=error instanceof Error?error.message:String(error);throw error}}function loadPdfBinding",
+     "replace": "bindingLoadError=error instanceof Error?error.message:String(error);return binding=null}}function loadPdfBinding",
+     "count": 1
+    },
+    {
+     "find": "function auxCreateDaemonShutdown(deps) {\n",
+     "replace": "// Providers are configured in Aux only. Keys inherited from a launching shell are dropped,\n// so they are never used or billed silently and never reach commands the agent runs.\nfunction auxDropInheritedProviderCredentials() {\n  const provider=/^(OPENAI|AZURE_OPENAI|ANTHROPIC|GEMINI|GOOGLE_GENERATIVE_AI|GOOGLE|MISTRAL|GROQ|XAI|DEEPSEEK|OPENROUTER|AI_GATEWAY|COHERE|PERPLEXITY|TOGETHER|FIREWORKS|CEREBRAS|HF|HUGGINGFACE)_(API_KEY|ADMIN_KEY|AUTH_TOKEN|OAUTH_TOKEN|ACCESS_TOKEN)$/;\n  for(const name of Object.keys(process.env))if(provider.test(name))delete process.env[name];\n}\n// Past this, the browser starts a fresh daemon instead of talking to one that only answers 503.\nconst AUX_SHUTDOWN_BUDGET_MS = 15e3;\nfunction auxCreateDaemonShutdown(deps) {\n",
+     "count": 1
+    },
+    {
+     "find": "    // Retain the JS/native owner if a callback is lost or an outcome is unknown.\n    // This interval is NOT a timeout, completion receipt or forced exit.\n    hold=deps.hold();\n",
+     "replace": "    // Retain the JS/native owner while work settles; exit with EX_TEMPFAIL if it never does.\n    hold=deps.hold();\n    const budget=setTimeout(()=>{auxShutdownDiagnostic('daemon.budget-exceeded');deps.budgetExceeded()},AUX_SHUTDOWN_BUDGET_MS);\n",
+     "count": 1
+    },
+    {
+     "find": "      auxShutdownDiagnostic('daemon.exit');\n      deps.exit();",
+     "replace": "      clearTimeout(budget);\n      auxShutdownDiagnostic('daemon.exit');\n      deps.exit();",
+     "count": 1
+    },
+    {
+     "find": "exit:()=>process.exit(0),unknown:error=>",
+     "replace": "exit:()=>process.exit(0),budgetExceeded:()=>process.exit(75),unknown:error=>",
+     "count": 1
+    },
+    {
+     "find": "process.title=`Aux Daemon`,",
+     "replace": "process.title=`Aux Daemon`,auxDropInheritedProviderCredentials(),",
+     "count": 1
+    },
+    {
+     "find": "'application/json', 'attachment', identity)",
+     "replace": "'application/json', 'feedback', identity)",
+     "count": 1
+    },
+    {
+     "find": "committed.purpose !== 'attachment'",
+     "replace": "committed.purpose !== 'feedback'",
+     "count": 1
+    },
+    {
+     "find": "Connect this Aux account to cloud before saving private feedback.",
+     "replace": "Feedback needs an Aux cloud account. You can email hello@getaux.co instead.",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+   "content": "/* aux-cold-entry-admission-v1 */\nthrow Object.assign(new Error(\"Aux state identity generation 2 is quarantined; migration admission is not implemented.\"), {code:\"AUX_STATE_IDENTITY_QUARANTINED\"});\n"
+  }
+ ]
+}

@@ -76,6 +76,9 @@ for item in replacements:
     if item['target'] == EXTENSION_MANIFEST:
         old_manifest=read(APP/EXTENSION_MANIFEST);new_manifest=read(pin(item['input']))
         old_version=old_manifest.pop('version');new_version=new_manifest.pop('version')
+        # Web-accessible entries may only be removed: access narrows, never widens.
+        old_access=old_manifest.pop('web_accessible_resources',[]);new_access=new_manifest.pop('web_accessible_resources',[])
+        require(all(entry in old_access for entry in new_access), 'Bundled extension may only drop web-accessible entries')
         require(old_manifest==new_manifest and tuple(map(int,new_version.split('.'))) > tuple(map(int,old_version.split('.'))), 'Only a strictly newer bundled extension version is allowed')
 def require_stopped():
     # Process metadata only, never profile contents or arguments in receipts.

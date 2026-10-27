@@ -1,0 +1,40 @@
+--- ../../prepared-lease-recovery-a1/source/AuxNativeTaskLayout.swift	2026-10-27 15:01:08
++++ AuxNativeTaskLayout.swift	2026-10-27 17:52:17
+@@ -198,8 +198,23 @@
+         }
+         return [daemon,browser,helper]
+     }
+-    // False unless every same-user process path was read and none is aux-memory.
++    // This installation's bundle root, from the daemon's own resolved executable:
++    // <root>/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon.
++    private static func installationRoot()->String? {
++        var size=UInt32(0)
++        _=_NSGetExecutablePath(nil,&size)
++        var raw=[CChar](repeating:0,count:Int(size)+1)
++        guard _NSGetExecutablePath(&raw,&size)==0,let resolved=realpath(raw,nil) else{return nil}
++        defer{free(resolved)}
++        let path=String(cString:resolved),marker="/Contents/Resources/aux/apps/daemon/"
++        guard let range=path.range(of:marker) else{return nil}
++        return String(path[..<range.lowerBound])
++    }
++    // False unless every same-user process path was read and none is a live
++    // aux-memory from this installation. Another Aux install's helpers and
++    // exited (zombie) helpers cannot hold this installation's lease.
+     private static func noLiveMemoryHelperImage()->Bool {
++        guard let root=installationRoot() else{return false}
+         let estimate=proc_listallpids(nil,0)
+         guard estimate>0 else{return false}
+         var pids=[pid_t](repeating:0,count:Int(estimate)+256)
+@@ -211,9 +226,10 @@
+             let size=proc_pidinfo(pid,PROC_PIDTBSDINFO,0,&info,Int32(MemoryLayout<proc_bsdinfo>.size))
+             if size<=0 {continue}  // exited, or not visible to this user
+             guard size==Int32(MemoryLayout<proc_bsdinfo>.size) else{return false}
+-            if info.pbi_uid != geteuid() {continue}
++            if info.pbi_uid != geteuid() || info.pbi_status == UInt32(SZOMB) {continue}
+             guard proc_pidpath(pid,&path,UInt32(path.count))>0 else{return false}
+-            if String(cString:path).hasSuffix("/aux-memory") {return false}
++            let image=String(cString:path)
++            if image.hasPrefix(root+"/Contents/") && image.hasSuffix("/aux-memory") {return false}
+         }
+         return true
+     }

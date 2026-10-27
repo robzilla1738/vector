@@ -11,5 +11,5 @@ ffmpeg_branding = "Chrome"
 enable_widevine = true
 dcheck_always_on = false
 target_cpu = "arm64"
-enable_aux_shell = true
+enable_aux_browser = true
 aux_test_hooks = false

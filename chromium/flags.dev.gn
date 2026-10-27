@@ -5,5 +5,5 @@ symbol_level = 0
 blink_symbol_level = 0
 v8_symbol_level = 0
 target_cpu = "arm64"
-enable_aux_shell = true
+enable_aux_browser = true
 aux_test_hooks = false

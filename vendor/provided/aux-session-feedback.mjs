@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 export async function auxSubmitSessionFeedback(accountId, session, comment) {
   const identity = auxCloudTransferIdentity(accountId);
-  if (!identity) throw Error('Connect this Aux account to cloud before saving private feedback.');
+  if (!identity) throw Error('Feedback needs an Aux cloud account. You can email hello@getaux.co instead.');
   if (session.incognito || session.ephemeral) throw Error('Session feedback is unavailable for private or ephemeral sessions.');
   const check = () => {
     auxCloudCheckTransferIdentity(accountId, identity);

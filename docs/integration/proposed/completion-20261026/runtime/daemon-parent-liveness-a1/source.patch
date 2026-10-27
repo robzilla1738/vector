@@ -1,0 +1,72 @@
+--- ../../daemon-peerloss-deadline-a1/source/AuxNativeDaemonMain.cc	2026-10-27 13:48:12
++++ AuxNativeDaemonMain.cc	2026-10-27 17:45:44
+@@ -13,6 +13,7 @@
+ #include <unistd.h>
+ #include <atomic>
+ #include <chrono>
++#include <optional>
+ #include <condition_variable>
+ #include <cstdio>
+ #include <cstring>
+@@ -54,16 +55,25 @@
+ std::condition_variable peer_loss_wake;
+ bool event_loop_returned = false;
+ std::thread peer_loss_deadline;
++// Both deadlines run from the first observed peer loss, so a browser crash
++// ends this process about kPeerLossDeadline later, not twice that.
++std::optional<std::chrono::steady_clock::time_point> peer_lost_at;
++std::chrono::steady_clock::time_point NotePeerLoss() {
++  std::lock_guard<std::mutex> lock(peer_loss_mutex);
++  if (!peer_lost_at) peer_lost_at = std::chrono::steady_clock::now();
++  return *peer_lost_at;
++}
+ // Called only from the pulse and authority threads, which main joins before
+ // joining the deadline thread.
+ void ArmPeerLossDeadline(node::Environment* environment) {
++  const auto lost = NotePeerLoss();
+   std::lock_guard<std::mutex> lock(peer_loss_mutex);
+   if (event_loop_returned || peer_loss_deadline.joinable()) return;
+-  peer_loss_deadline = std::thread([environment] {
++  peer_loss_deadline = std::thread([environment, lost] {
+     std::unique_lock<std::mutex> wait(peer_loss_mutex);
+     // Main sets the flag under this lock before any teardown, so Stop
+     // never reaches a released environment.
+-    if (!peer_loss_wake.wait_for(wait, kPeerLossDeadline, [] { return event_loop_returned; }))
++    if (!peer_loss_wake.wait_until(wait, lost + kPeerLossDeadline, [] { return event_loop_returned; }))
+       node::Stop(environment);
+   });
+ }
+@@ -319,6 +329,8 @@
+ int main(int argc, char** argv) {
+   // No argument carries policy, source bytes, provider or a selected home.
+   if (argc != 1 || !argv || !argv[0]) return Refuse("arguments", -1, 64);
++  // The launching browser; a different parent later means it is gone.
++  const pid_t browser = getppid();
+   const int crash_registration = AuxCaptureInheritedCrashRegistration();
+   if (crash_registration != 0)
+     return Refuse("inherited-crash-registration", crash_registration, 78);
+@@ -416,13 +428,19 @@
+   // Retain every actual object while drain is unresolved; no V8 disposal from
+   // a timeout, missing callback or an untracked image. No readmission/reset.
+   auto drain = result.native_drain;
+-  const auto drain_started = std::chrono::steady_clock::now();
++  if (pulse.failed() || authority.failure()) NotePeerLoss();
+   while (drain != AuxDevelopmentWorkerDrain::drained) {
+     // Browser grant retirement stays pending until a browser peer proves
+-    // teardown, which a lost peer never does. End this interrupted process
+-    // without disposal or a clean claim; the next launch recovers it.
+-    if ((pulse.failed() || authority.failure()) &&
+-        std::chrono::steady_clock::now() - drain_started >= kPeerLossDeadline) {
++    // teardown, which a lost peer never does. The pulse and authority threads
++    // have stopped, so watch the browser itself: once it is gone, this process
++    // is reparented. End it without disposal or a clean claim; the next launch
++    // recovers it.
++    if (getppid() != browser) NotePeerLoss();
++    const auto lost = [] {
++      std::lock_guard<std::mutex> lock(peer_loss_mutex);
++      return peer_lost_at;
++    }();
++    if (lost && std::chrono::steady_clock::now() - *lost >= kPeerLossDeadline) {
+       Refuse("parent-loss-drain", static_cast<int>(drain), 75);
+       _exit(75);
+     }

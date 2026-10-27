@@ -3,14 +3,16 @@
 
 Reads docs/integration/proposed/completion-20261026/integrator/current-source-selection.json:
 every pinned {path, sha256} must exist with that hash, and the candidate app's
-whole inventory must equal the latest repair receipt's. Read-only.
+whole inventory (recomputed with the repair executor's own helper, so added or
+removed files count) must equal the latest repair receipt's. Read-only.
 """
-import hashlib, json, sys
+import hashlib, importlib.util, json, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SELECTION = ROOT/'docs/integration/proposed/completion-20261026/integrator/current-source-selection.json'
 LEGACY = '/Users/rcourson/Documents/Vibe/web'  # pre-rename root in older receipts
+REVIEW = ROOT/'docs/integration/proposed/completion-20261026/runtime/authority-review/signing-execution-review.json'
 
 
 def sha(path):
@@ -51,16 +53,23 @@ def main():
                   if p.endswith('/receipt.json') and local(p).is_file()
                   and json.loads(local(p).read_text()).get('inventorySha256') == selection['signedInventorySha256']),
                  key=lambda r: 0, default=None)
-    inventory = 'no receipt matches signedInventorySha256'
+    inventory, matches = 'no receipt matches signedInventorySha256', False
     if latest:
-        rows = {r['path']: r for r in latest['files']}
-        drift = [p for p, r in rows.items() if r['type'] == 'file' and (not (app/p).is_file() or sha(app/p) != r['sha256'])]
-        inventory = f'{len(rows)} entries, {len(drift)} differ' + (f' (first: {drift[:3]})' if drift else '')
+        helper = local(json.loads(REVIEW.read_text())['inventoryHelper']['path'])
+        spec = importlib.util.spec_from_file_location('ordinary_repair_inventory', helper)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        actual = module.inventory(app)
+        recorded = {r['path']: r for r in latest['files']}
+        current = {r['path']: r for r in actual}
+        drift = sorted(path for path in recorded.keys() | current.keys() if recorded.get(path) != current.get(path))
+        matches = not drift and module.digest(actual) == selection['signedInventorySha256']
+        inventory = f'{len(current)} entries, {len(drift)} differ' + (f' (first: {drift[:3]})' if drift else '')
     print(json.dumps({'pins': checked, 'missing': len(missing), 'changed': len(changed), 'inventory': inventory}, indent=1))
     for label, items in (('missing', missing), ('changed', changed)):
         for item in items[:10]:
             print(label, item)
-    return 1 if missing or changed or not latest or 'differ (' in inventory else 0
+    return 0 if matches and not missing and not changed else 1
 
 
 if __name__ == '__main__':
