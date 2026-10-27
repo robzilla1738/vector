@@ -1,0 +1,92 @@
+{
+ "format": "aux.future-browser-source-rebase.v1",
+ "date": "2026-10-27",
+ "base": "durable checkout at seal 3b9f9b68",
+ "activated": false,
+ "records": [
+  {
+   "path": "base/process/mac/aux_browser_descendant_bridge.cc",
+   "inputSha256": "b152568ec7a43eac2ca17eb496406746e6c5c63de3df2afa31a62479f26b06d1",
+   "outputSha256": "9ab32514de92dd9df2265ac935458cbacde92a7165393dc42b5c41d37991ab22",
+   "anchors": 2,
+   "predecessorInputSha256": "b152568ec7a43eac2ca17eb496406746e6c5c63de3df2afa31a62479f26b06d1"
+  },
+  {
+   "path": "chrome/app/chrome_exe_main_mac.cc",
+   "inputSha256": "1180a9c03b45d83ed3eec63a3fac3bee3439582628f6d5f1268dff9d04ca89d8",
+   "outputSha256": "74e7d103eb4792331775a25d8e4026d99d89de10e152bab025e13f3d73944379",
+   "anchors": 1,
+   "predecessorInputSha256": "1180a9c03b45d83ed3eec63a3fac3bee3439582628f6d5f1268dff9d04ca89d8"
+  },
+  {
+   "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+   "inputSha256": "d25edf02478e97766ae3e6cbec5866cb51ce3145422c85f054cb56436373de1b",
+   "outputSha256": "21b9b800578c5d12b83d6be9a9dc42ebf27996a6cc86e5a124d72e3718f5ea2e",
+   "anchors": 1,
+   "predecessorInputSha256": "6d7834e5ff02e3f98d54919e10b9c43aca13b75be3453ab33699dee50ad5d9ef"
+  },
+  {
+   "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+   "inputSha256": "d5ef5387e492c80836e31553b8e1af7e2e48ee962e61d60212c7866637841399",
+   "outputSha256": "96888a6b4174f8655b907ae3fe329268adbd5487783b5ea45cfd01ac40aea525",
+   "anchors": 1,
+   "predecessorInputSha256": "2e25c7f4b67380c73559d6cdb30e463518c95c1aa417a65dff39d37a3c834713"
+  },
+  {
+   "path": "chrome/browser/aux/daemon_supervisor.cc",
+   "inputSha256": "55426e0b0389c0ac270525d764a890fd5deb3f6f2bfe0f48c7a84c004fea4e27",
+   "outputSha256": "d5ae65013d7e3e59cda9176d36eba4ea34dd0a08110ea41406087bd077649246",
+   "anchors": 1,
+   "predecessorInputSha256": "be60cd4b8b5430ba93b9af5395c58a649e1e55ef72af1c33c530584f3d4688a9"
+  },
+  {
+   "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+   "inputSha256": "bf4be99ca5e72171beeb794e4cccbe4cfabedb4cbe578c24a6f890a1cdac76c8",
+   "outputSha256": "f99da47324e17e0973d355834c238581a5052d17a0cdfe24ec7110654ed8de45",
+   "anchors": 1,
+   "predecessorInputSha256": "bf4be99ca5e72171beeb794e4cccbe4cfabedb4cbe578c24a6f890a1cdac76c8"
+  },
+  {
+   "path": "chrome/browser/chrome_browser_main.cc",
+   "inputSha256": "0d7c6c77fde7499cf43732ffa581b30f7904e30ca37dab47ab08477a87357f89",
+   "outputSha256": "444d6b206c446e71767d96515742216a5d3240900c5bdbf4b91e414d7b8eb750",
+   "anchors": 2,
+   "predecessorInputSha256": "0d7c6c77fde7499cf43732ffa581b30f7904e30ca37dab47ab08477a87357f89"
+  },
+  {
+   "path": "chrome/browser/aux/ordinary_startup_build.h",
+   "inputSha256": "e8844b6e7513a10fccfdb905ddc025316678c9ea33fbb4f3e4c1de5f5333dd3c",
+   "outputSha256": "f177d10575e20f6495c2d4e94ac4e294d78e6c87e8997b98310c7dd6b6e76c76",
+   "anchors": 1,
+   "predecessorInputSha256": "e8844b6e7513a10fccfdb905ddc025316678c9ea33fbb4f3e4c1de5f5333dd3c"
+  },
+  {
+   "path": "base/BUILD.gn",
+   "inputSha256": "b3c2014e9927113d33c956395d3f23a502001f5ad04cf19705db169ea564a67d",
+   "outputSha256": "47e722b3c439fccac47017359996425a02e8cfe20cd3151d2783ca88211ac176",
+   "anchors": 1,
+   "predecessorInputSha256": "b3c2014e9927113d33c956395d3f23a502001f5ad04cf19705db169ea564a67d"
+  },
+  {
+   "path": "chrome/browser/aux/BUILD.gn",
+   "inputSha256": "3481a445ba09d9ed7c135786b9e0bce9be1f5cbff2ad7a7556ae63069096b339",
+   "outputSha256": "f8ff7091eed4d3ad9f69b6960f07008c24434da4ac2efb774e250edc143e05ab",
+   "anchors": 1,
+   "predecessorInputSha256": "3481a445ba09d9ed7c135786b9e0bce9be1f5cbff2ad7a7556ae63069096b339"
+  },
+  {
+   "path": "chrome/BUILD.gn",
+   "inputSha256": "011f0446378ecf4f22e28088e4ec43166c7ae22fc77bcb30ac091806f5f929a8",
+   "outputSha256": "d3e3bef9a252acb43fb3f3c63d7d888c7e5699dd8263e5f374a1ad59b40fc80d",
+   "anchors": 1,
+   "predecessorInputSha256": "011f0446378ecf4f22e28088e4ec43166c7ae22fc77bcb30ac091806f5f929a8"
+  },
+  {
+   "path": "chrome/browser/aux/native_peer_policy/BUILD.gn",
+   "inputSha256": "69f2f6be74bfcf3a214323854ef34e209d4e4c139122a4f20b71fb89026679cf",
+   "outputSha256": "5b0722d3a5867f38cb741aa0c67940eeb1a55625d752c39510524adb2b9e2a48",
+   "anchors": 1,
+   "predecessorInputSha256": "69f2f6be74bfcf3a214323854ef34e209d4e4c139122a4f20b71fb89026679cf"
+  }
+ ]
+}

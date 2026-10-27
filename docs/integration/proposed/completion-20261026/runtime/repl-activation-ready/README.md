@@ -27,19 +27,17 @@ Already gone before preservation:
   Their receipts remain.
 - **Template names:** the remaining references are name templates such as `…-a1-` and are not real directories.
 
-## Why the rebase waits
+## Rebased onto the current seal (2026-10-27)
 
-The cohort predates these accepted or prepared repairs:
-- `final-polish-a1` and `brand-sweep-a1` (`futureResourcesLackRules`), plus the PDF-ABI rule
-- `phase1-native-a1`, `product-logo-a1`, `split-multipane-metrics-a1`
-- `daemon-lifeline-a1`, `split-menu-feedback-a1`, `durable-checkout-a1`
+The cohort now carries every correction the shipping candidate has. Nothing is activated, signed or linked into the candidate.
 
-Batch 2 (wire and state identity) and Batch 4 (native addon and keychain group) rename the same daemon, browser and resource leaves this cohort replaces. Rebasing now would be done twice. The rebase therefore runs once, after Batch 4, on the durable checkout:
-1. Re-project `../future-supervised-build/browser-source-plan.json` onto the then-current files.
-2. Recompose both daemon resource leaves with every accepted rule.
-3. Relink daemon and Framework.
+- **Browser overlay:** `future-supervised-build/browser-source-rebased-a1/` holds all 12 files with every one of the 19 counted anchors replayed onto the current durable tree, including the three files that had drifted (`daemon_supervisor.cc`, `AuxSelectedStateHome.cc`, `AuxOwnedNativePeerChild.cc`). Every change stays behind `AUX_FIXED_LINKED_PTY_POLICY`.
+- **Daemon JS:** `future-supervised-build/resources-rebased-a1/compose.py` replays the final-polish (6), brand-sweep (13), broker-order (8) and memory-close (2) rules onto both frozen future leaves. All apply exactly once and both outputs parse. This clears `futureResourcesLackRules`.
+- **Daemon main:** `future-supervised-build/main-rebased-a1/` is the future main with the bounded peer-loss shutdown applied cleanly. It compiles with the cohort's recorded command.
+- **Task layout:** the future link uses the same file the shipping daemon used, so `prepared-lease-recovery-a1/source/AuxNativeTaskLayout.swift` applies as-is.
+- **PDF-ABI:** the future link must swap in `out/live-inputs/completion-20261026/aux-completion-final-daemon-pdf-abi-20261026-a1/worker-host.o`, exactly as `final-daemon-pdf-abi/relink/relink.py` did for the shipping daemon.
 
-It runs earlier only if Apple approves `2H4D7KNGUP` first.
+What is left before activation is only what Apple gates: relink the daemon and Framework from these inputs, then make the entitlement/profile change and the v11 signing delta.
 
 ## Activation (after Apple approves 2H4D7KNGUP)
 

@@ -1,0 +1,15 @@
+{
+ "format": "aux.future-main-rebase.v1",
+ "activated": false,
+ "input": {
+  "path": "docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/AuxNativeDaemonMain.cc",
+  "sha256": "2ad0922cf55e1be8f0c1131eacf58c0c901b9880ca6b3b9c61c230822bf84ce6"
+ },
+ "carried": "daemon-peerloss-deadline-a1/source.patch, applied cleanly with patch(1)",
+ "outputSha256": "4b0da71032bf74029ffff07167e0a69ed8d7dd9a6af9fe71384aa630d519495f",
+ "compile": {
+  "command": "out/live-inputs/completion-20261026/future-main-rebased-a1/compile.json",
+  "exit": 0,
+  "objectSha256": "f070d5f659f339e83f0055473d6660c9139de979f737193d80dbf65e50ff137a"
+ }
+}

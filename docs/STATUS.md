@@ -58,7 +58,7 @@ The supplied addon (`provided-native.node`) and its carrier were unreachable in 
 
 ### External gates (Batch 5)
 
-- **REPL (Bash/PTY/CLI):** the source is complete and compiled but inactive. Waiting on Apple `2H4D7KNGUP`. Activation steps are in `runtime/repl-activation-ready/README.md`. The future cohort must be rebased onto the current seal and carry the PDF-ABI, final-polish and brand-sweep rules.
+- **REPL (Bash/PTY/CLI):** the source is complete, rebased onto the current seal (browser overlay, daemon JS with every current rule, and the daemon main with the peer-loss bound, which compiles), and inactive. Waiting on Apple `2H4D7KNGUP`; the remaining steps are in `runtime/repl-activation-ready/README.md`.
 - **1Password:** the candidate is already sealed with the Apple Development identity for team `9F2JXY8TCK`. The pairing check still needs the owner's choice of identity for the one `/Applications` install, a disposable vendor account, and someone to drive the UI. Native-host process and pipe cleanup is the remaining source item (`runtime/native-host`).
 - **Hosted service:** typecheck and 63/63 tests pass locally after fixing a stale catalog test, which now asserts the BYOK scope. The deploy review's source pins must be refreshed because of that test change. Production deploy, the schema comparison, J5, monitors, alert recipient, operator and rollback ID all need owner approval (`integration/cloud-activation/`).
 - **ChatGPT plan:** the eligibility form is not submitted; 5 fields are null in `integration/chatgpt-eligibility/request.pending.json`.

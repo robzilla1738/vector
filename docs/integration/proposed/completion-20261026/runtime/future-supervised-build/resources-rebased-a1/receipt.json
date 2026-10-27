@@ -1,0 +1,20 @@
+{
+ "format": "aux.future-resources-rebase.v1",
+ "activated": false,
+ "rules": [
+  "final-polish-a1",
+  "brand-sweep-a1",
+  "broker-shutdown-order-a1",
+  "memory-close-settle-a1"
+ ],
+ "outputs": {
+  "index.mjs": {
+   "inputSha256": "d244835e0f463a451e350eb2f075cdb6900d1d9e640587edcc372c45ef27b058",
+   "sha256": "d1894166d98e9e526f99c4325d365bf622e673e994c8d146cf258395e0037825"
+  },
+  "aux-native-entry.mjs": {
+   "inputSha256": "b9f39718475bda37c21ebbf241792b83d534c0c3849548e53b4fe655ceb88f71",
+   "sha256": "45dfe4e16ed6ca1b712fa798393ae49619fe0540ead8bb0b72c441241d0bf915"
+  }
+ }
+}
