@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import vm from 'node:vm';
+import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import {auxCreateProductivityAccountGuard,auxRunProductivityRequest,auxStopProductivityRequests,auxCancelProductivityRequest,transformAuxProductivityDaemon} from './aux-productivity-integration.mjs';
 import {auxRunDownloadNameRequest,auxStopDownloadNameRequests,auxCancelDownloadNameRequest,proposeDownloadName,validDownloadStem,transformAuxFilesDaemon} from './aux-productivity-files.mjs';
 import {runProductivityPlan,validateTidyPlan} from './aux-productivity-proposals.mjs';
 
 // Only selected static account methods execute. The 12 MB bundle is never
 // imported, initialized, connected to a browser, or given filesystem access.
-const source=readFileSync(process.env.AUX_PRODUCTIVITY_SOURCE??'/private/tmp/aux-offline-runtime-source-20261023/index.mjs','utf8');
+const source=readFileSync(process.env.AUX_PRODUCTIVITY_SOURCE??`${repoRoot}/out/live-inputs/tmp-preserved/aux-offline-runtime-source-20261023/index.mjs`,'utf8');
 const between=(start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a+start.length);assert.ok(a>=0&&b>a);return source.slice(a,b)};
 const pieces={
  assertion:between('function assertAccountInstance(', 'function scheduleIdleCleanup('),
