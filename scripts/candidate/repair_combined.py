@@ -3,7 +3,7 @@
 import argparse, hashlib, importlib.util, json, os, plistlib, shutil, subprocess, sys
 from pathlib import Path
 sys.dont_write_bytecode = True
-ROOT = Path(__file__).resolve().parents[6]
+ROOT = Path(__file__).resolve().parents[2]
 HERE = ROOT/'docs/integration/proposed/completion-20261026/runtime/authority-review'
 # Approved reviews and receipts predate the repository rename; their recorded
 # paths are re-rooted here. Every pinned file is still checked by SHA-256.

@@ -15,3 +15,5 @@ An optional --extension-manifest updates only the existing manifest version, str
 Optional --daemon-executable replaces only the existing signed daemon target's own executable (the daemon object is resealed in any case). Optional --session-route is confined to existing assets/_sessionId-ClN_BWh5.js.
 
 Optional --shortcut-capture is confined to existing assets/use-shortcut-capture-DGr8Ws5Z.js for the repeated-focus state correction. No additional signed object or API is introduced.
+
+**Moved 2026-10-27:** the live freezer and executor are now `scripts/candidate/freeze_plan.py` and `scripts/candidate/repair_combined.py`, beside `prepare_edits.py` and `relink_daemon.py`. Plans frozen before the move pin the old executor path and stay as records.

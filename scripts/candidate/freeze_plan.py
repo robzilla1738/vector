@@ -2,7 +2,7 @@
 """Freeze exact replacement inputs and receipt; does not modify or sign the app."""
 import argparse,hashlib,json
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[6]
+ROOT=Path(__file__).resolve().parents[2]
 APP=ROOT/'out/provided-candidate-completion-20261026-a1/Aux.app'
 BASE='Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/'
 def pin(path):
@@ -33,7 +33,7 @@ for target,source in inputs:
  assert rows[target]['type']=='file' and not (APP/target).is_symlink()
  assert pin(APP/target)['sha256']==rows[target]['sha256']
  replacements.append({'target':target,'input':pin(source),'beforeSha256':rows[target]['sha256']})
-executor=Path(__file__).resolve().with_name('repair-combined.py')
+executor=Path(__file__).resolve().with_name('repair_combined.py')
 removals=[{'target':x,'beforeSha256':rows[x]['sha256']} for x in a.remove]
 plan={'format':'aux.combined-product.same-scope-repair.v1','app':str(APP),'approvedReviewSha256':'20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2','executor':pin(executor),'signedReceipt':receipt_pin,'replacements':replacements,'removals':removals,'sourceEvidence':[pin(x) for x in a.source_evidence],'receiptDirectory':a.receipt_directory}
 with Path(a.out).open('x') as f:json.dump(plan,f,indent=2);f.write('\n')
