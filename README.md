@@ -7,7 +7,7 @@ Aux is a Chromium-based macOS browser with a built-in agent. It reuses the Aside
 - Candidate: `out/provided-candidate-completion-20261026-a1/Aux.app`. Start it with the adjacent `Launch Aux.command`.
 - Fallback: `out/provided-candidate-local-completion-20261025-a38/Aux.app`, the last broadly accepted build, with its own `Launch Aux.command`.
 
-Neither is a release. `~/Applications/Aux.app` is an older launcher for the retired independent build, not either of these.
+Neither is a release. `python3 scripts/verify-candidate.py` checks that the candidate still matches its recorded repair chain (every pinned input and the whole app inventory). A fresh `stage:provided` from the frozen snapshot is the predecessor pipeline: the candidate is the A38 base plus the ordered, receipt-bound repairs in `current-source-selection.json`, and the browser source is `chromium/tree/`. `~/Applications/Aux.app` is an older launcher for the retired independent build, not either of these.
 
 ## Layout
 
