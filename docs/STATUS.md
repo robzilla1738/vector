@@ -1,6 +1,6 @@
 # Aux status
 
-Last updated 2026-10-27. This is the pause checkpoint and the single current-state page. Dated history through 2026-10-26 is in [archive/status-history-through-2026-10-26.md](archive/status-history-through-2026-10-26.md). The working checklist is [ROADMAP-EXECUTION-GRAPH.md](ROADMAP-EXECUTION-GRAPH.md). [PAUSE-HANDOFF.md](integration/proposed/completion-20261026/PAUSE-HANDOFF.md) records the October 26 startup failure only.
+Last updated 2026-10-27. This is the single current-state page. Dated history through 2026-10-26 is in [archive/status-history-through-2026-10-26.md](archive/status-history-through-2026-10-26.md). The working checklist is [ROADMAP-EXECUTION-GRAPH.md](ROADMAP-EXECUTION-GRAPH.md). [PAUSE-HANDOFF.md](integration/proposed/completion-20261026/PAUSE-HANDOFF.md) records the October 26 startup failure only.
 
 ## Pause
 
@@ -52,6 +52,13 @@ Local, on this candidate:
 - Remaining Aside identifiers that stay until a versioned migration: `AsideNativeSwift` / `AsideNativeRun` and keychain group `8CPD4K4TBB.at.studio.AsideBrowser.cryptography` live in the immutable supplied addon and are remapped at runtime. `aside.*` storage keys are legacy migration readers. The `aside` scheme was removed in Phase 1.
 - A future resource cohort must keep the PDF-ABI correction, the final-polish rules, and the brand-sweep rules. `current-source-selection.json` records `futureResourcesLackRules` for final-polish and brand-sweep.
 
+Repo and pipeline, found in the 2026-10-27 cleanup:
+
+- A fresh `stage:provided` stops at the Agent revision review, for both the default profile and the candidate's (`--cloud-profile development --identity-profile aux-v1 --state-identity-version 2`, with or without `--feature-profile desktop-v1`). The candidate's Agent (`1.26.1016.1888`) came from the completion repair deltas, not from this stage path, and `vendor/provided/agent-revisions.json` has no review for a current fresh stage. So `pnpm check:provided` cannot pass until a new revision is reviewed. `scripts/lib/provided-ui.test.mjs` is skipped for the same reason.
+- A fresh Chromium checkout cannot be rebuilt from the repo. The `aux-chromium` setup tool had not run since 2026-10-18 and was removed. The durable checkout's Git is now self-contained: its object store borrowed from `aux-chromium-proof`, which moved to `~/Documents/Aux-archive` today, so the borrowed objects were repacked in and the alternates file was set aside as `alternates.dissociated-2026-10-27`.
+- `out/cleanup-2026-10-27/cleanup.sh` (not yet run) removes the 180 purged `/private/tmp` worktrees, 492 branches and 1,227 disposable `out/` entries. All their commits are already under `refs/archive/` and in `~/Documents/Aux-archive/aux-all-refs-2026-10-27b.bundle`. The 50 worktrees in `~/Documents/Aux-archive/worktrees` and 11 in `~/.codex/worktrees` stay.
+- `~/Applications/Aux.app` is the 2026-10-19 launcher for the retired independent build, not this candidate.
+
 Full pre-release. These external gates were not rechecked in this pause:
 
 - General Bash/PTY/CLI REPL: Apple EndpointSecurity request `2H4D7KNGUP` has no approval on record. Generic filesystem draft (`728e4e108`) is unjoined.
@@ -66,6 +73,7 @@ Owner decisions that gate later phases: signing for vendor pairing, how to proce
 
 ## Progress log
 
+- 2026-10-27: Repo cleanup. Fixed the paths the `web`→`Aux` rename broke (launchers, live source selection, 39 tests) and moved six live inputs out of `/private/tmp` into `out/live-inputs/`. `pnpm test` now runs every test: 406 pass, 0 fail, 12 opt-in skips (it was 218 pass, 55 fail). Retired `apps/`, `packages/` and their tooling, removed 760 unreferenced receipt folders and 542 uncited archive/acceptance files, and rewrote AGENTS.md and the entry docs as current rules. Everything removed is at tag `archive/pre-cleanup-2026-10-27`.
 - 2026-10-27: Entry-point docs point here. Historical plans, the clean-room spec, and evidence receipts stay as dated records. See [docs/README.md](README.md).
 - 2026-10-27: Paused at the owner's request. Docs aligned to seal `2a215e71`. Popup lifetime review recorded as no source change. Acceptance stopped.
 - 2026-10-27: Native checkout copied to the durable path. Previous STATUS archived.
