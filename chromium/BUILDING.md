@@ -18,7 +18,7 @@ under `docs/archive/`.
   Preserve an existing args file before changing it. The browser executable lives
   at `out/AuxFast/Aux.app/Contents/MacOS/Aux`.
 - Every native compile and generation command uses the shared serialization wrapper:
-  `python3 /Users/rcourson/Documents/Vibe/web/scripts/native-build.py <command> [args...]`.
+  `python3 /Users/rcourson/Documents/Vibe/Aux/scripts/native-build.py <command> [args...]`.
   Do not clear a live lock or run a second build against the same output.
 
 The integrator applies lane patches to shared files and owns the patch series,
