@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {adaptDaemonCodeWithAuxCrypto,adaptDaemonBinaryWithAuxCrypto,buildDaemonNodeDevelopmentWithAuxCrypto} from './aux-crypto-stage.mjs';
 import {findMachOSeaSection,readSeaBlob,writeSeaBlob,injectMachOSeaBlob} from '../aside/lib/sea.mjs';
 import {embedCloudSeaBlob} from './cloud-sea-embedding.mjs';
-import {createMacUtilityLoader} from '../../scripts/lib/integration/aux-macos-utility-node/adapt.mjs';
+import {createMacUtilityLoader} from '../../docs/integration/proposed/aux-macos-utility-node/source/adapt.mjs';
 import {AUX_COLD_ENTRY_REFUSAL} from './aux-cold-entry-admission.mjs';
 const root=new URL('../../',import.meta.url),sha=x=>createHash('sha256').update(x).digest('hex');
 const pins=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-macos-utility-integration/inputs.json',import.meta.url)));

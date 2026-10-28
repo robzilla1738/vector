@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import vm from 'node:vm';
 import { transformAuxFinalRuntimeIdentity } from './aux-final-runtime-identity.mjs';
-import { upgradeCloudTransfers } from '../../scripts/lib/integration/completion-integration/transform.mjs';
+import { upgradeCloudTransfers } from '../../docs/integration/proposed/completion-20261026/integration/transform.mjs';
 
 const root = repoRoot+'/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux';
 const daemon = join(root, 'apps/daemon/Aux Daemon.app/Contents/Resources/node-development');

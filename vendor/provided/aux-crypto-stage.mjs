@@ -6,7 +6,7 @@ import {buildDaemonNodeDevelopment} from './daemon-node-development.mjs';
 import {AUX_COLD_ENTRY_REFUSAL} from './aux-cold-entry-admission.mjs';
 import {embedCloudSeaBlob} from './cloud-sea-embedding.mjs';
 import {findMachOSeaSection,readSeaBlob,writeSeaBlob,injectMachOSeaBlob} from '../aside/lib/sea.mjs';
-import {materializeAuxCryptoRuntimeAssets} from '../../scripts/lib/integration/aux-crypto-runtime-assets/materialize.mjs';
+import {materializeAuxCryptoRuntimeAssets} from '../../docs/integration/proposed/aux-crypto-runtime-assets/source/materialize.mjs';
 const root=new URL('../../',import.meta.url),sha=x=>createHash('sha256').update(x).digest('hex');
 const pins=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-crypto-stage-integration/inputs.json',import.meta.url)));
 export const AUX_CRYPTO_GENERATOR='vendor/provided/aux-crypto-stage.mjs';

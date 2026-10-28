@@ -1,11 +1,14 @@
 # Live integration code
 
-These modules were proposed under `docs/integration/proposed/<package>/` and later wired into staging, packaging and tests. The live copies are here so build scripts no longer import from the records tree; the originals under `docs/integration/proposed/` stay unchanged as the reviewed records their receipts and `source-pins.json` files pin by hash.
-
-Each module still reads its reviewed data (`inputs.json`, `source-pins.json`, `anchors.json`, `edits.json`, payload text) from its record folder, so a pin change is still a record change. Only the import paths differ from the records; the code is otherwise byte-identical. `scripts/lib/provided-stage-inputs.mjs` hashes these copies as stage provenance, so editing one requires a restage.
+Code first proposed under `docs/integration/proposed/` that staging, packaging and audits import. The copies here differ from their records only in import paths; they still read reviewed data (`inputs.json`, `source-pins.json`, payload text) from the record folders, which stay unchanged. `scripts/lib/provided-stage-inputs.mjs` hashes these copies as stage provenance, so editing one requires a restage.
 
 | Here | Record |
 |---|---|
-| `<package>/<file>` | `docs/integration/proposed/<package>/source/<file>` (or `<package>/<file>`) |
-| `research-v1/aux-research-ui.mjs` | `browser-feature-expansion/research-v1/source/aux-research-ui.mjs` |
-| `completion-integration/transform.mjs` | `completion-20261026/integration/transform.mjs` |
+| `provided-agent-worker-revision/revision.mjs` | `docs/integration/proposed/provided-agent-worker-revision/revision.mjs` |
+| `aux-native-main-package-integration/native-main-package.mjs` | `.../aux-native-main-package-integration/source/native-main-package.mjs` |
+| `research-v1/aux-research-ui.mjs` | `.../browser-feature-expansion/research-v1/source/aux-research-ui.mjs` |
+| `aux-native-compatibility-metadata/inspect.py` | `.../aux-native-compatibility-metadata/inspect.py` |
+
+## Still imported from `docs/integration` (on purpose)
+
+Sixteen modules stay where they are because the code verifies them by path and SHA-256 at stage time through their reviewed pin files: the native entry/package projections (`aux-native-{rebuilt-pty,provider-entry,current-entry,main}-package`, `aux-native-owned-entry-{pty,routing}`, `aux-native-exec-lifetime`, `aux-native-fixed-pty-loading`, `aux-final-local-entry-package`, pinned by their `inputs.json`), `aux-sync-recovery-enrollment-ui/source/adapt.mjs` and `aux-macos-utility-node/source/adapt.mjs` (pinned by `aux-macos-utility-integration/inputs.json`, which also pins `vendor/provided/aux-crypto-stage.mjs`), `aux-crypto-runtime-assets/source/materialize.mjs` (pinned by `aux-crypto-stage-integration/inputs.json`) and `completion-20261026/integration/transform.mjs` (pinned by `desktop/browser-files/composition-inputs.json`). Copying them would leave the checks verifying the record while a different file runs. Moving them means moving and re-pinning those pin files with them, which is a reviewed change.

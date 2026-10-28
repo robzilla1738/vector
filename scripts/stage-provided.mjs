@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { composeCloudDesktop } from '../vendor/provided/cloud-desktop-composition.mjs';
 import { resolveCloudServicePolicy } from '../vendor/provided/cloud-service-policy.mjs';
 import { stageProvidedUi } from './lib/provided-ui.mjs';
-import { adaptAuxRecoveryEnrollmentUI } from './lib/integration/aux-sync-recovery-enrollment-ui/adapt.mjs';
+import { adaptAuxRecoveryEnrollmentUI } from '../docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs';
 import { stageProvidedApps } from './lib/provided-apps.mjs';
 import { stageProvidedRuntime } from './lib/provided-runtime.mjs';
 import { stageProvidedComputerUse } from './lib/provided-computer-use.mjs';

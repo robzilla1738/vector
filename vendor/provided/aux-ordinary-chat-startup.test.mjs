@@ -7,7 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { auxCreateLazyDesktopRepl, auxCaptureAgentStartAttempt, auxReportAgentStartFailure, transformAuxOrdinaryChatStartup } from './aux-ordinary-chat-startup.mjs';
 import { transformAuxEventPolling } from './aux-event-poll-integration.mjs';
 import { transformAuxFinalRuntimeIdentity } from './aux-final-runtime-identity.mjs';
-import { upgradeCloudTransfers } from '../../scripts/lib/integration/completion-integration/transform.mjs';
+import { upgradeCloudTransfers } from '../../docs/integration/proposed/completion-20261026/integration/transform.mjs';
 const root=repoRoot+'/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development';
 const source=readFileSync(root+'/index.mjs','utf8');
 const begin=source.indexOf('function createCoreToolset('),end=source.indexOf('function createAgentToolset(',begin);
