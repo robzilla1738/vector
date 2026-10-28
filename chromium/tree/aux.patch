@@ -41526,7 +41526,7 @@ index 8354a9179ef79627b05447f3810808ccd6a0e78a..9e66453f2f10c20c5ad77ea9ff9b8f01
                  : GetFrameColor(BrowserFrameActiveState::kUseCurrent)));
    }
 diff --git a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
-index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..4e8c9611e10f78230ac8fd3c3e0d6e34296b7249 100644
+index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..a68aa1f36f1f52b8302e16866495f626480f7f15 100644
 --- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
 +++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
 @@ -25,6 +25,10 @@
@@ -41645,7 +41645,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..4e8c9611e10f78230ac8fd3c3e0d6e34
    if (browser_view_->GetIsPictureInPictureType()) {
      // Picture in Picture windows, even if they are part of a web app, draw
      // their own title bar and decorations.  Note that `GetIsWebAppType()` might
-@@ -745,6 +810,26 @@ NativeWidgetMacNSWindow* BrowserNativeWidgetMac::CreateNSWindow(
+@@ -745,6 +810,28 @@ NativeWidgetMacNSWindow* BrowserNativeWidgetMac::CreateNSWindow(
      const remote_cocoa::mojom::CreateWindowParams* params) {
    CHECK(browser_view_);
    NativeWidgetMacNSWindow* ns_window = NativeWidgetMac::CreateNSWindow(params);
@@ -41661,7 +41661,9 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..4e8c9611e10f78230ac8fd3c3e0d6e34
 +    // Original4551750 uses the real BrowserNativeWidgetWindow and its frame.
 +    // Both exclude background movement; the bootstrap hides all lights,
 +    // while the extension popup retains only the close button.
-+    ns_window.movableByWindowBackground = NO;
++    // Peek / Quick window: Chromium's caption regions (the space beside the
++    // traffic lights in the bar) move the window; content does not.
++    ns_window.movableByWindowBackground = popup == AuxPopupKind::kPreview;
 +    auto* browser_window = base::apple::ObjCCast<BrowserNativeWidgetWindow>(ns_window);
 +    if (browser_window) {
 +      [browser_window setCloseButtonOnly:popup == AuxPopupKind::kExtension];
@@ -41672,7 +41674,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..4e8c9611e10f78230ac8fd3c3e0d6e34
    touch_bar_delegate_ = [[BrowserWindowTouchBarViewsDelegate alloc]
        initWithBrowser:browser_view_->browser()
                 window:ns_window];
-@@ -782,6 +867,13 @@ void BrowserNativeWidgetMac::OnWidgetInitDone() {
+@@ -782,6 +869,13 @@ void BrowserNativeWidgetMac::OnWidgetInitDone() {
        GetWidget()->RegisterPaintAsActiveChangedCallback(
            base::BindRepeating(&BrowserNativeWidgetMac::UpdateBackgroundColor,
                                base::Unretained(this)));
@@ -41686,7 +41688,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..4e8c9611e10f78230ac8fd3c3e0d6e34
    // GlassFrameService is only available if glass frame is enabled.
    if (auto* const glass_frame_service = GlassFrameService::GetInstance()) {
      glass_frame_service_subscription_ =
-@@ -811,6 +903,10 @@ void BrowserNativeWidgetMac::OnWindowDestroying(
+@@ -811,6 +905,10 @@ void BrowserNativeWidgetMac::OnWindowDestroying(
  
  void BrowserNativeWidgetMac::OnWidgetActivationChanged(views::Widget* widget,
                                                         bool active) {
