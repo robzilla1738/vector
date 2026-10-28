@@ -24,6 +24,6 @@ Current seal: `b606bf7c` (`out/provided-candidate-completion-20261026-a1/Aux.app
 | 1Password | Native-messaging capture is off the UI thread | Developer ID copy in `/Applications`, vendor account, autofill and pairing (R18) | Owner (p12 import, profile), vendor account |
 | ChatGPT plan | Adapter and eligibility packet ready | Submit the form; Aux client ID; sign-in, consent, inference, refresh and revoke | Owner, then OpenAI |
 | Hosted service | Live since 2026-10-27 on `dpl_FCyG1B6SzBg4CTUSYpwru7krBxHo`; migration 013; cron healthy; J5 steps 8 and 9a passed | Deploy `09c024eba` and `608f900e3`; monitoring and alerts; J5 step 10; sign-in bot protection; env cleanup | Owner |
-| Legal and public pages | Terms, privacy, docs and community live, built from the owner-confirmed answers | Governing-law state, processor regions; right to distribute the supplied code; npm notices | Owner |
+| Public pages | Terms, privacy, docs and community live | Redirects for `getaux.co/policy/*`, `/docs`, `/community`; site icon deploy | Owner deploy |
 | Release mechanics | Info.plist version and copyright set; Sparkle hooks in the tree but not buildable | Entitlements, final state folder, release flags build, Developer ID, notarization, Sparkle, DMG, Chromium update process | Owner decisions, then agent |
 | Reproducibility | `verify-candidate.py` passes (89 pins); `chromium/tree` matches the checkout | Clean apply plus build; one documented rebuild path; tests for the release tools | Agent |

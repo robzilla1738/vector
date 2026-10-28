@@ -6,26 +6,26 @@ Baseline on 2026-10-28: candidate seal `b606bf7c`. `pnpm test` gives 416 pass, 0
 
 AGENTS.md still lists distribution, notarization and release as deferred, and it limits signing to local Apple Development reseals. Sections 1 and 5 can't start until the owner lifts that.
 
+Legal and licensing (distribution rights, third-party licenses and notices, terms and privacy facts) are handled separately by the owner and are not on this list; the [audit tables](2026-10-28-release-audit/) keep those findings for reference.
+
 Each item is marked **[owner]** (only Robert can do it), **[agent]** (Claude can do it, with the build, reseal and test the rules require) or **[external]** (waiting on a third party).
 
 ## 1. Decisions to make first
 
 These change what gets built, so they come before the next native batch.
 
-1. **[owner] The right to distribute the supplied Aside implementation.** The repo records Robert's instruction to reuse the supplied packages. It records no license, assignment or written permission from At Inc. (Aside's publisher, team `8CPD4K4TBB`) to copy, modify or redistribute the Agent extension, daemon, CLI, runtime or UI. Parts were reconstructed by disassembly. A public release needs that permission in writing, or replacement components. Everything below assumes it is settled.
-2. **[owner] Anthropic skill files.** The daemon ships the built-in `docx`, `pptx` and `xlsx` skills under "© 2025 Anthropic, PBC. All rights reserved", whose license forbids redistribution. Remove them or get permission.
-3. **[owner] Out-of-scope sign-in providers.** The contract allows bring-your-own keys or an eligible ChatGPT plan. The daemon still holds the Codex CLI's OAuth client ID as the `openai-codex` login, and the UI offers subscription reuse for Claude Pro/Max, GitHub Copilot (it sends VS Code headers), Kimi, Meta and Grok. Recommendation: remove or hide every one without its own permission, and keep ChatGPT behind the eligibility approval.
-4. **[owner] Release scope and signing rules.** Lift the deferral of distribution, notarization and release in AGENTS.md and the contract. Reconcile the Developer ID rule: AGENTS.md says "no Developer ID", while STATUS records approval of one Developer ID copy for the 1Password test.
-5. **[owner] Final state location.** The binary hard-codes `~/Library/Application Support/Aux Browser Completion 20261026` and `~/Library/Caches/Aux Browser Completion 20261026`. Choose the shipping name, for example `Aux`, before anyone has data, because renaming it later is a migration. `~/Library/Application Support/Aux` may already hold state from the retired independent build.
-6. **[owner] Update and download hosting.** Choose where the Sparkle appcast and the DMGs live (getaux.co or GitHub Releases) and who owns the update signing key.
-7. **[owner] Version scheme.** `1.26.1016.1888` is derived from Aside. Pick Aux's own public version (for example 1.0.0) and a monotonic `CFBundleVersion` for Sparkle.
-8. **[owner] Crash reports.** The privacy page says no crash upload, and the crash scaffolding in the tree is unwired. Ship none, or wire it up with consent and update privacy.
-9. **[owner] Safe Browsing and Google services.** No Google API key is configured, so Safe Browsing phishing and malware protection is off and the "Google API keys are missing" infobar can appear. Decide: ship without Safe Browsing (and say so), or get keys. Then suppress the infobar either way.
-10. **[owner] Widevine and codecs.** The flags enable Widevine and proprietary codecs. DRM playback (Netflix, Spotify) in a non-Google browser needs a Widevine license and VMP signing (for example through castLabs). Decide whether DRM is in scope. Proprietary codecs (H.264, AAC) carry their own patent-licensing question.
-11. **[owner] Localization.** The extension is pinned to English (D8). Chromium is localized, RTL is essentially unsupported in Aux views, and about 290 Aux UI strings are literals. Decide whether launch is English-only.
-12. **[owner] `dev-cloud.getaux.co`.** It points at production but production CORS refuses it, and 46 built-in skill icons load from it. Keep it, or remove it after the icons move.
-13. **[owner] Daemon CORS.** The production-cloud edit re-added `app.getaux.co` and `api.getaux.co` to the daemon's trusted origins after the audit removed remote origins. Decide whether the hosted site may call the local daemon.
-14. **[owner] Repository identity.** `.git/config` sets `user.name` to the literal `user.email`. About 4,900 commits in this personal repo carry the B&G work email. Fix the config, and decide whether to rewrite authorship before the repo or its history goes anywhere public (a history rewrite needs your yes). The 4,105 local commits are not pushed. AGENTS.md forbids pushing, so the only off-machine copies are the ref bundles and the 2026-10-27 encrypted backup, made before the evening of 2026-10-27 and everything committed since.
+1. **[owner] Out-of-scope sign-in providers.** The contract allows bring-your-own keys or an eligible ChatGPT plan. The daemon still uses the Codex CLI's OAuth client ID for the `openai-codex` login, and the UI offers subscription sign-in for Claude Pro/Max, GitHub Copilot (it sends VS Code headers), Kimi, Meta and Grok. Recommendation: hide or remove them for launch, and give ChatGPT Aux's own client ID.
+2. **[owner] Release scope and signing rules.** Lift the deferral of distribution, notarization and release in AGENTS.md and the contract. Reconcile the Developer ID rule: AGENTS.md says "no Developer ID", while STATUS records approval of one Developer ID copy for the 1Password test.
+3. **[owner] Final state location.** The binary hard-codes `~/Library/Application Support/Aux Browser Completion 20261026` and `~/Library/Caches/Aux Browser Completion 20261026`. Choose the shipping name, for example `Aux`, before anyone has data, because renaming it later is a migration. `~/Library/Application Support/Aux` may already hold state from the retired independent build.
+4. **[owner] Update and download hosting.** Choose where the Sparkle appcast and the DMGs live (getaux.co or GitHub Releases) and who owns the update signing key.
+5. **[owner] Version scheme.** `1.26.1016.1888` is derived from Aside. Pick Aux's own public version (for example 1.0.0) and a monotonic `CFBundleVersion` for Sparkle.
+6. **[owner] Crash reports.** The privacy page says no crash upload, and the crash scaffolding in the tree is unwired. Ship none, or wire it up with consent and update privacy.
+7. **[owner] Safe Browsing and Google services.** No Google API key is configured, so Safe Browsing phishing and malware protection is off and the "Google API keys are missing" infobar can appear. Decide: ship without Safe Browsing (and say so), or get keys. Then suppress the infobar either way.
+8. **[owner] Widevine and codecs.** The flags enable Widevine and proprietary codecs. DRM playback (Netflix, Spotify) in a non-Google browser needs the Widevine CDM plus VMP signing of every release (for example through castLabs). Decide whether DRM works at launch; without it those sites fail to play.
+9. **[owner] Localization.** The extension is pinned to English (D8). Chromium is localized, RTL is essentially unsupported in Aux views, and about 290 Aux UI strings are literals. Decide whether launch is English-only.
+10. **[owner] `dev-cloud.getaux.co`.** It points at production but production CORS refuses it, and 46 built-in skill icons load from it. Keep it, or remove it after the icons move.
+11. **[owner] Daemon CORS.** The production-cloud edit re-added `app.getaux.co` and `api.getaux.co` to the daemon's trusted origins after the audit removed remote origins. Decide whether the hosted site may call the local daemon.
+12. **[owner] Repository identity.** `.git/config` sets `user.name` to the literal `user.email`. About 4,900 commits in this personal repo carry the B&G work email. Fix the config, and decide whether to rewrite authorship before the repo or its history goes anywhere public (a history rewrite needs your yes). The 4,105 local commits are not pushed. AGENTS.md forbids pushing, so the only off-machine copies are the ref bundles and the 2026-10-27 encrypted backup, made before the evening of 2026-10-27 and everything committed since.
 
 ## 2. Product blockers (agent, one native batch plus reseal)
 
@@ -47,7 +47,7 @@ Fix these before the acceptance pass, so it runs once.
 
 ### Google and Chrome surfaces
 - Turn off Glic, Lens and Compose through feature defaults instead of only the appended `--disable-features` switch. Disable Google sign-in and sync (`kSigninAllowed` is only false for non-personal profiles), the iOS promos, AI Mode, actor and contextual tasks. Then delete the 751 profile-switch guard lines that only exist for them.
-- Suppress the API-keys infobar (see decision 9).
+- Suppress the API-keys infobar (see decision 7).
 - Reword the 8 remaining "Chromium" strings (mostly SSL interstitials) and the reachable share of 339 "Chrome" strings ("Sign in to Chrome", "Download Chrome for iOS", update strings). Remove the "Gemini in Aux" strings, which would be false claims.
 
 ### Agent and daemon
@@ -59,10 +59,6 @@ Fix these before the acceptance pass, so it runs once.
 - **Skill icons.** Bundle the 46 icons locally, or serve them from `app.getaux.co`.
 - **CDP.** Cap challenges per peer (today it is 1,024 in total).
 - **Bugs.** `isAux` is hard-coded false in settings, which breaks the Library's return to History after clearing data. One timestamp still follows the system locale.
-
-### Licensing in the bundle
-- Ship third-party notices for the npm dependencies of the extension and the daemon. Node, Python, Rust/ONNX and the filter lists are already covered.
-- Add the Sparkle license once Sparkle ships.
 
 ### Polish that a release should have
 - Downgrade the 162 `LOG(ERROR)` traces, including one on every palette event.
@@ -96,7 +92,6 @@ Owner:
 - Previews fail on `AUX_READINESS_SECRET`. Either add it to Preview, or let Claude make `check-environment` require it only in production.
 - Remove the stale Stripe and hosted-AI variables, and mark the database URLs, Postgres passwords and Blob token as sensitive.
 - Confirm the Neon point-in-time restore window.
-- Legal: name the LLC's state of organization (governing law), and confirm the Blob, Clerk and Resend regions.
 
 Agent:
 - Turnstile or an equivalent check on the email code.
@@ -109,7 +104,7 @@ Agent:
 - Point `getaux.co/policy/*`, `/docs` and `/community` at `app.getaux.co`, or add redirects. Decide on `/support`.
 - Add a lint script.
 
-## 5. Signing, notarization and updates (needs decision 4)
+## 5. Signing, notarization and updates (needs decision 2)
 
 1. **[owner]** Import `Aux Developer ID Application - 2026.p12` into the login Keychain. Only the Apple Development identity is installed today.
 2. **[owner]** Create a Developer ID provisioning profile for `dev.aux.browser.daemon` (team `9F2JXY8TCK`). Its restricted entitlements need one, and the REPL's Endpoint Security entitlement will too.
@@ -158,4 +153,4 @@ Decisions (1) ─► product batch (2) ─► D12 grants ─► acceptance (3) �
 Hosted (4) and external gates (6) run alongside; reproducibility (7) lands before the first public build.
 ```
 
-The release-critical path is gated by decisions 1–5, the D12 grants and the Developer ID import. Native builds and real launches bound the agent work. The REPL and ChatGPT can ship later as updates if Apple or OpenAI haven't answered.
+The release-critical path is gated by decisions 1–3, the D12 grants and the Developer ID import. Native builds and real launches bound the agent work. The REPL and ChatGPT can ship later as updates if Apple or OpenAI haven't answered.
