@@ -42644,6 +42644,99 @@ index a335e2d5ccd0e9d54b0335d58642f4440b22b992..59c12578695794f292eb46230ceefa3f
  
    // Re-apply Widget overrides because GetColorProviderKey might have
    // overwritten them.
+diff --git a/chrome/browser/ui/views/frame/contents_container_outline.cc b/chrome/browser/ui/views/frame/contents_container_outline.cc
+index d4cf5067cc380b29ff81ae2e6bc3efeb862b13a6..1754d83b39976a8bc26dc8f1558f92ac0a5598cf 100644
+--- a/chrome/browser/ui/views/frame/contents_container_outline.cc
++++ b/chrome/browser/ui/views/frame/contents_container_outline.cc
+@@ -8,6 +8,9 @@
+ #include "third_party/skia/include/core/SkMatrix.h"
+ #include "third_party/skia/include/core/SkPath.h"
+ #include "third_party/skia/include/core/SkPathBuilder.h"
++#include "third_party/skia/include/core/SkRRect.h"
++#include "chrome/browser/buildflags.h"
++#include "ui/gfx/geometry/skia_conversions.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/color/color_provider.h"
+ #include "ui/compositor/layer.h"
+@@ -145,6 +148,10 @@ void ContentsContainerOutline::OnPaint(gfx::Canvas* canvas) {
+     CHECK(mini_toolbar_.get());
+     mini_toolbar_size = gfx::SizeF(mini_toolbar_->size());
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // The Aux pane header sits inside the outline, so there is no notch.
++  mini_toolbar_size = gfx::SizeF();
++#endif
+ 
+   SkPath path =
+       GetPath(local_bounds, corner_radius, kCornerRadius, mini_toolbar_size);
+@@ -171,6 +178,17 @@ void ContentsContainerOutline::SetClipPath() {
+   const float half_thickness = GetThickness(is_highlighted_) / 2.0f;
+   mini_toolbar_rect.Inset(half_thickness);
+   const float corner_radius = kCornerRadius - half_thickness;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  {
++    // The full-width header takes the outline's rounded top corners.
++    const SkVector radii[4] = {{corner_radius, corner_radius},
++                               {corner_radius, corner_radius},
++                               {0, 0}, {0, 0}};
++    SkRRect header;
++    header.setRectRadii(gfx::RectToSkRect(mini_toolbar_rect), radii);
++    mini_toolbar_->SetClipPath(SkPath::RRect(header));
++  }
++#else
+ 
+   SkPathBuilder clip_path;
+   clip_path.moveTo(mini_toolbar_rect.right(), mini_toolbar_rect.y());
+@@ -202,6 +220,7 @@ void ContentsContainerOutline::SetClipPath() {
+   }
+ 
+   mini_toolbar_->SetClipPath(clip_path.detach());
++#endif
+ }
+ 
+ BEGIN_METADATA(ContentsContainerOutline)
+diff --git a/chrome/browser/ui/views/frame/contents_container_view.cc b/chrome/browser/ui/views/frame/contents_container_view.cc
+index 099b89a24c04886a696793d7f9dd163982b8052f..4c6412e6aa341329e80567370fec9be8ad3b9264 100644
+--- a/chrome/browser/ui/views/frame/contents_container_view.cc
++++ b/chrome/browser/ui/views/frame/contents_container_view.cc
+@@ -26,6 +26,7 @@
+ #include "chrome/browser/ui/views/frame/contents_separator.h"
+ #include "chrome/browser/ui/views/frame/contents_web_view.h"
+ #include "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/views/frame/scrim_view.h"
+ #include "chrome/browser/ui/views/frame/tab_modal_dialog_host.h"
+ #include "chrome/browser/ui/views/frame/top_container_view.h"
+@@ -477,6 +478,16 @@ views::ProposedLayout ContentsContainerView::CalculateProposedLayout(
+   }
+ 
+   gfx::Rect full_contents_bounds = GetContentsBounds();
++  int aux_header_height = 0;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Arc-style pane header: in split view the label is a strip above the page,
++  // so the page starts below it instead of under a corner flap.
++  if (is_in_split_ && mini_toolbar_ && mini_toolbar_->GetVisible()) {
++    aux_header_height = mini_toolbar_->GetPreferredSize().height();
++    full_contents_bounds.Inset(gfx::Insets::TLBR(
++        std::max(0, aux_header_height - full_contents_bounds.y()), 0, 0, 0));
++  }
++#endif
+   gfx::Rect devtools_bounds;
+   // The area contents excluding devtools is drawn (ie |contents_view_|,
+   // |new_tab_footer_view_|, etc).
+@@ -612,8 +623,10 @@ views::ProposedLayout ContentsContainerView::CalculateProposedLayout(
+     const int offset_x = width - mini_toolbar_size.width();
+     const int offset_y = height - mini_toolbar_size.height();
+     const gfx::Rect mini_toolbar_rect =
+-        gfx::Rect(offset_x, offset_y, mini_toolbar_size.width(),
+-                  mini_toolbar_size.height());
++        aux_header_height
++            ? gfx::Rect(0, 0, width, aux_header_height)
++            : gfx::Rect(offset_x, offset_y, mini_toolbar_size.width(),
++                        mini_toolbar_size.height());
+     layouts.child_layouts.emplace_back(
+         mini_toolbar_.get(), mini_toolbar_->GetVisible(), mini_toolbar_rect);
+   }
 diff --git a/chrome/browser/ui/views/frame/contents_web_view.cc b/chrome/browser/ui/views/frame/contents_web_view.cc
 index 8f29bb4291546ddec1643d46e52c21b8c3b31128..40544c36e65dec38cc5e5ebfc8180a022caafa88 100644
 --- a/chrome/browser/ui/views/frame/contents_web_view.cc
@@ -44914,10 +45007,19 @@ index e182430481fed7ac4c17b0fd11b57c3d511a80b9..fcc198b15c7110544be73f960a116b54
    // Creates a new tab for the first valid URL in `urls` and creates a split
    // with it and the active tab. If all URLs are blocked, then it will open
 diff --git a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
-index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..8015c89cf4cb3c9c10f1e04173c7481c8f30f7c7 100644
+index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..0144efac6589651fd752c8eda37b23706e044bd4 100644
 --- a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
 +++ b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
-@@ -13,6 +13,9 @@
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h"
+ 
++#include "chrome/browser/buildflags.h"
++
+ #include <optional>
+ 
+ #include "base/functional/bind.h"
+@@ -13,6 +15,9 @@
  #include "chrome/app/vector_icons/vector_icons.h"
  #include "chrome/browser/favicon/favicon_utils.h"
  #include "chrome/browser/search/search.h"
@@ -44927,7 +45029,44 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..8015c89cf4cb3c9c10f1e04173c7481c
  #include "chrome/browser/ui/tab_ui_helper.h"
  #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
  #include "chrome/browser/ui/tabs/alert/tab_alert_icon.h"
-@@ -181,7 +184,8 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
+@@ -50,7 +55,9 @@
+ #include "url/url_constants.h"
+ 
+ namespace {
++#if !(BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC))
+ constexpr int kMiniToolbarContentPadding = 4;
++#endif
+ constexpr int kMiniToolbarDomainMaxWidth = 140;
+ 
+ tabs::TabInterface* GetTabInterface(content::WebContents* web_contents) {
+@@ -143,6 +150,18 @@ void MultiContentsViewMiniToolbar::UpdateState(bool is_active,
+                                                bool is_highlighted) {
+   const int contents_container_outline_thickness =
+       ContentsContainerOutline::GetThickness(is_highlighted);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Arc-style header: every pane shows its favicon, domain and close button,
++  // centered in a strip above the page.
++  static_cast<views::FlexLayout*>(GetLayoutManager())
++      ->SetInteriorMargin(gfx::Insets::TLBR(
++          contents_container_outline_thickness + 2, 10, 2, 10));
++  SetVisible(true);
++  favicon_->SetVisible(true);
++  domain_label_->SetVisible(true);
++  alert_state_indicator_->SetVisible(true);
++#else
++
+ 
+   gfx::Insets kInactiveInteriorMargins = gfx::Insets::TLBR(
+       ContentsContainerOutline::kCornerRadius + kMiniToolbarContentPadding,
+@@ -166,6 +185,7 @@ void MultiContentsViewMiniToolbar::UpdateState(bool is_active,
+   favicon_->SetVisible(!is_active);
+   domain_label_->SetVisible(!is_active);
+   alert_state_indicator_->SetVisible(!is_active);
++#endif
+ }
+ 
+ void MultiContentsViewMiniToolbar::UpdateContents() {
+@@ -181,7 +201,8 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
      domain_url = tab_ui_helper->GetLastCommittedURL();
    }
  
@@ -44937,7 +45076,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..8015c89cf4cb3c9c10f1e04173c7481c
    std::u16string domain;
    if (IsNTP(domain_url)) {
      domain = u"";
-@@ -208,7 +212,11 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
+@@ -208,7 +229,11 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
                                            !domain_url.SchemeIsFileSystem()
                                        ? gfx::ELIDE_HEAD
                                        : gfx::ELIDE_TAIL);
@@ -44950,7 +45089,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..8015c89cf4cb3c9c10f1e04173c7481c
  
    UpdateFavicon(tab_ui_helper);
  }
-@@ -221,6 +229,8 @@ void MultiContentsViewMiniToolbar::UpdateWebContents(views::WebView* web_view) {
+@@ -221,6 +246,8 @@ void MultiContentsViewMiniToolbar::UpdateWebContents(views::WebView* web_view) {
  }
  
  void MultiContentsViewMiniToolbar::ClearWebContents(views::WebView*) {
@@ -44959,7 +45098,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..8015c89cf4cb3c9c10f1e04173c7481c
    tab_alert_status_subscription_.reset();
    OnAlertStatusIndicatorChanged(std::nullopt);
    web_contents_ = nullptr;
-@@ -247,6 +257,17 @@ void MultiContentsViewMiniToolbar::OnThemeChanged() {
+@@ -247,6 +274,17 @@ void MultiContentsViewMiniToolbar::OnThemeChanged() {
  }
  
  void MultiContentsViewMiniToolbar::RegisterTabSubscriptions() {
@@ -54219,13 +54358,15 @@ index aba398bb949c440739e2834f24ff204c58ed536c..0ddc75904d085400a3037671ea204289
    }
  
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_action_view.cc b/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
-index a9b7a01645abcd3dac7eac5a58d192045d69c684..cca36b2b336be9cc34b08ac02509a83fa62e0185 100644
+index a9b7a01645abcd3dac7eac5a58d192045d69c684..920a85a4cfc661b8bf051e06cd947894e036e645 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
-@@ -4,6 +4,16 @@
+@@ -4,6 +4,18 @@
  
  #include "chrome/browser/ui/views/toolbar/toolbar_action_view.h"
  
++#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
++
 +#include "chrome/browser/buildflags.h"
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +#include "chrome/browser/aux/component_bootstrap.h"
@@ -54239,7 +54380,15 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..cca36b2b336be9cc34b08ac02509a83f
  #include <string>
  
  #include "base/feature_list.h"
-@@ -99,6 +109,16 @@ ToolbarActionView::ToolbarActionView(ToolbarActionViewModel* view_model,
+@@ -28,6 +40,7 @@
+ #include "ui/accessibility/ax_node_data.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/models/image_model.h"
++#include "ui/gfx/vector_icon_types.h"
+ #include "ui/base/models/image_model_utils.h"
+ #include "ui/base/mojom/menu_source_type.mojom.h"
+ #include "ui/base/resource/resource_bundle.h"
+@@ -99,6 +112,16 @@ ToolbarActionView::ToolbarActionView(ToolbarActionViewModel* view_model,
        extensions::ExtensionContextMenuModel::ContextMenuSource::kToolbarAction);
    set_context_menu_controller(context_menu_controller_.get());
  
@@ -54256,7 +54405,7 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..cca36b2b336be9cc34b08ac02509a83f
    UpdateState();
  }
  
-@@ -120,6 +140,12 @@ std::unique_ptr<LabelButtonBorder> ToolbarActionView::CreateDefaultBorder()
+@@ -120,6 +143,12 @@ std::unique_ptr<LabelButtonBorder> ToolbarActionView::CreateDefaultBorder()
    // Toolbar action buttons have no insets because the badges are drawn right at
    // the edge of the view's area. Other padding (such as centering the icon) is
    // handled directly by the Image.
@@ -54269,8 +54418,25 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..cca36b2b336be9cc34b08ac02509a83f
    border->set_insets(gfx::Insets());
    return border;
  }
-@@ -195,11 +221,39 @@ void ToolbarActionView::MaybeUpdateHoverCardStatus(
+@@ -193,13 +222,59 @@ void ToolbarActionView::MaybeUpdateHoverCardStatus(
+   delegate_->UpdateHoverCard(this, ToolbarActionHoverCardUpdateType::kHover);
+ }
  
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++namespace {
++#include "chrome/browser/ui/tabs/aux_new_tab_mark.inc"
++// In the sidebar address row "Ask Aux" is an icon button, so the address
++// field keeps its width.
++bool InAuxSidebarToolbar(const views::View* view) {
++  for (const views::View* v = view->parent(); v; v = v->parent()) {
++    if (const auto* toolbar = views::AsViewClass<ToolbarView>(v))
++      return toolbar->IsAuxSidebarNavigationLayout();
++  }
++  return false;
++}
++}  // namespace
++#endif
++
  void ToolbarActionView::UpdateState() {
    content::WebContents* web_contents = delegate_->GetCurrentWebContents();
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
@@ -54278,15 +54444,18 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..cca36b2b336be9cc34b08ac02509a83f
 +  GetViewAccessibility().SetName(supplied_agent
 +      ? u"Ask Aux" : view_model_->GetAccessibleName(web_contents));
 +  if (supplied_agent) {
++    const bool compact = InAuxSidebarToolbar(this);
 +    SetTooltipText(u"Ask Aux");
-+    SetText(u"Ask Aux");
++    SetText(compact ? std::u16string() : u"Ask Aux");
 +    SetTextColor(views::Button::STATE_NORMAL, kColorToolbarButtonIcon);
 +    SetTextColor(views::Button::STATE_HOVERED, kColorToolbarButtonIconHovered);
 +    SetTextColor(views::Button::STATE_PRESSED, kColorToolbarButtonIconPressed);
 +    SetTextColor(views::Button::STATE_DISABLED, kColorToolbarButtonIconInactive);
 +    for (auto state : {views::Button::STATE_NORMAL, views::Button::STATE_HOVERED,
 +                       views::Button::STATE_PRESSED, views::Button::STATE_DISABLED}) {
-+      SetImageModel(state, ui::ImageModel());
++      SetImageModel(state, compact ? ui::ImageModel::FromVectorIcon(
++                                         kAuxNewTabMarkIcon, kColorToolbarButtonIcon, 16)
++                                   : ui::ImageModel());
 +    }
 +    if (const auto* colors = GetColorProvider()) {
 +      // Supplied normal-state pill: blend toolbar icon into toolbar at 26/255.
@@ -54309,7 +54478,7 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..cca36b2b336be9cc34b08ac02509a83f
    ui::ImageModel icon = view_model_->GetIcon(web_contents, GetPreferredSize());
    if (!icon.IsEmpty()) {
      SetImageModel(views::Button::STATE_NORMAL, icon);
-@@ -207,9 +261,16 @@ void ToolbarActionView::UpdateState() {
+@@ -207,9 +282,16 @@ void ToolbarActionView::UpdateState() {
                    ui::GetDefaultDisabledIconFromImageModel(icon));
    }
  
@@ -54327,7 +54496,7 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..cca36b2b336be9cc34b08ac02509a83f
    }
  
    SchedulePaint();
-@@ -225,9 +286,23 @@ int ToolbarActionView::GetDragOperationsForTest(const gfx::Point& point) {
+@@ -225,9 +307,23 @@ int ToolbarActionView::GetDragOperationsForTest(const gfx::Point& point) {
  
  gfx::Size ToolbarActionView::CalculatePreferredSize(
      const views::SizeBounds& available_size) const {
@@ -54389,7 +54558,7 @@ index 04bd545acf62e2f1c9a7cee34befdd3a5c6b1cdc..cbd70759a3012e2fb5b79e340685c91a
  }
  
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88fd78fa6c8 100644
+index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c06dbf73523966ccf6b6564e57a85d003b3949b5 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
 @@ -3,11 +3,22 @@
@@ -54753,7 +54922,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
  void ToolbarView::FinalizeHideGlicActorTaskIcon() {
    if (!glic_button_ || !glic_actor_task_icon_ ||
        !glic_actor_button_container_) {
-@@ -1366,8 +1592,92 @@ bool ToolbarView::GetAcceleratorForCommandId(
+@@ -1366,8 +1592,103 @@ bool ToolbarView::GetAcceleratorForCommandId(
  ////////////////////////////////////////////////////////////////////////////////
  // ToolbarView, views::View overrides:
  
@@ -54797,12 +54966,23 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
 +    return false;
 +  if (aux_sidebar_navigation_layout_ == enabled)
 +    return true;
-+  if (enabled)
++  if (enabled) {
 +    aux_location_bar_was_ignored_ =
 +        location_bar_view_->GetProperty(views::kViewIgnoredByLayoutKey);
++    if (extensions_container_)
++      aux_extensions_was_ignored_ =
++          extensions_container_->GetProperty(views::kViewIgnoredByLayoutKey);
++  }
 +  aux_sidebar_navigation_layout_ = enabled;
 +  location_bar_view_->SetProperty(views::kViewIgnoredByLayoutKey,
 +      enabled ? true : aux_location_bar_was_ignored_);
++  // In the sidebar the extensions control sits at the end of the address row
++  // (as in Arc), leaving the button row to back, forward and reload.
++  if (extensions_container_) {
++    extensions_container_->SetProperty(views::kViewIgnoredByLayoutKey,
++        enabled ? true : aux_extensions_was_ignored_);
++    extensions_container_->UpdateAllIcons();
++  }
 +  LayoutCommon();
 +  PreferredSizeChanged();
 +  InvalidateLayout();
@@ -54846,7 +55026,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
    gfx::Size size;
    switch (display_mode_) {
      case DisplayMode::kCustomTab:
-@@ -1375,6 +1685,9 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+@@ -1375,6 +1696,9 @@ gfx::Size ToolbarView::CalculatePreferredSize(
        break;
      case DisplayMode::kLocation:
        size = location_bar_->PreferredSize();
@@ -54856,7 +55036,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
        break;
      case DisplayMode::kNormal:
        size = AccessiblePaneView::CalculatePreferredSize(available_size);
-@@ -1396,6 +1709,23 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+@@ -1396,6 +1720,23 @@ gfx::Size ToolbarView::CalculatePreferredSize(
  }
  
  gfx::Size ToolbarView::GetMinimumSize() const {
@@ -54880,7 +55060,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
    gfx::Size size;
    switch (display_mode_) {
      case DisplayMode::kCustomTab:
-@@ -1403,6 +1733,9 @@ gfx::Size ToolbarView::GetMinimumSize() const {
+@@ -1403,6 +1744,9 @@ gfx::Size ToolbarView::GetMinimumSize() const {
        break;
      case DisplayMode::kLocation:
        size = location_bar_->MinimumSize();
@@ -54890,7 +55070,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
        break;
      case DisplayMode::kNormal:
        size = AccessiblePaneView::GetMinimumSize();
-@@ -1469,8 +1802,18 @@ void ToolbarView::Layout(PassKey) {
+@@ -1469,8 +1813,30 @@ void ToolbarView::Layout(PassKey) {
      }
    }
  
@@ -54904,14 +55084,26 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
 +    const int location_height = location_bar_->PreferredSize().height();
 +    // Share the sidebar's 8px pill edge with pin tiles and rows.
 +    constexpr int kSidebarEdge = 8;
++    const int row_y = std::max(0, height() - padding.bottom() - location_height);
++    int extensions_width = 0;
++    if (extensions_container_ && extensions_container_->GetVisible()) {
++      const auto size = extensions_container_->GetPreferredSize();
++      extensions_width = size.width();
++      extensions_container_->SetBounds(
++          width() - kSidebarEdge - extensions_width,
++          row_y + (location_height - size.height()) / 2, extensions_width,
++          size.height());
++    }
++    const int extensions_gap = extensions_width ? 4 : 0;
 +    location_bar_view_->SetBounds(
-+        kSidebarEdge, std::max(0, height() - padding.bottom() - location_height),
-+        std::max(0, width() - 2 * kSidebarEdge), location_height);
++        kSidebarEdge, row_y,
++        std::max(0, width() - 2 * kSidebarEdge - extensions_width - extensions_gap),
++        location_height);
 +  }
    LayoutSuperclass<AccessiblePaneView>(this);
  }
  
-@@ -1504,7 +1847,8 @@ void ToolbarView::ChildPreferredSizeChanged(views::View* child) {
+@@ -1504,7 +1870,8 @@ void ToolbarView::ChildPreferredSizeChanged(views::View* child) {
  
  void ToolbarView::ChildVisibilityChanged(views::View* child) {
    if (child == home_) {
@@ -54921,7 +55113,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
        base::UmaHistogramBoolean("Toolbar.Overflow.HomeButton", true);
      }
    }
-@@ -1674,6 +2018,13 @@ void ToolbarView::LayoutCommon() {
+@@ -1674,6 +2041,13 @@ void ToolbarView::LayoutCommon() {
  
    gfx::Insets interior_margin =
        GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
@@ -54935,7 +55127,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
  
    const bool is_trailing_contextual_tasks_visible =
        IsTrailingContextualTasksButtonVisible();
-@@ -1742,6 +2093,15 @@ void ToolbarView::LayoutCommon() {
+@@ -1742,6 +2116,15 @@ void ToolbarView::LayoutCommon() {
        interior_margin.set_right(0);
      }
    }
@@ -54951,7 +55143,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
    layout_manager_->SetInteriorMargin(interior_margin);
  
    // Extend buttons to the window edge if we're either in a maximized or
-@@ -1752,7 +2112,8 @@ void ToolbarView::LayoutCommon() {
+@@ -1752,7 +2135,8 @@ void ToolbarView::LayoutCommon() {
    // `SetIsMaximizedOrFullscreen` remains reliably synchronized with window
    // bounds without requiring supplemental widget observation hooks.
    const bool is_maximized_or_fullscreen =
@@ -54961,7 +55153,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
                                  browser_->GetWindow()->IsFullscreen());
  
    const int margin = is_maximized_or_fullscreen ? leading_interior_margin : 0;
-@@ -2059,11 +2420,14 @@ views::View* ToolbarView::GetViewForDrop() {
+@@ -2059,11 +2443,14 @@ views::View* ToolbarView::GetViewForDrop() {
  }
  
  void ToolbarView::OnChromeLabsPrefChanged() {
@@ -54977,7 +55169,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
        ShouldShowChromeLabsUI(browser_->GetProfile()));
    GetViewAccessibility().AnnounceText(l10n_util::GetStringUTF16(
        chrome_labs_action->GetVisible()
-@@ -2080,13 +2444,19 @@ void ToolbarView::LoadImages() {
+@@ -2080,13 +2467,19 @@ void ToolbarView::LoadImages() {
  }
  
  void ToolbarView::OnShowForwardButtonChanged() {
@@ -55000,7 +55192,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..03cb0f455e7524c5e10637c92e18c88f
  }
  
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.h b/chrome/browser/ui/views/toolbar/toolbar_view.h
-index 0520c2901223d569f0266421d2e6c6f7dbaff718..37d518c5e78f0b964b6d81d704eaf43b197411c5 100644
+index 0520c2901223d569f0266421d2e6c6f7dbaff718..3339a8095139759d99d0b993d1fc92db6adef0b4 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.h
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
 @@ -13,6 +13,8 @@
@@ -55092,7 +55284,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..37d518c5e78f0b964b6d81d704eaf43b
    raw_ptr<ToolbarButton> back_ = nullptr;
    raw_ptr<ToolbarButton> forward_ = nullptr;
    raw_ptr<ReloadButton> reload_ = nullptr;
-@@ -463,18 +503,36 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -463,18 +503,37 @@ class ToolbarView : public views::AccessiblePaneView,
    std::optional<ui::ScopedUnownedUserData<ToolbarButtonProvider>>
        scoped_unowned_user_data_;
  
@@ -55102,6 +55294,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..37d518c5e78f0b964b6d81d704eaf43b
 +  bool aux_sidebar_navigation_layout_ = false;
 +  bool aux_minimal_ui_layout_ = false;
 +  bool aux_location_bar_was_ignored_ = false;
++  bool aux_extensions_was_ignored_ = false;
 +  int aux_sidebar_navigation_leading_inset_ = 0;
 +
  

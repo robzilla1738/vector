@@ -22,7 +22,12 @@ Real input, Tinted transparency: the merged navigation row, address field, secti
 
 ## Open
 
-- With one Aux pin, the tile's icon draws right of center. The tile code is unchanged and centers its icon, so this came from this batch's section changes; not yet traced.
-- At the default sidebar width, forward goes to the overflow menu (the extensions button is not a responsive element). A wider sidebar shows it.
+- One pin left over from testing (made with Tab › Pin Tab) still draws its icon right of center and only responds on its right half. Pin tiles now never lay out wider than the grid, which removed one cause. A fresh pin could not be made under automation (the pin drag was not recognized), so the remaining cause is not traced.
 - The Transparent style lets bright windows behind show through strongly. Tinted, which matches Aside, is clearer; the default stays as supplied.
 - The first Pins tile layout with a third-width grid was tried and reverted: one pin stretches across, as before.
+
+## Follow-up (seal `978b0f56`)
+
+- Back, forward and reload share the sidebar's top row. The extensions control and Ask Aux move to the end of the address row; in the sidebar Ask Aux is a round icon button with the same tooltip and accessible name.
+- Split view panes have an Arc-style header strip: favicon, domain and close, centered, on every pane, with the page below it rather than under a corner flap. The outline has no notch, and the strip takes the outline's rounded top corners.
+- Verified with real input: the merged row with forward visible, the address row, the split header on both panes.

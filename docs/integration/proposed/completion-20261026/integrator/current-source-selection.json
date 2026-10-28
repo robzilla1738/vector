@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "6b81a1bbe53b0ea07da35f0e715c150a558625bc37efdc60e9b3ee8025d129f7",
+  "signedInventorySha256": "978b0f569cb4bc1c833bec55415b59202d9dbcd484df3f3023a914a8101b903f",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -416,6 +416,22 @@
     "sources": [
       "integration/ui-polish-c1",
       "durable checkout: page card insets, pane gap, Little Arc chip, sidebar grid and merged navigation row, Pins hidden when empty, forward overflow order"
+    ]
+  },
+  "uiArcHeaderRepair": {
+    "paths": [
+      {
+        "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-ui-polish-d1/receipt.json",
+        "sha256": "3236fcdd55caf2796e1e005d3b95b476960aaf2c508a7e51f6d0f4b4d94b5f42"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-ui-polish-d4/receipt.json",
+        "sha256": "99c3463b30ae819188aff7257b49a008c1dfb6187db14d4ee8507e2fcc3c4cc8"
+      }
+    ],
+    "sources": [
+      "integration/ui-polish-c1",
+      "durable checkout: extensions and icon-only Ask Aux on the sidebar address row, Arc-style split pane header, pin tile width clamp"
     ]
   }
 }
