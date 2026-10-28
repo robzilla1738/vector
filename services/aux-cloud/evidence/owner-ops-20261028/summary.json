@@ -1,0 +1,109 @@
+{
+  "sourceCommit": "4961b99d6973e8fbc1fb24d156d0b2e92d814ec4",
+  "testedServiceCommit": "c18e7e2e69ced36dcbb324c4b886bc633e8dddd1",
+  "testedServiceTree": "1d8f0e0ab6c1c2cb7810dd23edf8227dea4949b8",
+  "deployedServiceTreeChange": "Only .vercelignore includes the existing .pnpmfile.cjs; application source and lockfile unchanged",
+  "deploymentId": "dpl_DEH7Lvy3FXWXfTiznh2eXgDNEGxw",
+  "deploymentUrl": "https://aux-cloud-qoue3815y-robzilla1738s-projects.vercel.app",
+  "rollbackDeploymentId": "dpl_FCyG1B6SzBg4CTUSYpwru7krBxHo",
+  "migration014Sha256": "d543cc7a8649332944887d8e194f0932f0680bc0afc9a1116831e7b6ba85123b",
+  "monitor": {
+    "provider": "Better Stack",
+    "id": "5147281",
+    "url": "https://api.getaux.co/api/v1/internal/readiness",
+    "checkSeconds": 180,
+    "confirmationSeconds": 180,
+    "sslExpiryDays": 14,
+    "authenticated": true,
+    "status": "up",
+    "accountEmail": "robert@getaux.co",
+    "alertRecipient": "robertcourson96@gmail.com",
+    "alertRouting": "Narrow Hostinger copy filter; original retained",
+    "gmailReceiptVerified": true,
+    "gmailInboxVerified": true,
+    "testAlertSentAt": "2026-10-28T15:28:57.997Z",
+    "testAlertGmailReceivedAt": "2026-10-28T15:29:05.811Z",
+    "gmailFilter": {
+      "from": "alerts@alerts.betterstack.com",
+      "subject": "Aux production readiness",
+      "action": "Never send it to Spam"
+    },
+    "lastCheckedAt": "2026-10-28T15:29:47Z"
+  },
+  "safeBrowsing": {
+    "googleAccount": "robertcourson1738@gmail.com",
+    "projectId": "aux-browser",
+    "projectNumber": "860673214278",
+    "apiRestriction": "safebrowsing.googleapis.com",
+    "validationHttpStatus": 200,
+    "vaultItem": "Aux Safe Browsing API key"
+  },
+  "sentry": {
+    "organization": "aux-mac-app",
+    "organizationId": "4512334390165504",
+    "project": "aux-mac",
+    "projectId": "4512334393507840",
+    "dataScrubbing": true,
+    "preventIpStorage": true,
+    "storeMinidumpAttachments": false,
+    "vaultItem": "Aux Sentry DSN",
+    "contactEmail": "Personal login retained; organization billing contact requires additional billing fields, so hello@getaux.co was not saved",
+    "accountEmail": "robertcourson1738@gmail.com"
+  },
+  "validation": {
+    "serviceTestsPassed": 76,
+    "typecheck": "pass",
+    "lint": "pass",
+    "productionBuild": "pass",
+    "allFiveAliasesReadiness": "200 ready, schema current, 14 migrations",
+    "iconPngHttpStatus": 200,
+    "rootTests": "Attempted; unavailable in this isolated worktree because ignored frozen desktop inputs are absent. No desktop source was changed."
+  },
+  "email": {
+    "from": "Aux <hello@notify.getaux.co>",
+    "replyTo": "hello@getaux.co",
+    "recipient": "robertcourson96@gmail.com",
+    "gmailThreadId": "thread-f:1880261237245664799",
+    "sentAt": "2026-10-28T15:07:02.774Z",
+    "gmailInboxVerified": true,
+    "mailedBy": "rsend.notify.getaux.co",
+    "signedBy": "notify.getaux.co",
+    "tls": true,
+    "dmarcAuthoritativeValue": "v=DMARC1; p=none; rua=mailto:hello@getaux.co",
+    "dmarcCachedResolversStillPropagating": true
+  },
+  "logDrain": {
+    "sourceId": 2814891,
+    "name": "logtail_aux_cloud_2814891",
+    "environments": [
+      "production"
+    ],
+    "sources": [
+      "functions",
+      "edge",
+      "build"
+    ],
+    "enabled": true,
+    "analyticsDrain": "paused",
+    "tracesDrain": "paused",
+    "receiptVerified": true,
+    "billingApprovedRateUsdPerGB": 0.5,
+    "id": "drn_Q2LOKOXkKqUO98tz",
+    "deliveryTest": "Vercel /v1/drains/test returned success",
+    "ingestionHost": "s2814891.us-west-2a-vec.betterstackdata.com",
+    "vaultItem": "Aux Better Stack log source",
+    "searchVerified": true,
+    "syntheticReceiptObservedAt": "2026-10-28T15:21:50.766Z",
+    "retentionDays": 3,
+    "productionRecord": {
+      "timestamp": "2026-10-28T15:20:19.563Z",
+      "host": "api.getaux.co",
+      "path": "/api/v1/internal/readiness",
+      "status": 200,
+      "deploymentId": "dpl_DEH7Lvy3FXWXfTiznh2eXgDNEGxw",
+      "environment": "production",
+      "requestId": "fbb785f5-c21f-427a-9e33-e63fc0ce2dcd"
+    }
+  },
+  "verifiedAt": "2026-10-28T15:30:00Z"
+}
