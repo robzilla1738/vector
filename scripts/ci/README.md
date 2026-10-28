@@ -8,8 +8,8 @@ The GitHub App and repository settings are the owner's part: [owner plan, item 6
 
 `scripts/ci/build-runner-image.sh` builds `aux-ci` from `ghcr.io/cirruslabs/macos-tahoe-xcode:27`:
 
-- Node 22 (default on `PATH`) beside the image's Node 24, which `services/aux-cloud` needs.
-- pnpm 11.27.1 through corepack, for both Node versions.
+- The image's Node 24. Node 22 is not enough: several root tests use `node:sqlite` `serialize`/`enableDefensive`, and `services/aux-cloud` requires Node 24.
+- pnpm 11.27.1 through corepack.
 - Python 3 (from the image) and gitleaks.
 - A pnpm store pre-warmed from the committed lockfiles. Nothing secret: no tokens, Keychain items or `out/` inputs.
 
@@ -25,8 +25,8 @@ In Tartelet's settings:
 
 `.github/workflows/ci.yml` runs on `push` to `main` and on manual dispatch, never on pull requests: the repository is public, and a pull-request trigger would let anyone run code on this Mac. It has read-only `contents` permission, pins `actions/checkout` to a commit SHA, and cancels a superseded run on the same ref. Jobs:
 
-1. **Hermetic tests:** `pnpm install --frozen-lockfile && pnpm test:ci` on Node 22.
-2. **aux-cloud:** `pnpm test`, `pnpm typecheck` and `pnpm build` on Node 24, with fixture environment values from `src/operations.test.ts`. No real secrets.
+1. **Hermetic tests:** `pnpm install --frozen-lockfile && pnpm test:ci`.
+2. **aux-cloud:** `pnpm test`, `pnpm typecheck` and `pnpm build`, with fixture environment values from `src/operations.test.ts`. No real secrets.
 3. **gitleaks:** scans the pushed commit range (the head commit on manual runs) with `.gitleaks.toml` and `.gitleaksignore`.
 
 ## Hermetic and host-only tests

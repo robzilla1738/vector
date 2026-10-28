@@ -1,6 +1,6 @@
 # Runs on ephemeral Tartelet VMs on the owner's Mac (scripts/ci/README.md).
 # Tartelet starts the runner from a non-login shell, so each job puts Homebrew
-# and the Node keg it needs on PATH itself (later GITHUB_PATH lines win).
+# and Node 24 on PATH itself (later GITHUB_PATH lines win).
 # The repository is public: never add pull_request or pull_request_target triggers,
 # or strangers could run code on that Mac.
 name: CI
@@ -26,8 +26,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # Root engines: node >=22.18. Test on the oldest supported line.
-      - run: printf '%s\n' /opt/homebrew/bin /opt/homebrew/opt/node@22/bin >> "$GITHUB_PATH"
+      # Node 24: several tests use node:sqlite serialize/enableDefensive, which Node 22 lacks.
+      - run: printf '%s\n' /opt/homebrew/bin /opt/homebrew/opt/node@24/bin >> "$GITHUB_PATH"
       - run: node --version && pnpm --version && python3 --version
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:ci
