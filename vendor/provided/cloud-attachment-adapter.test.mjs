@@ -127,3 +127,28 @@ test('account replacement during session-root preparation leaves attachment data
     assert.deepEqual(await fs.readdir(root), []);
   } finally { await fs.rm(root, { recursive: true, force: true }); }
 });
+
+test('private uploads accept Blob hosts and Vercel Blob API presigns, nothing else', async () => {
+  const bytes = Buffer.from('upload origin fixture');
+  const id = '00000000-0000-4000-8000-000000000002';
+  for (const [url, accepted] of [
+    ['https://store.private.blob.vercel-storage.com/aux/x/content?sig=1', true],
+    ['https://vercel.com/api/blob/?pathname=aux%2Fx%2Fcontent&sig=1', true],
+    ['https://vercel.com/api/other/?pathname=x', false],
+    ['https://evil.example/api/blob/?pathname=x', false],
+    ['http://vercel.com/api/blob/?pathname=x', false],
+  ]) {
+    const { context } = fixture('/not-used');
+    let uploaded = false;
+    context.fetchAsideAPIAuthenticatedRequest = async (_account, route) => {
+      if (route === '/attachments/intents') return Response.json({ id });
+      if (route.endsWith('/upload-url')) return Response.json({ url });
+      return Response.json({ id, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
+    };
+    context.fetch = async () => { uploaded = true; return new Response(null, { status: 200 }); };
+    const attempt = context.auxCloudUploadBytes(1, bytes, 'fixture.txt', 'text/plain', 'attachment');
+    if (accepted) await attempt.catch(() => {});
+    else await assert.rejects(attempt, /Invalid private attachment upload origin/);
+    assert.equal(uploaded, accepted, url);
+  }
+});

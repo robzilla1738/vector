@@ -1,0 +1,16 @@
+{
+ "format": "aux.candidate-edits.v1",
+ "purpose": "Current @vercel/blob presigns private uploads on https://vercel.com/api/blob/?pathname=...; the desktop accepted only *.blob.vercel-storage.com, so every private upload (feedback, attachment backup) failed.",
+ "files": [
+  {
+   "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+   "edits": [
+    {
+     "find": "!(url.hostname==='blob.vercel-storage.com'||url.hostname.endsWith('.blob.vercel-storage.com')))throw Error('Invalid private attachment upload origin.');",
+     "replace": "!(url.hostname==='blob.vercel-storage.com'||url.hostname.endsWith('.blob.vercel-storage.com')||url.origin==='https://vercel.com'&&url.pathname==='/api/blob/'))throw Error('Invalid private attachment upload origin.');",
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

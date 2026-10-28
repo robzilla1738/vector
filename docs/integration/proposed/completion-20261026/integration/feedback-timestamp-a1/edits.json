@@ -1,0 +1,16 @@
+{
+ "format": "aux.candidate-edits.v1",
+ "purpose": "Session feedback compared createdAt by reference; sessions whose schema stores a Date always failed with \"The original feedback session changed.\"",
+ "files": [
+  {
+   "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+   "edits": [
+    {
+     "find": "current.createdAt !== session.createdAt",
+     "replace": "+new Date(current.createdAt) !== +new Date(session.createdAt)",
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

@@ -8,7 +8,7 @@ export async function auxSubmitSessionFeedback(accountId, session, comment) {
   const check = () => {
     auxCloudCheckTransferIdentity(accountId, identity);
     const current = SessionStore.get(accountId, session.id);
-    if (!current || current.createdAt !== session.createdAt || current.incognito || current.ephemeral)
+    if (!current || +new Date(current.createdAt) !== +new Date(session.createdAt) || current.incognito || current.ephemeral)
       throw Error('The original feedback session changed.');
   };
   return auxBrokerBoundary().awaited(async () => {

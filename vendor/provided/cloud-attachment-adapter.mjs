@@ -16,7 +16,7 @@ async function auxCloudUploadBytes(accountId,bytes,name,mimeType,purpose,identit
   const upload=await auxCloudAttachmentJSON(accountId,'/attachments/'+intent.id+'/upload-url','POST');
   auxCloudCheckTransferIdentity(accountId,identity);
   const url=new URL(upload.url);
-  if(url.protocol!=='https:'||url.username||url.password||!(url.hostname==='blob.vercel-storage.com'||url.hostname.endsWith('.blob.vercel-storage.com')))throw Error('Invalid private attachment upload origin.');
+  if(url.protocol!=='https:'||url.username||url.password||!(url.hostname==='blob.vercel-storage.com'||url.hostname.endsWith('.blob.vercel-storage.com')||url.origin==='https://vercel.com'&&url.pathname==='/api/blob/'))throw Error('Invalid private attachment upload origin.');
   const response=await fetch(url,{method:'PUT',headers:{'content-type':mimeType},body:bytes,redirect:'error',signal:AbortSignal.timeout(120000)});
   if(!response.ok)throw Error('Private attachment upload failed ('+response.status+').');
   auxCloudCheckTransferIdentity(accountId,identity);

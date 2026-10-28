@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "27d6d831470054ae370734c6671517a544c3e0a7b070a51117a8453928180594",
+  "signedInventorySha256": "060843df1a21579f6038b477e2b5f7b11ef28bed1481f1caad7152232be2ab6c",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -362,6 +362,20 @@
     "sources": [
       "integration/production-cloud-a1",
       "desktop/ui-pass-20261027"
+    ]
+  },
+  "feedbackTimestampRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-feedback-timestamp-a1/receipt.json",
+    "sha256": "b68ae938ce8155bdfc31d381c3c0e7922a6a03bc2f2e2e0cd203261284695b31",
+    "sources": [
+      "integration/feedback-timestamp-a1"
+    ]
+  },
+  "blobUploadOriginRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-blob-upload-origin-a1/receipt.json",
+    "sha256": "d8bf1ad2c8a055136f9a03e39d6d891a7c39e5bc08af8004c0da48362654a0b4",
+    "sources": [
+      "integration/blob-upload-origin-a1"
     ]
   }
 }
