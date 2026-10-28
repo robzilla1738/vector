@@ -180,6 +180,8 @@ The service no longer reads any of them, and readiness always reports both launc
 
 **Why.** Production deploys are yours under AGENTS.md. Two fixes are waiting now: `09c024eba` (partial user-settings writes merge) and `608f900e3` (site icon; `app.getaux.co/icon.png` is a 404). The hosted batch (agent plan phase 5) follows.
 
+**First, apply migration 014** (additive: share takedowns, sign-up consent and age). The new code expects it: without it readiness reports a schema mismatch and new sign-ups fail. Run it from the service folder with the production database URL loaded the way earlier migrations ran (`pnpm migrate`), or tell Claude to run it.
+
 **Steps.**
 ```bash
 cd /Users/rcourson/Documents/Vibe/Aux/services/aux-cloud
@@ -271,6 +273,23 @@ With the T3-style wiring (decision 1), Aux uses the user's own `codex login`, so
 **Why.** Shipping Aux uses the real macOS Keychain for saved passwords and cookies (D2). Testing it touches Keychain, so it needs your yes at the time.
 
 **What happens.** Claude launches the release candidate with a disposable profile and no mock keychain, saves one dummy password and checks that cookies survive Quit and reopen. It then removes only the Keychain items that test created (the `Aux Safe Storage` entry). macOS may ask you to allow access once.
+
+## 21. Back up the Sparkle update key
+
+**Why.** Every Aux update is signed with Aux's own EdDSA key, created 2026-10-28 in the login Keychain (account `dev.aux.browser.sparkle`). Installed copies only accept updates signed by it, so losing it strands every user on their current version.
+
+**Steps.**
+1. In Terminal:
+   ```bash
+   /Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src/third_party/aux_sparkle/bin/generate_keys --account dev.aux.browser.sparkle -x ~/Desktop/aux-sparkle-private-key.txt
+   ```
+2. Copy the file's contents into a new 1Password item, **`Aux Sparkle private key`** (a vault you back up), then delete the file and empty the Trash.
+
+The public key, `UBNrxzKVI36ii/HG/gywivbitrC58MjsAsaa5HLC8Sk=`, is already in `chromium/flags.release.gn`.
+
+## 22. One identifier in the public repo
+
+The CI lane's secret scan allowlists a 1Password Environment ID in `docs/cloud/production-provider-review/prepared-clerk-webhook.json`. It is an identifier, not a credential, but the repo is public. Say whether to leave it or redact it going forward. History keeps it either way, because rewriting history would break the receipts.
 
 ## 20. Approve each publication
 

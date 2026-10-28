@@ -1,1 +1,24 @@
-import("flags.fast.gn")
+# Official, signed release of the Aux browser: flags.aux.gn plus the official
+# optimizations, symbols for crash reports and Sparkle updates. Keep the shared
+# lines identical to flags.aux.gn (scripts/test_gn_flags.py checks this).
+is_debug = false
+is_official_build = true
+is_component_build = false
+dcheck_always_on = false
+target_cpu = "arm64"
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
+enable_widevine = true
+enable_aux_browser = true
+aux_test_hooks = false
+use_thin_lto = true
+chrome_pgo_phase = 2
+symbol_level = 1
+blink_symbol_level = 0
+v8_symbol_level = 0
+enable_dsyms = true
+enable_stripping = true
+aux_product_version = "1.0.0.1"
+enable_aux_sparkle = true
+aux_sparkle_feed_url = "https://getaux.co/updates/appcast.xml"
+aux_sparkle_public_ed_key = "UBNrxzKVI36ii/HG/gywivbitrC58MjsAsaa5HLC8Sk="

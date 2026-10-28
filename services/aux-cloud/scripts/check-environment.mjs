@@ -3,14 +3,19 @@ import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
 // Errors name configuration fields only; never include their values.
-export const requiredEnvironmentKeys=['DATABASE_URL','CLERK_SECRET_KEY','NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY','CLERK_WEBHOOK_SIGNING_SECRET','AUX_AUTH_SECRET','AUX_DATA_ENCRYPTION_KEY','NEXT_PUBLIC_APP_URL','AUX_API_ORIGIN','AUX_ALLOWED_ORIGINS','CLERK_AUTHORIZED_PARTIES','RESEND_API_KEY','RESEND_FROM','BLOB_READ_WRITE_TOKEN','CRON_SECRET','AUX_READINESS_SECRET'];
+export const requiredEnvironmentKeys=['DATABASE_URL','CLERK_SECRET_KEY','NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY','CLERK_WEBHOOK_SIGNING_SECRET','AUX_AUTH_SECRET','AUX_DATA_ENCRYPTION_KEY','NEXT_PUBLIC_APP_URL','AUX_API_ORIGIN','AUX_ALLOWED_ORIGINS','CLERK_AUTHORIZED_PARTIES','RESEND_API_KEY','RESEND_FROM','BLOB_READ_WRITE_TOKEN','CRON_SECRET'];
+// Only Production is monitored, so Preview builds need no readiness secret of their own.
+export const productionEnvironmentKeys=[...requiredEnvironmentKeys,'AUX_READINESS_SECRET'];
+// Sign-in mail is sent as getaux.co (or a subdomain such as notify.getaux.co), optionally with a display name.
+const getauxSender=/^(?:[^<>@]*<[^<>@\s]+@(?:[a-z0-9-]+\.)*getaux\.co>|[^<>@\s]+@(?:[a-z0-9-]+\.)*getaux\.co)$/i;
 export function checkEnvironment(env, resources) {
   const target=env.VERCEL_TARGET_ENV||env.VERCEL_ENV||'development';
   const production=target==='production'||env.VERCEL_ENV==='production';
   const profile=resources[production?'production':'development'];
   if(!profile) throw Error('Production resources have not been configured; use the development Preview target.');
-  for(const name of requiredEnvironmentKeys) if(!env[name]?.trim()) throw Error('Missing configuration: '+name);
-  for(const name of ['AUX_AUTH_SECRET','CRON_SECRET','AUX_READINESS_SECRET'])if(env[name].length<32)throw Error('Invalid configuration: '+name);
+  for(const name of production?productionEnvironmentKeys:requiredEnvironmentKeys) if(!env[name]?.trim()) throw Error('Missing configuration: '+name);
+  for(const name of ['AUX_AUTH_SECRET','CRON_SECRET','AUX_READINESS_SECRET'])if(env[name]&&env[name].length<32)throw Error('Invalid configuration: '+name);
+  if(!getauxSender.test(env.RESEND_FROM.trim()))throw Error('Invalid configuration: RESEND_FROM must be a getaux.co address');
   if(!/^[A-Za-z0-9+/]{43}=$/.test(env.AUX_DATA_ENCRYPTION_KEY)||Buffer.from(env.AUX_DATA_ENCRYPTION_KEY,'base64').length!==32)throw Error('Invalid configuration: AUX_DATA_ENCRYPTION_KEY');
   const origin=(name,expected)=>{try{const u=new URL(env[name]);if(u.origin!==expected||u.href!==expected+'/')throw Error();}catch{throw Error('Invalid configuration: '+name);}};
   origin('NEXT_PUBLIC_APP_URL',profile.appOrigin);origin('AUX_API_ORIGIN',profile.apiOrigin);

@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { repoRoot } from '../lib/repo-root.mjs';
 
 // Same sets as the `test` script in package.json.
-const directories = ['vendor/provided', 'vendor/aside/shims', 'scripts/lib', 'scripts/lib/__tests__'];
+const directories = ['vendor/provided', 'vendor/provided/provider-cli', 'vendor/aside/shims', 'scripts/lib', 'scripts/lib/__tests__'];
 const all = [
   ...directories.flatMap(dir =>
     readdirSync(`${repoRoot}/${dir}`).filter(name => name.endsWith('.test.mjs')).sort().map(name => `${dir}/${name}`)),

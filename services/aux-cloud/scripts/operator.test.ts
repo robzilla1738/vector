@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {withMigratedDatabase} from '../src/test-database';
-import {getPublicShare} from '../src/sync';
+import {getPublicShare,publishShareForUser} from '../src/sync';
+import {HTTPException} from 'hono/http-exception';
 import {listFeedback,revokeShare,saveFeedback} from './operator.mjs';
 
 test('operator revokes a share and lists only ready feedback reports',async()=>{
@@ -14,6 +15,10 @@ test('operator revokes a share and lists only ready feedback reports',async()=>{
     assert.equal(await getPublicShare('fixture-share-1'),null);
     assert.deepEqual((await query("SELECT title,messages FROM shared_sessions WHERE id='fixture-share-1'"))[0],{title:'',messages:[]});
     await assert.rejects(revokeShare('missing-share-x'),/No such share/);
+    // The owner cannot republish over the takedown.
+    const blocked=await publishShareForUser(user,{sourceSessionId:'s',title:'Again',messages:[{role:'user',content:'hello',timestamp:0}]}).catch(e=>e);
+    assert.ok(blocked instanceof HTTPException);assert.equal(blocked.status,403);assert.equal((await blocked.getResponse().json()).error.code,'SHARE_BLOCKED');
+    assert.deepEqual((await query("SELECT title,messages,revoked_at IS NOT NULL AS revoked,blocked_at IS NOT NULL AS blocked FROM shared_sessions WHERE id='fixture-share-1'"))[0],{title:'',messages:[],revoked:true,blocked:true});
     for(const [id,purpose] of [[report,'feedback'],[attachment,'attachment']])
       await query("INSERT INTO aux_attachments(id,user_id,pathname,name,content_type,expected_size,expected_sha256,purpose,state,expires_at) VALUES($1,$2,$3,'r.json','application/json',10,repeat('a',64),$4,'ready',now())",[id,user,`aux/${user}/${id}/content`,purpose]);
     assert.deepEqual((await listFeedback()).map(row=>row.id),[report]);

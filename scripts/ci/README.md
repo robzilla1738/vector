@@ -29,7 +29,7 @@ The workflow requires the `aux-macos` label so jobs run on the disposable Tartel
 `.github/workflows/ci.yml` runs on `push` to `main` and on manual dispatch, never on pull requests: the repository is public, and a pull-request trigger would let anyone run code on this Mac. It has read-only `contents` permission, pins `actions/checkout` to a commit SHA, and cancels a superseded run on the same ref. Jobs:
 
 1. **Hermetic tests:** `pnpm install --frozen-lockfile && pnpm test:ci`.
-2. **aux-cloud:** `pnpm test`, `pnpm typecheck` and `pnpm build`, with fixture environment values from `src/operations.test.ts`. No real secrets.
+2. **aux-cloud:** `pnpm test`, `pnpm typecheck`, `pnpm lint` and `pnpm build`, with fixture environment values from `src/operations.test.ts`. No real secrets.
 3. **gitleaks:** scans the pushed commit range (the head commit on manual runs) with `.gitleaks.toml` and `.gitleaksignore`.
 
 ## Hermetic and host-only tests

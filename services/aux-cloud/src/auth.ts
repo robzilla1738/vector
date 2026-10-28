@@ -1,4 +1,5 @@
 import { createHash, createHmac, createCipheriv, createDecipheriv, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
+import { isIPv4, isIPv6 } from 'node:net';
 import { createClerkClient, verifyToken } from '@clerk/backend';
 import { Hono, type Context } from 'hono';
 import { SignJWT, jwtVerify, decodeProtectedHeader, errors as joseErrors, type JWTPayload } from 'jose';
@@ -8,9 +9,10 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import { sql } from './db';
 import { TERMS_VERSION } from './legal';
+import { logEvent, safeLabel } from './log';
 
 export type AuthUser = { id: string; clerkId: string; email: string; sessionId: string };
-export type AuthVariables = { user: AuthUser };
+export type AuthVariables = { user: AuthUser; requestId?: string };
 type AuthEnv = { Variables: AuthVariables };
 type Row = Record<string, any>;
 class AuthInputError extends Error {}
@@ -79,12 +81,41 @@ async function input<T>(c: Context, schema: z.ZodType<T>): Promise<T> {
   return schema.parse(body);
 }
 function ip(c: Context) { return c.req.header('x-vercel-forwarded-for')?.split(',')[0]?.trim() || c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'; }
-/** Atomic fixed-window buckets; identifiers are HMACs, never raw email/IP values. */
-export async function rateLimit(key: string, limit: number, seconds: number) {
+function ipv6Groups(address: string) {
+  const [left, right] = address.includes('::') ? address.split('::') : [address, ''];
+  const part = (text: string) => text ? text.split(':').flatMap(g => g.includes('.') ? (([a,b,c,d]) => [(a<<8|b).toString(16),(c<<8|d).toString(16)])(g.split('.').map(Number)) : [parseInt(g,16).toString(16)]) : [];
+  const head = part(left), tail = part(right);
+  return [...head, ...Array(8 - head.length - tail.length).fill('0'), ...tail];
+}
+/** Rate-limit identities for a client: one subscriber (IPv4 address, IPv6 /64) and its network (IPv4 /24, IPv6 /48). */
+export function clientNetworks(address: string) {
+  const v4 = address.replace(/^::ffff:/i, '');
+  if (isIPv4(v4)) return { address: v4, network: v4.split('.').slice(0,3).join('.') + '.0/24' };
+  if (isIPv6(address)) { const g = ipv6Groups(address.split('%')[0]); return { address: g.slice(0,4).join(':') + '::/64', network: g.slice(0,3).join(':') + '::/48' }; }
+  return { address: 'unknown', network: 'unknown' };
+}
+/** Atomic fixed-window counter; identifiers are HMACs, never raw email/IP values. */
+async function hit(key: string, seconds: number) {
   const bucket = Math.floor(Date.now() / (seconds * 1000));
   const rows = await sql`INSERT INTO aux_rate_limits(key,window_start,expires_at) VALUES (${secretHash('rate',key)},${bucket},now()+${seconds}*interval '1 second')
     ON CONFLICT(key,window_start) DO UPDATE SET attempts=aux_rate_limits.attempts+1 RETURNING attempts`;
-  return Number(rows[0]?.attempts) <= limit;
+  return { attempts: Number(rows[0]?.attempts), retryAfter: Math.max(1, Math.ceil(((bucket + 1) * seconds * 1000 - Date.now()) / 1000)) };
+}
+export async function rateLimit(key: string, limit: number, seconds: number) { return (await hit(key, seconds)).attempts <= limit; }
+type Limit = readonly [name: string, subject: string, limit: number, seconds: number];
+/** Checks in order and stops at the first refusal, so a client already over its own budget
+ * cannot also spend the budget of the address it targets. Returns the refusal, if any. */
+async function firstExceeded(limits: readonly Limit[]) {
+  for (const [name, subject, limit, seconds] of limits) {
+    const result = await hit(`${name}:${subject}`, seconds);
+    if (result.attempts > limit) return { name, retryAfter: result.retryAfter };
+  }
+  return null;
+}
+function limited(c: Context, refusal: { name: string; retryAfter: number }, message: string) {
+  logEvent('warn', c, 'aux.auth.rate_limited', { limit: refusal.name });
+  c.header('Retry-After', String(refusal.retryAfter));
+  return error(c, message, 'RATE_LIMITED', 429);
 }
 /** Validate the fingerprint against the actual installation public-key bytes. */
 export function validateDevice(device: Device | undefined) {
@@ -103,14 +134,17 @@ export function validateDevice(device: Device | undefined) {
   if (`sha256:${createHash('sha256').update(bytes).digest('hex')}` !== device.ikSigKeyFingerprint) throw new AuthInputError('Installation fingerprint mismatch');
   return device;
 }
-async function mapUser(user: { id: string; emailAddresses: {id:string;emailAddress:string;verification: {status:string} | null}[]; primaryEmailAddressId: string | null; firstName: string | null; lastName: string | null; imageUrl: string; banned: boolean; locked: boolean }, verifiedEmail?: string) {
+/** Creates the Aux account on first sight. Web sign-up shows the terms and age statement before
+ * Clerk creates the user, so `webConsent` records them; desktop email sign-up records its own consent. */
+async function mapUser(user: { id: string; emailAddresses: {id:string;emailAddress:string;verification: {status:string} | null}[]; primaryEmailAddressId: string | null; firstName: string | null; lastName: string | null; imageUrl: string; banned: boolean; locked: boolean }, verifiedEmail?: string, webConsent = true) {
   if (user.banned || user.locked) throw new AuthIdentityError('Account is not available');
   const email = user.emailAddresses.find(e => verifiedEmail ? e.emailAddress.toLowerCase() === verifiedEmail : e.id === user.primaryEmailAddressId);
   if (!email || email.verification?.status !== 'verified') throw new AuthIdentityError('Verified email address required');
   let rows;
   try {
     // Touch the row only when the email changed: updated_at drives "account changed" events.
-    rows = await sql`INSERT INTO aux_users(clerk_id,email,name,terms_version,terms_accepted_at) VALUES (${user.id},${email.emailAddress.toLowerCase()},${[user.firstName,user.lastName].filter(Boolean).join(' ')},${TERMS_VERSION},now())
+    const consentAt = webConsent ? new Date() : null;
+    rows = await sql`INSERT INTO aux_users(clerk_id,email,name,terms_version,terms_accepted_at,age_confirmed_at) VALUES (${user.id},${email.emailAddress.toLowerCase()},${[user.firstName,user.lastName].filter(Boolean).join(' ')},${webConsent ? TERMS_VERSION : null},${consentAt},${consentAt})
       ON CONFLICT(clerk_id) DO UPDATE SET email=excluded.email,updated_at=now() WHERE aux_users.deleted_at IS NULL AND aux_users.email IS DISTINCT FROM excluded.email RETURNING *`;
   } catch (cause) {
     if ((cause as {code?:string}).code === '23505') throw new AuthIdentityError('Email belongs to another Aux account');
@@ -169,29 +203,49 @@ authRoutes.onError((err,c) => {
   if(err instanceof HTTPException)return c.json({error:err.message,code:'REQUEST_REJECTED'},err.status);
   if (err instanceof AuthIdentityError)return error(c,'This account cannot sign in.','ACCOUNT_UNAVAILABLE',403);
   if (err instanceof z.ZodError || err instanceof AuthInputError) return error(c,'Invalid request.','INVALID_REQUEST',400);
-  // Provider/database errors may contain identifiers; never relay their raw messages.
-  console.error('Aux auth request failed', { path:c.req.path, type:err.name });
+  // Provider/database errors may contain identifiers; never relay or log their raw messages.
+  logEvent('error',c,'aux.auth.request_failed',{name:safeLabel(err.name),kind:safeLabel(err.constructor.name),providerStatus:(({status})=>typeof status==='number'?status:undefined)(err as {status?:unknown})});
   return error(c,'Authentication is temporarily unavailable. Please try again.','AUTH_UNAVAILABLE',503);
 });
 
-// Caps total sign-in mail so requests spread across many addresses and IPs cannot exhaust the sender.
-const OTP_SENDS_PER_HOUR = 300;
+// Sign-in mail limits, cheapest refusal first: the client's address, its network, then the
+// recipient (a one-minute cooldown, an hourly and a daily cap). The Vercel Firewall rate rule
+// in docs/operations.md sits in front of these.
+export const OTP_SEND_LIMITS = { address: [15, 3600], addressDay: [40, 86400], network: [60, 3600], cooldown: [1, 60], email: [5, 3600], emailDay: [10, 86400] } as const;
+export const OTP_VERIFY_LIMITS = { address: [30, 600], network: [120, 600] } as const;
+// No global cap: one would let a distributed attack lock everyone out. Crossing this volume
+// logs an alert instead; the Firewall and Resend's own limits bound the cost.
+export const OTP_ALERT_PER_HOUR = 1000;
+const L = OTP_SEND_LIMITS, V = OTP_VERIFY_LIMITS;
 authRoutes.post('/email/start', async c => {
   const body = await input(c,z.object({email:emailSchema,accountId:z.number().int().nonnegative().optional(),intent:z.string().max(40).optional(),signInAttemptId:z.string().uuid().optional()}));
-  if (!await rateLimit(`otp-ip:${ip(c)}`,15,3600) || !await rateLimit(`otp-email:${body.email}`,5,3600) || !await rateLimit(`otp-resend:${body.email}`,1,60) || !await rateLimit('otp-global',OTP_SENDS_PER_HOUR,3600)) return error(c,'Please wait before requesting another code.','RATE_LIMITED',429);
+  const from = clientNetworks(ip(c));
+  const refusal = await firstExceeded([['otp-ip',from.address,...L.address],['otp-ip-day',from.address,...L.addressDay],['otp-net',from.network,...L.network],
+    ['otp-resend',body.email,...L.cooldown],['otp-email',body.email,...L.email],['otp-email-day',body.email,...L.emailDay]]);
+  if (refusal) return limited(c,refusal,'Please wait before requesting another code.');
+  const sent = (await hit('otp-global',3600)).attempts;
+  if (sent % OTP_ALERT_PER_HOUR === 0) logEvent('error',c,'aux.auth.otp_volume_alert',{sentThisHour:sent,threshold:OTP_ALERT_PER_HOUR});
   const code = String(randomInt(0,1_000_000)).padStart(6,'0');
   const hash = secretHash('otp',`${body.email}:${code}`);
   await sql`INSERT INTO aux_email_challenges(email,code_hash,expires_at) VALUES (${body.email},${hash},now()+interval '10 minutes')
     ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash,expires_at=excluded.expires_at,attempts=0,delivered_at=NULL,consumed_at=NULL,created_at=now()`;
   const response = await fetch('https://api.resend.com/emails',{ method:'POST', headers:{Authorization:`Bearer ${required('RESEND_API_KEY')}`,'Content-Type':'application/json'},
-    body:JSON.stringify({from:required('RESEND_FROM'),to:[body.email],subject:'Your Aux sign-in code',text:`Your Aux sign-in code is ${code}. It expires in 10 minutes. If you did not request this code, ignore this email.`}),signal:AbortSignal.timeout(15000)});
-  if (!response.ok) { await sql`DELETE FROM aux_email_challenges WHERE email=${body.email} AND code_hash=${hash}`; return error(c,'Could not send the code. Please try again.','EMAIL_UNAVAILABLE',503); }
+    body:JSON.stringify({from:required('RESEND_FROM'),to:[body.email],reply_to:'hello@getaux.co',subject:'Your Aux sign-in code',text:`Your Aux sign-in code is ${code}. It expires in 10 minutes. If you did not request this code, ignore this email.`}),signal:AbortSignal.timeout(15000)});
+  if (!response.ok) {
+    logEvent('error',c,'aux.auth.email_send_failed',{providerStatus:response.status});
+    await sql`DELETE FROM aux_email_challenges WHERE email=${body.email} AND code_hash=${hash}`; return error(c,'Could not send the code. Please try again.','EMAIL_UNAVAILABLE',503);
+  }
   await sql`UPDATE aux_email_challenges SET delivered_at=now() WHERE email=${body.email} AND code_hash=${hash}`;
   return c.json({email:body.email,requiresEmailVerification:true,...body.signInAttemptId?{signInAttemptId:body.signInAttemptId}:{}});
 });
 authRoutes.post('/email/verify-code',async c => {
-  const body = await input(c,z.object({email:emailSchema,code:z.string().regex(/^\d{6}$/),accountId:z.number().int().nonnegative().optional(),device:deviceSchema.optional()}));
-  if (!await rateLimit(`otp-verify:${ip(c)}`,30,600)) return error(c,'Too many attempts. Request a new code later.','RATE_LIMITED',429);
+  // consent: the desktop sign-in screen's terms link and age confirmation. See docs/auth-contract.md.
+  const body = await input(c,z.object({email:emailSchema,code:z.string().regex(/^\d{6}$/),accountId:z.number().int().nonnegative().optional(),device:deviceSchema.optional(),
+    consent:z.object({termsVersion:z.string().max(40),ageConfirmed:z.literal(true)}).strict().optional()}));
+  if (body.consent && body.consent.termsVersion!==TERMS_VERSION) return error(c,'The terms have changed. Review them and try again.','TERMS_CHANGED',409);
+  const from = clientNetworks(ip(c));
+  const refusal = await firstExceeded([['otp-verify',from.address,...V.address],['otp-verify-net',from.network,...V.network]]);
+  if (refusal) return limited(c,refusal,'Too many attempts. Request a new code later.');
   const device = validateDevice(body.device);
   const hash = secretHash('otp',`${body.email}:${body.code}`);
   // Every attempt increments atomically. Matching code can be consumed exactly once.
@@ -212,7 +266,11 @@ authRoutes.post('/email/verify-code',async c => {
       user = await client.users.getUser(user.id);
     }
   }
-  return c.json(await issueSession(await mapUser(user,body.email),device));
+  const account = await mapUser(user,body.email,false);
+  // Record the terms version and age confirmation the person accepted, or leave the account without one.
+  if (body.consent) await sql`UPDATE aux_users SET terms_version=${TERMS_VERSION},terms_accepted_at=now(),age_confirmed_at=now() WHERE id=${account.id} AND terms_version IS DISTINCT FROM ${TERMS_VERSION}`;
+  else if (!account.terms_version) logEvent('warn',c,'aux.auth.consent_missing');
+  return c.json(await issueSession(account,device));
 });
 
 authRoutes.post('/token/exchange', async c => {

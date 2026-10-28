@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { requiredEnvironmentKeys } from './check-environment.mjs';
+import { productionEnvironmentKeys } from './check-environment.mjs';
 
 const project='prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB',team='team_aFPyA9tVAkB2WegquB3aADsL';
 const expectedPublic={NEXT_PUBLIC_APP_URL:'https://app.getaux.co',AUX_API_ORIGIN:'https://api.getaux.co',AUX_SHARE_ORIGIN:'https://share.getaux.co',RESEND_FROM:'Aux <hello@notify.getaux.co>',AUX_ALLOWED_ORIGINS:'https://app.getaux.co',CLERK_AUTHORIZED_PARTIES:'https://app.getaux.co'};
@@ -14,7 +14,7 @@ export function inspectProductionConfiguration(rows,resourceProfileConfigured) {
   const production=rows.filter(row=>row.target.includes('production'));
   if(new Set(production.map(row=>row.key)).size!==production.length)throw Error('Ambiguous production environment metadata.');
   const byKey=new Map(production.map(row=>[row.key,row]));
-  const requiredKeys=requiredEnvironmentKeys;
+  const requiredKeys=productionEnvironmentKeys;
   const missing=requiredKeys.filter(key=>!byKey.has(key));
   const scopeMismatches=[...secrets,'DATABASE_URL','BLOB_READ_WRITE_TOKEN'].filter(key=>byKey.has(key)&&(byKey.get(key).target.length!==1||byKey.get(key).target[0]!=='production'));
   const typeMismatches=secrets.filter(key=>byKey.has(key)&&byKey.get(key).type!=='sensitive');

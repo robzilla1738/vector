@@ -8,8 +8,8 @@ import {app} from './app';
 
 function fixture() {
   const env:Record<string,string>={};
-  for(const name of ['CLERK_WEBHOOK_SIGNING_SECRET','AUX_AUTH_SECRET','AUX_DATA_ENCRYPTION_KEY','RESEND_API_KEY','RESEND_FROM','BLOB_READ_WRITE_TOKEN','CRON_SECRET'])env[name]='fixture';
-  return {...env,AUX_READINESS_SECRET:'disposable-readiness-secret-at-least-32',AUX_AUTH_SECRET:'disposable-fixture-secret-at-least-32',CRON_SECRET:'disposable-internal-secret-at-least-32',AUX_DATA_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64'),VERCEL_ENV:'preview',DATABASE_URL:'postgresql://fixture:fixture@'+resources.development.databaseHost+'/fixture',NEXT_PUBLIC_APP_URL:resources.development.appOrigin,AUX_API_ORIGIN:resources.development.apiOrigin,AUX_ALLOWED_ORIGINS:resources.development.appOrigin,CLERK_AUTHORIZED_PARTIES:resources.development.appOrigin,CLERK_SECRET_KEY:'sk_test_fixture',NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:'pk_test_fixture'};
+  for(const name of ['CLERK_WEBHOOK_SIGNING_SECRET','AUX_AUTH_SECRET','AUX_DATA_ENCRYPTION_KEY','RESEND_API_KEY','BLOB_READ_WRITE_TOKEN','CRON_SECRET'])env[name]='fixture';
+  return {...env,RESEND_FROM:'Aux <hello@notify.getaux.co>',AUX_READINESS_SECRET:'disposable-readiness-secret-at-least-32',AUX_AUTH_SECRET:'disposable-fixture-secret-at-least-32',CRON_SECRET:'disposable-internal-secret-at-least-32',AUX_DATA_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64'),VERCEL_ENV:'preview',DATABASE_URL:'postgresql://fixture:fixture@'+resources.development.databaseHost+'/fixture',NEXT_PUBLIC_APP_URL:resources.development.appOrigin,AUX_API_ORIGIN:resources.development.apiOrigin,AUX_ALLOWED_ORIGINS:resources.development.appOrigin,CLERK_AUTHORIZED_PARTIES:resources.development.appOrigin,CLERK_SECRET_KEY:'sk_test_fixture',NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:'pk_test_fixture'};
 }
 test('production deployment cannot accidentally reuse development resources or provider mode',()=>{
   const env=fixture();assert.equal(checkEnvironment(env,resources).profile,'development');
@@ -48,11 +48,20 @@ test('readiness distinguishes current, stale and unavailable databases without l
   }finally{if(previous===undefined)delete process.env.AUX_READINESS_SECRET;else process.env.AUX_READINESS_SECRET=previous;}
 });
 
-test('build checks require no payment or hosted-AI configuration and a separate readiness secret',()=>{
+test('build checks require no payment or hosted-AI configuration, and a readiness secret only in Production',()=>{
   const env:Record<string,string>=fixture();
   assert.deepEqual(checkEnvironment(env,resources),{profile:'development',target:'preview'});
   const {AUX_READINESS_SECRET:_,...missing}=env;
-  assert.throws(()=>checkEnvironment(missing,resources),/Missing configuration: AUX_READINESS_SECRET/);
+  assert.deepEqual(checkEnvironment(missing,resources),{profile:'development',target:'preview'});
+  assert.throws(()=>checkEnvironment({...env,AUX_READINESS_SECRET:'short'},resources),/Invalid configuration: AUX_READINESS_SECRET/);
+  // Production fails on the readiness secret before it reaches the resource checks.
+  const production={...resources,production:{...resources.development,databaseHost:'production.invalid',appOrigin:'https://app.getaux.co',apiOrigin:'https://api.getaux.co'}};
+  assert.throws(()=>checkEnvironment({...missing,VERCEL_ENV:'production'},production),/Missing configuration: AUX_READINESS_SECRET/);
+});
+test('sign-in mail must come from a getaux.co sender',()=>{
+  const env=fixture();
+  for(const from of ['hello@getaux.co','Aux <hello@getaux.co>','Aux <hello@notify.getaux.co>',' noreply@notify.getaux.co '])assert.doesNotThrow(()=>checkEnvironment({...env,RESEND_FROM:from},resources),from);
+  for(const from of ['fixture','someone@gmail.com','Aux <hello@getaux.co.evil.example>','hello@evilgetaux.co','Aux <a@getaux.co> <b@gmail.com>','a@getaux.co, b@gmail.com'])assert.throws(()=>checkEnvironment({...env,RESEND_FROM:from},resources),/RESEND_FROM/,from);
 });
 
 // Build validation accepts whitespace-separated origins; the actual preflight must too.

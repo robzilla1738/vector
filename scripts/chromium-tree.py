@@ -12,7 +12,8 @@ import gzip, hashlib, json, os, subprocess, sys, tarfile, tempfile
 from pathlib import Path
 
 BASE = '0e66b94549a8bd85f03fbdf189b752d6e7b63c32'  # Chromium 155.0.8059.85
-SKIP = ('__pycache__/', '.pyc', '.DS_Store')
+# third_party/aux_sparkle is a pinned upstream download (scripts/release/fetch-sparkle.sh), not Aux source.
+SKIP = ('__pycache__/', '.pyc', '.DS_Store', 'third_party/aux_sparkle/')
 
 
 def git(src, *args, env=None, data=None):

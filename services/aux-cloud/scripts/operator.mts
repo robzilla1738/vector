@@ -25,9 +25,10 @@ export async function saveFeedback(id: string, output: string) {
   await writeFile(output, Buffer.from(await new Response(blob.stream).arrayBuffer()), { flag: 'wx', mode: 0o600 });
 }
 
+// Takes the share down and blocks it: its owner cannot republish that conversation.
 export async function revokeShare(id: string) {
   if (!/^[A-Za-z0-9_-]{12,32}$/.test(id)) throw new Error('Not a share id.');
-  const rows = await sql`UPDATE shared_sessions SET revoked_at = COALESCE(revoked_at, now()), messages = '[]'::jsonb, title = ''
+  const rows = await sql`UPDATE shared_sessions SET revoked_at = COALESCE(revoked_at, now()), blocked_at = COALESCE(blocked_at, now()), messages = '[]'::jsonb, title = ''
     WHERE id = ${id} RETURNING id`;
   if (!rows.length) throw new Error('No such share.');
 }

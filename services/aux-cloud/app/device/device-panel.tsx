@@ -4,13 +4,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 type Pending={requestId:string;deviceName:string;createdAt:number;expiresAt:number};
 type Lookup={id:string;deviceName:string;email:string;accountId:string};
+// Keyed by account: switching accounts mounts fresh state, so no selection or verified code carries over.
 export function DevicePanel(){
+  const {userId}=useAuth();
+  return <Requests key={userId??''}/>;
+}
+function Requests(){
   const {getToken,userId,isLoaded,isSignedIn}=useAuth();
   const {user}=useUser();
   const [pending,setPending]=useState<Pending[]>([]),[selected,setSelected]=useState(''),[code,setCode]=useState('');
-  const [lookup,setLookup]=useState<Lookup|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+  const [lookup,setLookup]=useState<Lookup|null>(null),[busy,setBusy]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
   const identity=useRef(userId),epoch=useRef(0);
-  identity.current=userId;
+  useEffect(()=>{identity.current=userId;},[userId]);
   const request=useCallback(async(path:string,body:unknown,owner:string)=>{
     const token=await getToken();
     if(!token||identity.current!==owner)throw new Error('Your account changed. Start again.');
@@ -20,20 +25,17 @@ export function DevicePanel(){
     if(!response.ok)throw new Error(typeof data?.error==='string'?data.error:'Could not complete the request. Please try again.');
     return data;
   },[getToken]);
-  const load=useCallback(async(owner:string)=>{
-    const current=++epoch.current;
-    setBusy(true);setError('');
-    try{
-      const result=await request('pending',{},owner);
-      if(current===epoch.current&&identity.current===owner)setPending(result.requests);
-    }catch(cause){if(current===epoch.current&&identity.current===owner)setError(cause instanceof Error?cause.message:'Could not load device requests.');}
-    finally{if(current===epoch.current&&identity.current===owner)setBusy(false);}
+  // State changes only after the request settles, so the mount effect can call this directly.
+  const fetchPending=useCallback((owner:string)=>{
+    const current=++epoch.current,live=()=>current===epoch.current&&identity.current===owner;
+    return request('pending',{},owner).then(result=>{if(live())setPending(result.requests);},cause=>{if(live())setError(cause instanceof Error?cause.message:'Could not load device requests.');}).finally(()=>{if(live())setBusy(false);});
   },[request]);
+  function refresh(owner:string){setBusy(true);setError('');void fetchPending(owner);}
   useEffect(()=>{
-    ++epoch.current;setPending([]);setSelected('');setCode('');setLookup(null);setError('');setNotice('');
-    if(isLoaded&&isSignedIn&&userId)void load(userId);
-    return()=>{++epoch.current;};
-  },[isLoaded,isSignedIn,userId,load]);
+    if(isLoaded&&isSignedIn&&userId)void fetchPending(userId);
+    const requests=epoch;
+    return()=>{++requests.current;};
+  },[isLoaded,isSignedIn,userId,fetchPending]);
   function resetSelection(value:string){setSelected(value);setCode('');setLookup(null);setError('');setNotice('');}
   async function verify(){
     if(!userId||busy)return;
@@ -63,7 +65,7 @@ export function DevicePanel(){
     <section aria-busy={busy}>
       <h2>Pending requests</h2>
       <p>Signed in as <strong>{user?.primaryEmailAddress?.emailAddress||'your Aux account'}</strong>.</p>
-      <button type="button" disabled={busy} onClick={()=>userId&&void load(userId)}>Refresh requests</button>
+      <button type="button" disabled={busy} onClick={()=>userId&&refresh(userId)}>Refresh requests</button>
       {pending.length===0?<p>No pending requests. Start <code>aux login</code> on the device you want to connect, then refresh.</p>:<div role="radiogroup" aria-label="Choose the device you started sign-in on">{pending.map(row=><label key={row.requestId} style={{display:'block',margin:'16px 0'}}>
         <input type="radio" name="device-request" value={row.requestId} checked={selected===row.requestId} disabled={busy} onChange={()=>resetSelection(row.requestId)}/>{' '}
         <strong>{row.deviceName}</strong><span> · expires {new Date(row.expiresAt).toLocaleTimeString()}</span>

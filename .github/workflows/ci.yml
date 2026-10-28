@@ -33,7 +33,7 @@ jobs:
       - run: pnpm test:ci
 
   aux-cloud:
-    name: aux-cloud test, typecheck and build
+    name: aux-cloud test, typecheck, lint and build
     runs-on: [self-hosted, macOS, aux-macos]
     timeout-minutes: 30
     defaults:
@@ -57,7 +57,7 @@ jobs:
       AUX_READINESS_SECRET: disposable-readiness-secret-at-least-32
       CRON_SECRET: disposable-internal-secret-at-least-32
       RESEND_API_KEY: fixture
-      RESEND_FROM: fixture
+      RESEND_FROM: Aux CI <signin@getaux.co>
       BLOB_READ_WRITE_TOKEN: fixture
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -69,6 +69,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm typecheck
+      - run: pnpm lint
       - run: pnpm build
 
   gitleaks:

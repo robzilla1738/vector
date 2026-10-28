@@ -1,0 +1,303 @@
+#!/usr/bin/env python3
+"""Assemble, sign and verify an Aux release app from a native build and the sealed components.
+
+    assemble.py --native <src>/out/AuxFast/Aux.app --components <candidate>/Aux.app --out DIR --build N
+                [--version 1.0.0] [--identity development|developer-id] [--daemon-profile PATH]
+
+The native build supplies everything outside Contents/Resources/aux; the sealed candidate supplies
+the components. Package edits are exact and count-checked (package-edits.json). Nothing outside
+--out is modified, nothing is launched, uploaded or notarized here.
+
+development: the local Apple Development identity, no timestamp, nested third-party signatures kept.
+developer-id: the Developer ID identity with secure timestamps; every nested Mach-O without a
+Developer ID signature is re-signed, and re-signed runtime files are re-pinned for the daemon's
+runtime seeder. Notarization and publication are separate steps (notarize.py).
+"""
+import argparse
+import hashlib
+import json
+import plistlib
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+TEAM = '9F2JXY8TCK'
+AUX = 'Contents/Resources/aux'
+DAEMON_APP = f'{AUX}/apps/daemon/Aux Daemon.app'
+NATIVE = f'{DAEMON_APP}/Contents/Resources/native'
+FRAMEWORK = 'Contents/Frameworks/Aux Framework.framework'
+VERSIONED = f'{FRAMEWORK}/Versions/155.0.8059.85'
+MACHO_MAGIC = {b'\xcf\xfa\xed\xfe', b'\xca\xfe\xba\xbe', b'\xfe\xed\xfa\xcf', b'\xbe\xba\xfe\xca'}
+
+# Bundle code objects in signing order (inside out), with their identifier and entitlements.
+TARGETS = [
+    (f'{VERSIONED}/Libraries/libvulkan.dylib', 'dev.aux.browser.libvulkan', None),
+    (f'{VERSIONED}/Libraries/libvk_swiftshader.dylib', 'dev.aux.browser.libvk-swiftshader', None),
+    (f'{VERSIONED}/Libraries/libaperitif.dylib', 'dev.aux.browser.libaperitif', None),
+    (f'{VERSIONED}/Helpers/web_app_shortcut_copier', 'dev.aux.browser.web-app-shortcut-copier', None),
+    (f'{VERSIONED}/Helpers/chrome_crashpad_handler', 'dev.aux.browser.chrome-crashpad-handler', None),
+    (f'{VERSIONED}/Helpers/app_mode_loader', 'dev.aux.browser.app-mode-loader', None),
+    (f'{VERSIONED}/Helpers/Aux Helper.app', 'dev.aux.browser.helper', 'helper'),
+    (f'{VERSIONED}/Helpers/Aux Helper (Renderer).app', 'dev.aux.browser.helper.renderer', 'helper'),
+    (f'{VERSIONED}/Helpers/Aux Helper (GPU).app', 'dev.aux.browser.helper', 'helper'),
+    (f'{VERSIONED}/Helpers/Aux Helper (Aperitif).app', 'dev.aux.browser.helper', 'helper'),
+    (f'{VERSIONED}/Helpers/Aux Helper (Aperitif Renderer).app', 'dev.aux.browser.helper.renderer', 'helper'),
+    (f'{VERSIONED}/Helpers/Aux Helper (Aperitif GPU).app', 'dev.aux.browser.helper', 'helper'),
+    (f'{VERSIONED}/Helpers/Aux Helper (Aperitif Alerts).app', 'dev.aux.browser.framework.AlertNotificationService', 'helper'),
+    (f'{VERSIONED}/Helpers/Aux Helper (Alerts).app', 'dev.aux.browser.framework.AlertNotificationService', 'helper'),
+    (FRAMEWORK, 'dev.aux.browser.framework', None),
+    (f'{DAEMON_APP}/Contents/Resources/memory-helper/aux-memory', 'dev.aux.browser.memory', None),
+    (f'{AUX}/apps/cli/Aux CLI.app', 'dev.aux.browser.cli', None),
+    (f'{AUX}/apps/computer-use/Aux Computer Use.app', 'dev.aux.browser.computer-use', 'computer-use'),
+    (DAEMON_APP, 'dev.aux.browser.daemon', 'daemon'),
+    ('.', 'dev.aux.browser', 'app'),
+]
+ENTITLEMENTS = {
+    'helper': {'com.apple.security.cs.allow-jit': True},
+    # Web content reaches the camera, microphone and location through the browser, as in Chrome.
+    'app': {'com.apple.security.cs.allow-jit': True,
+            'com.apple.security.device.audio-input': True,
+            'com.apple.security.device.camera': True,
+            'com.apple.security.personal-information.location': True,
+            'com.apple.security.automation.apple-events': True},
+    'computer-use': {'com.apple.security.automation.apple-events': True,
+                     'com.apple.security.personal-information.addressbook': True},
+    'daemon': {'com.apple.application-identifier': f'{TEAM}.dev.aux.browser.daemon',
+               'com.apple.developer.team-identifier': TEAM,
+               'com.apple.security.cs.allow-jit': True,
+               'keychain-access-groups': [f'{TEAM}.dev.aux.local']},
+}
+USAGE = {
+    'NSCameraUsageDescription': 'Once Aux has access, websites can ask you for permission to use your camera.',
+    'NSMicrophoneUsageDescription': 'Once Aux has access, websites can ask you for permission to use your microphone.',
+    'NSLocationUsageDescription': 'Once Aux has access, websites can ask you for permission to use your location.',
+    'NSLocationWhenInUseUsageDescription': 'Once Aux has access, websites can ask you for permission to use your location.',
+    'NSBluetoothAlwaysUsageDescription': 'Once Aux has access, websites can ask you for permission to use Bluetooth devices.',
+}
+# Only these keys ship; the browser and CLI validate them (aux_packaged_state_identity.h).
+# The full stage provenance stays outside the app, in the release receipt folder.
+RELEASE_MARKER_KEYS = ('version', 'implementation', 'daemonRuntime', 'identityProfile',
+                       'stateIdentityVersion', 'nativeStartupMode', 'passwordManager')
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def run(command, **kwargs):
+    result = subprocess.run(command, capture_output=True, text=True, **kwargs)
+    if result.returncode:
+        raise SystemExit(f'{command[0]} failed ({result.returncode}): {result.stderr.strip()[:2000]}')
+    return result
+
+
+def apply_edits(app: Path, spec: dict) -> list:
+    """Exact, count-checked text edits; a glob target spreads `total` across its matches."""
+    applied = []
+    for edit in spec['edits']:
+        paths = sorted(app.glob(edit['target'])) if any(c in edit['target'] for c in '*?[') else [app / edit['target']]
+        if not paths:
+            raise SystemExit(f"no file matches {edit['target']}")
+        texts = {p: p.read_text(encoding='utf-8') for p in paths}
+        found = sum(t.count(edit['find']) for t in texts.values())
+        expected = edit.get('total', edit.get('count'))
+        if found != expected:
+            raise SystemExit(f"{edit['target']}: expected {expected} of {edit['find'][:80]!r}, found {found}")
+        for p, t in texts.items():
+            if edit['find'] in t:
+                p.write_text(t.replace(edit['find'], edit['replace']), encoding='utf-8')
+                applied.append({'path': str(p.relative_to(app)), 'why': edit['why']})
+    return applied
+
+
+def macho(path: Path) -> bool:
+    if path.is_symlink() or not path.is_file():
+        return False
+    with path.open('rb') as handle:
+        return handle.read(4) in MACHO_MAGIC
+
+
+def authority(path: Path) -> str:
+    detail = subprocess.run(['codesign', '-dvv', str(path)], capture_output=True, text=True).stderr
+    names = [line[len('Authority='):] for line in detail.splitlines() if line.startswith('Authority=')]
+    return names[0] if names else ('adhoc' if 'Signature=adhoc' in detail else 'unsigned')
+
+
+def identity_sha1(kind: str) -> str:
+    wanted = 'Developer ID Application: ' if kind == 'developer-id' else 'Apple Development: '
+    listing = run(['security', 'find-identity', '-v', '-p', 'codesigning']).stdout
+    for line in listing.splitlines():
+        match = re.search(r'([0-9A-F]{40}) "(.+)"', line)
+        if match and match.group(2).startswith(wanted) and (kind != 'developer-id' or f'({TEAM})' in match.group(2)):
+            return match.group(1)
+    raise SystemExit(f'No {wanted.strip()} identity for team {TEAM} in the login Keychain')
+
+
+def repin_runtime(app: Path, changed: list) -> int:
+    """Re-pin re-signed runtime files so the daemon's seeder still accepts the bundled runtime."""
+    runtime = app / AUX / 'agent-runtime'
+    relative = {str(p.relative_to(runtime)) for p in changed if runtime in p.parents}
+    if not relative:
+        return 0
+    pins_path = app / NATIVE / 'runtime-source-pins.json'
+    bootstrap = app / NATIVE / 'runtime-bootstrap.cjs'
+    old = sha256(pins_path)
+    pins = json.loads(pins_path.read_text())
+    for entry in pins['files']:
+        if entry['path'] in relative:
+            if entry.get('anchors'):
+                raise SystemExit(f"refusing to re-pin anchored text file {entry['path']}")
+            data = (runtime / entry['path']).read_bytes()
+            entry['size'], entry['sourceSha256'] = len(data), hashlib.sha256(data).hexdigest()
+            relative.discard(entry['path'])
+    if relative:
+        raise SystemExit(f'unpinned runtime files changed: {sorted(relative)[:5]}')
+    pins_path.write_text(json.dumps(pins, separators=(',', ':')))
+    text = bootstrap.read_text()
+    if text.count(old) != 1:
+        raise SystemExit('runtime-bootstrap.cjs must pin the runtime inventory exactly once')
+    bootstrap.write_text(text.replace(old, sha256(pins_path)))
+    return len(changed)
+
+
+TEXT_SUFFIXES = ('.json', '.js', '.mjs', '.cjs', '.md', '.txt', '.plist')
+
+
+def repin_cascade(app: Path, changes: dict) -> list:
+    """Replace each changed file's old SHA-256 wherever the components pin it, then repeat for
+    the pinning files that change in turn. A directory named exactly by a digest (memory
+    runtimes are keyed by their runtime.json hash) is renamed with it; any other use refuses."""
+    root, log = app / AUX, []
+    pending = dict(changes)
+    while pending:
+        old, new = pending.popitem()
+        for path in sorted(root.rglob(f'*{old}*'), key=lambda p: -len(p.parts)):
+            if path.name != old or not path.is_dir():
+                raise SystemExit(f'digest {old[:12]} is part of a path name; refusing to re-pin it')
+            path.rename(path.with_name(new))
+            log.append({'path': str(path.relative_to(app)), 'renamedTo': new})
+        texts = [p for p in root.rglob('*') if p.is_file() and not p.is_symlink()
+                 and p.suffix in TEXT_SUFFIXES and '_CodeSignature' not in p.parts]
+        for path in texts:
+            text = path.read_text(encoding='utf-8', errors='surrogateescape')
+            if old in text:
+                before = sha256(path)
+                path.write_text(text.replace(old, new), encoding='utf-8', errors='surrogateescape')
+                log.append({'path': str(path.relative_to(app)), 'replaced': old})
+                pending[before] = sha256(path)
+    return log
+
+
+def sign(app: Path, target: str, identifier: str, entitlements: str | None, identity: str,
+         timestamp: bool, work: Path) -> dict:
+    command = ['codesign', '--force', '--sign', identity, '--options', 'runtime',
+               '--timestamp' if timestamp else '--timestamp=none', '--identifier', identifier]
+    if entitlements:
+        plist = work / f'{entitlements}.entitlements'
+        command += ['--entitlements', str(plist)]
+    run(command + [str(app / target)])
+    run(['codesign', '--verify', '--strict', '-R',
+         f'=anchor apple generic and identifier "{identifier}" and certificate leaf[subject.OU] = "{TEAM}"',
+         str(app / target)])
+    actual = run(['codesign', '-d', '--entitlements', ':-', str(app / target)]).stdout.strip()
+    if (plistlib.loads(actual.encode()) if actual else {}) != (ENTITLEMENTS[entitlements] if entitlements else {}):
+        raise SystemExit(f'entitlements differ after signing {target}')
+    return {'target': target, 'identifier': identifier, 'entitlements': entitlements}
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--native', type=Path, required=True)
+    parser.add_argument('--components', type=Path, required=True)
+    parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--version', default='1.0.0')
+    parser.add_argument('--build', type=int, required=True)
+    parser.add_argument('--identity', choices=('development', 'developer-id'), default='development')
+    parser.add_argument('--daemon-profile', type=Path, help='Developer ID provisioning profile for the daemon')
+    args = parser.parse_args()
+
+    out = args.out.resolve()
+    out.mkdir(parents=True, exist_ok=False)
+    app, work = out / 'Aux.app', out / 'work'
+    work.mkdir()
+    release = args.identity == 'developer-id'
+    if release and not args.daemon_profile:
+        raise SystemExit('--daemon-profile is required for developer-id signing')
+    identity = identity_sha1(args.identity)
+    for name, value in ENTITLEMENTS.items():
+        (work / f'{name}.entitlements').write_bytes(plistlib.dumps(value))
+
+    # 1. Native app plus the sealed components; nothing else from the candidate.
+    run(['ditto', str(args.native), str(app)])
+    if (app / AUX).exists():
+        raise SystemExit('the native build already contains Contents/Resources/aux')
+    run(['ditto', str(args.components / AUX), str(app / AUX)])
+
+    # 2. Package edits.
+    edits = apply_edits(app, json.loads((HERE / 'package-edits.json').read_text()))
+    # Component transforms written as modules (count-checked inside, see transforms.mjs).
+    transforms = json.loads(run(['node', str(HERE / 'transforms.mjs'), str(app)]).stdout or '[]')
+    marker_path = app / AUX / 'bundle.json'
+    marker = json.loads(marker_path.read_text())
+    shutil.copy2(marker_path, out / 'stage-provenance-bundle.json')
+    release_marker = {key: marker[key] for key in RELEASE_MARKER_KEYS if key in marker}
+    release_marker.update(product='Aux', productVersion=args.version, build=args.build)
+    marker_path.write_text(json.dumps(release_marker, indent=1) + '\n')
+    marker_path.chmod(0o644)
+
+    info_path = app / 'Contents/Info.plist'
+    info = plistlib.loads(info_path.read_bytes())
+    info.update(CFBundleShortVersionString=args.version, CFBundleVersion=str(args.build))
+    for key, text in USAGE.items():
+        info.setdefault(key, text)
+    info_path.write_bytes(plistlib.dumps(info))
+
+    if args.daemon_profile:
+        shutil.copy2(args.daemon_profile, app / DAEMON_APP / 'Contents/embedded.provisionprofile')
+
+    # 3. Nested Mach-O files that are not bundle targets: keep third-party Developer ID
+    # signatures; in developer-id mode re-sign everything else with Aux's.
+    bundles = [t for t, _, _ in TARGETS if t.endswith(('.app', '.framework')) or t == '.']
+    loose = {t for t, _, _ in TARGETS if not t.endswith(('.app', '.framework')) and t != '.'}
+    resigned, kept = [], {}
+    for path in sorted((app / AUX).rglob('*'), key=lambda p: -len(p.parts)):
+        if not macho(path) or str(path.relative_to(app)) in loose:
+            continue
+        current = authority(path)
+        kept[current] = kept.get(current, 0) + 1
+        if release and not current.startswith('Developer ID Application: '):
+            before = sha256(path)
+            run(['codesign', '--force', '--sign', identity, '--options', 'runtime', '--timestamp', str(path)])
+            resigned.append((path, before))
+    runtime = app / AUX / 'agent-runtime'
+    pins = app / NATIVE / 'runtime-source-pins.json'
+    pin_files = [pins, app / NATIVE / 'runtime-bootstrap.cjs']
+    pins_before = {p: sha256(p) for p in pin_files}
+    repinned = repin_runtime(app, [p for p, _ in resigned if runtime in p.parents])
+    cascade = repin_cascade(app, {
+        **{before: sha256(p) for p, before in resigned if runtime not in p.parents},
+        **{old: sha256(p) for p, old in pins_before.items() if sha256(p) != old}})
+
+    # 4. Bundle targets, inside out.
+    signed = [sign(app, target, identifier, entitlements, identity, release, work)
+              for target, identifier, entitlements in TARGETS]
+    run(['codesign', '--verify', '--deep', '--strict', str(app)])
+
+    receipt = {
+        'format': 'aux.release-assembly.v1', 'version': args.version, 'build': args.build,
+        'identity': args.identity, 'identitySha1': identity, 'native': str(args.native), 'components': str(args.components),
+        'componentsBundleSha256': sha256(out / 'stage-provenance-bundle.json'),
+        'packageEdits': edits, 'transforms': transforms, 'nestedSignatures': kept, 'resignedNested': len(resigned),
+        'repinnedRuntimeFiles': repinned, 'repinCascade': cascade, 'signed': signed, 'usageStrings': sorted(USAGE),
+        'notarized': False, 'published': False,
+    }
+    (out / 'receipt.json').write_text(json.dumps(receipt, indent=1) + '\n')
+    print(json.dumps({k: receipt[k] for k in ('version', 'build', 'identity', 'resignedNested', 'repinnedRuntimeFiles')}))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

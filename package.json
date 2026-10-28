@@ -6,12 +6,12 @@
   "description": "Aux local browser, reusing the supplied implementation with Aux branding.",
   "packageManager": "pnpm@11.27.1",
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "aux": "node scripts/aux.mjs",
-    "test": "node --experimental-vm-modules --test vendor/provided/*.test.mjs vendor/aside/shims/*.test.mjs scripts/lib/*.test.mjs scripts/lib/__tests__/*.test.mjs scripts/test_launcher_port_contract.mjs && python3 scripts/test-shell-retirement.py && python3 scripts/test_extend_provided_native.py && python3 scripts/test_chromium_tree.py && python3 -m unittest scripts/candidate/test_prepare_edits.py",
-    "test:ci": "node scripts/ci/hermetic-tests.mjs && python3 scripts/test-shell-retirement.py && python3 scripts/test_extend_provided_native.py && python3 scripts/test_chromium_tree.py && python3 -m unittest scripts/candidate/test_prepare_edits.py",
+    "test": "node --experimental-vm-modules --test vendor/provided/*.test.mjs vendor/provided/provider-cli/*.test.mjs vendor/aside/shims/*.test.mjs scripts/lib/*.test.mjs scripts/lib/__tests__/*.test.mjs scripts/test_launcher_port_contract.mjs && python3 scripts/test-shell-retirement.py && python3 scripts/test_extend_provided_native.py && python3 scripts/test_chromium_tree.py && python3 -m unittest scripts/candidate/test_prepare_edits.py && python3 -m unittest scripts/release/test_assemble.py && python3 -m unittest scripts/test_gn_flags.py",
+    "test:ci": "node scripts/ci/hermetic-tests.mjs && python3 scripts/test-shell-retirement.py && python3 scripts/test_extend_provided_native.py && python3 scripts/test_chromium_tree.py && python3 -m unittest scripts/candidate/test_prepare_edits.py && python3 -m unittest scripts/release/test_assemble.py && python3 -m unittest scripts/test_gn_flags.py",
     "check": "pnpm test && pnpm check:provided",
     "stage:provided": "node scripts/stage-provided.mjs",
     "assemble:provided": "node scripts/assemble-provided.mjs",
