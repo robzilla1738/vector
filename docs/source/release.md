@@ -20,9 +20,14 @@ How a signed, notarized, self-updating Aux release is produced from the native b
 python3 scripts/release/assemble.py --native <src>/out/AuxRelease/Aux.app \
   --components out/provided-candidate-completion-20261026-a1/Aux.app \
   --out out/release/1.0.0-<build> --build <build> --identity developer-id \
-  --daemon-profile <Aux Daemon Developer ID profile>
+  --daemon-profile <Aux Daemon Developer ID profile> \
+  --release-addons out/live-inputs/completion-20261026/release-addons-a1 \
+  --daemon-executable "out/live-inputs/completion-20261026/release-state-root-a6/Aux Daemon" \
+  --crash-dsn-ref "op://Agents/Aux Sentry DSN/dsn"
 python3 scripts/release/package.py --release out/release/1.0.0-<build>
 ```
+
+`--release-addons` supplies the release PDF and utility addons; `--daemon-executable` is the daemon relinked to accept exactly that pair (`scripts/candidate/relink_daemon.py`, sources under `docs/integration/proposed/completion-20261026/runtime/release-state-root-a1/`). `--crash-dsn-ref` is read with `op-agents` and never printed. For a local look at a build, move `~/Library/Application Support/Aux` and `~/Library/Caches/Aux` aside first, then run `Aux.app/Contents/MacOS/Aux` from the build folder; the daemon answers on `127.0.0.1:21520` about a minute later.
 
 `assemble.py`:
 1. Copies the native app, then the components. Nothing else comes from the candidate.
@@ -31,8 +36,11 @@ python3 scripts/release/package.py --release out/release/1.0.0-<build>
    - inherited cloud, provider and GitHub credentials are dropped;
    - skill icons load from `app.getaux.co`;
    - the messenger help links open the Aux docs;
-   - the new tab page drops its profile menu (the browser sidebar has one) and shows its suggestions as a centered row of compact chips instead of gradient cards;
-   - settings content sits flush in the native page card (no inset, border or radius of its own), divided from the settings nav by a 1px line.
+   - the new tab page drops its profile menu (the browser sidebar has one) and shows its suggestions as a centered row of compact chips instead of gradient cards, centers the logo, search bar and chips vertically, and turns the Codex banner into a generic "Connect your agents" banner;
+   - settings, chats and projects sit flush in the native page card (no inset, border, hairline or radius of their own), divided from the settings nav by a 1px line;
+   - the side panel chat menu says when there are no chats instead of opening empty;
+   - site icons come from the browser's own favicon store, so no visited domain goes to Google's favicon service;
+   - the Agent's tab favicons are replaced whole (`FILE_REPLACEMENTS`, each checked against the SHA-256 of the file it replaces) with the plain Aux mark from `assets/brand/extension/`, light on dark and dark on light.
    - `scripts/release/transforms.mjs` then adds the provider CLI runtime beside the daemon entry and applies its count-checked transforms: borrowed sign-in clients removed, provider CLI hooks in the daemon, CLI rows and dialogs in the Agent ([provider CLIs](../integration/proposed/completion-20261026/runtime/provider-cli-a1/design.md#integration-release-build-2026-10-28)).
 3. Ships a small `bundle.json` with only the keys the browser and CLI validate (`aux_packaged_state_identity.h`). The full stage provenance is kept next to the app as `stage-provenance-bundle.json`.
 4. Sets the public version (1.0.0) and an increasing build number, and adds the camera, microphone, location and Bluetooth usage strings.

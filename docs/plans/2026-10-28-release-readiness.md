@@ -18,24 +18,24 @@ The detailed, step-by-step versions are the [owner plan](2026-10-28-owner-plan.m
 
 Access and identity
 1. ~~Grant Accessibility and Automation to the terminal running Claude (D12).~~ Done 2026-10-28; on macOS 27 Accessibility is "Device Control and Data Access", and `aux_drive.py check` passes from Claude.
-2. Import `Aux Developer ID Application - 2026.p12` (iCloud Drive) into the login Keychain, and choose "Always Allow" for `codesign` when it first asks.
-3. In the Apple Developer portal (team `9F2JXY8TCK`), create a Developer ID provisioning profile for `dev.aux.browser.daemon`, and tell Claude where it saved.
+2. ~~Import `Aux Developer ID Application - 2026.p12` (iCloud Drive) into the login Keychain, and choose "Always Allow" for `codesign` when it first asks.~~ Done 2026-10-28; Developer ID builds 23–41 were signed with it.
+3. ~~In the Apple Developer portal (team `9F2JXY8TCK`), create a Developer ID provisioning profile for `dev.aux.browser.daemon`, and tell Claude where it saved.~~ Done 2026-10-28 (kept outside the repo). Regenerate it when Apple grants the Endpoint Security distribution entitlement.
 4. Approve the one real-Keychain check (saved passwords and cookies across Quit), which touches Keychain (D2), when Claude asks.
 5. Quit the running Aux candidate when Claude asks. It holds the state folders and blocks reseal launches.
 6. Run `out/cleanup-2026-10-28/cleanup.sh`. It removes the four merged Codex worktrees and moves `~/Applications/Aux.app` to the Trash; the safety check blocked Claude from doing it. Their HEADs are saved under `refs/archive/worktrees/codex-*`, and their untracked files are in `~/Documents/Aux-archive/worktree-salvage-2026-10-28/`.
 
 Accounts (use `hello@getaux.co` as the contact; put every key in the 1Password Agents vault, never in chat)
-7. Google Cloud: a Safe Browsing API key restricted to that API, or a Web Risk application if the free API doesn't fit (decision 7).
+7. ~~Google Cloud: a Safe Browsing API key restricted to that API, or a Web Risk application if the free API doesn't fit (decision 7).~~ Done 2026-10-28: free Safe Browsing (noncommercial first release), key restricted to that API, in the Agents vault. `scripts/release/set-google-api-key.py` writes it into a local `args.gn` only.
 8. Widevine: request a license at widevine.com, and get VMP signing (decision 8). Inquiries sent 2026-10-28. A native Chromium build needs castLabs' commercial 3PL audit before EVS access; free EVS covers only castLabs Electron builds.
-9. Sentry: one project for native crash reports, and its DSN (decision 6).
-10. Better Stack: an account plus an API token, so Claude can create the readiness monitor with alerts to `robertcourson96@gmail.com` (decision 12).
-11. Tartelet CI: create the GitHub App Tartelet asks for (it registers ephemeral runners) and install it on `robzilla1738/vector`. In the repo settings, set Actions to require approval for all outside collaborators.
+9. ~~Sentry: one project for native crash reports, and its DSN (decision 6).~~ Done 2026-10-28; the DSN is in the Agents vault and `assemble.py --crash-dsn-ref` builds the minidump endpoint from it. A crash reaching Sentry is not yet observed.
+10. ~~Better Stack: an account plus an API token, so Claude can create the readiness monitor with alerts to `robertcourson96@gmail.com` (decision 12).~~ Done 2026-10-28, with the Vercel log drain.
+11. ~~Tartelet CI: create the GitHub App Tartelet asks for (it registers ephemeral runners) and install it on `robzilla1738/vector`. In the repo settings, set Actions to require approval for all outside collaborators.~~ Done 2026-10-28 ([receipt](../ci/2026-10-28-tartelet.json)).
 
 Hosted service (Vercel `aux-cloud`, Neon, Resend)
-12. Deploy the service when Claude says it's ready: today `09c024eba` and `608f900e3`, later the hosted batch. Or tell Claude it may run production deploys.
-13. In Vercel: add a log drain to Better Stack, add the Firewall rate rule Claude specifies for the email-code route, delete the stale Stripe and hosted-AI variables and `AUX_PAYMENTS_ENABLED`/`AUX_HOSTED_AI_ENABLED`, and re-add the database URLs, Postgres passwords and Blob token as Sensitive.
+12. ~~Deploy the service when Claude says it's ready: today `09c024eba` and `608f900e3`, later the hosted batch. Or tell Claude it may run production deploys.~~ Done 2026-10-28: the reviewed service and its migration are live on all five hosts.
+13. Partly done 2026-10-28: the Better Stack log drain and the sign-in rate limits are live (both auth paths, plain 429; [operations](../../services/aux-cloud/docs/operations.md)); the integration-managed database and Blob variables stay as they are (owner's choice; the project has no other members). Still open: delete the stale Stripe and hosted-AI variables and `AUX_PAYMENTS_ENABLED`/`AUX_HOSTED_AI_ENABLED` in Vercel.
 14. Delete the J5 test account (Settings › Account › Delete account in Aux), then tell Claude to run the cleanup check.
-15. In Resend: confirm `RESEND_FROM` is an `@getaux.co` sender and that SPF, DKIM and DMARC pass for getaux.co.
+15. ~~In Resend: confirm `RESEND_FROM` is an `@getaux.co` sender and that SPF, DKIM and DMARC pass for getaux.co.~~ Done 2026-10-28: mail sends from the verified `notify.getaux.co` subdomain with Reply-To `hello@getaux.co`, and real sign-in mail lands in the inbox.
 16. In Neon: confirm the point-in-time restore window for the Aux project (at least 7 days). The connected Neon account doesn't hold that project.
 
 External
@@ -82,10 +82,11 @@ Order: 1 and 2 first; 3–8 run alongside the native work; 9 and 10 wait on the 
 9. **Chromium updates:** a documented process and script to rebase `chromium/tree` onto each new Chrome stable, then the first rebase to the current stable.
 10. **After the owner items:**
     - D12 grants: the full journey pass and release checks, one fix batch, then rerun only the failures.
-    - Developer ID and profile: the signed, notarized and stapled release candidate and DMG, verified, and stopped before publication.
-    - Keys and accounts: wire Safe Browsing, Sentry, Better Stack, Widevine and Tartelet as each arrives.
+    - Developer ID and profile: the signed, notarized and stapled release candidate and DMG, verified, and stopped before publication. Progress 2026-10-28: `assemble.py --identity developer-id` builds signed with the daemon profile launch and reach daemon ready (builds 23–41, `out/release/1.0.0-<build>`, local). Notarization, stapling and the DMG are not yet run.
+    - Keys and accounts: wire Safe Browsing, Sentry, Better Stack, Widevine and Tartelet as each arrives. Progress 2026-10-28: Better Stack and Tartelet live; Sentry DSN and Safe Browsing key wired into the build, neither yet observed end to end; Widevine waits on castLabs.
     - Apple, OpenAI and 1Password: activate the REPL, ChatGPT and the 1Password pairing as each approval lands.
 11. **Docs:** keep STATUS, the contract and this checklist current after every batch.
+12. **Owner UI review (2026-10-28):** every request and its state is in the [UI review checklist](2026-10-28-ui-review-checklist.md).
 
 ## 1. Decisions (owner, 2026-10-28)
 

@@ -176,6 +176,32 @@ def repin_runtime(app: Path, changed: list) -> int:
     return len(changed)
 
 
+# Whole-file replacements: (path under AUX, sha256 of the file it replaces,
+# repo source, why). Refuses when the component changed underneath.
+EXTENSION_ICONS = 'apps/extension/dist/icons'
+FILE_REPLACEMENTS = [
+    (f'{EXTENSION_ICONS}/favicon-dark.png',
+     '42d9aa3c1c82c24a1db95e33a48f5d4112cf966dcccbeb1bbce07a2712a74208',
+     'assets/brand/extension/favicon-dark.png',
+     "Aux's own pages show the plain mark in tabs, light on dark, never the boxed app icon."),
+    (f'{EXTENSION_ICONS}/favicon-light.png',
+     '42d9aa3c1c82c24a1db95e33a48f5d4112cf966dcccbeb1bbce07a2712a74208',
+     'assets/brand/extension/favicon-light.png',
+     "Aux's own pages show the plain mark in tabs, dark on light, never the boxed app icon."),
+]
+
+
+def replace_files(app: Path) -> list:
+    done = []
+    for target, expected, source, why in FILE_REPLACEMENTS:
+        path = app / AUX / target
+        if sha256(path) != expected:
+            raise SystemExit(f'{target}: unexpected contents; review the replacement')
+        shutil.copyfile(HERE.parents[1] / source, path)
+        done.append({'path': f'{AUX}/{target}', 'why': why, 'sha256': sha256(path)})
+    return done
+
+
 def main_executable(app: Path, target: str) -> Path:
     """The file a target's signature covers as code: a loose file itself, a bundle's executable."""
     path = app / target
@@ -320,6 +346,7 @@ def main() -> int:
 
     # 2. Package edits.
     edits = apply_edits(app, json.loads((HERE / 'package-edits.json').read_text()))
+    edits += replace_files(app)
     # Component transforms written as modules (count-checked inside, see transforms.mjs).
     transforms = json.loads(run(['node', str(HERE / 'transforms.mjs'), str(app)]).stdout or '[]')
     marker_path = app / AUX / 'bundle.json'
