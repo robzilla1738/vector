@@ -71,7 +71,7 @@ The supplied addon (`provided-native.node`) and its carrier were unreachable in 
 - **Hosted service is live (2026-10-27):** all five aliases (`api.`, `app.`, `share.`, `dev-cloud.getaux.co`, `aux-cloud.vercel.app`) serve `dpl_FCyG1B6SzBg4CTUSYpwru7krBxHo` with migration 013 applied. Readiness passes, and the 5-minute maintenance cron runs and succeeds (`integration/cloud-activation/live-20261027/`). Open: an uptime monitor account, and J5, which needs a cloud-enabled desktop build.
 - **CLI install (R28):** Install CLI now links the bundled CLI locally, and `aux list`/`aux resolve` work through such a link. Clicking Install in Settings › Developers and `aux open` need the journey pass.
 - **Developer ID copy for 1Password (owner approved signing as Robert Courson):** blocked on two owner steps. Import `Aux Developer ID Application - 2026.p12` (iCloud Drive) into the login Keychain, since only the Apple Development identity is installed and the p12 password isn't in 1Password Agents. Then create a Developer ID provisioning profile for `dev.aux.browser.daemon` (team `9F2JXY8TCK`), because the daemon's restricted entitlements need one under Developer ID signing.
-- **Backup (D11):** recommended destination is an encrypted disk image in iCloud Drive with its password in 1Password; waiting on the owner's go-ahead.
+- **Backup (D11):** done 2026-10-27: encrypted image in iCloud Drive, password in 1Password ([docs/backup/2026-10-27.md](backup/2026-10-27.md)).
 - Unchanged: Apple `2H4D7KNGUP` (REPL), the ChatGPT eligibility form, the disposable 1Password vendor account.
 
 ### External gates (Batch 5)
