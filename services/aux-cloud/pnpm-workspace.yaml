@@ -2,3 +2,8 @@ packages: []
 allowBuilds:
   sharp: true
   esbuild: true
+  # eslint-import-resolver's native binding ships prebuilt; its postinstall only checks for it.
+  unrs-resolver: false
+# GHSA-mrhx-c7xc-m3w5: @vercel/blob > @vercel/oidc > @vercel/cli-config pins zod 4.1.11.
+overrides:
+  zod: ^4.6.7

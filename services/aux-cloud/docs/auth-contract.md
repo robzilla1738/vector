@@ -4,7 +4,17 @@
 
 ## Identity proof
 
-The supplied email-code UI calls `/email/start` then `/email/verify-code`. The current [Clerk JavaScript Backend email-address API](https://clerk.com/docs/reference/backend/email-addresses/create-email-address) exposes create/get/update/delete, not the frontend `prepareVerification`/`attemptVerification` methods. Aux therefore sends a purpose-bound six-digit OTP through its domain-restricted Resend key. Only an atomically consumed, delivered, unexpired code with at most five attempts permits a Clerk user creation/mapping. Codes are HMAC hashed using the private `AUX_AUTH_SECRET` and never stored/logged in plaintext. Email/IP/send-frequency buckets are atomic SQL updates. Resend failures never mark a challenge delivered. Existing Clerk MFA, locked or banned accounts cannot use this bridge; they must use the hosted Clerk flow.
+The supplied email-code UI calls `/email/start` then `/email/verify-code`. The current [Clerk JavaScript Backend email-address API](https://clerk.com/docs/reference/backend/email-addresses/create-email-address) exposes create/get/update/delete, not the frontend `prepareVerification`/`attemptVerification` methods. Aux therefore sends a purpose-bound six-digit OTP through its domain-restricted Resend key. Only an atomically consumed, delivered, unexpired code with at most five attempts permits a Clerk user creation/mapping. Codes are HMAC hashed using the private `AUX_AUTH_SECRET` and never stored/logged in plaintext. Rate buckets are atomic SQL fixed windows (`OTP_SEND_LIMITS` and `OTP_VERIFY_LIMITS` in `src/auth.ts`): per client address (IPv4 address, IPv6 /64) hourly and daily, per network (IPv4 /24, IPv6 /48) hourly, and per recipient a one-minute cooldown plus hourly and daily caps. Checks stop at the first refusal, so a client over its own limit cannot spend a victim's recipient budget. Refusals return 429 `RATE_LIMITED` with `Retry-After`. There is no global send cap; crossing `OTP_ALERT_PER_HOUR` logs `aux.auth.otp_volume_alert`. Sign-in mail is sent from `RESEND_FROM` (a getaux.co sender) with `Reply-To: hello@getaux.co`. Resend failures never mark a challenge delivered.
+
+### Consent at desktop sign-up
+
+`POST /email/verify-code` accepts an optional `consent` object. The desktop sign-in screen must link the Terms (`https://app.getaux.co/policy/terms`) and Privacy policy, ask the person to confirm they are at least 13 (16 in the European Union), and send on every code check:
+
+```json
+{"email":"…","code":"123456","device":{…},"consent":{"termsVersion":"2026-10-27","ageConfirmed":true}}
+```
+
+`termsVersion` is `TERMS_VERSION` from `src/legal.ts`; a different value is refused with 409 `TERMS_CHANGED` before the code is spent, so the client re-shows the terms and retries with the same code. `ageConfirmed` must be `true`. The service records `terms_version`, `terms_accepted_at` and `age_confirmed_at` on the account when it does not already hold the current version. Without `consent` the account is created with those fields empty (it never records consent it did not receive) and the service logs `aux.auth.consent_missing`. Web sign-up records them from the Clerk sign-up page's terms and age statement. Existing Clerk MFA, locked or banned accounts cannot use this bridge; they must use the hosted Clerk flow.
 
 The compatibility field `supabaseAccessToken` in `/token/exchange` now contains a real Clerk session JWT. It is verified using Clerk's [official verifier](https://clerk.com/docs/reference/backend/verify-token), an explicit authorized-party allowlist, a currently active matching session, a usable account and a verified email. No identity is accepted from an email address or decoded JWT alone.
 

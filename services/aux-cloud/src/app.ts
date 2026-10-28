@@ -15,6 +15,7 @@ import { drive1852Routes } from './drive-1852';
 import { readinessRoutes } from './readiness';
 import { eventsRoutes } from './events';
 import { routines1852Routes } from './routines-1852';
+import { logEvent, safeLabel } from './log';
 
 export const app=new Hono<{Variables:AuthVariables&{requestId:string}}>().basePath('/api/v1');
 app.use('*',bodyLimit({maxSize:4*1024*1024,onError:c=>c.json({error:'Use a private upload for payloads larger than 4 MiB.'},413)}));
@@ -53,7 +54,6 @@ app.onError((error,c)=>{
   if(error instanceof HTTPException) return error.res?error.getResponse():c.json({error:error.message},error.status);
   // Do not log bodies, tokens, email addresses, database URLs or provider errors.
   const detail=error as Error&{code?:unknown;statusCode?:unknown};
-  const safeLabel=(value:unknown)=>typeof value==='string'&&/^[A-Za-z0-9_]{1,64}$/.test(value)?value:undefined;
-  console.error(JSON.stringify({event:'aux_request_failed',requestId:c.get('requestId'),path:c.req.routePath,name:safeLabel(error.name),kind:safeLabel(error.constructor.name),code:safeLabel(detail.code),providerStatus:typeof detail.statusCode==='number'&&detail.statusCode>=400&&detail.statusCode<=599?detail.statusCode:undefined}));
+  logEvent('error',c,'aux_request_failed',{name:safeLabel(error.name),kind:safeLabel(error.constructor.name),code:safeLabel(detail.code),providerStatus:typeof detail.statusCode==='number'&&detail.statusCode>=400&&detail.statusCode<=599?detail.statusCode:undefined});
   return c.json({error:'The service could not complete this request. Please retry.'},503);
 });

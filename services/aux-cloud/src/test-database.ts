@@ -10,16 +10,20 @@ import manifest from './schema-manifest.json';
 
 export type Query=(text:string,values?:unknown[])=>Promise<any[]>;
 
-export async function withMigratedDatabase(run:(query:Query,stats:{queries:number;clerkDeletes:string[]})=>Promise<void>){
+export async function withMigratedDatabase(run:(query:Query,stats:{queries:number;clerkDeletes:string[];blobs:Set<string>})=>Promise<void>){
   const previous={url:process.env.DATABASE_URL,secret:process.env.AUX_AUTH_SECRET,key:process.env.AUX_DATA_ENCRYPTION_KEY,blob:process.env.BLOB_READ_WRITE_TOKEN,blobApi:process.env.VERCEL_BLOB_API_URL,clerk:process.env.CLERK_SECRET_KEY,fetch:globalThis.fetch,transport:neonConfig.fetchFunction};
-  const pg=new PGlite(),stats={queries:0,clerkDeletes:[] as string[]};
+  const pg=new PGlite(),stats={queries:0,clerkDeletes:[] as string[],blobs:new Set<string>()};
   process.env.DATABASE_URL='postgresql://synthetic:synthetic@offline.invalid/aux_fixture';
   process.env.AUX_AUTH_SECRET='synthetic-recovery-fixture-secret-not-a-credential';process.env.AUX_DATA_ENCRYPTION_KEY=Buffer.alloc(32,17).toString('base64');
-  // An empty loopback Blob store: listing answers nothing; any other Blob call fails the test.
-  const blobRequests:string[]=[];
+  // A loopback Blob store holding the pathnames a test puts in stats.blobs. It answers listing
+  // and deletion only; any other Blob call fails the test.
+  const blobRequests:string[]=[],origin='https://fixture.public.blob.vercel-storage.com/';
   const blobStore=createServer((request,response)=>{
     blobRequests.push(`${request.method} ${request.url}`);
-    response.writeHead(request.method==='GET'?200:500,{'content-type':'application/json'}).end(JSON.stringify(request.method==='GET'?{blobs:[],hasMore:false}:{error:{code:'unexpected'}}));
+    const url=new URL(request.url!,'http://blob.invalid'),reply=(status:number,body:unknown)=>response.writeHead(status,{'content-type':'application/json'}).end(JSON.stringify(body));
+    if(request.method==='GET'){const prefix=url.searchParams.get('prefix')??'';return reply(200,{blobs:[...stats.blobs].filter(p=>p.startsWith(prefix)).map(pathname=>({pathname,url:origin+pathname,downloadUrl:origin+pathname,size:1,uploadedAt:new Date(0).toISOString()})),hasMore:false});}
+    if(request.method!=='POST'||url.pathname!=='/delete')return reply(500,{error:{code:'unexpected'}});
+    let body='';request.on('data',chunk=>body+=chunk).on('end',()=>{for(const target of JSON.parse(body).urls as string[])stats.blobs.delete(target.replace(origin,''));reply(200,{});});
   });
   await new Promise<void>(resolve=>blobStore.listen(0,'127.0.0.1',resolve));
   process.env.VERCEL_BLOB_API_URL=`http://127.0.0.1:${(blobStore.address() as AddressInfo).port}`;
@@ -52,7 +56,7 @@ export async function withMigratedDatabase(run:(query:Query,stats:{queries:numbe
       }catch(error){const e=error as Error&{code?:string};return Response.json({message:e.message,code:e.code},{status:400});}
     };
     await run(async(text,values=[])=>(await pg.query(text,values)).rows as any[],stats);
-    assert.deepEqual(blobRequests.filter(r=>!r.startsWith('GET ')),[]);
+    assert.deepEqual(blobRequests.filter(r=>!r.startsWith('GET ')&&r!=='POST /delete'),[]);
   }finally{
     await pg.close();blobStore.close();globalThis.fetch=previous.fetch;neonConfig.fetchFunction=previous.transport;
     for(const [name,value]of Object.entries({DATABASE_URL:previous.url,AUX_AUTH_SECRET:previous.secret,AUX_DATA_ENCRYPTION_KEY:previous.key,BLOB_READ_WRITE_TOKEN:previous.blob,VERCEL_BLOB_API_URL:previous.blobApi,CLERK_SECRET_KEY:previous.clerk}))if(value===undefined)delete process.env[name];else process.env[name]=value;
