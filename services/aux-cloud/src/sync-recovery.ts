@@ -4,7 +4,7 @@ import {Hono} from 'hono';import {bodyLimit} from 'hono/body-limit';import {HTTP
 import {requireUser,rateLimit,type AuthVariables} from './auth';
 import {logEvent,safeLabel} from './log';
 import {SyncRecoveryStore,type RecoveryActor} from './sync-recovery-store';
-import {recoveryActionSchema,recoveryActionHash,type RecoveryAction,recoveryEnvelopeSchema,recoveryHash,recoveryCanonical,recoveryChallengeBytes,recoveryCommitment,recoveryEnrollmentProof,sameRecoveryProof,verifyRecoveryInstallation,type RecoveryChallenge} from './sync-recovery-crypto';
+import {recoveryActionSchema,recoveryActionHash,recoveryEnvelopeSchema,recoveryChallengeBytes,recoveryCommitment,recoveryEnrollmentProof,sameRecoveryProof,verifyRecoveryInstallation,type RecoveryChallenge} from './sync-recovery-crypto';
 import {recoveryServerKey,openRecoveryServerCsk,wrapRecoveryServerCsk} from './sync-recovery-server-key';
 export {recoveryActionHash} from './sync-recovery-crypto';
 export type {RecoveryAction} from './sync-recovery-crypto';
