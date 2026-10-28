@@ -2,3 +2,6 @@ packages: []
 allowBuilds:
   sharp: true
   esbuild: true
+# GHSA-mrhx-c7xc-m3w5: @vercel/blob > @vercel/oidc > @vercel/cli-config pins zod 4.1.11.
+overrides:
+  zod: ^4.6.7

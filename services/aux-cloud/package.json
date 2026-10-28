@@ -17,13 +17,13 @@
     "backup:capture:online": "node scripts/cloud-recovery-online.mjs capture"
   },
   "dependencies": {
-    "@clerk/backend": "^3.26.0",
-    "@clerk/nextjs": "^7.9.18",
+    "@clerk/backend": "^3.26.3",
+    "@clerk/nextjs": "^7.9.21",
     "@neondatabase/serverless": "^1.2.0",
     "@vercel/blob": "^2.8.2",
-    "hono": "^4.13.13",
+    "hono": "^4.13.14",
     "jose": "^6.2.13",
-    "next": "^16.4.2",
+    "next": "^16.4.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",
