@@ -45,7 +45,7 @@ Startup with the relinked PDF-ABI daemon, session restore, attached-PDF `read_fi
 
 ### Observed on the current seals (`7f810851`, `c4597021`)
 
-Recorded in `desktop/excellence-a1/actual-result.json`: startup to `/health` ready; CORS refuses `localhost:3000` and dev-cloud and admits the Agent extension; SIGTERM quit and a browser abort both end the daemon in 10.9 s (was about 21 s); relaunch after the abort reaches ready; no process left behind. On `c4597021`: ready in 34 s, daemon gone 10.3 s after quit. On `fda5a3a7`: ready in 33 s, the profile picker shows the Aux mark (screenshot, not committed), the bundled CLI runs through a symlink (`aux list --help`; `aux list` needs an open profile), quit leaves nothing running. Menu Quit and every UI surface were not driven (Automation and Accessibility are refused).
+Recorded in `desktop/excellence-a1/actual-result.json`: startup to `/health` ready; CORS refuses `localhost:3000` and dev-cloud and admits the Agent extension; SIGTERM quit and a browser abort both end the daemon in 10.9 s (was about 21 s); relaunch after the abort reaches ready; no process left behind. On `c4597021`: ready in 34 s, daemon gone 10.3 s after quit. On `fda5a3a7`: ready in 33 s, the profile picker shows the Aux mark (screenshot, not committed), the bundled CLI runs through a symlink, and with a profile open `aux list` returns the profiles and Spaces as JSON and `aux resolve` answers; quit leaves nothing running. Menu Quit and every UI surface were not driven (Automation and Accessibility are refused).
 
 ### Observed on the previous seal (`3b9f9b68`)
 
@@ -71,7 +71,7 @@ The supplied addon (`provided-native.node`) and its carrier were unreachable in 
 - **Hosted deploy:** approval, operator, alert recipient and monitor, plus setting the new `AUX_READINESS_SECRET` in Vercel; then J5. Optionally turn on Clerk's legal-consent setting. Help now opens `app.getaux.co/docs`, which serves the new pages only after this deploy.
 - **Legal:** confirm the published terms and privacy wording (taken from `proposed-decisions.md`; governing law reads as the LLC's state of organization; processors stated as US).
 - **Keychain runtime check** to narrow the boundary guard's legacy list; D2's real Keychain is exercised only by a non-launcher start.
-- **CLI install (R28):** Install CLI now links the bundled CLI locally; clicking it in Settings › Developers and `aux open` with a profile open need the journey pass.
+- **CLI install (R28):** Install CLI now links the bundled CLI locally, and `aux list`/`aux resolve` work through such a link. Clicking Install in Settings › Developers and `aux open` need the journey pass.
 - **Codex worktrees** under `~/.codex/worktrees`: keep or remove.
 - Unchanged: Apple `2H4D7KNGUP` (REPL), the ChatGPT eligibility form, 1Password identity and vendor account.
 
