@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-28",
+  "repository": "robzilla1738/vector",
+  "commit": "5534d3f2defe5c4aef2ed87f9799d962ac6ffff7",
+  "run": {
+    "id": 40703481367,
+    "url": "https://github.com/robzilla1738/vector/actions/runs/40703481367",
+    "event": "workflow_dispatch",
+    "conclusion": "success"
+  },
+  "image": {
+    "name": "aux-ci",
+    "macOS": "26.6.2 (25G83)",
+    "architecture": "ARM64",
+    "node": "24.21.0",
+    "pnpm": "11.27.1",
+    "python": "3.14.7",
+    "gitleaks": "8.30.1",
+    "postBootHookSha256": "63a0f8281ffc086784b7f477c9afa7d782f27a0c18a4c43df4e8c64c5b67af19"
+  },
+  "jobs": [
+    {"id": 122869255773, "name": "Hermetic tests (pnpm test:ci)", "runnerId": 26, "conclusion": "success", "nodeTests": 175},
+    {"id": 122869255272, "name": "aux-cloud test, typecheck, lint and build", "runnerId": 27, "conclusion": "success", "tests": 76},
+    {"id": 122869256027, "name": "gitleaks (pushed commits)", "runnerId": 28, "conclusion": "success"}
+  ],
+  "recycling": {
+    "source": "Tartelet local lifecycle log, 2026-10-28; America/Chicago",
+    "cloneName": "aux-ci-1",
+    "deletedAfterHermeticJob": "09:12:31.269",
+    "deletedAfterCloudJob": "09:14:34.660",
+    "deletedAfterGitleaksJob": "09:15:49.309",
+    "replacementStarted": "09:15:49.423"
+  },
+  "configuration": {
+    "githubAppId": 5510811,
+    "runnerName": "Aux Local macOS 1",
+    "requiredLabel": "aux-macos",
+    "poolSize": 1,
+    "startPoolOnAppLaunch": true,
+    "triggers": ["push to main", "workflow_dispatch"]
+  },
+  "limitations": [
+    "The Mac must stay awake with Tartelet running.",
+    "Native builds, signing, snapshot-dependent tests and real-launch acceptance stay on the host.",
+    "The full host suite reported billing snapshot drift and a provider CLI timing failure; a later host CI-suite run hit a startup timing failure under load. The isolated VM suite passed.",
+    "The image's macOS version is not evidence of acceptance on the product's macOS 27 target."
+  ]
+}
