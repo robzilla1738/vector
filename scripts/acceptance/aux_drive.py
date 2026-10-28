@@ -19,7 +19,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CANDIDATE = ROOT/'out/provided-candidate-completion-20261026-a1'
-APP = CANDIDATE/'Aux.app'
+# AUX_DRIVE_APP selects another build, such as a release assembly, launched the same way.
+APP = Path(os.environ['AUX_DRIVE_APP']).resolve() if os.environ.get('AUX_DRIVE_APP') else CANDIDATE/'Aux.app'
 BUNDLE = 'dev.aux.browser'
 RUN = ROOT/'out/acceptance'/time.strftime('%Y%m%d')
 PROCESS = f'(first process whose bundle identifier is "{BUNDLE}")'
@@ -107,7 +108,7 @@ def main(args):
         ok = subprocess.run(['screencapture', '-x', str(shot)]).returncode == 0 and shot.exists()
         print('screen recording', 'ok' if ok else 'refused'); shot.unlink(missing_ok=True)
     elif cmd == 'launch':
-        subprocess.run([str(CANDIDATE/'Launch Aux.command')], check=True)
+        subprocess.run(['/usr/bin/open', '-n', '-a', str(APP), '--args', '--use-mock-keychain'], check=True)
         for second in range(60):
             if listening():
                 print(f'daemon listening after {second}s'); break

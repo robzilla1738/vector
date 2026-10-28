@@ -13,7 +13,7 @@
   "cloudContractSources": [
     {
       "path": "services/aux-cloud/app/account/page.tsx",
-      "sha256": "e1c9bcea8fa4756aae14872738a48cf69b01eaba07002e0b8cb5792d49423de2"
+      "sha256": "ecab0f20f1700c0aaa381d520628d4360fe35c6d9ebb0bbe3f1139a55aa066d7"
     },
     {
       "path": "services/aux-cloud/config/deployment-resources.json",
