@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "7f8108518052c8b0fb4fafc537b2fe9ea0824043dcc78de52d6833aa073065dd",
+  "signedInventorySha256": "c459702137fde3201a12c0f39bdc6cb6196c54697c53a4516a89a96f87e995a3",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -326,6 +326,13 @@
       "runtime/daemon-parent-liveness-a1",
       "runtime/memory-census-scope-a1",
       "native/shell-retirement-a1"
+    ]
+  },
+  "brandMediaRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-brand-media-a2/receipt.json",
+    "sha256": "570058a50f03de175716f5f347f675723b9667320590768259f8b5f342d1abe1",
+    "sources": [
+      "integration/brand-media-a1"
     ]
   }
 }

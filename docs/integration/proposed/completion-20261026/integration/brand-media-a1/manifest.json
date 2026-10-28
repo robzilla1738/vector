@@ -1,0 +1,58 @@
+[
+  {
+    "target": "Contents/Resources/aux/apps/extension/dist/assets/aux-mini-popup-DpI8c-u_.webp",
+    "file": "aux-mini-popup-DpI8c-u_.webp",
+    "beforeSha256": "7604e760fc60e4fd326cd580fb256da8358124525b1896a3c03636ec571135ac",
+    "sha256": "ece8ddb32bee8e83652aaefe18386a29fab7081ebacbfcd8f22cb1b99c8dd986",
+    "what changed": "Mini popup placeholder \"Ask Aside\" -> \"Ask Aux\" (Geist 350, fitted to the original glyphs); background under the old word rebuilt by harmonic fill plus grain from adjacent panel pixels."
+  },
+  {
+    "target": "Contents/Resources/aux/apps/extension/dist/assets/aux-cli-3UABIqGq.webp",
+    "file": "aux-cli-3UABIqGq.webp",
+    "beforeSha256": "db6fb47432183500d909ef238a9aa1b5b049813c9124bfef70c6b5ea1711ac7d",
+    "sha256": "9e2ff4928a6e43dd00c7e70dd567efb893b897adc0276c4f249d8844e51a7726",
+    "what changed": "CLI illustration: \"~/Documents/aside/cli\" -> \"~/Documents/aux/cli\" and \"/aside-browser ...\" -> \"/aux-browser ...\" (Geist Mono, exact font match); trailing text moved left two monospace cells by copying the original pixels."
+  },
+  {
+    "target": "Contents/Resources/aux/apps/extension/dist/assets/aux-password-manager-CZ9IYl_W.webp",
+    "file": "aux-password-manager-CZ9IYl_W.webp",
+    "beforeSha256": "c4c6863dd777896d065ef903603a73a0499afe26eaa327f4b13e02054ce1934d",
+    "sha256": "e7e53a8feef6df9497a255d8de0283218e3f977ca79040f2ebd7d89985951f2a",
+    "what changed": "Cursor label pill \"Aside\" -> \"Aux\" (Inter 550); pill shortened by 22 px by moving its right cap, background behind the freed area rebuilt."
+  },
+  {
+    "target": "Contents/Resources/aux/apps/extension/dist/assets/aux-payment-use-BBKr-NnX.webp",
+    "file": "aux-payment-use-BBKr-NnX.webp",
+    "beforeSha256": "d99ab01ac5740dc3cd5b6572471587608e2a3ae02e010a026905871e68855549",
+    "sha256": "06d82f26ccf43ad0f8de3c380ac25db27d9b957939f7fcba9694b5f713858e3b",
+    "what changed": "Cursor label pill \"Aside\" -> \"Aux\" (Inter 525); pill shortened by 25 px by moving its right cap over the rebuilt gradient."
+  },
+  {
+    "target": "Contents/Resources/aux/apps/extension/dist/assets/cover-BBxO7594.webp",
+    "file": "cover-BBxO7594.webp",
+    "beforeSha256": "c24ccb12f238171b236b6a1e0aa301dbe247298b55e246809a53c0f770d02835",
+    "sha256": "21dcb7ebab558214adab58264dc2068a3fc865489be00bac81b5754829690880",
+    "what changed": "Channels (Slack) art: mention chip \"@Aside\" -> \"@Aux\" (Lato Medium, chip shortened, rest of line moved left with original pixels); app name \"Aside\" -> \"Aux\" (Lato Bold, APP badge and time moved left); Aside logo mark in the app avatar replaced with the Aux arch mark (assets/brand/aux-mark-white.png) at the same centre and width."
+  },
+  {
+    "target": "Contents/Resources/aux/apps/extension/dist/assets/grant-permission-lDve06mu.webp",
+    "file": "grant-permission-lDve06mu.webp",
+    "beforeSha256": "5d5e39ca6e93491f068d5421a0eab69b10f4a1b292341dae666a5727dd1e521c",
+    "sha256": "290c9b4ba85451d1936cdf0c0e1d0cec25ebfaae5501c6bf5cf2f621c5fd5a91",
+    "what changed": "Keychain permission art: \"Aside wants to use...\" -> \"Aux wants to use...\" (Inter 775 substitute for the system font; rest of line moved left with original pixels); Aside logo mark on the padlock badge replaced with the Aux arch mark at the same centre and width. Alpha plane byte-identical."
+  },
+  {
+    "target": "Contents/Resources/aux/apps/extension/dist/assets/stripe-sign-in-BvUzdhNI.webm",
+    "file": "stripe-sign-in-BvUzdhNI.webm",
+    "beforeSha256": "1743cd55e1bac167e9b4758bd2174ecae795986543c53d654aa95b3e985c72e7",
+    "sha256": "4c01ae2faff095974210545bcab34b5fa6323e4b99e0f16829d235188b8806f5",
+    "what changed": "Sign-in hero video (61 frames, 30 fps, 2.033 s, VP9 yuva420p): cursor label \"Aside\" -> \"Aux\" tracked per frame (frames 2-61, label pill width kept, text centred); autofilled email \"jun.kim+stripe@aside.com\" -> \"jun.kim+stripe@aux.com\" (frames 34-42). Re-encoded VP9 2-pass, 1028 kb/s vs 1169 kb/s source."
+  },
+  {
+    "target": "Contents/Resources/aux/apps/extension/dist/assets/external-sign-in-DDfmNsnB.webm",
+    "file": "external-sign-in-DDfmNsnB.webm",
+    "beforeSha256": "6324614c227c4e6836b7e811e8508cb65d3fb9c98e964a72b661f2f400f81264",
+    "sha256": "9437aad75ed8c350e7078ca66acc7af36b527d3464d57d42e8e0d8c35c5af872",
+    "what changed": "Sign-in hero video (81 frames, 30 fps, 2.700 s, VP9 yuva420p): cursor label \"Aside\" -> \"Aux\" tracked per frame (frames 3-22, 49-70, including edge-clipped and fading frames; pill width kept, text centred); autofilled email \"@aside.com\" -> \"@aux.com\" (frames 69-75). Re-encoded VP9 2-pass, 552 kb/s vs 588 kb/s source."
+  }
+]

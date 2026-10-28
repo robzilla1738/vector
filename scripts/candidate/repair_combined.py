@@ -56,7 +56,8 @@ DAEMON_EXECUTABLE = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/
 # Plain-text script/skill leaves sealed by the daemon or outer signature; never code objects or seals.
 RESOURCE_ROOTS = ('Contents/Resources/aux/apps/extension/dist/', 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/static/skills/')
 def resource_leaf(target):
-    return target.startswith(RESOURCE_ROOTS) and target.endswith(('.js', '.md')) and '/_CodeSignature/' not in target and '..' not in Path(target).parts
+    # Scripts, skill text and static media (rebranded artwork) inside the existing resource roots.
+    return target.startswith(RESOURCE_ROOTS) and target.endswith(('.js', '.md', '.webp', '.webm', '.png', '.avif')) and '/_CodeSignature/' not in target and '..' not in Path(target).parts
 # Sealed by the Framework signature, so it may change only together with a Framework reseal.
 FRAMEWORK_RESOURCES_PAK = 'Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Resources/resources.pak'
 ENUMERATED = required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE, SESSION_ROUTE, DAEMON_EXECUTABLE, FRAMEWORK_RESOURCES_PAK}

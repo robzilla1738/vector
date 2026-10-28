@@ -4,14 +4,15 @@ Last updated 2026-10-27. This is the single current-state page. Dated history th
 
 ## Where things stand
 
-The excellence-audit batch is sealed as `7f810851`: the cloud service without payments or hosted AI, a local-only daemon, extension and native fixes, and the retired shell removed from the native tree. Its real launch check passed (below). What remains is gated on UI access, owner approvals, Apple and OpenAI; see Open. No candidate process or native build is running.
+The excellence-audit batch is sealed as `7f810851` plus the media reseal `c4597021`: the cloud service without payments or hosted AI, a local-only daemon, extension and native fixes, and the retired shell removed from the native tree. Its real launch check passed (below). What remains is gated on UI access, owner approvals, Apple and OpenAI; see Open. No candidate process or native build is running.
 
 ## Artifacts
 
 | Role | Path | Inventory |
 |---|---|---|
-| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `7f8108518052c8b0fb4fafc537b2fe9ea0824043dcc78de52d6833aa073065dd` (receipt `combined-excellence-a1`) |
-| What that seal adds | Local-only daemon with narrowed trusted origins, a shutdown budget and no inherited provider keys (`integration/local-daemon-a1`); daemon drain watches the browser and both peer-loss deadlines start at first loss (`runtime/daemon-parent-liveness-a1`); memory census limited to this installation (`runtime/memory-census-scope-a1`); extension without billing, Pro, Remote Control, dev-cloud or Aside's Discord, one feedback entry (`integration/extension-ui-a1`); Framework with the real Keychain by default (D2), Gemini/Lens/Compose off, Help to Aux docs, Aux product logos, 47 strings rebranded, supervisor backoff and retry, and the shell retired (`native/shell-retirement-a1`) | On top of `3b9f9b68` |
+| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `c459702137fde3201a12c0f39bdc6cb6196c54697c53a4516a89a96f87e995a3` (receipt `combined-brand-media-a2`) |
+| What that seal adds | Eight extension images and both sign-in videos retouched so no Aside text or logo shows (`integration/brand-media-a1`) | On top of `7f810851` |
+| What `7f810851` added | Local-only daemon with narrowed trusted origins, a shutdown budget and no inherited provider keys (`integration/local-daemon-a1`); daemon drain watches the browser and both peer-loss deadlines start at first loss (`runtime/daemon-parent-liveness-a1`); memory census limited to this installation (`runtime/memory-census-scope-a1`); extension without billing, Pro, Remote Control, dev-cloud or Aside's Discord, one feedback entry (`integration/extension-ui-a1`); Framework with the real Keychain by default (D2), Gemini/Lens/Compose off, Help to Aux docs, Aux product logos, 47 strings rebranded, supervisor backoff and retry, and the shell retired (`native/shell-retirement-a1`) | On top of `3b9f9b68` |
 | What `3b9f9b68` added | Unreachable supplied addon and carrier removed; last extension brand string removed; shutdown races fixed and interrupted helper leases recoverable (`desktop/shutdown-authorization-a1`); bounded peer-loss shutdown (`runtime/daemon-peerloss-deadline-a1`); split menu without "Send Feedback" and a Framework built in the reconciled durable checkout (Batch 1 `0e79a582`). The JS lifeline edit is gone | On top of `2a215e71`: Phase 1 native batch, Aux product logos, multi-pane split metrics fix, brand-sweep `e0228418` |
 | Fallback | `out/provided-candidate-local-completion-20261025-a38/Aux.app` | Last broad acceptance. Launch with its adjacent `Launch Aux.command` |
 | Source selection | `docs/integration/proposed/completion-20261026/integrator/current-source-selection.json` | |
@@ -41,9 +42,9 @@ Startup with the relinked PDF-ABI daemon, session restore, attached-PDF `read_fi
 
 ## Open
 
-### Observed on the current seal (`7f810851`)
+### Observed on the current seals (`7f810851`, `c4597021`)
 
-Recorded in `desktop/excellence-a1/actual-result.json`: startup to `/health` ready; CORS refuses `localhost:3000` and dev-cloud and admits the Agent extension; SIGTERM quit and a browser abort both end the daemon in 10.9 s (was about 21 s); relaunch after the abort reaches ready; no process left behind. Menu Quit and every UI surface were not driven (Automation and Accessibility are refused).
+Recorded in `desktop/excellence-a1/actual-result.json`: startup to `/health` ready; CORS refuses `localhost:3000` and dev-cloud and admits the Agent extension; SIGTERM quit and a browser abort both end the daemon in 10.9 s (was about 21 s); relaunch after the abort reaches ready; no process left behind. On `c4597021`: ready in 34 s, daemon gone 10.3 s after quit. Menu Quit and every UI surface were not driven (Automation and Accessibility are refused).
 
 ### Observed on the previous seal (`3b9f9b68`)
 
