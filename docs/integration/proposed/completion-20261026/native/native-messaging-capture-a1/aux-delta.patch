@@ -1,0 +1,185 @@
+diff --git a/chrome/browser/extensions/api/messaging/native_message_process_host.cc b/chrome/browser/extensions/api/messaging/native_message_process_host.cc
+index 9d205a90d7..33b85bb570 100644
+--- a/chrome/browser/extensions/api/messaging/native_message_process_host.cc
++++ b/chrome/browser/extensions/api/messaging/native_message_process_host.cc
+@@ -20,12 +20,18 @@
+ #include "base/process/kill.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/task/thread_pool.h"
++#include "base/threading/scoped_blocking_call.h"
++#include "base/run_loop.h"
++#include "base/timer/timer.h"
+ #include "base/types/expected.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/extensions/api/messaging/native_messaging_host_manifest.h"
+ #include "chrome/browser/extensions/api/messaging/native_messaging_launch_from_native.h"
+ #include "chrome/browser/extensions/api/messaging/native_process_launcher.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "components/prefs/pref_service.h"
++#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "content/public/browser/browser_context.h"
+ #include "content/public/browser/browser_task_traits.h"
+ #include "content/public/browser/browser_thread.h"
+@@ -37,6 +43,10 @@
+ #include "net/base/net_errors.h"
+ #include "url/gurl.h"
+ 
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
++#endif
++
+ namespace {
+ 
+ // Maximum message size in bytes for messages received from Native Messaging
+@@ -64,6 +74,77 @@ base::FilePath GetProfilePathIfEnabled(
+ 
+ namespace extensions {
+ 
++#if BUILDFLAG(IS_MAC)
++std::shared_ptr<const AuxNativeMessagingProfileOwner>
++AuxNativeMessagingProfileOwner::Capture(Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if(!profile||!profile->IsRegularProfile()||aux::IsProfileCookieRestorePending(profile))return nullptr;
++  auto* prefs=profile->GetPrefs();
++  if(!prefs->FindPreference("aux.account_id")||prefs->GetInteger("aux.account_id")<0)return nullptr;
++  const auto id=aux::GetProfileId(profile),epoch=aux::GetProfileCookieBindingEpoch(profile),
++      restore=aux::GetProfileCookieRestoreEpoch(profile);
++  if(id.empty()||epoch.empty()||restore.empty())return nullptr;
++  auto keep_alive=ScopedProfileKeepAlive::TryAcquire(profile,ProfileKeepAliveOrigin::kBackgroundMode);
++  if(!keep_alive)return nullptr;
++  // The binding request blocks on the native peer, so it is deferred to the
++  // background launch (binding()). The observation below is registered first,
++  // so a binding or restore change while it runs still invalidates this owner.
++  auto owner=std::shared_ptr<AuxNativeMessagingProfileOwner>(
++      new AuxNativeMessagingProfileOwner(profile,std::move(keep_alive),prefs->GetInteger("aux.account_id")),
++      base::OnTaskRunnerDeleter(content::GetUIThreadTaskRunner({})));
++  std::weak_ptr<AuxNativeMessagingProfileOwner> weak=owner;
++  owner->binding_observation_=aux::ObserveProfileCookieBindingChanged(profile,base::BindRepeating(
++      [](std::weak_ptr<AuxNativeMessagingProfileOwner> weak) {
++        if(auto owner=weak.lock()) {
++          owner->valid_.store(false,std::memory_order_release);
++          AuxNativeMessagingLifetime::CancelProfileOwner(owner.get());
++        }
++      },std::move(weak)));
++  return owner;
++}
++AuxNativeMessagingProfileOwner::AuxNativeMessagingProfileOwner(
++    Profile* profile,std::unique_ptr<ScopedProfileKeepAlive> keep_alive,int account_id)
++    :profile_path_(profile->GetPath()),profile_id_(aux::GetProfileId(profile)),
++     binding_epoch_(aux::GetProfileCookieBindingEpoch(profile)),
++     restore_epoch_(aux::GetProfileCookieRestoreEpoch(profile)),account_id_(account_id),
++     keep_alive_(keep_alive.release(),base::OnTaskRunnerDeleter(content::GetUIThreadTaskRunner({}))) {}
++const std::string& AuxNativeMessagingProfileOwner::binding() const {
++  std::call_once(binding_once_,[this] {
++    base::ScopedBlockingCall blocking(FROM_HERE,base::BlockingType::WILL_BLOCK);
++    binding_receipt_=AuxNativeHostLease::CaptureProfileBinding(profile_path_,profile_id_,account_id_).value_or("");
++  });
++  return binding_receipt_;
++}
++
++AuxNativeMessagingProfileOwner::~AuxNativeMessagingProfileOwner() = default;
++AuxNativeMessagingLifetime::~AuxNativeMessagingLifetime() = default;
++bool CloseAuxNativeMessagingAndWaitForSettlement() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  AuxNativeMessagingLifetime::CloseAdmission();
++  bool settled=false;
++  base::RunLoop loop; base::RepeatingTimer poll;
++  const auto deadline=base::TimeTicks::Now()+base::Seconds(5);
++  auto inspect=base::BindRepeating(
++      [](bool* settled,base::RunLoop* loop,base::TimeTicks deadline) {
++        const auto status=AuxNativeMessagingLifetime::Inspect();
++        *settled=status.admission_closed&&!status.wrong_process&&!status.accounting_unknown&&
++            !status.unresolved&&!status.unbound&&!status.uncertain&&!status.unobserved_descendant_cohorts;
++        if(*settled||base::TimeTicks::Now()>=deadline)loop->Quit();
++      },base::Unretained(&settled),base::Unretained(&loop),deadline);
++  inspect.Run();
++  if(!settled){poll.Start(FROM_HERE,base::Milliseconds(10),inspect);loop.Run();}
++  return settled;
++}
++
++
++AuxNativeMessagingLifetime::AuxNativeMessagingLifetime(
++    std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,
++    std::string extension_origin, std::string native_host_name)
++    : profile_owner_(std::move(profile_owner)),
++      extension_origin_(std::move(extension_origin)),
++      native_host_name_(std::move(native_host_name)) {}
++#endif
++
+ NativeMessageProcessHost::NativeMessageProcessHost(
+     const ExtensionId& source_extension_id,
+     const std::string& native_host_name,
+@@ -92,8 +173,10 @@ NativeMessageProcessHost::~NativeMessageProcessHost() {
+ // block, so we have to post a task on the blocking pool.
+ #if BUILDFLAG(IS_MAC)
+     base::ThreadPool::PostTask(
+-        FROM_HERE, {base::MayBlock(), base::TaskPriority::BEST_EFFORT},
+-        base::BindOnce(&base::EnsureProcessTerminated, std::move(process_)));
++        FROM_HERE, {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
++                    base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
++        base::BindOnce(&ReapAuxNativeMessagingProcess, std::move(process_),
++                       std::move(aux_child_lifetime_)));
+ #else
+     base::EnsureProcessTerminated(std::move(process_));
+ #endif
+@@ -167,6 +250,9 @@ void NativeMessageProcessHost::OnHostProcessLaunched(
+       break;
+   }
+ 
++#if BUILDFLAG(IS_MAC)
++  aux_child_lifetime_ = launcher_->TakeAuxChildLifetime();
++#endif
+   process_ = std::move(process);
+ #if BUILDFLAG(IS_POSIX)
+   // |read_stream| owns |read_file|, yet the underlying file descript is needed
+@@ -176,6 +262,14 @@ void NativeMessageProcessHost::OnHostProcessLaunched(
+   read_stream_ = std::move(read_stream);
+   write_stream_ = std::move(write_stream);
+ 
++#if BUILDFLAG(IS_MAC)
++  if(aux_child_lifetime_)aux_child_lifetime_->InstallCancellation(base::BindOnce(
++      [](scoped_refptr<base::SingleThreadTaskRunner> runner,
++         base::WeakPtr<NativeMessageProcessHost> host) {
++        runner->PostTask(FROM_HERE,base::BindOnce(
++            &NativeMessageProcessHost::Close,host,std::string("Native host stopped for browser shutdown")));
++      },task_runner_,weak_factory_.GetWeakPtr()));
++#endif
+   WaitRead();
+   DoWrite();
+ }
+@@ -186,6 +280,11 @@ void NativeMessageProcessHost::OnMessage(const std::string& json) {
+   if (closed_) {
+     return;
+   }
++#if BUILDFLAG(IS_MAC)
++  if(aux_child_lifetime_&&!aux_child_lifetime_->IsOwnerCurrent()) {
++    Close("Native host profile binding changed");return;
++  }
++#endif
+ 
+   // Set the max value to the 64MB message size limit.
+   constexpr size_t kMaxSizeToRecord = 1024 * 1024 * 64;
+@@ -335,6 +434,11 @@ void NativeMessageProcessHost::ProcessIncomingData(
+         "Extensions.NativeMessaging.MessageSize.NativeApp", message_size, 1,
+         kMaximumNativeMessageSize, 50);
+ 
++#if BUILDFLAG(IS_MAC)
++    if(aux_child_lifetime_&&!aux_child_lifetime_->IsOwnerCurrent()) {
++      Close("Native host profile binding changed");return;
++    }
++#endif
+     client_->PostMessageFromNativeHost(
+         incoming_data_.substr(kMessageHeaderSize, message_size));
+ 
+@@ -417,3 +521,10 @@ void NativeMessageProcessHost::Close(const std::string& error_message) {
+ }
+ 
+ }  // namespace extensions
++
++#if BUILDFLAG(IS_MAC)
++// Called only from the existing authenticated browser parent-peer receiver.
++extern "C" void AuxStopBrowserNativeHostLeaseV1(const uint8_t* lease) {
++  if(lease)extensions::AuxNativeMessagingLifetime::StopLease(std::span<const uint8_t,16>(lease,16));
++}
++#endif

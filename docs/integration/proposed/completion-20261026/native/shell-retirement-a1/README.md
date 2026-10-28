@@ -8,6 +8,6 @@ The retired Aux shell (`enable_aux_shell`, `ENABLE_AUX_SHELL`, `ENABLE_AUX_RESUL
 
 All 96 files changed; no retired-flag reference remains. `chrome/browser/ui/aux` is not shell-only (the browser uses its page identity, for example), so files are deleted only once no build target references them.
 
-## Unbuilt sources (deletion waits for the owner)
+## Unbuilt sources removed
 
-After retirement, 128 of the 146 `.cc`/`.mm` files under `chrome/browser/ui/aux` and `chrome/browser/ui/webui_browser` have no object anywhere in the `out/AuxFast` build graph (`unbuilt-sources.txt`, from `ninja -t targets all`). Their BUILD entries sit in targets nothing depends on. Removing them, the headers only they include, and those targets is a bulk delete in the owner's checkout, so it waits for the owner's go-ahead; the `chromium/tree` export keeps every file recoverable.
+After retirement, 128 of the 146 `.cc`/`.mm` files under `chrome/browser/ui/aux` and `chrome/browser/ui/webui_browser` had no object in the `out/AuxFast` build graph (`unbuilt-sources.txt`), and `ui/aux/BUILD.gn` was loaded by nothing. With the owner's go-ahead (2026-10-27), 468 files were deleted (`deleted-paths.txt`): everything in `chrome/browser/ui/aux` except `page_identity.{cc,h}` (built by `chrome/browser/aux:page_identity`), including the unused `semantic/` JavaScript tree, plus the four unbuilt `aux_*` files in `webui_browser`. Each was confirmed unincluded by live code, tracked or untracked. The earlier `chromium/tree` export keeps them recoverable.

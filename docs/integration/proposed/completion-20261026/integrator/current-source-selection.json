@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "c459702137fde3201a12c0f39bdc6cb6196c54697c53a4516a89a96f87e995a3",
+  "signedInventorySha256": "fda5a3a7a5ac64ca3056aa60ac28653987507f72e55a7a922405620a784d6d89",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -333,6 +333,14 @@
     "sha256": "570058a50f03de175716f5f347f675723b9667320590768259f8b5f342d1abe1",
     "sources": [
       "integration/brand-media-a1"
+    ]
+  },
+  "nativeMessagingCliRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-native-messaging-a1/receipt.json",
+    "sha256": "bb68b460870e208f9c359b6001684863e645a7aa857baf8bc0b67811e0a01bb1",
+    "sources": [
+      "integration/local-daemon-a2",
+      "native/native-messaging-capture-a1"
     ]
   }
 }

@@ -4,14 +4,15 @@ Last updated 2026-10-27. This is the single current-state page. Dated history th
 
 ## Where things stand
 
-The excellence-audit batch is sealed as `7f810851` plus the media reseal `c4597021`: the cloud service without payments or hosted AI, a local-only daemon, extension and native fixes, and the retired shell removed from the native tree. Its real launch check passed (below). What remains is gated on UI access, owner approvals, Apple and OpenAI; see Open. No candidate process or native build is running.
+The excellence-audit batch is sealed as `7f810851` plus the media reseal `c4597021` and `fda5a3a7`: the cloud service without payments or hosted AI, a local-only daemon, extension and native fixes, and the retired shell removed from the native tree. Its real launch check passed (below). What remains is gated on UI access, owner approvals, Apple and OpenAI; see Open. No candidate process or native build is running.
 
 ## Artifacts
 
 | Role | Path | Inventory |
 |---|---|---|
-| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `c459702137fde3201a12c0f39bdc6cb6196c54697c53a4516a89a96f87e995a3` (receipt `combined-brand-media-a2`) |
-| What that seal adds | Eight extension images and both sign-in videos retouched so no Aside text or logo shows (`integration/brand-media-a1`) | On top of `7f810851` |
+| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `fda5a3a7a5ac64ca3056aa60ac28653987507f72e55a7a922405620a784d6d89` (receipt `combined-native-messaging-a1`) |
+| What that seal adds | Native messaging asks the peer for the profile binding on the background launch, not the UI thread (`native/native-messaging-capture-a1`); Install CLI links `~/.local/bin/aux` to the bundled CLI, and the aux-browser skill documents its real commands (`integration/local-daemon-a2`); 468 unbuilt shell-era files deleted from the checkout | On top of `c4597021` |
+| What `c4597021` added | Eight extension images and both sign-in videos retouched so no Aside text or logo shows (`integration/brand-media-a1`) | On top of `7f810851` |
 | What `7f810851` added | Local-only daemon with narrowed trusted origins, a shutdown budget and no inherited provider keys (`integration/local-daemon-a1`); daemon drain watches the browser and both peer-loss deadlines start at first loss (`runtime/daemon-parent-liveness-a1`); memory census limited to this installation (`runtime/memory-census-scope-a1`); extension without billing, Pro, Remote Control, dev-cloud or Aside's Discord, one feedback entry (`integration/extension-ui-a1`); Framework with the real Keychain by default (D2), Gemini/Lens/Compose off, Help to Aux docs, Aux product logos, 47 strings rebranded, supervisor backoff and retry, and the shell retired (`native/shell-retirement-a1`) | On top of `3b9f9b68` |
 | What `3b9f9b68` added | Unreachable supplied addon and carrier removed; last extension brand string removed; shutdown races fixed and interrupted helper leases recoverable (`desktop/shutdown-authorization-a1`); bounded peer-loss shutdown (`runtime/daemon-peerloss-deadline-a1`); split menu without "Send Feedback" and a Framework built in the reconciled durable checkout (Batch 1 `0e79a582`). The JS lifeline edit is gone | On top of `2a215e71`: Phase 1 native batch, Aux product logos, multi-pane split metrics fix, brand-sweep `e0228418` |
 | Fallback | `out/provided-candidate-local-completion-20261025-a38/Aux.app` | Last broad acceptance. Launch with its adjacent `Launch Aux.command` |
@@ -44,7 +45,7 @@ Startup with the relinked PDF-ABI daemon, session restore, attached-PDF `read_fi
 
 ### Observed on the current seals (`7f810851`, `c4597021`)
 
-Recorded in `desktop/excellence-a1/actual-result.json`: startup to `/health` ready; CORS refuses `localhost:3000` and dev-cloud and admits the Agent extension; SIGTERM quit and a browser abort both end the daemon in 10.9 s (was about 21 s); relaunch after the abort reaches ready; no process left behind. On `c4597021`: ready in 34 s, daemon gone 10.3 s after quit. Menu Quit and every UI surface were not driven (Automation and Accessibility are refused).
+Recorded in `desktop/excellence-a1/actual-result.json`: startup to `/health` ready; CORS refuses `localhost:3000` and dev-cloud and admits the Agent extension; SIGTERM quit and a browser abort both end the daemon in 10.9 s (was about 21 s); relaunch after the abort reaches ready; no process left behind. On `c4597021`: ready in 34 s, daemon gone 10.3 s after quit. On `fda5a3a7`: ready in 33 s, the profile picker shows the Aux mark (screenshot, not committed), the bundled CLI runs through a symlink (`aux list --help`; `aux list` needs an open profile), quit leaves nothing running. Menu Quit and every UI surface were not driven (Automation and Accessibility are refused).
 
 ### Observed on the previous seal (`3b9f9b68`)
 
@@ -64,14 +65,13 @@ The supplied addon (`provided-native.node`) and its carrier were unreachable in 
 
 ### Waiting on the owner (excellence audit, 2026-10-27)
 
-- **D12, OS grants:** Accessibility and Automation for the terminal running Claude (or Computer use). Unblocks the journey pass, menu Quit, and checking every changed surface (settings, new-tab menu, help menu, chrome://version, palette, the retouched art). Two native items wait on that same pass because their path can't be exercised without it: moving native-messaging `Capture()` off the UI thread, and replacing the nested shutdown `RunLoop`s.
+- **D12, OS grants:** Accessibility and Automation for the terminal running Claude (or Computer use). Unblocks the journey pass, menu Quit, and checking every changed surface (settings, new-tab menu, help menu, chrome://version, palette, the retouched art). The 1Password native-messaging path (its binding request now runs off the UI thread) is compiled and sealed but only the pass can exercise it. The nested startup and shutdown `RunLoop`s stay: they are deliberate gates (no profile before the daemon is ready and authorized), and making them asynchronous would change startup behavior.
 - **D11, backup destination** for the off-machine encrypted backup of `out/` essentials and git.
 - **D7 version and copyright:** in source (`aux_product_version`, `NSHumanReadableCopyright`). The approved signing review pins the outer `Info.plist`, so it ships at the next full assembly, which needs a new signing review.
-- **Bulk delete of 128 unbuilt shell-era sources** in the checkout (`native/shell-retirement-a1/unbuilt-sources.txt`).
 - **Hosted deploy:** approval, operator, alert recipient and monitor, plus setting the new `AUX_READINESS_SECRET` in Vercel; then J5. Optionally turn on Clerk's legal-consent setting. Help now opens `app.getaux.co/docs`, which serves the new pages only after this deploy.
 - **Legal:** confirm the published terms and privacy wording (taken from `proposed-decisions.md`; governing law reads as the LLC's state of organization; processors stated as US).
 - **Keychain runtime check** to narrow the boundary guard's legacy list; D2's real Keychain is exercised only by a non-launcher start.
-- **CLI install (R28):** the macOS installer fetches from an unavailable release server and the bundled CLI refuses direct runs; a local installer needs the journey pass to design and check. The aux-browser skill text points at the same dead installer.
+- **CLI install (R28):** Install CLI now links the bundled CLI locally; clicking it in Settings › Developers and `aux open` with a profile open need the journey pass.
 - **Codex worktrees** under `~/.codex/worktrees`: keep or remove.
 - Unchanged: Apple `2H4D7KNGUP` (REPL), the ChatGPT eligibility form, 1Password identity and vendor account.
 

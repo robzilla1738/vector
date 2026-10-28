@@ -1,0 +1,23 @@
+{
+ "format": "aux.candidate-edits.v1",
+ "purpose": "Local CLI install and an aux-browser skill that matches the bundled CLI.",
+ "files": [
+  {
+   "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+   "edits": [
+    {
+     "find": "AUX_BROWSER_SKILL=\"---\\nname: aux-browser\\nversion: 3\\ndescription: Read when you need a browser, or have to work across user's logged-in websites (e.g. Gmail, Slack, cloud consoles, etc.), or have to refer personal contexts like memory and browsing history.\\n---\\n\\n# Aux\\n\\nThis file is only an entry point. You MUST run `aux guide` to read this skill\u2019s actual instructions before using Aux, then follow them.\\n\\n- If `aux` is not installed, ask the user for permission to install Aux CLI. After the user approves, run the macOS/Linux installer `curl -fsSL http://127.0.0.1:9/aux-unavailable/releases/install.sh | bash`, then run `aux guide`.\\n- If `aux guide` is reported as an unknown command, your CLI is outdated. Run `aux --update`, then run `aux guide` again.\\n- If a newer CLI version is available, the guide may be outdated. Always run `aux --update`, then run `aux guide` again before continuing.\\n\\nIf installation or an update fails, report the error instead of guessing the CLI usage.\\n\"",
+     "replace": "AUX_BROWSER_SKILL=\"---\\nname: aux-browser\\nversion: 4\\ndescription: Read when you need a browser, or have to work across user's logged-in websites (e.g. Gmail, Slack, cloud consoles, etc.), or have to refer personal contexts like memory and browsing history.\\n---\\n\\n# Aux\\n\\nUse the `aux` command to work with the user's Aux browser:\\n\\n- `aux open <https://URL> [--profile <ID or unique name> [--space <ID or unique name>]]` opens a page in that profile and Space.\\n- `aux list [--profile <ID or unique name>]` lists what Aux has open, as JSON.\\n- `aux resolve <https://URL> [--profile <ID or unique name> [--space <ID or unique name>]]` shows where Aux would open a URL, as JSON.\\n\\nIf `aux` is not installed, ask the user to install it from Aux Settings > Developers. If a command fails, report its error instead of guessing.\\n\"",
+     "count": 1,
+     "why": "The bundled CLI supports open, list and resolve; aux guide, --update and the remote installer do not exist in Aux."
+    },
+    {
+     "find": "let ei=await fetch(Cn.installUrl);if(!ei.ok)throw Error(`Could not download Aux CLI installer. (${ei.status})`);let ti=await ei.text(),ni=spawnCommand([`/bin/bash`],{stdio:[`pipe`,`pipe`,`pipe`],env:process.env});writeProcessStdin(ni,ti),await waitForInstaller(ni)}",
+     "replace": "/* Aux ships its CLI inside the app; link it instead of downloading an installer. */let ei=path.resolve(__auxDaemonResources,`../../../../cli/Aux CLI.app/Contents/MacOS/aux-cli`),ti=Cn.fallbackPaths[0];if(!existsSync(ei))throw Error(`This Aux app is missing its bundled CLI.`);mkdirSync(path.dirname(ti),{recursive:!0});let ni;try{ni=lstatSync(ti)}catch{}if(ni&&!ni.isSymbolicLink())throw Error(`${ti} already exists and is not a link. Remove it and try again.`);ni&&unlinkSync(ti),symlinkSync(ei,ti)}",
+     "count": 1,
+     "why": "Install the CLI on macOS by linking ~/.local/bin/aux to the bundled binary."
+    }
+   ]
+  }
+ ]
+}
