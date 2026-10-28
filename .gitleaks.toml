@@ -1,0 +1,43 @@
+# gitleaks rules for CI (.github/workflows/ci.yml): the default rules plus an
+# allowlist for known non-secrets. Each entry matches the finding's shape, not a
+# path: gitleaks 8.30 skips a listed path outright even under condition = "AND",
+# which would leave all of docs/integration unscanned. Residual one-off findings
+# are fingerprinted in .gitleaksignore.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Hex digests keyed by a file name (integration receipts, the Chromium tree manifest, source pins)"
+regexTarget = "match"
+regexes = ['''^[\w./@+-]+\.[A-Za-z0-9]+['"]\s*[:,]\s*['"][0-9a-f]{32,128}['"]?$''']
+
+[[allowlists]]
+description = "Hex digests under digest-named fields (…Sha256, …Seal, …Commit)"
+regexTarget = "match"
+regexes = ['''^\w*(Sha256|Sha1|Seal|Commit|Digest)['"]\s*:\s*['"][0-9a-f]{40,128}['"]$''']
+
+[[allowlists]]
+description = "Public client keys inside the supplied Aside code copied under docs/integration (YouTube INNERTUBE, Embedly, PostHog project key)"
+regexTarget = "match"
+regexes = ['''^(INNERTUBE_API_KEY=`)?AIzaSyAO_F[\w-]{29}`?$''','''^EMBEDLY_KEY=`[0-9a-f]{32}`$''', '''^AUX_POSTHOG_PROJECT_API_KEY=`phc_\w+`$''']
+
+[[allowlists]]
+description = "Chrome extension manifest public keys (RSA SubjectPublicKeyInfo), public by design"
+regexTarget = "secret"
+regexes = ['''^MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA''']
+
+[[allowlists]]
+description = "Disposable aux-cloud test fixtures: placeholder secrets and sk_test/pk_test keys"
+regexTarget = "secret"
+regexes = ['''^disposable-[a-z-]+-at-least-32$''', '''^[sp]k_test_(synthetic_)?fixture$''']
+
+[[allowlists]]
+description = "Prose and identifiers the generic rule mistakes for keys (a 1Password Environment ID names an environment; it is not a credential)"
+regexTarget = "match"
+regexes = [
+  '''^key custody, scheduling/retention $''',
+  '''^password generation, CSV/unencrypted $''',
+  '''^key, '--max-bytes=\d+'$''',
+  '''^authenticated, its\d+-byte $''',
+  '''^onePasswordEnvironmentId": "\w+"$''',
+]

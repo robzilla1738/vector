@@ -1,0 +1,94 @@
+# Runs on ephemeral Tartelet VMs on the owner's Mac (scripts/ci/README.md).
+# Tartelet starts the runner from a non-login shell, so each job puts Homebrew
+# and the Node keg it needs on PATH itself (later GITHUB_PATH lines win).
+# The repository is public: never add pull_request or pull_request_target triggers,
+# or strangers could run code on that Mac.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hermetic-tests:
+    name: Hermetic tests (pnpm test:ci)
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Root engines: node >=22.18. Test on the oldest supported line.
+      - run: printf '%s\n' /opt/homebrew/bin /opt/homebrew/opt/node@22/bin >> "$GITHUB_PATH"
+      - run: node --version && pnpm --version && python3 --version
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:ci
+
+  aux-cloud:
+    name: aux-cloud test, typecheck and build
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: services/aux-cloud
+    # Fixture values from src/operations.test.ts. They only satisfy
+    # scripts/check-environment.mjs; nothing connects to a real service.
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      VERCEL_ENV: preview
+      DATABASE_URL: postgresql://fixture:fixture@ep-spring-darkness-b824br4r-pooler.c-14.us-east-1.aws.neon.tech/fixture
+      NEXT_PUBLIC_APP_URL: https://dev-cloud.getaux.co
+      AUX_API_ORIGIN: https://dev-cloud.getaux.co
+      AUX_ALLOWED_ORIGINS: https://dev-cloud.getaux.co
+      CLERK_AUTHORIZED_PARTIES: https://dev-cloud.getaux.co
+      CLERK_SECRET_KEY: sk_test_fixture
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_fixture
+      CLERK_WEBHOOK_SIGNING_SECRET: fixture
+      AUX_AUTH_SECRET: disposable-fixture-secret-at-least-32
+      AUX_DATA_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
+      AUX_READINESS_SECRET: disposable-readiness-secret-at-least-32
+      CRON_SECRET: disposable-internal-secret-at-least-32
+      RESEND_API_KEY: fixture
+      RESEND_FROM: fixture
+      BLOB_READ_WRITE_TOKEN: fixture
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # aux-cloud engines: node >=24.
+      - run: printf '%s\n' /opt/homebrew/bin /opt/homebrew/opt/node@24/bin >> "$GITHUB_PATH"
+      - run: node --version && pnpm --version
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm build
+
+  gitleaks:
+    name: gitleaks (pushed commits)
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: echo /opt/homebrew/bin >> "$GITHUB_PATH"
+      - name: Scan the pushed range (the head commit on manual runs or new branches)
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          range=-1
+          if [[ "$BEFORE" =~ ^[0-9a-f]{40}$ && ! "$BEFORE" =~ ^0+$ ]] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            range="$BEFORE..$AFTER"
+          fi
+          echo "Scanning $range"
+          gitleaks git --config .gitleaks.toml --redact --no-banner --log-opts="$range" .

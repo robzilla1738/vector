@@ -1,0 +1,73 @@
+# Node test files that `pnpm test` runs on the host but `pnpm test:ci` leaves out.
+# Each one reads inputs that exist only on the owner's Mac: the ignored out/ folder
+# (frozen snapshot out/provided-source-snapshot-1.26.1016.1852, candidate apps,
+# live inputs), the supplied files under ~/Downloads/aside-rea 2, or the durable
+# Chromium checkout. Without them they fail or skip, so they prove nothing in CI.
+# A new test file runs in CI by default; add it here only if it needs those inputs.
+# Paths are relative to the repository root. scripts/ci/hermetic-tests.mjs fails on
+# an entry that no longer exists.
+
+scripts/lib/aux-state-identity-contract.test.mjs
+scripts/lib/provided-computer-use.test.mjs
+scripts/lib/provided-runtime.test.mjs
+scripts/lib/provided-settings-import-copy.test.mjs
+scripts/lib/provided-signing.test.mjs
+scripts/lib/provided-ui-boundary.test.mjs
+scripts/lib/provided-ui.test.mjs
+vendor/provided/aux-asset-path-identity.test.mjs
+vendor/provided/aux-automation-identity.test.mjs
+vendor/provided/aux-billing-return-fallback.test.mjs
+vendor/provided/aux-browser-feature-settings.test.mjs
+vendor/provided/aux-browser-routing.test.mjs
+vendor/provided/aux-capture-contract-identity.test.mjs
+vendor/provided/aux-cli-device-registration.test.mjs
+vendor/provided/aux-cold-entry-admission.test.mjs
+vendor/provided/aux-context-ledger-identity.test.mjs
+vendor/provided/aux-ephemeral-runtime-identity.test.mjs
+vendor/provided/aux-event-poll-client.test.mjs
+vendor/provided/aux-final-runtime-identity.test.mjs
+vendor/provided/aux-native-crypto-boundary-audit.test.mjs
+vendor/provided/aux-navigation-command-bar.test.mjs
+vendor/provided/aux-ordinary-chat-startup.test.mjs
+vendor/provided/aux-pdf-integration.test.mjs
+vendor/provided/aux-private-daemon-identity.test.mjs
+vendor/provided/aux-productivity-account-lifecycle.test.mjs
+vendor/provided/aux-productivity-capture.test.mjs
+vendor/provided/aux-productivity-context-read.test.mjs
+vendor/provided/aux-productivity-file-chooser.test.mjs
+vendor/provided/aux-productivity-files.test.mjs
+vendor/provided/aux-productivity-integration.test.mjs
+vendor/provided/aux-productivity-spaces.test.mjs
+vendor/provided/aux-productivity-tab-context.test.mjs
+vendor/provided/aux-productivity-tidy-selection.test.mjs
+vendor/provided/aux-profile-context-identity.test.mjs
+vendor/provided/aux-protocol-composition.test.mjs
+vendor/provided/aux-provider-identity.test.mjs
+vendor/provided/aux-provider-json-files.test.mjs
+vendor/provided/aux-runtime-contract-identity.test.mjs
+vendor/provided/aux-runtime-correctness-identity.test.mjs
+vendor/provided/aux-selection-contract-identity.test.mjs
+vendor/provided/aux-session-turn-cache-identity.test.mjs
+vendor/provided/aux-shortcut-profiles.test.mjs
+vendor/provided/aux-subagent-tracking-identity.test.mjs
+vendor/provided/aux-theme-editor.test.mjs
+vendor/provided/aux-transcript-provider-identity.test.mjs
+vendor/provided/aux-ui-origin-identity.test.mjs
+vendor/provided/aux-unsigned-subagent-identity.test.mjs
+vendor/provided/cli-adapter.test.mjs
+vendor/provided/cloud-attachment-adapter.test.mjs
+vendor/provided/cloud-billing-adapter.test.mjs
+vendor/provided/cloud-cookie-profile.test.mjs
+vendor/provided/cloud-desktop-composition.test.mjs
+vendor/provided/cloud-drive-1852-adapter.test.mjs
+vendor/provided/cloud-inference-upload-adapter.test.mjs
+vendor/provided/cloud-service-policy.test.mjs
+vendor/provided/cloud-session-adapter.test.mjs
+vendor/provided/cloud-sync-adapter.test.mjs
+vendor/provided/cloud-transfer-binding.test.mjs
+vendor/provided/daemon-adapter.test.mjs
+vendor/provided/daemon-node-cold-entry.test.mjs
+vendor/provided/daemon-node-development.test.mjs
+vendor/provided/provider-funded-launch.test.mjs
+vendor/provided/runtime-cache-contract.test.mjs
+vendor/provided/skill-catalog-scope.test.mjs
