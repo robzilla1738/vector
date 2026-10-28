@@ -1,0 +1,176 @@
+/** The Agent: one named, customizable assistant per account, with a home thread
+ * (docs/plans/2026-10-28-agent-model.md). The daemon entry loads this beside itself and
+ * passes account roots in; this module owns only agent/agent.json and agent/avatar.png
+ * under the account control root, where the agent's own file tools never write. */
+import {createHash} from 'node:crypto';
+import {mkdirSync, readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs';
+import path from 'node:path';
+
+export const DEFAULT_NAME = 'Aux';
+export const ORIGINAL_OPENER = 'You are Aux, a helpful, proactive, and smart AI browser.';
+const AGENT_PHRASE = "the user's personal agent, built into the Aux browser";
+export const STYLES = Object.freeze(['balanced', 'concise', 'warm', 'playful', 'professional']);
+export const PROACTIVITY = Object.freeze(['off', 'light', 'normal']);
+const STYLE_TEXT = {
+  concise: 'Keep replies short and to the point. Lead with the answer and skip pleasantries.',
+  warm: 'Be warm and encouraging, like a thoughtful friend who is glad to help.',
+  playful: 'Be light and playful, with a little humor, while staying accurate and useful.',
+  professional: 'Be polished and professional: precise language, calm and measured tone.',
+};
+const PROACTIVITY_TEXT = {
+  off: 'Only do what the user asks. Do not start extra work, follow-ups or check-ins on your own; suggest them instead.',
+  normal: 'Take initiative: when you see a clear next step that helps the user, offer it, or do it when it is safe and reversible.',
+};
+const MAX_AVATAR_BYTES = 768 * 1024;
+const MAX_AVATAR_SIDE = 1024;
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+// The home thread's frozen prompt is rebuilt at most this often so memory stays current
+// without defeating the provider's prompt cache between turns.
+const HOME_PROMPT_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+
+/** A name the prompt can carry safely: one line, no markup, 1–32 characters. */
+export function cleanName(value) {
+  const name = String(value ?? '').normalize('NFC')
+    .replace(/[\p{Cc}\p{Cf}<>{}[\]`#*_|\\]/gu, '').replace(/\s+/g, ' ').trim();
+  return [...name].slice(0, 32).join('').trim() || DEFAULT_NAME;
+}
+
+const defaults = () => ({version: 1, name: DEFAULT_NAME, style: 'balanced', proactivity: 'light',
+  homeSessionId: null, avatarRevision: '', setupCompleted: false, revision: 0, homePrompt: null});
+
+function normalize(raw) {
+  const profile = {...defaults(), ...(raw && typeof raw === 'object' ? raw : {})};
+  return {
+    ...profile,
+    name: cleanName(profile.name),
+    style: STYLES.includes(profile.style) ? profile.style : 'balanced',
+    proactivity: PROACTIVITY.includes(profile.proactivity) ? profile.proactivity : 'light',
+    homeSessionId: typeof profile.homeSessionId === 'string' && profile.homeSessionId ? profile.homeSessionId : null,
+    avatarRevision: /^[0-9a-f]{16}$/.test(profile.avatarRevision) ? profile.avatarRevision : '',
+    setupCompleted: profile.setupCompleted === true,
+    revision: Number.isSafeInteger(profile.revision) ? profile.revision : 0,
+  };
+}
+
+/** The opening of every system prompt this agent's sessions use. The default agent keeps the
+ * supplied opener byte for byte, so nobody who never customizes sees a prompt change. */
+export function identityBlock(profile) {
+  const custom = profile.name !== DEFAULT_NAME || profile.style !== 'balanced' || profile.proactivity !== 'light';
+  if (!custom) return ORIGINAL_OPENER;
+  const lines = [`You are ${profile.name}, ${AGENT_PHRASE}. You are helpful, proactive, and smart.`];
+  const traits = [STYLE_TEXT[profile.style], PROACTIVITY_TEXT[profile.proactivity]].filter(Boolean);
+  if (traits.length) lines.push('', '# Personality', '', ...traits.map(trait => `- ${trait}`));
+  return lines.join('\n');
+}
+
+const sha = data => createHash('sha256').update(data).digest('hex');
+const readText = file => { try { return readFileSync(file, 'utf8'); } catch { return ''; } };
+
+function writeAtomic(file, data) {
+  mkdirSync(path.dirname(file), {recursive: true, mode: 0o700});
+  const temporary = `${file}.${process.pid}.tmp`;
+  writeFileSync(temporary, data, {mode: 0o600});
+  renameSync(temporary, file);
+}
+
+/** A PNG the extension rendered: magic bytes, an IHDR chunk and a sane size. */
+export function parseAvatar(dataUrl) {
+  const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl ?? ''));
+  if (!match) throw Error('The avatar must be a PNG image.');
+  const bytes = Buffer.from(match[1], 'base64');
+  if (bytes.length > MAX_AVATAR_BYTES) throw Error('The avatar image is too large.');
+  if (bytes.length < 33 || !bytes.subarray(0, 8).equals(PNG_MAGIC) || bytes.toString('latin1', 12, 16) !== 'IHDR')
+    throw Error('The avatar must be a PNG image.');
+  const width = bytes.readUInt32BE(16), height = bytes.readUInt32BE(20);
+  if (!width || !height || width > MAX_AVATAR_SIDE || height > MAX_AVATAR_SIDE) throw Error('The avatar image size is not supported.');
+  return bytes;
+}
+
+/** roots: {control(accountId), task(accountId)} → absolute account roots. */
+export function createAuxAgent(roots) {
+  const dir = account => path.join(roots.control(account), 'agent');
+  const profileFile = account => path.join(dir(account), 'agent.json');
+  const avatarFile = account => path.join(dir(account), 'avatar.png');
+
+  function read(account) {
+    try { return normalize(JSON.parse(readFileSync(profileFile(account), 'utf8'))); } catch { return defaults(); }
+  }
+  function save(account, profile) {
+    const next = normalize(profile);
+    writeAtomic(profileFile(account), `${JSON.stringify(next, null, 1)}\n`);
+    return next;
+  }
+  const bump = (account, patch) => { const current = read(account); return save(account, {...current, ...patch, revision: current.revision + 1}); };
+
+  /** What the extension shows and edits. home: the home session if it is still usable. */
+  const view = (profile, home) => ({
+    name: profile.name, style: profile.style, proactivity: profile.proactivity,
+    homeSessionId: home ? profile.homeSessionId : null, avatarRevision: profile.avatarRevision,
+    setupCompleted: profile.setupCompleted, isDefault: identityBlock(profile) === ORIGINAL_OPENER && !profile.avatarRevision,
+  });
+
+  const contextStamp = (account, profile) =>
+    sha([profile.revision, readText(path.join(roots.task(account), 'SOUL.md')), readText(path.join(roots.task(account), 'AGENTS.md'))].join('\0')).slice(0, 16);
+
+  return {
+    read, view, identityBlock,
+    update(account, input) {
+      const patch = {};
+      if (input.name !== undefined) patch.name = cleanName(input.name);
+      if (input.style !== undefined) patch.style = input.style;
+      if (input.proactivity !== undefined) patch.proactivity = input.proactivity;
+      if (input.setupCompleted !== undefined) patch.setupCompleted = input.setupCompleted === true;
+      return bump(account, patch);
+    },
+    setAvatar(account, dataUrl) {
+      const bytes = parseAvatar(dataUrl);
+      writeAtomic(avatarFile(account), bytes);
+      return bump(account, {avatarRevision: sha(bytes).slice(0, 16)});
+    },
+    clearAvatar(account) {
+      rmSync(avatarFile(account), {force: true});
+      return bump(account, {avatarRevision: ''});
+    },
+    /** The PNG bytes, or null when the agent uses the Aux mark. */
+    avatar(account) {
+      if (!read(account).avatarRevision) return null;
+      try { return readFileSync(avatarFile(account)); } catch { return null; }
+    },
+    avatarDataUrl(account) {
+      const bytes = this.avatar(account);
+      return bytes ? `data:image/png;base64,${bytes.toString('base64')}` : null;
+    },
+    setHome(account, sessionId) { return save(account, {...read(account), homeSessionId: sessionId, homePrompt: null}); },
+
+    /** The supplied opener replaced with this account's agent identity. */
+    systemPrompt(prompt, account) {
+      if (account === undefined || typeof prompt !== 'string' || !prompt.startsWith(ORIGINAL_OPENER)) return prompt;
+      return identityBlock(read(account)) + prompt.slice(ORIGINAL_OPENER.length);
+    },
+    /** Whether a session's frozen prompt predates the agent's identity, or for the home
+     * thread its SOUL.md/AGENTS.md or memory. Rebuilding is the supplied path for an empty
+     * prompt; only prompts this agent produced are ever considered. */
+    promptStale(account, session, prompt) {
+      if (!prompt || typeof prompt !== 'string') return false;
+      if (!prompt.startsWith(ORIGINAL_OPENER) && !(prompt.startsWith('You are ') && prompt.includes(AGENT_PHRASE))) return false;
+      const profile = read(account);
+      if (!prompt.startsWith(identityBlock(profile))) return true;
+      if (session?.id !== profile.homeSessionId) return false;
+      const stamp = contextStamp(account, profile), built = profile.homePrompt;
+      if (built?.stamp === stamp && Date.now() - built.at < HOME_PROMPT_MAX_AGE_MS) return false;
+      save(account, {...profile, homePrompt: {stamp, at: Date.now()}});
+      return true;
+    },
+    /** The native Chats feed with the home thread taken out and the agent's state added. */
+    chromeChats(account, {pinned, recents}, preview, homePreview) {
+      const profile = read(account);
+      const home = profile.homeSessionId ? homePreview(profile.homeSessionId) : undefined;
+      const others = rows => rows.filter(row => row.id !== profile.homeSessionId).map(preview);
+      return {
+        pinned: others(pinned), recents: others(recents),
+        agent: {name: profile.name, homeSessionId: home ? profile.homeSessionId : null,
+          status: home ? preview(home).status : 'idle', avatarRevision: profile.avatarRevision},
+      };
+    },
+  };
+}

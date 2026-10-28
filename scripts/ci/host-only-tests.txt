@@ -70,6 +70,7 @@ vendor/provided/daemon-adapter.test.mjs
 vendor/provided/daemon-node-cold-entry.test.mjs
 vendor/provided/daemon-node-development.test.mjs
 vendor/provided/provider-cli/borrowed-identity-removal.test.mjs
+vendor/provided/agent/integration.test.mjs
 vendor/provided/provider-cli/integration.test.mjs
 vendor/provided/provider-funded-launch.test.mjs
 vendor/provided/provider-cli/borrowed-identity-removal.test.mjs

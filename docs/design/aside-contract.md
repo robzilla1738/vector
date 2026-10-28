@@ -6,6 +6,7 @@ Aux reuses the owner's supplied Aside implementation on Chromium: its UI, behavi
 
 - Target versions: Agent `1.26.1016.1852`, daemon `1.26.1016.1852`, CLI `1.26.1015`, runtime `1.26.1019.335`. Pin actual files and executable/SEA hashes before transforming them. The frozen copy is `out/provided-source-snapshot-1.26.1016.1852`.
 - Reuse unchanged source, CSS, fonts, component structure and interactions directly. Record every branding and platform change as count-checked edits. Do not supply replacement screens or mock services that report success.
+- Exception (owner, 2026-10-28): the Agent layer ([agent model plan](../plans/2026-10-28-agent-model.md)) adds a customizable agent, a home thread, side chats and an agent button. It reuses the supplied components and CSS tokens, ships as count-checked transforms plus new modules, and leaves browsing, tools, models and permissions unchanged.
 - Canonical artwork is `assets/brand/arch-mark.svg`: both paths, full geometry, 1024 viewBox. Derived assets keep that shape.
 - Static implementation packages are authorized inputs. Owner profiles, accounts, credentials, Keychain items and OS grants are not.
 
