@@ -2,6 +2,7 @@
 import {randomBytes,randomUUID,timingSafeEqual} from 'node:crypto';
 import {Hono} from 'hono';import {bodyLimit} from 'hono/body-limit';import {HTTPException} from 'hono/http-exception';import {z} from 'zod';
 import {requireUser,rateLimit,type AuthVariables} from './auth';
+import {logEvent,safeLabel} from './log';
 import {SyncRecoveryStore,type RecoveryActor} from './sync-recovery-store';
 import {recoveryActionSchema,recoveryActionHash,type RecoveryAction,recoveryEnvelopeSchema,recoveryHash,recoveryCanonical,recoveryChallengeBytes,recoveryCommitment,recoveryEnrollmentProof,sameRecoveryProof,verifyRecoveryInstallation,type RecoveryChallenge} from './sync-recovery-crypto';
 import {recoveryServerKey,openRecoveryServerCsk,wrapRecoveryServerCsk} from './sync-recovery-server-key';
@@ -52,4 +53,11 @@ syncRecoveryRoutes.use('/sync/recovery/v2/*',async(c,next)=>{c.header('Cache-Con
 const service=new SyncRecoveryService();
 syncRecoveryRoutes.post('/sync/recovery/v2/challenge',async c=>c.json(await service.challenge(c.get('user'),await c.req.json())));
 syncRecoveryRoutes.post('/sync/recovery/v2/submit',async c=>c.json(await service.submit(c.get('user'),await c.req.json())));
-syncRecoveryRoutes.onError((error,c)=>{if(error instanceof HTTPException)return c.json({error:{code:'RECOVERY_REQUEST_REJECTED',message:error.message}},error.status);if(error instanceof z.ZodError)return c.json({error:{code:'RECOVERY_INVALID_REQUEST',message:'Invalid recovery request.'}},400);const known=/^RECOVERY_[A-Z_]+$/.test(error.message)?error.message:'RECOVERY_UNAVAILABLE';return c.json({error:{code:known,message:'Recovery could not complete; existing browser data and keys are preserved.'}},known==='RECOVERY_UNAVAILABLE'?503:409);});
+syncRecoveryRoutes.onError((error,c)=>{
+ if(error instanceof HTTPException){logEvent('warn',c,'aux.recovery.rejected',{status:error.status});return c.json({error:{code:'RECOVERY_REQUEST_REJECTED',message:error.message}},error.status);}
+ if(error instanceof z.ZodError)return c.json({error:{code:'RECOVERY_INVALID_REQUEST',message:'Invalid recovery request.'}},400);
+ const known=/^RECOVERY_[A-Z_]+$/.test(error.message)?error.message:'RECOVERY_UNAVAILABLE';
+ // Denials carry only their code; unexpected failures their error class, never the message.
+ if(known==='RECOVERY_UNAVAILABLE')logEvent('error',c,'aux.recovery.failed',{name:safeLabel(error.name),kind:safeLabel(error.constructor.name)});else logEvent('warn',c,'aux.recovery.denied',{code:known});
+ return c.json({error:{code:known,message:'Recovery could not complete; existing browser data and keys are preserved.'}},known==='RECOVERY_UNAVAILABLE'?503:409);
+});

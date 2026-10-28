@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test,{mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash,randomUUID} from 'node:crypto';
 import {Hono} from 'hono';
@@ -81,5 +81,20 @@ test('share publishing enforces the count, storage and hourly limits',async()=>{
     await query('DELETE FROM aux_rate_limits');
     for(let n=0;n<60;n++)await publishShareForUser(user,{sourceSessionId:'s-0',title:'Burst',messages:message});
     await refusedWith('RATE_LIMITED',publishShareForUser(user,{sourceSessionId:'s-0',title:'Burst',messages:message}));
+  });
+});
+
+test('recovery denials and failures log one JSON line with the request id',async()=>{
+  await withMigratedDatabase(async query=>{
+    const user=randomUUID(),session=randomUUID(),logs:unknown[]=[];
+    const jwt=await new SignJWT({sid:session,sg:0}).setProtectedHeader({alg:'HS256'}).setSubject(user).setIssuer('https://api.getaux.co').setAudience('aux-desktop').setIssuedAt().setExpirationTime('10m').sign(new TextEncoder().encode(process.env.AUX_AUTH_SECRET));
+    await query('INSERT INTO aux_users(id,clerk_id,email) VALUES($1,$2,$3)',[user,'fixture-user','fixture-user@example.invalid']);
+    await query("INSERT INTO aux_sessions(id,user_id,access_hash,access_expires_at,expires_at,platform) VALUES($1,$2,$3,now()+interval '10minutes',now()+interval '1day','macos')",[session,user,createHash('sha256').update(jwt).digest('hex')]);
+    for(const level of ['warn','error'] as const)mock.method(console,level,(line:string)=>logs.push(JSON.parse(line)));
+    try{
+      const response=await app.request('/api/v1/sync/recovery/v2/challenge',{method:'POST',headers:{authorization:'Bearer '+jwt,'content-type':'application/json','x-vercel-id':'iad1::recovery'},body:JSON.stringify({operation:'material',generation:7})});
+      assert.equal(response.status,409);
+      assert.deepEqual(logs,[{event:'aux.recovery.denied',requestId:'iad1::recovery',path:'/api/v1/sync/recovery/v2/challenge',code:'RECOVERY_SESSION_REQUIRED'}]);
+    }finally{mock.restoreAll();}
   });
 });

@@ -11,5 +11,6 @@
   "010-drive-cookies.sql": "5cb5eba8f29314b487b4106770180fe243367af09bd87d083366c3e126e43b11",
   "011-inference-uploads.sql": "98502eaa3231e388ed794e86f81dba4670506f5eb0d47859f84db4421e6f26a4",
   "012-sync-recovery-v2.sql": "c7b963011657f8d6e28acdc0969eca1d0b6d7f118954142c918cf2bb52ba2e5e",
-  "013-account-lifecycle.sql": "c44fb191dc09e344b0adcbf9c0d70555d069dfac0d4a940ba51a734bdf4baea5"
+  "013-account-lifecycle.sql": "c44fb191dc09e344b0adcbf9c0d70555d069dfac0d4a940ba51a734bdf4baea5",
+  "014-consent-and-share-blocks.sql": "d543cc7a8649332944887d8e194f0932f0680bc0afc9a1116831e7b6ba85123b"
 }
