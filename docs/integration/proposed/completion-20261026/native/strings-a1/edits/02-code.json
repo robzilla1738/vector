@@ -1,0 +1,2384 @@
+[
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+  "find": "  return (detached ? u\"Remove bookmark: \" : u\"Add to bookmarks: \") + title;",
+  "replace": "  return l10n_util::GetStringFUTF16(detached ? IDS_AUX_BOOKMARK_DRAG_REMOVE_NAMED\n                                             : IDS_AUX_BOOKMARK_DRAG_ADD_NAMED,\n                                    title);",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "SetTooltipText(base::UTF8ToUTF16(shown.current_url) + u\"\\nShared URL: \" + base::UTF8ToUTF16(entry.current_url) +\n            u\"\\nUpdated in another window. Right-click to use the shared URL or keep an independent copy.\");",
+  "replace": "SetTooltipText(base::UTF8ToUTF16(shown.current_url) + u\"\\n\" +\n            l10n_util::GetStringFUTF16(IDS_AUX_SHARED_URL_LINE,\n                                       base::UTF8ToUTF16(entry.current_url)) +\n            u\"\\n\" + l10n_util::GetStringUTF16(IDS_AUX_SHARED_UPDATE_HINT));",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "row->SetTooltipText(base::UTF8ToUTF16(recovery.current_url) +\n              u\"\\nClosed from the shared list. This window's page and history were retained. Right-click to keep an independent copy or close this view.\");",
+  "replace": "row->SetTooltipText(base::UTF8ToUTF16(recovery.current_url) + u\"\\n\" +\n              l10n_util::GetStringUTF16(IDS_AUX_CLOSED_FROM_SHARED_LIST));",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+  "find": "button->GetViewAccessibility().SetName(u\"Switch to \" + label);",
+  "replace": "button->GetViewAccessibility().SetName(\n        l10n_util::GetStringFUTF16(IDS_AUX_SWITCH_TO_PROFILE, label));",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+  "find": "std::make_unique<views::Label>(available_ ? name : name + u\" — unavailable\"));",
+  "replace": "std::make_unique<views::Label>(\n        available_ ? name\n                   : l10n_util::GetStringFUTF16(IDS_AUX_RECENT_FILE_UNAVAILABLE, name)));",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+  "find": "SetTooltipText(available_ ? name + u\" — drag to attach; click to show in Finder\"\n                             : name + u\" — unavailable. Select or download this file again.\");",
+  "replace": "SetTooltipText(l10n_util::GetStringFUTF16(\n        available_ ? IDS_AUX_RECENT_FILE_TOOLTIP\n                   : IDS_AUX_RECENT_FILE_UNAVAILABLE_TOOLTIP,\n        name));",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+  "find": "GetViewAccessibility().SetName(available_ ? name : name + u\" — unavailable\");",
+  "replace": "GetViewAccessibility().SetName(\n        available_ ? name\n                   : l10n_util::GetStringFUTF16(IDS_AUX_RECENT_FILE_UNAVAILABLE, name));",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "name = u\"Profile \" + base::NumberToString16(index);",
+  "replace": "name = l10n_util::GetStringFUTF16(IDS_AUX_NEW_PROFILE_DEFAULT_NAME,\n                                      base::NumberToString16(index));",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": ": u\"\\\"\" + name + u\"\\\" will be removed from this device.\";",
+  "replace": ": l10n_util::GetStringFUTF16(\n                         IDS_AUX_DELETE_NAMED_PROFILE_BODY, name);",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "std::u16string(icon.label)",
+  "replace": "l10n_util::GetStringUTF16(icon.label_id)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "SetName(u\"Space: \" + base::UTF8ToUTF16(space.name));",
+  "replace": "SetName(l10n_util::GetStringFUTF16(\n          IDS_AUX_SPACE_ACCESSIBLE_NAME, base::UTF8ToUTF16(space.name)));",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+  "find": "    accessible += u\", Paused\";",
+  "replace": "    accessible = l10n_util::GetStringFUTF16(IDS_AUX_PROFILE_PAUSED_ACCESSIBLE,\n                                            accessible);",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": ": u\"Delete \\\"\" + node->GetTitle() + u\"\\\" and everything inside it?\";",
+  "replace": ": l10n_util::GetStringFUTF16(IDS_AUX_DELETE_NAMED_FOLDER_BODY,\n                                         node->GetTitle());",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": ": u\"Delete \\\"\" + node->GetTitle() + u\"\\\"?\";",
+  "replace": ": l10n_util::GetStringFUTF16(\n                                          IDS_AUX_DELETE_NAMED_BOOKMARK_BODY,\n                                          node->GetTitle());",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "narrow_focus_button_->SetAccessibleName(label + u\" (pane \" +\n      base::UTF8ToUTF16(std::to_string(active_index_ + 1)) + u\" of \" +\n      base::UTF8ToUTF16(std::to_string(pane_count_)) + u\")\");",
+  "replace": "narrow_focus_button_->SetAccessibleName(l10n_util::GetStringFUTF16(\n      IDS_AUX_SPLIT_PANE_POSITION, label,\n      base::UTF8ToUTF16(std::to_string(active_index_ + 1)),\n      base::UTF8ToUTF16(std::to_string(pane_count_))));",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+  "find": "? u\"\\nShared URL: \" + base::UTF8ToUTF16(entry.saved.url.spec()) +\n            u\"\\nUpdated in another window. Right-click to use the shared URL or keep an independent copy.\"",
+  "replace": "? u\"\\n\" +\n              l10n_util::GetStringFUTF16(IDS_AUX_SHARED_URL_LINE,\n                                         base::UTF8ToUTF16(entry.saved.url.spec())) +\n              u\"\\n\" + l10n_util::GetStringUTF16(IDS_AUX_SHARED_UPDATE_HINT)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h",
+  "find": "  std::u16string_view label;",
+  "replace": "  int label_id;  // Message ID of the icon name.",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/chrome_browser_main.cc",
+  "find": "u\"Browsing still works, but the agent stopped unexpectedly. Restart Aux \"\n      u\"to bring it back? Your tabs will reopen.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_AGENT_STOPPED_MESSAGE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/chrome_browser_main.cc",
+  "find": "u\"Aux's agent stopped\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_AGENT_STOPPED_TITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/chrome_browser_main.cc",
+  "find": "#include \"extensions/buildflags/buildflags.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"extensions/buildflags/buildflags.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_view.cc",
+  "find": "u\"Agent Tabs\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_AGENT_TABS)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+  "find": "u\"Background tabs opened for work\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_AGENT_TABS_SUBTITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+  "find": "u\"Background tabs Aux opened\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_AGENT_TABS_TOOLTIP)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+  "find": "u\"Agent Tabs\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_AGENT_TABS)",
+  "count": 4
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+  "find": "u\"Close tab\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_AGENT_TABS_CLOSE_TAB)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+  "find": "u\"Close all\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_AGENT_TABS_CLOSE_ALL)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+  "find": "#include \"components/favicon/content/content_favicon_driver.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/favicon/content/content_favicon_driver.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmark_confirmation_mac.mm",
+  "find": "u\"Delete\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmark_confirmation_mac.mm",
+  "find": "u\"Cancel\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CANCEL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmark_confirmation_mac.mm",
+  "find": "#include \"base/strings/sys_string_conversions.h\"\n",
+  "replace": "#include \"base/strings/sys_string_conversions.h\"\n#include \"chrome/grit/generated_resources.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmark_confirmation_mac.mm",
+  "find": "#include \"chrome/grit/generated_resources.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/l10n/l10n_util.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+  "find": "u\"Remove bookmark\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_BOOKMARK_DRAG_REMOVE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+  "find": "u\"Add bookmark\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_BOOKMARK_DRAG_ADD)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+  "find": "#include \"components/bookmarks/browser/bookmark_node.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/bookmarks/browser/bookmark_node.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+  "find": "#include \"ui/base/metadata/metadata_header_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_header_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmarks_section.cc",
+  "find": "u\"Bookmarks\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_BOOKMARKS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmarks_section.cc",
+  "find": "#include \"ui/views/controls/button/button.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/views/controls/button/button.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_bookmarks_section.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"This will permanently delete this chat and its messages.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_DELETE_BODY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Choose a short, recognizable name.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_RENAME_DIALOG_SUBTITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Open folder in Finder\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_OPEN_FOLDER_IN_FINDER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Session ID Copied!\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_SESSION_ID_COPIED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Open in a new tab\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_OPEN_IN_NEW_TAB)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Copy session ID\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_COPY_SESSION_ID)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Bookmark chat\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_BOOKMARK)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"New chat name\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_NEW_NAME_ACCESSIBLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Archive Chat\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_ARCHIVE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Mark as read\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_MARK_AS_READ)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Delete chat?\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_DELETE_TITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Rename chat\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_RENAME)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Delete chat\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_DELETE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Unpin chat\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_UNPIN)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Pin chat\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_PIN)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Cancel\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CANCEL)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Delete\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "u\"Save\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SAVE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "#include \"ui/base/base_window.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/base_window.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+  "find": "#include \"ui/base/models/dialog_model.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/models/dialog_model.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+  "find": "u\"Aux could not resolve this profile with its local service. Please retry after the browser finishes starting.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NAVIGATION_UNAVAILABLE_BODY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+  "find": "u\"Aux navigation unavailable\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NAVIGATION_UNAVAILABLE_TITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+  "find": "#include \"content/public/browser/storage_partition.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"content/public/browser/storage_partition.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+  "find": "#include \"ui/base/page_transition_types.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/page_transition_types.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_row.cc",
+  "find": "u\"Awaiting approval\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_AWAITING_APPROVAL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_row.cc",
+  "find": "u\"Awaiting answer\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_AWAITING_ANSWER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_row.cc",
+  "find": "u\"Archive Chat\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHAT_ARCHIVE)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_row.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chat_row.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_header_actions.cc",
+  "find": "u\"This will archive all chats.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHATS_ARCHIVE_ALL_BODY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_header_actions.cc",
+  "find": "u\"Archive all chats?\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHATS_ARCHIVE_ALL_TITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_header_actions.cc",
+  "find": "u\"Archive all chats\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHATS_ARCHIVE_ALL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_header_actions.cc",
+  "find": "u\"Mark all as read\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHATS_MARK_ALL_READ)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_header_actions.cc",
+  "find": "u\"Show all chats\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHATS_SHOW_ALL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_header_actions.cc",
+  "find": "u\"Archive\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ARCHIVE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_header_actions.cc",
+  "find": "u\"Cancel\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CANCEL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_header_actions.cc",
+  "find": "#include \"extensions/browser/extension_registry.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"extensions/browser/extension_registry.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_header_actions.cc",
+  "find": "#include \"ui/base/mojom/menu_source_type.mojom.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/mojom/menu_source_type.mojom.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_model.cc",
+  "find": "u\"Untitled task\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_UNTITLED_TASK)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_model.cc",
+  "find": "#include \"base/strings/utf_string_conversions.h\"\n",
+  "replace": "#include \"base/strings/utf_string_conversions.h\"\n#include \"chrome/grit/generated_resources.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_model.cc",
+  "find": "#include \"chrome/grit/generated_resources.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/l10n/l10n_util.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_section.cc",
+  "find": "u\"Chats with Aux\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHATS_TOOLTIP)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_section.cc",
+  "find": "u\"Show all\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SHOW_ALL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_section.cc",
+  "find": "u\"Chats\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHATS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_section.cc",
+  "find": "#include \"components/prefs/pref_service.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/prefs/pref_service.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_chats_section.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_icon_picker.cc",
+  "find": "u\"Profile name\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_NAME_FIELD)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_icon_picker.cc",
+  "find": "u\"Done\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DONE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_icon_picker.cc",
+  "find": "#include \"components/prefs/pref_service.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/prefs/pref_service.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_icon_picker.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"Some tabs remain open. Refresh to review them; a page may be \"\n          u\"waiting for confirmation.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_TABS_REMAIN)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"Per-task tab cleanup policy is not exposed by the supplied \"\n          u\"runtime.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_CLEANUP_UNSUPPORTED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"Aux could not verify this installation. Reconnect the local browser.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_INSTALLATION)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"This profile locked or its account changed. Reopen agent tabs.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_PROFILE_LOCKED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"The selected task belongs to another browser profile or mode.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_OTHER_PROFILE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"The task's current tab ownership could not be verified.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_OWNERSHIP_UNVERIFIED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"Unlock this browser profile before opening agent tabs.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_UNLOCK_TO_OPEN_TABS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"Unlock Aux and finish setup for this browser profile.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_UNLOCK_SETUP)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"Tasks could not be loaded. Aux will try reconnecting.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_LOAD)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"Unlock this browser profile before loading its tasks.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_UNLOCK_TO_LOAD)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"The supplied task inventory has an invalid identity.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_INVENTORY_INVALID)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"This target is no longer owned by the selected task.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_TARGET_NOT_OWNED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"This task action is unavailable for this profile.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_ACTION_UNAVAILABLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"This task action could not be saved. Try again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_SAVE_FAILED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"This profile binding changed. Reopen the task.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_BINDING_CHANGED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"The supplied task inventory is unavailable.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_INVENTORY_UNAVAILABLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"Reconnect this profile before trying again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_RECONNECT)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"Aux returned an invalid task projection.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_INVALID_PROJECTION)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"The selected task identity is invalid.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_INVALID_IDENTITY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "u\"This approval action is invalid.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_ERROR_INVALID_APPROVAL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "#include \"content/public/browser/devtools_agent_host.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"content/public/browser/devtools_agent_host.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+  "find": "#include \"services/network/public/mojom/url_response_head.mojom.h\"\n",
+  "replace": "#include \"services/network/public/mojom/url_response_head.mojom.h\"\n#include \"ui/base/l10n/l10n_util.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_new_chat_view.cc",
+  "find": "u\"New Chat\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_CHAT)",
+  "count": 5
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_new_chat_view.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_new_chat_view.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"The page changed or could not be rebound. Its existing view was retained; check the tab list before retrying.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_REBIND_FAILED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Select tabs already open in this window and Space. Open an unloaded tab with a regular click first.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_SELECT_HINT)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"The folder archive could not be saved. Existing views were retained.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_FOLDER_ARCHIVE_FAILED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"This page changed or has active work. Its current URL was retained.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_URL_RETAINED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"The shared close could not be saved. Existing views were retained.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_SHARED_CLOSE_FAILED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"The profile or tab list changed. Open the menu again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_LIST_CHANGED_MENU)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Organization is not ready to save. Please try again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_NOT_READY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"This recovery view has active work and was retained.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_RECOVERY_RETAINED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"This tab could not be opened in the current window.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_OPEN_FAILED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"The profile changed or is saving. Please try again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_PROFILE_CHANGED_OR_SAVING)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"This tab has active work and could not be unloaded.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_UNLOAD_BLOCKED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"This item changed. Open its editor again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ITEM_CHANGED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Use shared URL from another window\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_USE_SHARED_URL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Close tab everywhere (archive)\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_CLOSE_EVERYWHERE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Remove folder, keep contents\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_REMOVE_FOLDER_KEEP_CONTENTS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Archive folder and contents\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ARCHIVE_FOLDER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Archived tabs and folders\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ARCHIVED)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Close this view (unload)\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_CLOSE_VIEW_UNLOAD)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Undo organization change\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_UNDO)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Keep independent copy\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_KEEP_INDEPENDENT_COPY)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"New folder inside…\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_NEW_FOLDER_INSIDE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Move to this Space\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_MOVE_TO_THIS_SPACE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Keep in this Space\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_KEEP_IN_SPACE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Pin to all Spaces\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_PIN_TO_ALL_SPACES)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"All Spaces (Pins)\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ALL_SPACES_PINS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Close this view\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_CLOSE_VIEW)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Back to tabs\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_BACK_TO_TABS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"New folder\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_FOLDER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Restore\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_RESTORE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Rename…\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_RENAME_ELLIPSIS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Move to\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_MOVE_TO)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "u\"Rename\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_RENAME)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "#include \"components/favicon/core/favicon_service.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/favicon/core/favicon_service.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"Changes could not be saved. Your previous organization is retained.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ERROR_SAVE_FAILED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"Pinned items stay available. Unpin before archiving.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ERROR_PROTECTED_PIN)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"Move this Space’s contents before removing it.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ERROR_NOT_EMPTY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"Saving changes. Please try again shortly.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ERROR_BUSY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"The profile changed. Please try again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ERROR_PROFILE_CHANGED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"This change could not be applied.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ERROR_GENERIC)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"Tabs changed. Please try again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ERROR_STALE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"A folder cannot contain itself.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ERROR_CYCLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"Space icon or emoji\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ICON_ACCESSIBLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"Save\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SAVE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"Name\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NAME_FIELD)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "u\"Icon\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_ICON_FIELD)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "#include \"components/constrained_window/constrained_window_views.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/constrained_window/constrained_window_views.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+  "find": "#include \"ui/base/models/dialog_model.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/models/dialog_model.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_pins_section.cc",
+  "find": "u\"Pins\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PINS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_pins_section.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_pins_section.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+  "find": "#include \"components/prefs/pref_service.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/prefs/pref_service.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_preview_page.cc",
+  "find": "u\"Bookmarks\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_BOOKMARKS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_preview_page.cc",
+  "find": "u\"New Tab\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_TAB)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_preview_page.cc",
+  "find": "u\"Tabs\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TABS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_preview_page.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_preview_page.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_search_button.cc",
+  "find": "u\"Search\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SEARCH)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_search_button.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_search_button.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+  "find": "u\"This profile has an incomplete or unsupported saved window, \"\n            u\"or an app record without its required identity. Aux has preserved \"\n            u\"that session. Open the profile separately to recover it.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_SWITCH_UNSUPPORTED_SESSION)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+  "find": "u\"Aux restored this profile's saved windows separately, \"\n              u\"preserving their tabs and selections. Your original window \"\n              u\"and profile are unchanged.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_WINDOWS_RESTORED_BODY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+  "find": "u\"Aux could not safely switch this window yet. Finish open dialogs \"\n        u\"or pending browser activity, then select the profile again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_SWITCH_BUSY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+  "find": "u\"The profile's saved workspace could not be prepared. Finish any \"\n            u\"pending profile activity, then try again or reopen Aux.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_SWITCH_PREPARE_FAILED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+  "find": "u\"The profile workspace was closed before preparation finished. \"\n        u\"Select the profile again to retry.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_SWITCH_CLOSED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+  "find": "u\"The selected profile could not be loaded. Try selecting it again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_SWITCH_LOAD_FAILED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+  "find": "u\"Couldn't switch profiles\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_SWITCH_FAILED_TITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+  "find": "u\"Profile windows restored\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_WINDOWS_RESTORED_TITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+  "find": "#include \"mojo/public/cpp/bindings/callback_helpers.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"mojo/public/cpp/bindings/callback_helpers.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+  "find": "#include \"mojo/public/cpp/bindings/callback_helpers.h\"\n",
+  "replace": "#include \"mojo/public/cpp/bindings/callback_helpers.h\"\n#include \"ui/base/l10n/l10n_util.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+  "find": "u\"Recent files\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_RECENT_FILES)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+  "find": "#include \"components/prefs/pref_service.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/prefs/pref_service.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"The folder and its saved pages will be removed from this profile.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE_SAVED_FOLDER_BODY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Sidebar state cannot be restored by this native build.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SIDEBAR_STATE_UNSUPPORTED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"This saved page will be removed from this profile.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE_SAVED_PAGE_BODY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"This profile will be removed from this device.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE_PROFILE_BODY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Choose a short, recognizable name.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_RENAME_DIALOG_SUBTITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Browse additional saved pages\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_BROWSE_MORE_SAVED_PAGES)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Clear Browsing Data\\u2026\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CLEAR_BROWSING_DATA)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Delete this saved folder?\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE_SAVED_FOLDER_TITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Delete this saved page?\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE_SAVED_PAGE_TITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Profile indicator menu\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_INDICATOR_MENU)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Open all in new window\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN_ALL_IN_NEW_WINDOW)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Open all in new tabs\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN_ALL_IN_NEW_TABS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"No saved pages yet.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NO_SAVED_PAGES)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Show All Downloads\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SHOW_ALL_DOWNLOADS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"JavaScript Console\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_JAVASCRIPT_CONSOLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Open in new window\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN_IN_NEW_WINDOW)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Manage Extensions\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_MANAGE_EXTENSIONS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Show Full History\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SHOW_FULL_HISTORY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Bookmark this tab\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_BOOKMARK_THIS_TAB)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Incognito Window\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_INCOGNITO_WINDOW)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Profile actions\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_ACTIONS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Developer Tools\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DEVELOPER_TOOLS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Delete profile?\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE_PROFILE_TITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Untitled folder\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_UNTITLED_FOLDER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Open in new tab\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN_IN_NEW_TAB)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Switch profile\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SWITCH_PROFILE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Open bookmarks\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN_BOOKMARKS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Agent activity\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_AGENT_ACTIVITY)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"All bookmarks\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ALL_BOOKMARKS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Edit profile\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_EDIT_PROFILE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Profile name\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_NAME_FIELD)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Task Manager\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_MANAGER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Mark as read\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_MARK_AS_READ)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"New profile\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_PROFILE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"View Source\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_VIEW_SOURCE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Change Icon\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHANGE_ICON)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Search tabs\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SEARCH_TABS)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Extensions\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_EXTENSIONS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Developers\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DEVELOPERS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Bookmarks\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_BOOKMARKS)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Downloads\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DOWNLOADS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Duplicate\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DUPLICATE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Unpin Tab\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_UNPIN_TAB)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Profiles\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILES)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Settings\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SETTINGS)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Sign Out\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SIGN_OUT)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"New Chat\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_CHAT)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Show all\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SHOW_ALL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"History\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_HISTORY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"New Tab\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_TAB)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Profile\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Archive\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ARCHIVE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Cancel\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CANCEL)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Delete\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE)",
+  "count": 4
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Reload\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_RELOAD)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Chats\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHATS)",
+  "count": 3
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Close\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CLOSE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Unpin\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_UNPIN)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Save\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SAVE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Edit\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_EDIT)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Tabs\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TABS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Open\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "u\"Pin\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PIN)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "#include \"components/bookmarks/browser/bookmark_client.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/bookmarks/browser/bookmark_client.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"The profile or tab list changed. Open the Space menu again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPACE_LIST_CHANGED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"The profile changed or is saving. Please try again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_PROFILE_CHANGED_OR_SAVING)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"This Space changed. Open its editor again.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPACE_CHANGED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"New folder in this Space…\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_FOLDER_IN_SPACE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"Remove empty Space\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_REMOVE_EMPTY_SPACE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"New pinned folder…\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_PINNED_FOLDER_ELLIPSIS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"New pinned folder\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_PINNED_FOLDER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"Create a Space\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CREATE_SPACE)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"Switch Space\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SWITCH_SPACE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"Choose Space\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CHOOSE_SPACE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"Edit Space…\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_EDIT_SPACE_ELLIPSIS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"New Space…\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_SPACE_ELLIPSIS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"Edit Space\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_EDIT_SPACE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"New folder\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_FOLDER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"New Space\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NEW_SPACE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "u\"Space\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPACE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+  "find": "u\"Search commands, tabs or enter a URL\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_COMMAND_PLACEHOLDER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+  "find": "u\"Search or type a URL\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SEARCH_OR_TYPE_URL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+  "find": "u\"Command input\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_COMMAND_INPUT)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+  "find": "#include \"content/public/browser/devtools_agent_host.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"content/public/browser/devtools_agent_host.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+  "find": "u\"This will close all other tabs except AI tabs.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CLEAR_TABS_BODY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+  "find": "u\"Tidy current Space\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TIDY_CURRENT_SPACE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+  "find": "u\"Tidy selected tabs\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TIDY_SELECTED_TABS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+  "find": "u\"Clear tabs?\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CLEAR_TABS_TITLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+  "find": "u\"Cancel\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CANCEL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+  "find": "u\"Clear\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CLEAR)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+  "find": "#include \"ui/display/screen.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/display/screen.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+  "find": "#include \"ui/base/mojom/menu_source_type.mojom.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/mojom/menu_source_type.mojom.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_section.cc",
+  "find": "u\"Organize tabs with AI\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TIDY_TOOLTIP)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_section.cc",
+  "find": "u\"Organizing tabs\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORGANIZING_TABS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_section.cc",
+  "find": "u\"Clear\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CLEAR)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_section.cc",
+  "find": "u\"Tidy\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TIDY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_section.cc",
+  "find": "u\"Tabs\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TABS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_section.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_tabs_section.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_task_review_bubble.cc",
+  "find": "u\"Open conversation\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN_CONVERSATION)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_task_review_bubble.cc",
+  "find": "u\"Task details\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_TASK_DETAILS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_task_review_bubble.cc",
+  "find": "u\"Approve\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_APPROVE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_task_review_bubble.cc",
+  "find": "u\"Answer\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ANSWER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_task_review_bubble.cc",
+  "find": "u\"Review\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_REVIEW)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_task_review_bubble.cc",
+  "find": "u\"Deny\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DENY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_task_review_bubble.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_task_review_bubble.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+  "find": "u\"Paused\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE_PAUSED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Delete this folder and everything inside it?\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE_FOLDER_BODY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Drag tabs here to add bookmarks\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_BOOKMARKS_EMPTY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Open in Incognito window\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN_IN_INCOGNITO)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Open in new tab group\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN_IN_NEW_TAB_GROUP)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Delete this bookmark?\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE_BOOKMARK_BODY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Open in new window\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN_IN_NEW_WINDOW)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Open in split view\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN_IN_SPLIT_VIEW)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Manage Bookmarks\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_MANAGE_BOOKMARKS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Open in new tab\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_OPEN_IN_NEW_TAB)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Delete Bookmark\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE_BOOKMARK)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Rename Folder\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_RENAME_FOLDER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Edit Bookmark\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_EDIT_BOOKMARK)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Delete Folder\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE_FOLDER)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Folder name\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_FOLDER_NAME)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Rename\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_RENAME)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Delete\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_DELETE)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Cancel\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_CANCEL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Edit\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_EDIT)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Save\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SAVE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"Name\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_NAME_FIELD)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "u\"URL\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_URL_FIELD)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "#include \"components/bookmarks/browser/bookmark_client.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/bookmarks/browser/bookmark_client.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "u\"Split panes do not fit. Show one pane without closing the others.\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPLIT_FOCUS_TOOLTIP)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "u\"Select previous split pane\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPLIT_PREVIOUS)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "u\"Narrow split presentation\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPLIT_NARROW_CONTROLS)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "u\"Focus selected split pane\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPLIT_FOCUS_SELECTED_ACCESSIBLE)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "u\"Select next split pane\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPLIT_NEXT)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "u\"Focus selected pane\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPLIT_FOCUS_SELECTED)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "u\"Show all panes\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPLIT_SHOW_ALL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "u\"Focus\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPLIT_FOCUS)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "u\"All\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SPLIT_ALL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "#include \"ui/views/layout/flex_layout.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/views/layout/flex_layout.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/omnibox/omnibox_view_views.cc",
+  "find": "u\"Search or type a URL\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SEARCH_OR_TYPE_URL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_display_label.cc",
+  "find": "u\"Profile\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_PROFILE)",
+  "count": 3
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_display_label.cc",
+  "find": "#include \"components/prefs/pref_service.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/prefs/pref_service.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_display_label.cc",
+  "find": "#include \"components/prefs/pref_service.h\"\n",
+  "replace": "#include \"components/prefs/pref_service.h\"\n#include \"ui/base/l10n/l10n_util.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Shopping bag\",",
+  "replace": "IDS_AUX_PROFILE_ICON_SHOPPING_BAG,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Half circle\",",
+  "replace": "IDS_AUX_PROFILE_ICON_HALF_CIRCLE,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Magic wand\",",
+  "replace": "IDS_AUX_PROFILE_ICON_MAGIC_WAND,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Magic book\",",
+  "replace": "IDS_AUX_PROFILE_ICON_MAGIC_BOOK,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Headphones\",",
+  "replace": "IDS_AUX_PROFILE_ICON_HEADPHONES,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Thumbs up\",",
+  "replace": "IDS_AUX_PROFILE_ICON_THUMBS_UP,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Hourglass\",",
+  "replace": "IDS_AUX_PROFILE_ICON_HOURGLASS,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Telescope\",",
+  "replace": "IDS_AUX_PROFILE_ICON_TELESCOPE,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Suitcase\",",
+  "replace": "IDS_AUX_PROFILE_ICON_SUITCASE,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Banknote\",",
+  "replace": "IDS_AUX_PROFILE_ICON_BANKNOTE,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Bookmark\",",
+  "replace": "IDS_AUX_PROFILE_ICON_BOOKMARK,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Diamond\",",
+  "replace": "IDS_AUX_PROFILE_ICON_DIAMOND,",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Map pin\",",
+  "replace": "IDS_AUX_PROFILE_ICON_MAP_PIN,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Palette\",",
+  "replace": "IDS_AUX_PROFILE_ICON_PALETTE,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Console\",",
+  "replace": "IDS_AUX_PROFILE_ICON_CONSOLE,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Trophy\",",
+  "replace": "IDS_AUX_PROFILE_ICON_TROPHY,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Rocket\",",
+  "replace": "IDS_AUX_PROFILE_ICON_ROCKET,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Ticket\",",
+  "replace": "IDS_AUX_PROFILE_ICON_TICKET,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Camera\",",
+  "replace": "IDS_AUX_PROFILE_ICON_CAMERA,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Folder\",",
+  "replace": "IDS_AUX_PROFILE_ICON_FOLDER,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Pencil\",",
+  "replace": "IDS_AUX_PROFILE_ICON_PENCIL,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Circle\",",
+  "replace": "IDS_AUX_PROFILE_ICON_CIRCLE,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Square\",",
+  "replace": "IDS_AUX_PROFILE_ICON_SQUARE,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Flower\",",
+  "replace": "IDS_AUX_PROFILE_ICON_FLOWER,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Cursor\",",
+  "replace": "IDS_AUX_PROFILE_ICON_CURSOR,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Bubble\",",
+  "replace": "IDS_AUX_PROFILE_ICON_BUBBLE,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Cloud\",",
+  "replace": "IDS_AUX_PROFILE_ICON_CLOUD,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Heart\",",
+  "replace": "IDS_AUX_PROFILE_ICON_HEART,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Flame\",",
+  "replace": "IDS_AUX_PROFILE_ICON_FLAME,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Clock\",",
+  "replace": "IDS_AUX_PROFILE_ICON_CLOCK,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Smile\",",
+  "replace": "IDS_AUX_PROFILE_ICON_SMILE,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Slime\",",
+  "replace": "IDS_AUX_PROFILE_ICON_SLIME,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Write\",",
+  "replace": "IDS_AUX_PROFILE_ICON_WRITE,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Brush\",",
+  "replace": "IDS_AUX_PROFILE_ICON_BRUSH,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Email\",",
+  "replace": "IDS_AUX_PROFILE_ICON_EMAIL,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Chart\",",
+  "replace": "IDS_AUX_PROFILE_ICON_CHART,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Moon\",",
+  "replace": "IDS_AUX_PROFILE_ICON_MOON,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Star\",",
+  "replace": "IDS_AUX_PROFILE_ICON_STAR,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Book\",",
+  "replace": "IDS_AUX_PROFILE_ICON_BOOK,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Lock\",",
+  "replace": "IDS_AUX_PROFILE_ICON_LOCK,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Flag\",",
+  "replace": "IDS_AUX_PROFILE_ICON_FLAG,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Atom\",",
+  "replace": "IDS_AUX_PROFILE_ICON_ATOM,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Bell\",",
+  "replace": "IDS_AUX_PROFILE_ICON_BELL,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Sun\",",
+  "replace": "IDS_AUX_PROFILE_ICON_SUN,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Zap\",",
+  "replace": "IDS_AUX_PROFILE_ICON_ZAP,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Pin\",",
+  "replace": "IDS_AUX_PROFILE_ICON_PIN,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "u\"Tag\",",
+  "replace": "IDS_AUX_PROFILE_ICON_TAG,",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+  "find": "#include \"ui/gfx/vector_icon_types.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/gfx/vector_icon_types.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/tabs/common/tab_group_header_view.cc",
+  "find": "u\"Tabs controlled by Aux while it works\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_AGENT_GROUP_TOOLTIP)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+  "find": "u\"Use shared URL from another window\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_USE_SHARED_URL)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+  "find": "u\"Keep independent copy\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ORG_KEEP_INDEPENDENT_COPY)",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc",
+  "find": "u\"Syncing...\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_SYNCING)",
+  "count": 2
+ },
+ {
+  "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc",
+  "find": "#include \"ui/actions/actions.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"ui/actions/actions.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/toolbar/toolbar_action_view.cc",
+  "find": "u\"Ask Aux\"",
+  "replace": "l10n_util::GetStringUTF16(IDS_AUX_ASK_AUX)",
+  "count": 4
+ },
+ {
+  "path": "chrome/browser/ui/views/toolbar/toolbar_action_view.cc",
+  "find": "#include \"components/sessions/content/session_tab_helper.h\"\n",
+  "replace": "#include \"chrome/grit/generated_resources.h\"\n#include \"components/sessions/content/session_tab_helper.h\"\n",
+  "count": 1
+ },
+ {
+  "path": "chrome/browser/ui/views/toolbar/toolbar_action_view.cc",
+  "find": "#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "replace": "#include \"ui/base/l10n/l10n_util.h\"\n#include \"ui/base/metadata/metadata_impl_macros.h\"\n",
+  "count": 1
+ }
+]

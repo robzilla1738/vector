@@ -1,0 +1,1794 @@
+{
+ "about": "Part A decisions. ops: 'swap' replaces the Chrome/Chromium product name with Aux outside proper names; [old, new] replaces exact text. skip records why a message stays. swept_files: files an earlier Aux branding sweep changed, whose changed messages also get translations. A third element \"en\" marks an English-only grammar fix that translations do not mirror.",
+ "swept_files": [
+  "chrome/app/chromium_strings.grd",
+  "chrome/app/generated_resources.grd",
+  "chrome/app/password_manager_ui_strings.grdp",
+  "chrome/app/settings_chromium_strings.grdp",
+  "components/autofill_payments_strings.grdp",
+  "components/autofill_strings.grdp",
+  "components/components_chromium_strings.grd",
+  "components/management_strings.grdp",
+  "components/new_or_sad_tab_strings.grdp",
+  "components/page_info_strings.grdp",
+  "components/password_manager_strings.grdp",
+  "components/privacy_sandbox_strings.grd",
+  "components/reset_password_strings.grdp",
+  "components/search_engine_choice_strings.grdp",
+  "extensions/strings/extensions_chromium_strings.grdp"
+ ],
+ "messages": {
+  "IDS_CLOCK_ERROR_EXPLANATION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SSL_NONOVERRIDABLE_MORE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SSL_NONOVERRIDABLE_INVALID": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_KNOWN_INTERCEPTION_BODY2": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_CERT_ERROR_AUTHORITY_INVALID_DETAILS_V2": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_GLIC_INLINE_CUE_MENU_PREVIEW_TEXT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_APP_MANAGEMENT_INTENT_SHARING_BROWSER_OPEN": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MEDIA_ROUTER_LOCAL_DISCOVERY_PERMISSION_REJECTED_LABEL": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MEDIA_ROUTER_FEEDBACK_PRIVACY_DATA_USAGE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ABOUT_CHROME_AUTOUPDATE_ALL": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_ACCESSIBLE_IMAGE_LABELS_SUBTITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_CHROME_COLORS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_CHROME_PANELS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_SEARCH_NO_RESULTS_HELP": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_HOME_AND_WORK_ADDRESS_REMOVE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_HOME_ADDRESS_REMOVE_CONFIRMATION_DIALOG_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_WORK_ADDRESS_REMOVE_CONFIRMATION_DIALOG_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_NAME_EMAIL_ADDRESS_REMOVE_CONFIRMATION_DIALOG_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_ANTI_ABUSE_WHEN_ON_SECTION_ONE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_ANTI_ABUSE_WHEN_ON_SECTION_TWO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_PRIVACY_GUIDE_COMPLETION_CARD_AI_SETTINGS_LABEL": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_RESET_AUTOMATED_DIALOG_V2_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_RESET_AUTOMATED_DIALOG_V2_BODY": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_SEARCH_ENGINES_SITE_SEARCH_EXPLANATION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_SEARCH_ENGINES_EXTENSION_ENGINES_EXPLANATION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_SITE_SETTINGS_PDF_DOWNLOAD_PDFS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_SITE_SETTINGS_BLOCK_AUTOPLAY": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_HISTORY_SEARCH_WITH_ANSWERS_CONSIDER_DATA_ENCRYPTED": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_SYSTEM_FEATURE_NOTIFICATIONS_LABEL": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_SAFETY_HUB_SB_ON_ENHANCED_SUBHEADER": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_CAPTIONS_MANAGE_LANGUAGES_SUBTITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_CAPTIONS_MANAGE_LANGUAGES_SUBTITLE_LIVE_CAPTION_ONLY": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_ENABLE_LOGGING_PREF": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SETTINGS_CERTIFICATE_MANAGER_V2_DELETE_SERVER_CERT_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SUPPORT_TOOL_CHROME_SYSTEM_INFO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_EXTENSIONS_ZERO_STATE_CHIPS_IPH_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_EXTENSIONS_ZERO_STATE_CHIPS_WITH_LINK_IPH_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_EXTENSIONS_ZERO_STATE_PLAIN_LINK_IPH_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PASSWORD_MANAGER_UI_MANAGE_PASSKEYS_FROM_PROFILE_LABEL": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_DOWNLOAD_BUBBLE_ESB_PROMO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_DOWNLOAD_LOCAL_DECRYPTION_PROMPT_ALERT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NOTIFICATIONS_QUIET_PERMISSION_BUBBLE_PREDICTION_SERVICE_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_GEOLOCATION_QUIET_PERMISSION_BUBBLE_PREDICTION_SERVICE_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_DEV_TOOLS_CONNECTION_DIALOG_MESSAGE_PART_1": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_UTILITY_PROCESS_FILE_UTILITY_NAME": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SERVICE_PROCESS_DOCUMENT_ANALYSIS_NAME": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_EXTENSION_EXTERNAL_INSTALL_ALERT_BUBBLE_HEADING_APP": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_EXTENSION_EXTERNAL_INSTALL_ALERT_BUBBLE_HEADING_EXTENSION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_EXTENSION_EXTERNAL_INSTALL_ALERT_BUBBLE_HEADING_THEME": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_APP_HOME_REMOVE_APP": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_BAD_FLAGS_FROM_FILE_WARNING_MESSAGE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NTP_CUSTOMIZE_NO_BACKGROUND_LABEL": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NTP_CUSTOMIZE_CHROME_RESET_TO_CLASSIC_CHROME_COMPLETE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NTP_MODULES_SETUP_LIST_INFO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NTP_MODULES_DRIVE_INFO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NTP_MODULES_MICROSOFT_FILES_INFO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NTP_MODULES_GOOGLE_CALENDAR_INFO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NTP_MODULES_OUTLOOK_CALENDAR_INFO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NTP_MODULES_HISTORY_CLUSTERS_INFO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NTP_MODULES_HISTORY_CLUSTERS_WITH_DISCOUNT_INFO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NTP_MODULES_TAB_RESUMPTION_INFO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NTP_MODULES_TAB_GROUPS_INFO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SHOW_CUSTOMIZE_CHROME_SIDE_PANEL": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_INTENT_PICKER_BUBBLE_VIEW_STAY_IN_CHROME": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_CHROME_TIP": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_EXTENSIONS_ZERO_STATE_PROMO_CUSTOM_ACTION_IPH_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_UPDATED_CONNECTION_SECURITY_INDICATORS_PROMO": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_TUTORIAL_CUSTOMIZE_CHROME_START_TUTORIAL_IPH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_TUTORIAL_CUSTOMIZE_CHROME_OPEN_SIDE_PANEL": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_TUTORIAL_CUSTOMIZE_CHROME_SUCCESS_BODY": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NEAR_OOM_REDUCTION_MESSAGE_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ZOOMLEVELS_CHROME_ERROR_PAGES_LABEL": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_APP_MENU_BUTTON_UPDATE_ALT3": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MEDIA_TAB_CAPTURE_NOTIFICATION_TEXT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MEDIA_TAB_CAPTURE_WITH_AUDIO_NOTIFICATION_TEXT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_EXTENSIONS_BLOCKLISTED_POTENTIALLY_UNWANTED": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_TRIGGERED_RESET_PROFILE_SETTINGS_EXPLANATION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_JAVASCRIPT_UNSUPPORTED_ERROR_APPLESCRIPT_MAC": {
+   "ops": [
+    [
+     "https://support.google.com/chrome/?p=applescript",
+     "https://app.getaux.co/docs"
+    ]
+   ]
+  },
+  "IDS_CONTROLLED_BY_AUTOMATION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_WEBAUTHN_YOUR_CHROME_PROFILE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_WEBAUTHN_BLUETOOTH_PERMISSION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_WEBAUTHN_SOURCE_CHROME_PROFILE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MULTISTEP_FILTER_IPH_BODY": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MULTISTEP_FILTER_IPH_BODY_SCREENREADER": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_NON_MILESTONE_UPDATE_TOAST_BODY": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_IWA_INSTALLER_VERIFICATION_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_IWA_INSTALLER_VERIFICATION_ERROR_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PDF_SEARCHIFY_IPH_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_CHROME_NO_LONGER_SHOW_WARNINGS_NOTIFICATION_BODY": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_TIPS_NOTIFICATIONS_HELPFUL_BUTTON_TEXT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_TIPS_NOTIFICATIONS_ENHANCED_SAFE_BROWSING_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_TIPS_NOTIFICATIONS_SIGNIN_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_TIPS_NOTIFICATIONS_RECENT_TABS_SUBTITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_UPDATER_HELP_CENTER_TOOLTIP": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_UPDATER_VIEW_ALL_CHROME_POLICIES": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_CHROME_FINDS_NOTIFICATIONS_HELPFUL_BUTTON_TEXT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_AUTOFILL_CHROME_LOGO_ACCESSIBLE_NAME": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_AUTOFILL_MANDATORY_REAUTH_CONFIRMATION_EXPLANATION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_AUTOFILL_CHURNED_USERS_CONFIRMATION_BUBBLE_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_AUTOFILL_REMOVE_HOME_PROFILE_SUGGESTION_CONFIRMATION_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_AUTOFILL_REMOVE_WORK_PROFILE_SUGGESTION_CONFIRMATION_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_AUTOFILL_REMOVE_ACCOUNT_NAME_AND_EMAIL_PROFILE_SUGGESTION_CONFIRMATION_TITLE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_AUTOFILL_REMOVE_VERIFIED_EMAIL_BODY": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ENTERPRISE_CONTENT_ANALYSIS_COPY_KEPT_IN_MANAGED_CHROME_MESSAGE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_HEAVY_AD_INTERVENTION_SUMMARY": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MANAGEMENT_EXTENSION_REPORT_USERNAME": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MANAGEMENT_EXTENSION_TELEMETRY_VISIBLE_DATA": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MANAGEMENT_ENTERPRISE_REPORTING_VISIBLE_DATA": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_CLEAR_BROWSING_DATA_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_CLEAR_BROWSING_DATA_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_CLEAR_BROWSING_DATA": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_MANAGE_PASSWORDS_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_PASSWORDS_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_PASSWORDS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_UPDATE_CREDIT_CARD_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_UPDATE_CREDIT_CARD_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_UPDATE_CREDIT_CARD": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_UPDATE_CHROME_HINT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_UPDATE_CHROME_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_UPDATE_CHROME_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_UPDATE_CHROME": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_RUN_CHROME_SAFETY_CHECK_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_RUN_CHROME_SAFETY_CHECK_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_RUN_CHROME_SAFETY_CHECK": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_RUN_CHROME_SAFETY_CHECK_V2_HINT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_RUN_CHROME_SAFETY_CHECK_V2_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_RUN_CHROME_SAFETY_CHECK_V2_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_RUN_CHROME_SAFETY_CHECK_V2": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_MANAGE_SECURITY_SETTINGS_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_SECURITY_SETTINGS_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_SECURITY_SETTINGS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_MANAGE_COOKIES_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_COOKIES_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_COOKIES": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_MANAGE_ADDRESSES_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_ADDRESSES_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_ADDRESSES": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_MANAGE_SITE_SETTINGS_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_SITE_SETTINGS_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_SITE_SETTINGS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_SEE_CHROME_TIPS_HINT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_SEE_CHROME_TIPS_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_SEE_CHROME_TIPS_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_SEE_CHROME_TIPS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_PLAY_CHROME_DINO_GAME_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_PLAY_CHROME_DINO_GAME_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_MANAGE_CHROME_SETTINGS_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_CHROME_SETTINGS_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_CHROME_SETTINGS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_MANAGE_CHROME_DOWNLOADS_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_CHROME_DOWNLOADS_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_CHROME_DOWNLOADS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_VIEW_CHROME_HISTORY_HINT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_VIEW_CHROME_HISTORY_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_VIEW_CHROME_HISTORY_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_VIEW_CHROME_HISTORY": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_MANAGE_CHROME_ACCESSIBILITY_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_CHROME_ACCESSIBILITY_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_CHROME_ACCESSIBILITY": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_CUSTOMIZE_CHROME_FONTS_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_CUSTOMIZE_CHROME_FONTS_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_CUSTOMIZE_CHROME_FONTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_MANAGE_CHROME_THEMES_HINT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_MANAGE_CHROME_THEMES": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_SET_CHROME_AS_DEFAULT_BROWSER_HINT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_PEDAL_SET_CHROME_AS_DEFAULT_BROWSER_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_SET_CHROME_AS_DEFAULT_BROWSER_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_SET_CHROME_AS_DEFAULT_BROWSER": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_OMNIBOX_ACTION_HISTORY_CLUSTERS_SEARCH_SUGGESTION_CONTENTS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_ACTION_HISTORY_CLUSTERS_SEARCH_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_ACTION_HISTORY_CLUSTERS_SEARCH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_CHROME_TIP": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_DISMISS_CHROME_TIP_SUFFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_DISMISS_CHROME_TIP_FOCUSED_PREFIX": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_DISMISS_CHROME_TIP_BUTTON": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ACC_OMNIBOX_IPH_LINK_SELECTED": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PAGE_INFO_SUSPICIOUS_SITE_DETAILS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PAGE_INFO_READER_MODE_PAGE_SECURE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PAGE_INFO_READER_MODE_PAGE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PAGE_INFO_CAMERA_SYSTEM_SETTINGS_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PAGE_INFO_MICROPHONE_SYSTEM_SETTINGS_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PAGE_INFO_LOCATION_SYSTEM_SETTINGS_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PAGE_INFO_CLIPBOARD_SYSTEM_SETTINGS_DESCRIPTION": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PASSWORD_MANAGER_DEFAULT_EXPORT_FILENAME": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PASSWORD_MANAGER_PASSKEY_FROM_CHROME_PROFILE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PAYMENTS_CARD_AND_ADDRESS_SETTINGS_SIGNED_OUT": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_POLICY_IGNORED_CHROME_PROFILE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_POLICY_COMMAND_LINE_FLAGS_WARNING": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_RESET_PASSWORD_WARNING_EXPLANATION_PARAGRAPH_V2": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_RESET_PASSWORD_LEARN_MORE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MITM_SOFTWARE_HEADING": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MALWARE_V3_PRIMARY_PARAGRAPH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_MALWARE_V3_EXPLANATION_PARAGRAPH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_SAFE_BROWSING_ENHANCED_PROTECTION_MESSAGE": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_HARMFUL_V3_PRIMARY_PARAGRAPH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_HARMFUL_V3_EXPLANATION_PARAGRAPH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PHISHING_V4_PRIMARY_PARAGRAPH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PHISHING_V4_EXPLANATION_PARAGRAPH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_CONNECTION_HELP_CONNECTION_NOT_PRIVATE_DETAILS": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_HTTPS_ONLY_MODE_WITH_SITE_ENGAGEMENT_PRIMARY_PARAGRAPH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_HTTPS_ONLY_MODE_FOR_TYPICALLY_SECURE_BROWSING_PRIMARY_PARAGRAPH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ABH_PROMPT_SITE_ENGAGEMENT_PRIMARY_PARAGRAPH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_ABH_PROMPT_TYPICALLY_SECURE_BROWSING_PRIMARY_PARAGRAPH": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_EXTENSION_INSTALL_PROCESS_CRASHED": {
+   "ops": [
+    "swap"
+   ]
+  },
+  "IDS_PDF_GLIC_SUMMARIZE_IPH_TEXT": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_PDF_GLIC_SUMMARIZE_IPH_TEXT_NEW": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_PDF_GLIC_SUMMARIZE_IPH_TEXT_NEW_SCREENREADER": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_FEATURE_SHOWCASE_GEMINI_TITLE": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SKILL_SAVED_TOAST_BUTTON": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_PROMO_TITLE": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_TAB_STRIP_BUTTON_TOOLTIP": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_TAB_STRIP_BUTTON_TOOLTIP_CLOSE": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_THREE_DOT_MENU_ITEM": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_STATUS_ICON_TOOLTIP": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_STATUS_ICON_TOOLTIP_CLOSE": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_STATUS_ICON_TOOLTIP_TOGGLE": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_STATUS_ICON_MENU_SHOW": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_STATUS_ICON_MENU_CLOSE": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_STATUS_ICON_MENU_TOGGLE": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_INELIGIBLE_PROFILE_NOTICE": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SETTINGS_GLIC_PAGE_TITLE": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SETTINGS_GLIC_SECTION_TITLE": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SETTINGS_GLIC_ROW_LABEL": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SETTINGS_GLIC_BUTTON_TOGGLE_SUBLABEL": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SETTINGS_GLIC_OS_WIDGET_TOGGLE": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SETTINGS_GLIC_OS_WIDGET_TOGGLE_SHORTCUT_EXCLUDED": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SETTINGS_GLIC_OS_WIDGET_TOGGLE_SUBLABEL": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SETTINGS_GLIC_KEYBOARD_SHORTCUT_SUBLABEL": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SETTINGS_GLIC_NAVIGATION_SHORTCUT_SUBLABEL": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SETTINGS_GLIC_KEEP_SIDEPANEL_OPEN_ON_NEW_TABS_SUBLABEL": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_SETTINGS_GLIC_SELECTION_SHORTCUT_SUBLABEL": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_GLIC_CONTEXTUAL_CUEING_ANNOUNCEMENT": {
+   "ops": [
+    [
+     "Gemini in Aux",
+     "Gemini"
+    ]
+   ]
+  },
+  "IDS_PASSWORD_MANAGER_UI_PASSKEY_HIDDEN_INFO_LABEL": {
+   "ops": [
+    [
+     "https://support.google.com/chrome/?p=passkeys",
+     "https://app.getaux.co/docs"
+    ]
+   ]
+  },
+  "IDS_MANAGEMENT_PROFILE_REPORTING_LEARN_MORE": {
+   "ops": [
+    [
+     "https://support.google.com/chrome/a/?p=browser_profile_details",
+     "https://app.getaux.co/docs"
+    ]
+   ]
+  },
+  "IDS_APP_MANAGEMENT_INTENT_SHARING_TAB_EXPLANATION": {
+   "ops": [
+    [
+     "https://support.google.com/chromebook?p=app_intent",
+     "https://app.getaux.co/docs"
+    ]
+   ]
+  },
+  "IDS_ACCESS_CODE_CAST_ERROR_PROFILE_SYNC": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_PROFILES_DASHER_FEATURE_DISABLED_TITLE": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COMPOSEBOX_DRIVE_CONTEXT_MENU_OPTION_SIGNIN_PROMO_TITLE": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_SETTINGS_ENCRYPT_WITH_SYNC_PASSPHRASE_LABEL": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_SETTINGS_PASSWORD_CHANGE_SUBLABEL": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_SETTINGS_PEOPLE_SIGN_IN_PROMPT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_SYNC_UNAVAILABLE_FOR_NON_GOOGLE_ACCOUNT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_PASSWORD_MANAGER_UI_SHARE_PASSWORD_ERROR_DESCRIPTION": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_PASSWORD_MANAGER_UI_SHARE_PASSWORD_MEMBER_UNAVAILABLE": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_PASSWORD_MANAGER_UI_WEB_PROMO_CARD_DESCRIPTION": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_TAILORED_SECURITY_UNCONSENTED_MESSAGE_TITLE": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_PASSWORDS_SAVE_PRIMING_PROMO_BODY_NOT_SIGNED_IN": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_PASSWORDS_SAVE_PRIMING_PROMO_SCREENREADER": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_CLEAR_BROWSING_DATA_HISTORY_NOTICE": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_CLEAR_BROWSING_DATA_HISTORY_NOTICE_TITLE": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_TAB_GROUP_DELETION_DIALOG_MISSING_EMAIL": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_DATA_SHARING_NEED_SIGN_IN_AND_SYNC_HISTORY_BODY": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_DATA_SHARING_ORGANIZATION_DISALLOW_SIGN_IN_BODY": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_DATA_SHARING_SIGNED_OUT_BODY": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_TOOLBAR_BUTTON_SEND_TAB_TO_SELF_BUTTON_HINT_TEXT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_SEND_TAB_TO_SELF_SIGN_IN_PROMO_LABEL": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_SEND_TAB_TO_SELF_NO_TARGET_DEVICE_LABEL": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_TUTORIAL_SEND_TAB_TO_SELF_SUCCESS_BODY": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_TAILORED_SECURITY_ENABLED_DIALOG_MAIN_TEXT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_TAILORED_SECURITY_DISABLED_DIALOG_MAIN_TEXT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_TAILORED_SECURITY_DIALOG_SETTINGS_BUTTON": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_TAILORED_SECURITY_UNCONSENTED_MODAL_TITLE": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_TAILORED_SECURITY_UNCONSENTED_MODAL_BODY": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_TAILORED_SECURITY_CONSENTED_ENABLE_MESSAGE_DESCRIPTION": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_SAVE_CARD_PROMPT_UPLOAD_EXPLANATION_TOOLTIP": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_SAVE_CARD_PROMPT_UPLOAD_EXPLANATION_AND_CARDHOLDER_NAME_TOOLTIP": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_SAVE_CARD_CONFIRMATION_FAILURE_DESCRIPTION_TEXT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_SAVE_CARD_TO_WALLET_CONFIRMATION_FAILURE_DESCRIPTION_TEXT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_SAVE_IBAN_CONFIRMATION_FAILURE_DESCRIPTION_TEXT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_SAVE_IBAN_TO_WALLET_CONFIRMATION_FAILURE_DESCRIPTION_TEXT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_SAVE_IBAN_CONFIRMATION_FAILURE_HIT_MAX_STRIKE_DESCRIPTION_TEXT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_SAVE_IBAN_TO_WALLET_CONFIRMATION_FAILURE_HIT_MAX_STRIKE_DESCRIPTION_TEXT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_ADDRESS_HOME_AND_WORK_RECORD_TYPE_NOTICE": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_GMAIL_OTP_FILLING_TOGGLE_DESCRIPTION": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_WALLET_REMINDER_NOTICE_TITLE": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_SYNCABLE_PROFILE_MIGRATION_PROMPT_NOTICE": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_AUTOFILL_AI_LOCAL_SAVE_NOTIFICATION_DESCRIPTION": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_DEL_GOOGLE_COOKIES_SIGNOUT_LINK": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_PAYMENTS_CARD_AND_ADDRESS_SETTINGS_SIGNED_IN": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_SEND_TAB_TO_SELF_POST_SEND_SUCCESS_TOAST": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_SEND_TAB_TO_SELF_POST_SEND_SUCCESS_TOAST_ANDROID": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_SEND_TAB_TO_SELF_POST_SEND_SUCCESS_TOAST_NO_EMAIL_ANDROID": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_SEND_TAB_TO_SELF_POST_SEND_THROTTLED_TOAST": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_SEND_TAB_TO_SELF_POST_SEND_THROTTLED_TOAST_ANDROID": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COLLABORATION_SIGNIN_DESCRIPTION": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COLLABORATION_SIGNIN_BOTTOM_SHEET_TITLE": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COLLABORATION_CHROME_OUT_OF_DATE_ERROR_DIALOG_HEADER": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COLLABORATION_SHARE_BUTTON_CHROME_OUT_OF_DATE_ERROR_DIALOG_BODY": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COLLABORATION_JOIN_BUTTON_CHROME_OUT_OF_DATE_ERROR_DIALOG_BODY": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COLLABORATION_CHROME_OUT_OF_DATE_ERROR_DIALOG_UPDATE_BUTTON": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COLLABORATION_CHROME_OUT_OF_DATE_ERROR_DIALOG_CONTINUE_BODY": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COLLABORATION_SIGNED_OUT_BODY": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COLLABORATION_ENTREPRISE_SIGNIN_DISABLED_BODY": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COLLABORATION_ENTREPRISE_SIGNIN_DISABLED_SYNC_HISTORY_BODY": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_COLLABORATION_SHARED_TAB_GROUPS_PANEL_OUT_OF_DATE_MESSAGE_CELL_TEXT": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_PASSWORD_MANAGER_RELAUNCH_CHROME_BUBBLE_DESCRIPTION_BRANDED": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_PASSWORD_MANAGER_RELAUNCH_CHROME_BUBBLE_ACCEPT_BUTTON_BRANDED": {
+   "skip": "Google sign-in and sync are turned off in Aux (Phase 1A); the message only shows for a signed-in Google account or sync"
+  },
+  "IDS_ACTOR_NOTIFICATION_BUTTON_GO_TO_CHROME": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_ACTOR_EXPERIMENTAL_TRIGGERING_NOTIFICATION_BODY": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_ACTOR_EXPERIMENTAL_TRIGGERING_NOTIFICATION_BODY_FALLBACK": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_ACTOR_NOTIFICATION_BODY_COMPLETE": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_PEEK_STATE_CLOSE_BUTTON_DESCRIPTION": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_PEEK_STATE_ACCESSIBLE_LABEL": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_GLIC_INELIGIBLE_ACCOUNT_NOTICE_HEADER": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_GLIC_EXPERIMENTAL_OPT_IN_TITLE": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_SUB_LABEL": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_SUB_LABEL_V2": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_WHEN_ON_1": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_CONSIDER_2": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_GLIC_PERMISSIONS_CHROME_WEB_ACTUATION_TOGGLE": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_GLIC_PERMISSIONS_CHROME_WEB_ACTUATION_TOGGLE_SUBLABEL": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_GLIC_PERMISSIONS_CHROME_WEB_ACTUATION_TOGGLE_SUBLABEL_V2": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_GLIC_PERMISSIONS_CHROME_WEB_ACTUATION_TOGGLE_LEARN_MORE_ARIA_LABEL": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_GLIC_SETTING_LABEL": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_GLIC_TRYIT_BODY": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_GLIC_SHORTCUT_IPH_TEXT": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_EDUCATIONAL_TIP_GLIC_TITLE": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_EDUCATIONAL_TIP_GLIC_DESCRIPTION": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_GLIC_LOCATION_MISMATCH_NOTICE_HEADER": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_GLIC_LOCATION_MISMATCH_NOTICE": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SKILLS_SIDEBAR_FOOTER_BRANDING": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SKILLS_ERROR_PAGE_DESCRIPTION": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SKILLS_DISABLED_ERROR_PAGE_DESCRIPTION": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SKILLS_SIGN_IN_TO_CHROME": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_AI_PAGE_TITLE": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_AI_PAGE_MAIN_SUBLABEL_3": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_AI_PAGE_MAIN_TITLE": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_AUTOFILL_AT_MEMORY_SEARCH_AFFORDANCE_TITLE": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_AUTOFILL_AT_MEMORY_UNSUPPORTED_QUERY_DESCRIPTION": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_WHEN_USED_1": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_HISTORY_EMBEDDINGS_ANSWERS_PROMO_BODY": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_COMPARE_HISTORY_INFO": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_HISTORY_CRITICAL_ACTION_APP_MENU_IPH_BODY": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_OMNIBOX_TRACK_PRICE_DIALOG_TITLE_FIRST_RUN": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_STS_IPH_PROMPT_FIRST_TIME_ADDING_CONTEXT_MESSAGE_BODY": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_STS_SETTINGS_OPTION_1_CHOOSE_HOW_RELEVANT_OPEN_TABS_CAN_BE_USED_V3": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_STS_IPH_TRY_IT_BODY": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_STS_IPH_DEFAULT_ON_BODY": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_CONTEXTUAL_CUEING_SETTINGS_WHEN_ON_2": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_CONTEXTUAL_CUEING_SETTINGS_CONSIDER_1_PRIVATE": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_CONTEXTUAL_CUEING_SETTINGS_CONSIDER_1_NON_PRIVATE": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_CONTEXTUAL_CUEING_SETTINGS_CONSIDER_2": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SAVE_TO_DRIVE_FOLDER_NAME": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_SAFE_BROWSING_HATS_CUSTOM_INVITATION": {
+   "skip": "Gemini, Glic, actor and contextual-task features are off in Aux (Phase 1A feature defaults); the text accurately names Google's Chrome feature and is unreachable"
+  },
+  "IDS_NTP_MOBILE_PROMO_HEADER": {
+   "skip": "iOS promos are turned off in Aux (Phase 1A) and there is no Aux iOS app, so no truthful Aux wording exists; iOS-only pedals do not run on macOS"
+  },
+  "IDS_NTP_MOBILE_PROMO_DESCRIPTION": {
+   "skip": "iOS promos are turned off in Aux (Phase 1A) and there is no Aux iOS app, so no truthful Aux wording exists; iOS-only pedals do not run on macOS"
+  },
+  "IDS_IOS_DESKTOP_ADDRESS_PROMO_BUBBLE_FOOTER_DESCRIPTION_QR": {
+   "skip": "iOS promos are turned off in Aux (Phase 1A) and there is no Aux iOS app, so no truthful Aux wording exists; iOS-only pedals do not run on macOS"
+  },
+  "IDS_IOS_DESKTOP_PAYMENT_PROMO_BUBBLE_FOOTER_DESCRIPTION_QR": {
+   "skip": "iOS promos are turned off in Aux (Phase 1A) and there is no Aux iOS app, so no truthful Aux wording exists; iOS-only pedals do not run on macOS"
+  },
+  "IDS_IOS_OMNIBOX_PEDAL_SET_CHROME_AS_DEFAULT_BROWSER_HINT": {
+   "skip": "iOS promos are turned off in Aux (Phase 1A) and there is no Aux iOS app, so no truthful Aux wording exists; iOS-only pedals do not run on macOS"
+  },
+  "IDS_IOS_OMNIBOX_PEDAL_SET_CHROME_AS_DEFAULT_BROWSER_SUGGESTION_CONTENTS": {
+   "skip": "iOS promos are turned off in Aux (Phase 1A) and there is no Aux iOS app, so no truthful Aux wording exists; iOS-only pedals do not run on macOS"
+  },
+  "IDS_IOS_ACC_OMNIBOX_PEDAL_SET_CHROME_AS_DEFAULT_BROWSER_SUFFIX": {
+   "skip": "iOS promos are turned off in Aux (Phase 1A) and there is no Aux iOS app, so no truthful Aux wording exists; iOS-only pedals do not run on macOS"
+  },
+  "IDS_IOS_ACC_OMNIBOX_PEDAL_SET_CHROME_AS_DEFAULT_BROWSER": {
+   "skip": "iOS promos are turned off in Aux (Phase 1A) and there is no Aux iOS app, so no truthful Aux wording exists; iOS-only pedals do not run on macOS"
+  },
+  "IDS_IOS_OMNIBOX_PEDAL_RUN_CHROME_SAFETY_CHECK_HINT": {
+   "skip": "iOS promos are turned off in Aux (Phase 1A) and there is no Aux iOS app, so no truthful Aux wording exists; iOS-only pedals do not run on macOS"
+  },
+  "IDS_IOS_OMNIBOX_PEDAL_VIEW_CHROME_HISTORY_HINT": {
+   "skip": "iOS promos are turned off in Aux (Phase 1A) and there is no Aux iOS app, so no truthful Aux wording exists; iOS-only pedals do not run on macOS"
+  },
+  "IDS_IOS_OMNIBOX_PEDAL_PLAY_CHROME_DINO_GAME_HINT": {
+   "skip": "iOS promos are turned off in Aux (Phase 1A) and there is no Aux iOS app, so no truthful Aux wording exists; iOS-only pedals do not run on macOS"
+  },
+  "IDS_QUIT_WITH_APPS_QUIT_LABEL": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_QUIT_WITH_APPS_EXPLANATION": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_ABOUT_VERSION_COMPANY_NAME": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_ABOUT_VERSION_COPYRIGHT": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_SETTINGS_CERTIFICATE_MANAGER_V2_CRS_CERTIFICATES_DESCRIPTION": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_SUPPORT_TOOL_CHROMEOS_CHROME_USER_LOGS": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_EXTENSIONS_APPS_TITLE": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_EXTENSIONS_MODERN_WEB_GUIDANCE_PROMO": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_CHROMELABS": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_CHROME_ENTERPRISE_RELEASE_NOTES": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_WEB_APP_INSTALL_CHROME_APPS_LOCATION": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_FORCE_INSTALLED_DEPRECATED_APPS_CONTENT": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_FORCE_INSTALLED_PREINSTALLED_DEPRECATED_APPS_CONTENT": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_DEPRECATED_APPS_MONITOR_RENDERER": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_DEPRECATED_APPS_LEARN_MORE_AX_LABEL": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_CHROME_FOR_TESTING_DISCLAIMER": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_DOWNLOAD_CHROME": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_MANAGEMENT_THREAT_PROTECTION_MORE": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_MANAGEMENT_THREAT_PROTECTION": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_MANAGEMENT_THREAT_PROTECTION_DESCRIPTION": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_MANAGEMENT_THREAT_PROTECTION_DESCRIPTION_BY": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_MANAGEMENT_BANNER_PROMOTION_DESC": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_MANAGEMENT_BANNER_PROMOTION_BTN": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_POLICY_CLOUD_MANAGEMENT_ENROLLMENT_ONLY_ERROR": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_POLICY_OFF_CWS_URL_ERROR": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_POLICY_BANNER_PROMOTION_DESC": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_POLICY_BANNER_PROMOTION_BTN": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_OMNIBOX_PEDAL_PLAY_CHROME_DINO_GAME_HINT": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_ACC_OMNIBOX_PEDAL_PLAY_CHROME_DINO_GAME": {
+   "skip": "Proper name of a Google product, program or legal entity (Chrome Apps, Chrome Labs, Chrome Enterprise, Chrome Root Program, Chrome for Testing, Chrome Dino, Chrome Web Store, ChromeOS, The Chromium Authors)"
+  },
+  "IDS_TOS_NOTIFICATION_TITLE": {
+   "skip": "Google-only service or legal notice (Family Link, Google Admin console, Chrome's Terms of Service and its EULA link, Google Workspace verification); kept intact"
+  },
+  "IDS_TOS_NOTIFICATION_LINK": {
+   "skip": "Google-only service or legal notice (Family Link, Google Admin console, Chrome's Terms of Service and its EULA link, Google Workspace verification); kept intact"
+  },
+  "IDS_SKIP_PARENT_PERMISSION_EXTENSION_INFORMATION": {
+   "skip": "Google-only service or legal notice (Family Link, Google Admin console, Chrome's Terms of Service and its EULA link, Google Workspace verification); kept intact"
+  },
+  "IDS_APP_PAUSE_HEADING_FOR_WEB_APPS": {
+   "skip": "Google-only service or legal notice (Family Link, Google Admin console, Chrome's Terms of Service and its EULA link, Google Workspace verification); kept intact"
+  },
+  "IDS_POLICY_STATUS_FLEX_ORG_NO_POLICY": {
+   "skip": "Google-only service or legal notice (Family Link, Google Admin console, Chrome's Terms of Service and its EULA link, Google Workspace verification); kept intact"
+  },
+  "IDS_POLICY_IGNORED_UNAFFILIATED": {
+   "skip": "Google-only service or legal notice (Family Link, Google Admin console, Chrome's Terms of Service and its EULA link, Google Workspace verification); kept intact"
+  },
+  "IDS_RELAUNCH_RECOMMENDED_TITLE": {
+   "ops": [
+    [
+     "A Aux update",
+     "An Aux update",
+     "en"
+    ]
+   ]
+  },
+  "IDS_DESKTOP_MEDIA_PICKER_TITLE_WEB_CONTENTS_ONLY": {
+   "ops": [
+    [
+     "Share a Aux tab",
+     "Share an Aux tab",
+     "en"
+    ]
+   ]
+  },
+  "IDS_PROFILE_PICKER_PROFILE_SWITCH_SUBTITLE": {
+   "ops": [
+    [
+     "A Aux profile",
+     "An Aux profile",
+     "en"
+    ]
+   ]
+  },
+  "IDS_PROFILE_PICKER_MAIN_VIEW_TITLE_GLIC": {
+   "ops": [
+    [
+     "Choose a Aux profile",
+     "Choose an Aux profile",
+     "en"
+    ]
+   ]
+  }
+ }
+}
