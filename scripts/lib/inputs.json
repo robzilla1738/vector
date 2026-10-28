@@ -1,0 +1,52 @@
+{
+ "_comment": "Ignored inputs under out/ that tests and tools read. Paths are relative to the repository root. A missing input fails the test that needs it; restore out/ from the backup in docs/backup/2026-10-27.md. env names variables that may point elsewhere.",
+ "frozenSnapshot": {
+  "path": "out/provided-source-snapshot-1.26.1016.1852",
+  "backup": "aux-backup-2026-10-27.dmg: provided-source-snapshot-1.26.1016.1852"
+ },
+ "frozenDaemonCode": {
+  "path": "out/live-inputs/frozen-sources/aside-daemon-1.26.1016.1852.mjs",
+  "env": ["AUX_PINNED_DAEMON_SOURCE", "AUX_PROVIDED_DAEMON_CODE"],
+  "backup": "derived: scripts/lib/frozen-daemon-code.mjs extracts it from frozenSnapshot (also in the backup's live-inputs)"
+ },
+ "sourceAuditDaemon": {
+  "path": "out/provided-source-audit/daemon-original.mjs",
+  "env": ["AUX_PINNED_DAEMON_SOURCE"],
+  "backup": "derived: same bytes as frozenDaemonCode (SHA-256 5e35dfa1…)"
+ },
+ "sourceAuditCli": {
+  "path": "out/provided-source-audit/cli-original.mjs",
+  "backup": "derived: the SEA code of frozenSnapshot/cli/Contents/MacOS/aside"
+ },
+ "frozenCliBinary": {
+  "path": "out/provided-source-snapshot-1.26.1016.1852/cli/Contents/MacOS/aside",
+  "env": ["AUX_PROVIDED_CLI_BINARY"],
+  "backup": "part of frozenSnapshot"
+ },
+ "frozenNativeAddon": {
+  "path": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node",
+  "env": ["AUX_PINNED_NATIVE_ADDON"],
+  "backup": "part of frozenSnapshot"
+ },
+ "frozenAgentAssets": {
+  "path": "out/provided-source-snapshot-1.26.1016.1852/agent/assets",
+  "env": ["AUX_PROVIDED_AGENT_ASSETS"],
+  "backup": "part of frozenSnapshot"
+ },
+ "frozenRuntime": {
+  "path": "out/provided-source-snapshot-1.26.1016.1852/runtime",
+  "backup": "part of frozenSnapshot"
+ },
+ "frozenMemoryCatalog": {
+  "path": "out/provided-source-snapshot-1.26.1016.1852/memory/memory-catalog.json",
+  "backup": "part of frozenSnapshot"
+ },
+ "frozenComputerUse": {
+  "path": "out/provided-source-snapshot-1.26.1016.1852/computer-use",
+  "backup": "part of frozenSnapshot"
+ },
+ "candidateApp": {
+  "path": "out/provided-candidate-completion-20261026-a1/Aux.app",
+  "backup": "aux-backup-2026-10-27.dmg: candidate-current (seal e681affc; later seals are rebuilt by replaying the repair chain, see docs/source/rebuild.md)"
+ }
+}

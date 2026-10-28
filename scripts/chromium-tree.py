@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 """Export the Aux Chromium tree as a reproducible delta, or apply/verify it.
 
-export  <src> <dest>   write base.json, aux.patch (tracked changes), added.tar.gz
+export  <src> <dest> [--new-base]
+                       write base.json, aux.patch (tracked changes), added.tar.gz
                        (untracked additions) and manifest.json (sha256 of every
                        changed path). Reads the checkout only; never touches its index.
+                       --new-base takes the checkout's HEAD as the base (after a rebase,
+                       see scripts/chromium-rebase.py) instead of requiring the pinned one.
 verify  <src> <dest>   replay aux.patch onto the base commit in a temporary index and
                        check every resulting blob, plus the archive, against the manifest.
-apply   <src> <dest>   apply onto a clean checkout of the base commit, then verify.
+apply   <src> <dest>   apply onto a clean checkout of the manifest's base commit, then verify.
 """
 import gzip, hashlib, json, os, subprocess, sys, tarfile, tempfile
 from pathlib import Path
 
 BASE = '0e66b94549a8bd85f03fbdf189b752d6e7b63c32'  # Chromium 155.0.8059.85
+VERSION = '155.0.8059.85'
 # third_party/aux_sparkle is a pinned upstream download (scripts/release/fetch-sparkle.sh), not Aux source.
 SKIP = ('__pycache__/', '.pyc', '.DS_Store', 'third_party/aux_sparkle/')
+REPO = Path(__file__).resolve().parent.parent
+# The only absolute links in the tree reach the frozen snapshot in this repo's out/
+# (aux_native_pdf_bridge/node_headers). They are re-rooted here on apply.
+SNAPSHOT = '/out/provided-source-snapshot-'
 
 
 def git(src, *args, env=None, data=None):
@@ -49,9 +57,38 @@ def changes(src):
     return sorted(tracked), sorted(added), sorted(deleted)
 
 
-def export(src, dest):
-    if git(src, 'rev-parse', 'HEAD').decode().strip() != BASE:
-        raise SystemExit('Checkout HEAD is not the pinned base')
+def link_target(member):
+    head, marker, tail = member.linkname.partition(SNAPSHOT)
+    if not marker:
+        raise SystemExit(f'Archive link leaves the checkout: {member.name} -> {member.linkname}')
+    return str(REPO) + marker + tail
+
+
+def version(src):
+    """Chromium version of a checkout, from chrome/VERSION."""
+    path = src/'chrome/VERSION'
+    if not path.is_file():
+        return VERSION
+    fields = dict(line.split('=', 1) for line in path.read_text().split())
+    return '.'.join(fields[key] for key in ('MAJOR', 'MINOR', 'BUILD', 'PATCH'))
+
+
+def extract(archive_path, src, skip=frozenset()):
+    """Extract added.tar.gz safely; absolute snapshot links point at this repo's out/."""
+    with tarfile.open(archive_path) as archive:
+        members = [m for m in archive.getmembers() if m.name not in skip]
+        external = [m for m in members if m.issym() and os.path.isabs(m.linkname)]
+        targets = {m.name: link_target(m) for m in external}
+        archive.extractall(src, members=[m for m in members if m.name not in targets], filter='data')
+    for name, target in targets.items():
+        (src/name).parent.mkdir(parents=True, exist_ok=True)
+        os.symlink(target, src/name)
+
+
+def export(src, dest, new_base=False):
+    head = git(src, 'rev-parse', 'HEAD').decode().strip()
+    if head != BASE and not new_base:
+        raise SystemExit('Checkout HEAD is not the pinned base (pass --new-base after a rebase)')
     dest.mkdir(parents=True, exist_ok=True)
     tracked, added, deleted = changes(src)
     (dest/'aux.patch').write_bytes(git(src, 'diff', 'HEAD', '--binary', '--full-index', '--', '.', ':!out'))
@@ -67,12 +104,14 @@ def export(src, dest):
                 continue
             with open(src/path, 'rb') as stream:
                 archive.addfile(info, stream)
-    manifest = {'base': BASE, 'deleted': deleted,
+    manifest = {'base': head, 'deleted': deleted,
                 'files': {p: sha(src/p) for p in tracked + added if (src/p).is_file()}}
     (dest/'manifest.json').write_text(json.dumps(manifest, indent=1, sort_keys=True) + '\n')
-    (dest/'base.json').write_text(json.dumps({'chromium': '155.0.8059.85', 'commit': BASE,
+    (dest/'base.json').write_text(json.dumps({'chromium': version(src), 'commit': head,
         'tracked': len(tracked), 'added': len(added), 'deleted': len(deleted)}, indent=1) + '\n')
-    print(json.dumps({'tracked': len(tracked), 'added': len(added), 'deleted': len(deleted)}))
+    # Record manifestSha256 in the native receipt and current-source-selection.json.
+    print(json.dumps({'tracked': len(tracked), 'added': len(added), 'deleted': len(deleted),
+                      'manifestSha256': sha(dest/'manifest.json')}))
 
 
 def verify(src, dest):
@@ -106,12 +145,11 @@ def verify(src, dest):
 
 
 def apply(src, dest):
-    if git(src, 'rev-parse', 'HEAD').decode().strip() != BASE or git(src, 'status', '--porcelain', '--', '.', ':!out'):
-        raise SystemExit('Apply needs a clean checkout of the pinned base')
-    git(src, 'apply', '--binary', str(dest/'aux.patch'))
-    with tarfile.open(dest/'added.tar.gz') as archive:
-        archive.extractall(src, filter='data')
     manifest = json.loads((dest/'manifest.json').read_text())
+    if git(src, 'rev-parse', 'HEAD').decode().strip() != manifest['base'] or git(src, 'status', '--porcelain', '--', '.', ':!out'):
+        raise SystemExit('Apply needs a clean checkout of the base commit')
+    git(src, 'apply', '--binary', str(dest/'aux.patch'))
+    extract(dest/'added.tar.gz', src)
     bad = [p for p, d in manifest['files'].items() if not (src/p).is_file() or sha(src/p) != d]
     if bad:
         raise SystemExit(f'{len(bad)} paths differ after apply, first: {bad[:5]}')
@@ -119,6 +157,9 @@ def apply(src, dest):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 4 or sys.argv[1] not in ('export', 'verify', 'apply'):
+    args = sys.argv[1:]
+    new_base = args[3:] == ['--new-base'] and args[0] == 'export'
+    if len(args) != 3 + new_base or args[0] not in ('export', 'verify', 'apply'):
         raise SystemExit(__doc__)
-    {'export': export, 'verify': verify, 'apply': apply}[sys.argv[1]](Path(sys.argv[2]).resolve(), Path(sys.argv[3]).resolve())
+    src, dest = Path(args[1]).resolve(), Path(args[2]).resolve()
+    export(src, dest, new_base) if args[0] == 'export' else {'verify': verify, 'apply': apply}[args[0]](src, dest)

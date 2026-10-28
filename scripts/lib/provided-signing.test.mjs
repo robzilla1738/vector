@@ -26,7 +26,7 @@ const options = {
     process.platform !== 'darwin'
       ? 'macOS static signing tools required'
       : process.env.AUX_RUN_SIGNING_FIXTURES !== '1'
-        ? 'Opt in after the active native build: AUX_RUN_SIGNING_FIXTURES=1'
+        ? 'Opt-in, not a missing input: set AUX_RUN_SIGNING_FIXTURES=1 after the active native build'
         : false,
 };
 const nativeBuild = fileURLToPath(new URL('../native-build.py', import.meta.url));

@@ -1,13 +1,14 @@
 import { test } from 'node:test';
+import {requireInput} from '../../scripts/lib/inputs.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { runInNewContext } from 'node:vm';
 import { DAEMON_CODE_SHA256 } from './daemon-adapter.mjs';
 import {frozenDaemonCodeFile} from '../../scripts/lib/frozen-daemon-code.mjs';
-const source = (process.env.AUX_PROVIDED_DAEMON_CODE ?? frozenDaemonCodeFile());
-test('actual supplied installer retains failure but permits valid unquarantined cached tools after wait', { skip: !source }, async () => {
-  const original = readFileSync(source, 'utf8');
+const source = () => requireInput('frozenDaemonCode', process.env.AUX_PROVIDED_DAEMON_CODE ?? frozenDaemonCodeFile() ?? undefined);
+test('actual supplied installer retains failure but permits valid unquarantined cached tools after wait', async () => {
+  const original = readFileSync(source(), 'utf8');
   assert.equal(createHash('sha256').update(original).digest('hex'), DAEMON_CODE_SHA256);
   function span(start, end) {
     assert.equal(original.split(start).length - 1, 1);

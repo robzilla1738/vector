@@ -21,7 +21,7 @@ import { loadAuxBrowserIconReplacement } from './aux-browser-icon.mjs';
 import { applyAuxRuntimeContractIdentity } from '../../vendor/provided/aux-runtime-contract-identity.mjs';
 import { applyAuxProviderIdentity } from '../../vendor/provided/aux-provider-identity.mjs';
 import { applyAuxProtocolIdentity, resolveProtocolIdentity, resolveStateIdentityVersion } from '../../vendor/provided/aux-protocol-identity.mjs';
-import { reviseAgentManifest } from '../../docs/integration/proposed/provided-agent-worker-revision/revision.mjs';
+import { reviseAgentManifest } from './integration/provided-agent-worker-revision/revision.mjs';
 import { readAuxMark, auxMarkReactChildren, auxMarkSvg } from './aux-mark.mjs';
 import { restoreProvidedWireNames } from './provided-wire.mjs';
 import { createHash } from 'node:crypto';

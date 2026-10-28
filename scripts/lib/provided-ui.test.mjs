@@ -1,6 +1,6 @@
 import { frozenRoots } from './provided-frozen-sources.mjs';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, access } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -23,16 +23,11 @@ const identities = JSON.parse(
 const sourceRoots = Object.fromEntries(
   Object.keys(pinned.components).map(name => [name, frozenRoots[name]]),
 );
-let missing = false;
-try {
-  for (const root of Object.values(sourceRoots)) await access(root);
-} catch {
-  missing = true;
-}
 
 test('pinned supplied UI stages deterministically and rejects unreported adaptations', {
   // Default staging has no reviewed Agent revision after revision 3; the candidate stages development/desktop-v1/aux-v1.
-  skip: missing ? 'Pinned external static inputs are unavailable' : 'Default-profile Agent revision is unreviewed (see docs/STATUS.md)',
+  // Deliberate, not input-dependent: once reviewed, a missing snapshot must fail here.
+  skip: 'Default-profile Agent revision is unreviewed (see docs/STATUS.md)',
 }, async () => {
   const temporary = await mkdtemp(join(tmpdir(), 'aux-provided-ui-test-'));
   try {

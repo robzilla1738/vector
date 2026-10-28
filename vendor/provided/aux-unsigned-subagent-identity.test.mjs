@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import{createHash}from'node:crypto';import{readFileSync}from'node:fs';import vm from'node:vm';
+import {requireInput} from '../../scripts/lib/inputs.mjs';
 import {frozenDaemonCodeFile} from '../../scripts/lib/frozen-daemon-code.mjs';
 import{prepareUnsignedSubagentIdentity}from'./aux-unsigned-subagent-identity.mjs';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -23,9 +24,9 @@ test('signed, unknown, conflicting, duplicated or incomplete matching cohorts re
 test('same strings in user messages, other tools and tool results remain byte-identical',async()=>{
  const records=[{role:'user',content:[block],timestamp:1},{...message,content:[{...block,name:'other_tool',thoughtSignature:'signature'}]},{role:'toolResult',content:'aside',details:{model:{provider:'aside'}},timestamp:2}];const bytes=Buffer.from(records.map(JSON.stringify).join('\n')+'\n');assert.deepEqual((await prepare(bytes)).bytes,bytes);
 });
-const pinned=(process.env.AUX_PINNED_DAEMON_SOURCE ?? frozenDaemonCodeFile());
-test('actual pinned exact resolver consumes migrated provider/modelId without changing selection semantics',{skip:!pinned},async()=>{
- const source=readFileSync(pinned,'utf8'),audit=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-subagent-override-identity/source-audit.json',import.meta.url)));assert.equal(sha(Buffer.from(source)),audit.daemonSourceSha256);for(const anchor of audit.anchors)assert.equal(source.split(anchor.find).length-1,anchor.count,anchor.name);
+const pinned=()=>requireInput('frozenDaemonCode',process.env.AUX_PINNED_DAEMON_SOURCE??frozenDaemonCodeFile()??undefined);
+test('actual pinned exact resolver consumes migrated provider/modelId without changing selection semantics',async()=>{
+ const source=readFileSync(pinned(),'utf8'),audit=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-subagent-override-identity/source-audit.json',import.meta.url)));assert.equal(sha(Buffer.from(source)),audit.daemonSourceSha256);for(const anchor of audit.anchors)assert.equal(source.split(anchor.find).length-1,anchor.count,anchor.name);
  const functionText=audit.anchors.find(anchor=>anchor.name==='model-exact-resolution').find;const resolved=[];
  const resolver=vm.runInNewContext(functionText+';resolveExplicitSubagentModel',{models:()=>({resolve:async(modelId,provider)=>{resolved.push({modelId,provider});return{model:{}}}}),toModelInfo:()=>({availableThinkingLevels:['medium'],supportsFastMode:true}),clampThinkingLevel:level=>level,assertExactModelResolution:()=>{}},{timeout:1000});
  const result=await prepare(bytesOf(message)),selection=JSON.parse(result.bytes.toString()).content[1].arguments.model;

@@ -4,7 +4,7 @@ import { transformAuxNavigation } from './aux-navigation-command-bar.mjs';
 import { transformAuxPaletteAsk } from './aux-palette-ask.mjs';
 import { transformAuxContextActions } from './aux-context-actions.mjs';
 import { transformAuxRemixContext } from './aux-remix-context.mjs';
-import { transformAuxResearchUi } from '../../docs/integration/proposed/browser-feature-expansion/research-v1/source/aux-research-ui.mjs';
+import { transformAuxResearchUi } from '../../scripts/lib/integration/research-v1/aux-research-ui.mjs';
 import { transformAuxProductivityUi, transformAuxProductivityDaemon } from './aux-productivity-integration.mjs';
 import { transformAuxTidySelection } from './aux-productivity-tidy-selection.mjs';
 import { transformAuxTabContext } from './aux-productivity-tab-context.mjs';

@@ -52,7 +52,7 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-palette-ask.mjs',
   'vendor/provided/aux-context-actions.mjs',
   'vendor/provided/aux-remix-context.mjs',
-  'docs/integration/proposed/browser-feature-expansion/research-v1/source/aux-research-ui.mjs',
+  'scripts/lib/integration/research-v1/aux-research-ui.mjs',
   'docs/integration/proposed/browser-feature-expansion/research-v1/source/research-ui.js',
   'vendor/provided/aux-browser-feature-composition.mjs',
   'vendor/provided/aux-browser-feature-settings.mjs',
@@ -154,7 +154,7 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-identity-json-tokens.mjs',
 
   'scripts/stage-provided.mjs',
-  'docs/integration/proposed/provided-agent-worker-revision/revision.mjs',
+  'scripts/lib/integration/provided-agent-worker-revision/revision.mjs',
   'vendor/provided/agent-revisions.json',
   'vendor/provided/aux-protocol-identity.mjs',
   'vendor/provided/aux-provider-identity.mjs',

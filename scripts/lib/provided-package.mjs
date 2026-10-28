@@ -1,7 +1,7 @@
 import { verifyRebuiltPtyPackageInput, replaceCopiedDaemonAndPty } from '../../docs/integration/proposed/aux-native-rebuilt-pty-package/source/package.mjs';
 import { verifyProviderNativePackageInput, replaceCopiedProviderDaemonAndPty } from '../../docs/integration/proposed/aux-native-provider-entry-package/source/package.mjs';
 import { addDormantCurrentNativeEntry } from '../../docs/integration/proposed/aux-native-current-entry-package/source/resources.mjs';
-import { verifyNativeMainPackageInput, replaceCopiedDaemonWithNativeMain } from '../../docs/integration/proposed/aux-native-main-package-integration/source/native-main-package.mjs';
+import { verifyNativeMainPackageInput, replaceCopiedDaemonWithNativeMain } from './integration/aux-native-main-package-integration/native-main-package.mjs';
 import { verifyAuxStateIdentityContract } from './aux-state-identity-contract.mjs';
 import { verifyAuxIdentityContract, assertAuxVisualAssets } from './aux-identity-contract.mjs';
 /** Assemble a copied native app and the supplied resources. Never install or launch. */
