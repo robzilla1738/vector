@@ -12,6 +12,7 @@ The GitHub App and repository settings are the owner's part: [owner plan, item 6
 - pnpm 11.27.1 through corepack.
 - Python 3 (from the image) and gitleaks.
 - A pnpm store pre-warmed from the committed lockfiles. Nothing secret: no tokens, Keychain items or `out/` inputs.
+- A post-boot hook waits for the desktop session before Tartelet opens the runner in Terminal. SSH can become ready before automatic login finishes.
 
 To rebuild after a lockfile or toolchain change, stop Tartelet, then run `tart delete aux-ci` and `scripts/ci/build-runner-image.sh`. Tart clones are copy-on-write, so the image costs little disk.
 
