@@ -11,9 +11,9 @@ Aux reuses the owner's supplied Aside implementation on Chromium: its UI, behavi
 
 ## Scope
 
-- **Inference:** users bring provider API keys or connect an eligible ChatGPT/Codex plan. Suppress paid-plan and checkout prompts; do not redesign the surfaces. Never silently spend Aux-hosted credits, and never treat ordinary sign-in as permission to use a ChatGPT plan. Details: [provider-funded launch](../plans/2026-10-23-provider-funded-launch.md).
+- **Inference:** users bring provider API keys or sign in with a supported subscription (ChatGPT/Codex, Claude Pro/Max, GitHub Copilot, Kimi, Meta, Grok; owner, 2026-10-28). Suppress paid-plan and checkout prompts; do not redesign the surfaces. Never silently spend Aux-hosted credits, and never treat ordinary sign-in as permission to use a ChatGPT plan. Details: [provider-funded launch](../plans/2026-10-23-provider-funded-launch.md).
 - **Passwords:** no supplied Vault, no Aux password storage, no Vault onboarding/unlock/recovery screens, no first-party autofill UI. Users' own password-manager extensions (for example 1Password) must work; installation, autofill and native-messaging companions need real verification. Browsing and agent startup must not depend on a vault. Installation authentication, provider credentials and site sessions are not password-manager features: keep their security controls.
-- **Not in scope:** backups, mobile, payments, legacy migration, distribution, notarization, release.
+- **Not in scope:** backups, mobile, payments, legacy migration. Distribution, notarization and release are in scope since 2026-10-28.
 
 ## Identity
 

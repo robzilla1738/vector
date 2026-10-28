@@ -6,7 +6,7 @@ Updated 2026-10-28. [STATUS](STATUS.md) is the live summary of the build. The wo
 
 - **Local product:** the combined supplied implementation launches normally, the Aux UI is accepted, and R01–R19 and R21–R30 plus the core browser and agent journeys pass on one seal. External dependencies stay named and don't hold up the local handoff.
 - **Full pre-release:** local product plus the Bash/PTY/CLI REPL, eligible ChatGPT plan use, 1Password compatibility, the hosted integration and non-backup operations.
-- **Public release:** full pre-release plus the decisions, product blockers, signing, notarization, updates and hosted operations in the release checklist. Currently out of scope in AGENTS.md until the owner lifts the deferral.
+- **Public release:** full pre-release plus the decisions, product blockers, signing, notarization, updates and hosted operations in the release checklist. In scope since 2026-10-28; the owner's decisions are in its section 1.
 - Platform: Apple silicon, macOS 27. Deferred: backups as a product feature, legacy migration, mobile, payments and Aux-funded inference. No built-in Vault.
 
 ## Outcomes
