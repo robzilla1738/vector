@@ -29,3 +29,29 @@ Defect fixed: with it on, the traffic lights dropped about 17 pt below the sideb
 - The second "Enter Full Screen" in View is AppKit's hidden alternate item, not a duplicate.
 - The device row shows the daemon component version `1.26.1016.1852`; the app version is `1.26.1016.1888`. Changing the daemon's version string would change component replacement, so it stays.
 - When the sidebar address field is edited on an Aux page, the "Aux Browser" chip is clipped by Chromium's leading-decoration width cap.
+
+## Second batch: Arc and Aside as the reference (seal `32ab761c`)
+
+The owner asked for a clean version of Arc's and Aside's sidebar, split view and Little Arc, with no Google-branded content. References were captured from the local Arc and the running Aside (read only; the Arc test tabs were closed again) into `out/acceptance/20261027/ref/`:
+
+- **Arc sidebar:** back, forward and reload in the traffic-light row; a filled "Search or Enter URL…" field showing the domain; a pin grid; the Space name with a divider; "+ New Tab"; tabs.
+- **Aside sidebar:** opaque, Pins as a 3-column tile grid, thin dividers between Bookmarks, Chats and Tabs, 13 pt rows.
+- **Little Arc:** one bar with a centered address field and "Open in Personal ⌘O".
+- **Arc split view:** rounded pane cards, each with a slim header (back, forward, domain, close), the active pane outlined, one sidebar row with both tabs.
+
+Shipped in this batch:
+
+| Surface | Change |
+|---|---|
+| Sidebar navigation | The address field in the sidebar keeps its filled field background at rest (`LocationBarView::RefreshBackground`); the top toolbar stays flat |
+| Split view | Pane labels show the domain only (`multi_contents_view_mini_toolbar.cc`); the tooltip keeps the full address without credentials |
+| Peek and Quick window | Back on the left, the address, and an "Open in Aux" button at the trailing end; the "Peek · profile" label shows only when a restriction needs explaining; the dismiss button stays on Peek only. Verified: Escape and clicking the window dismiss Peek; "Open in Aux" moves a Quick window page into the main window |
+| Google content | The profile picker and the tangible-sync sign-in pages no longer show the Google Material banner shapes. Lens and AI Mode menu items were removed in the first batch |
+
+Still different from the references (next steps):
+
+- Back, forward and reload sit on a second row instead of the traffic-light row, and the downloads, extensions and split buttons share that row.
+- Split pane labels sit at the bottom of the pane; Arc puts a header at the top.
+- Scrolling the tab list slides rows under the fixed "Pins" header.
+- Typing in the Cmd+K palette ranks "Recent files" above a matching command.
+- Little Arc's address shares the traffic-light row; Aux's popup keeps a separate title row.

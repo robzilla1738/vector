@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "a790e49fb1730cefe7782cbe9c7aef7fdf6f67f19181402cef251a56d9eb56bd",
+  "signedInventorySha256": "32ab761cfdc7da67058633f71ff13a0815b6da5faacc53daf222832be93987df",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -384,6 +384,14 @@
     "sources": [
       "integration/ui-polish-a1",
       "durable checkout: aux_preview, toolbar/browser_view titlebar, aux_recent_files_section, tab_search tab_data.ts, aux_mini_popup default, main_menu_builder, render_view_context_menu"
+    ]
+  },
+  "uiArcStyleRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-ui-polish-b1/receipt.json",
+    "sha256": "e729a54c79d7b8d6664ede9149cad38022ea3129feb1a9edc10703ddf1cbd543",
+    "sources": [
+      "integration/ui-polish-a1 (Arc and Aside reference)",
+      "durable checkout: location_bar_view sidebar field, profile picker and sign-in banners, split pane domain label, Peek and Quick window bar"
     ]
   }
 }

@@ -21093,7 +21093,7 @@ index 5f49c6e87f2ea7ae5bf28b94edc4542d524ea1c4..ad8805fcb8351cebf8228c489757e281
    // Creates or loads the profile located at |profile_path|.
    // Should be called on the UI thread.
 diff --git a/chrome/browser/renderer_context_menu/render_view_context_menu.cc b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..63bfff4cd71532c085cee7a8d8bddc04a2057127 100644
+index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..c163f7b0a97c5dd155c645e3c62bfbb4c3e08b56 100644
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 @@ -3,6 +3,12 @@
@@ -21138,7 +21138,7 @@ index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..63bfff4cd71532c085cee7a8d8bddc04
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +  if (params_.link_url.SchemeIsHTTPOrHTTPS() && !params_.link_url.has_username() &&
 +      !params_.link_url.has_password() && aux::preview::CanOpenQuick(GetBrowser()))
-+    menu_model_.AddItem(aux::preview::kPeekLinkCommand, u"Open link in Peek");
++    menu_model_.AddItem(aux::preview::kPeekLinkCommand, u"Open Link in Peek");
 +#endif
 +
    if (!params_.link_url.is_empty()) {
@@ -21894,6 +21894,49 @@ index c1fb233a132181d8a5f75228264c8e44dd1e34ea..dc9b889ba5ed98a1dbe4c287244703a8
      Router.getInstance().navigateTo(routes.CLEAR_BROWSER_DATA.parent!);
  
      if (this.shouldShowDbdDeletionConfirmationToast_) {
+diff --git a/chrome/browser/resources/signin/profile_picker/profile_picker_app.css b/chrome/browser/resources/signin/profile_picker/profile_picker_app.css
+index 71c1edf5854b4a4c5413e7bb8060c6496b5d4cb2..4d84eeb9140942e127bf5c2bf92a0c7da193da0a 100644
+--- a/chrome/browser/resources/signin/profile_picker/profile_picker_app.css
++++ b/chrome/browser/resources/signin/profile_picker/profile_picker_app.css
+@@ -50,8 +50,10 @@
+ 
+ :host([app-mode_='regular']) {
+ 
++  /* Aux: no Google Material banner artwork. */
+   #banner-right,
+   #banner-left {
++    display: none;
+     max-width: 320px;
+     position: absolute;
+     top: 0;
+diff --git a/chrome/browser/resources/signin/tangible_sync_style_shared.css b/chrome/browser/resources/signin/tangible_sync_style_shared.css
+index b78afc0fe8215af0b7141ffd67db2a65942bdbb0..df6b04ac2fe29e489b79ac41696068aa614a7415 100644
+--- a/chrome/browser/resources/signin/tangible_sync_style_shared.css
++++ b/chrome/browser/resources/signin/tangible_sync_style_shared.css
+@@ -37,6 +37,8 @@
+ 
+ .tangible-sync-style-left-banner,
+ .tangible-sync-style-right-banner {
++  /* Aux: no Google Material banner artwork. */
++  display: none;
+   max-width: 320px;
+   position: absolute;
+   top: 0;
+diff --git a/chrome/browser/resources/tab_search/tab_data.ts b/chrome/browser/resources/tab_search/tab_data.ts
+index a15461728039527f02884a82b5a6ba6f9d94cb85..4345049bf9b54ef24223fac16896f58bad989c35 100644
+--- a/chrome/browser/resources/tab_search/tab_data.ts
++++ b/chrome/browser/resources/tab_search/tab_data.ts
+@@ -202,6 +202,10 @@ export function getDisplayHostnameForUrl(url: URL): string {
+     return 'about:blank';
+   } else if (url.protocol === 'view-source:') {
+     return loadTimeData.getString('viewSourceSource');
++  } else if (url.protocol === 'chrome-extension:' &&
++             url.hostname === 'gokkffaiccpmoeodpmeamcjajcagjmkm') {
++    // Aux's own pages (new tab, settings, chats) read as Aux, not an ID.
++    return 'Aux';
+   } else {
+     return url.hostname;
+   }
 diff --git a/chrome/browser/resources/webui_toolbar/split_tabs_button.ts b/chrome/browser/resources/webui_toolbar/split_tabs_button.ts
 index 853c890a3f55551001ec2e0e8ddabffeaf4cb61a..0cd765e09f50d81037a195dff61b223b0390c1f4 100644
 --- a/chrome/browser/resources/webui_toolbar/split_tabs_button.ts
@@ -27751,7 +27794,7 @@ index 96e3c9bb38a197bdb982919fc90c7a130a12a323..672e175c667db4761b7947730d7aac57
                                     priority:ui::AcceleratorManager::
                                                  kNormalPriority]) {
 diff --git a/chrome/browser/ui/cocoa/main_menu_builder.mm b/chrome/browser/ui/cocoa/main_menu_builder.mm
-index 4a178fc76a14d7fe6550ef2332dd610648ce3d93..e639bf93de748b68f141da9be90bd134ff0e5144 100644
+index 4a178fc76a14d7fe6550ef2332dd610648ce3d93..6ecdb095ef3ad0aedaf8e44c6c2925df8eba99fe 100644
 --- a/chrome/browser/ui/cocoa/main_menu_builder.mm
 +++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
 @@ -12,6 +12,7 @@
@@ -27808,7 +27851,7 @@ index 4a178fc76a14d7fe6550ef2332dd610648ce3d93..e639bf93de748b68f141da9be90bd134
                        Item(IDS_EDIT_JUMP_TO_SELECTION_MAC)
                            .action(@selector(centerSelectionInVisibleArea:))
                            .key_equivalent(@"j", NSEventModifierFlagCommand),
-@@ -377,6 +409,19 @@ NSMenuItem* BuildViewMenu(NSApplication* nsapp,
+@@ -377,6 +409,24 @@ NSMenuItem* BuildViewMenu(NSApplication* nsapp,
          })
          .Build();
    // clang-format on
@@ -27823,6 +27866,11 @@ index 4a178fc76a14d7fe6550ef2332dd610648ce3d93..e639bf93de748b68f141da9be90bd134
 +    ask_aux.tag = IDC_AUX_ASK;
 +    ask_aux.keyEquivalentModifierMask = NSEventModifierFlagCommand;
 +    [item.submenu insertItem:ask_aux atIndex:0];
++  }
++  // Lens and AI Mode are off in Aux; their omnibox toggles would do nothing.
++  for (int command : {IDC_SHOW_GOOGLE_LENS_SHORTCUT, IDC_SHOW_AI_MODE_OMNIBOX_BUTTON}) {
++    if (NSMenuItem* google = [item.submenu itemWithTag:command])
++      [item.submenu removeItem:google];
 +  }
 +#endif
    return item;
@@ -41612,7 +41660,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a57
    UpdateBackgroundColor();
  }
 diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
-index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb100f979ced 100644
+index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8fef23e384d65abd33a67a4d3705cf5f2647488a 100644
 --- a/chrome/browser/ui/views/frame/browser_view.cc
 +++ b/chrome/browser/ui/views/frame/browser_view.cc
 @@ -3,6 +3,27 @@
@@ -41757,7 +41805,17 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  }
  
  // static
-@@ -1489,6 +1552,10 @@ bool BrowserView::GetAccelerator(int cmd_id,
+@@ -1248,7 +1311,8 @@ ClientFrameElementInfo BrowserView::GetFrameElementInfo() const {
+                 .height()
+           : 0;
+   if (toolbar_ && ShouldDrawVerticalTabStrip()) {
+-    info.toolbar_minimum_height = toolbar_->GetMinimumSize().height();
++    info.toolbar_minimum_height = toolbar_->GetMinimumSize().height() -
++                                  toolbar_->GetAuxSidebarNavigationRowHeight();
+   } else if (web_app_frame_toolbar_ && ShouldDrawWebAppFrameToolbar()) {
+     info.toolbar_minimum_height =
+         web_app_frame_toolbar_->GetMinimumSize().height();
+@@ -1489,6 +1553,10 @@ bool BrowserView::GetAccelerator(int cmd_id,
      cmd_id = IDC_TASK_MANAGER_SHORTCUT;
    }
  
@@ -41768,7 +41826,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  #if BUILDFLAG(IS_MAC)
    // On macOS, most accelerators are defined in MainMenu.xib and are user
    // configurable. Furthermore, their values and enabled state depends on the
-@@ -1605,6 +1672,13 @@ void BrowserView::OnVerticalTabStripModeChanged(
+@@ -1605,6 +1673,13 @@ void BrowserView::OnVerticalTabStripModeChanged(
  // BrowserView, BrowserWindow implementation:
  
  void BrowserView::Show() {
@@ -41782,7 +41840,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
    // Attempts to show closed windows should no-op.
    if (browser_widget_->IsClosed()) {
      return;
-@@ -1670,6 +1744,13 @@ void BrowserView::Show() {
+@@ -1670,6 +1745,13 @@ void BrowserView::Show() {
  }
  
  void BrowserView::ShowInactive() {
@@ -41796,7 +41854,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
    if (!browser_widget_->IsVisible()) {
      browser_widget_->ShowInactive();
    }
-@@ -1983,6 +2064,7 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
+@@ -1983,6 +2065,7 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
    }
  
    WebContentsObserver::Observe(new_contents);
@@ -41804,7 +41862,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  
    // If |contents_web_view| already has the correct WebContents, we can save
    // some work.  This also prevents extra events from being reported by the
-@@ -2021,8 +2103,11 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
+@@ -2021,8 +2104,11 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
        GetWidget()->GetFocusManager()->ClearFocus();
      }
  
@@ -41818,7 +41876,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
    }
  
    // Do this before updating InfoBarContainer as the InfoBarContainer may
-@@ -2828,6 +2913,52 @@ bool BrowserView::AreDraggableRegionsEnabled() const {
+@@ -2828,6 +2914,52 @@ bool BrowserView::AreDraggableRegionsEnabled() const {
    return IsWindowControlsOverlayEnabled() || IsUnframedModeEnabled();
  }
  
@@ -41871,7 +41929,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  void BrowserView::OnFocusBookmarksToolbar() {
    if (bookmark_bar_view_ && bookmark_bar_view_->GetVisible() &&
        bookmark_bar_view_->GetPreferredSize().height() != 0) {
-@@ -2968,8 +3099,27 @@ void BrowserView::OnWidgetWindowModalVisibilityChanged(views::Widget* widget,
+@@ -2968,8 +3100,27 @@ void BrowserView::OnWidgetWindowModalVisibilityChanged(views::Widget* widget,
  #endif
  }
  
@@ -41899,7 +41957,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  }
  
  void BrowserView::DidFinishNavigation(
-@@ -3010,6 +3160,9 @@ void BrowserView::MaybeShowReadingListInSidePanelIPH() {
+@@ -3010,6 +3161,9 @@ void BrowserView::MaybeShowReadingListInSidePanelIPH() {
  }
  
  bool BrowserView::IsBookmarkBarVisible() const {
@@ -41909,7 +41967,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
    if (!WindowFeatureController::From(browser_)->SupportsWindowFeature(
            WindowFeatureController::WindowFeature::kFeatureBookmarkBar)) {
      return false;
-@@ -3490,7 +3643,10 @@ void BrowserView::OnSplitTabChanged(const SplitTabChange& change) {
+@@ -3490,7 +3644,10 @@ void BrowserView::OnSplitTabChanged(const SplitTabChange& change) {
            browser_->GetTabStripModel()->GetActiveTab();
  
        if (active_tab->GetSplit() == change.split_id) {
@@ -41921,7 +41979,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
        }
        break;
      }
-@@ -3880,7 +4036,9 @@ void BrowserView::ReparentTabStripAndWebAppViewsToBrowserView(
+@@ -3880,7 +4037,9 @@ void BrowserView::ReparentTabStripAndWebAppViewsToBrowserView(
  void BrowserView::EnsureFocusOrder() {
    // We want the infobar to come before the content pane, but after the bookmark
    // bar (if present) or top container (i.e. toolbar, again if present).
@@ -41932,7 +41990,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
      infobar_container_->InsertAfterInFocusList(bookmark_bar_view_.get());
    } else if (top_container_->parent() == this) {
      infobar_container_->InsertAfterInFocusList(top_container_);
-@@ -4233,12 +4391,19 @@ const views::Widget* BrowserView::GetWidget() const {
+@@ -4233,12 +4392,19 @@ const views::Widget* BrowserView::GetWidget() const {
  }
  
  void BrowserView::CreateTabSearchBubble() {
@@ -41952,7 +42010,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
    if (auto* tab_search_host = GetTabSearchBubbleHost()) {
      tab_search_host->CloseTabSearchBubble();
    }
-@@ -4285,6 +4450,15 @@ void BrowserView::UpdateTabSearchBubbleHost() {
+@@ -4285,6 +4451,15 @@ void BrowserView::UpdateTabSearchBubbleHost() {
        vertical_tab_strip_state_controller->ShouldDisplayVerticalTabs()) {
      auto* combo_button =
          vertical_tab_strip_region_view_->GetTopContainer()->GetComboButton();
@@ -41968,7 +42026,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
      tab_search_bubble_host_ = std::make_unique<TabSearchBubbleHost>(
          combo_button->end_button(), browser_.get());
      combo_button->SetTabSearchBubbleHost(tab_search_bubble_host_.get());
-@@ -4310,6 +4484,12 @@ void BrowserView::ShowSplitView(bool focus_active_view) {
+@@ -4310,6 +4485,12 @@ void BrowserView::ShowSplitView(bool focus_active_view) {
  
    std::vector<tabs::TabInterface*> split_tabs = split_data->ListTabs();
  
@@ -41981,7 +42039,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
    for (size_t i = 0; tabs::TabInterface* tab : split_tabs) {
      multi_contents_view_->SetWebContentsAtIndex(tab->GetContents(), i++);
    }
-@@ -4358,8 +4538,13 @@ void BrowserView::UpdateActiveTabInSplitView() {
+@@ -4358,8 +4539,13 @@ void BrowserView::UpdateActiveTabInSplitView() {
    // When active tab changes inside a split, it's generally due to focus change.
    // However, there are cases where inactive tab can be activated without a
    // focus change e.g. using tab shortcuts and in these cases update focus.
@@ -41997,7 +42055,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
      multi_contents_view_->GetActiveContentsView()->RequestFocus();
    }
  }
-@@ -4369,8 +4554,7 @@ bool BrowserView::IsTabChangeInSplitView(content::WebContents* old_contents,
+@@ -4369,8 +4555,7 @@ bool BrowserView::IsTabChangeInSplitView(content::WebContents* old_contents,
    return multi_contents_view_->IsInSplitView() &&
           multi_contents_view_->GetActiveContentsView()->web_contents() ==
               old_contents &&
@@ -42007,7 +42065,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  }
  
  void BrowserView::UpdateTabModalDialogHost() {
-@@ -4419,10 +4603,10 @@ void BrowserView::MaybeUpdateStoredFocusForWebContents(
+@@ -4419,10 +4604,10 @@ void BrowserView::MaybeUpdateStoredFocusForWebContents(
  std::vector<ContentsWebView*> BrowserView::GetAllVisibleContentsWebViews() {
    std::vector<ContentsWebView*> contents_views;
    contents_views.push_back(multi_contents_view_->GetActiveContentsView());
@@ -42022,7 +42080,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
    }
    return contents_views;
  }
-@@ -4513,6 +4697,15 @@ void BrowserView::GetAccessiblePanes(std::vector<views::View*>* panes) {
+@@ -4513,6 +4698,15 @@ void BrowserView::GetAccessiblePanes(std::vector<views::View*>* panes) {
  bool BrowserView::ShouldDescendIntoChildForEventHandling(
      gfx::NativeView child,
      const gfx::Point& location) {
@@ -42038,7 +42096,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
    // Window for PWAs with window-controls-overlay display override should claim
    // mouse events that fall within the draggable region.
    web_app::AppBrowserController* controller =
-@@ -4566,6 +4759,24 @@ bool BrowserView::RotatePaneFocusFromView(views::View* focused_view,
+@@ -4566,6 +4760,24 @@ bool BrowserView::RotatePaneFocusFromView(views::View* focused_view,
  // BrowserView, views::ClientView overrides:
  
  views::CloseRequestResult BrowserView::OnWindowCloseRequested() {
@@ -42063,7 +42121,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
    // You cannot close a frame for which there is an active originating drag
    // session.
    if (tab_strip_view() && !tab_strip_view()->IsTabStripCloseable()) {
-@@ -4863,6 +5074,9 @@ void BrowserView::Layout(PassKey) {
+@@ -4863,6 +5075,9 @@ void BrowserView::Layout(PassKey) {
    }
  
    LayoutSuperclass<views::View>(this);
@@ -42073,7 +42131,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  
    // TODO(jamescook): Why was this in the middle of layout code?
    toolbar_->location_bar()->UpdateFocusBehavior(IsToolbarVisible());
-@@ -4966,6 +5180,7 @@ void BrowserView::AddedToWidget() {
+@@ -4966,6 +5181,7 @@ void BrowserView::AddedToWidget() {
    }
  
    views::ClientView::AddedToWidget();
@@ -42081,7 +42139,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  
  #if BUILDFLAG(IS_WIN)
    // Register for screen capture exclusion updates. This is specific to
-@@ -5035,6 +5250,13 @@ void BrowserView::AddedToWidget() {
+@@ -5035,6 +5251,13 @@ void BrowserView::AddedToWidget() {
  
    LoadAccelerators();
  
@@ -42095,7 +42153,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
    // ImmersiveModeController may depend on the presence of a Widget, so it
    // is initialized here.
    auto* const immersive_mode_controller =
-@@ -5111,7 +5333,9 @@ void BrowserView::AddedToWidget() {
+@@ -5111,7 +5334,9 @@ void BrowserView::AddedToWidget() {
    // be constructed following the check above.
    autofill_bubble_handler_ =
        std::make_unique<autofill::AutofillBubbleHandlerImpl>(
@@ -42106,7 +42164,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  
    auto* const frame_view = GetFrameView();
    frame_view->OnBrowserViewInitViewsComplete();
-@@ -5154,6 +5378,7 @@ void BrowserView::AddedToWidget() {
+@@ -5154,6 +5379,7 @@ void BrowserView::AddedToWidget() {
        kFallbackPopupAnchorElementId, *this);
  
    initialized_ = true;
@@ -42114,7 +42172,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  }
  
  void BrowserView::RemovedFromWidget() {
-@@ -6025,6 +6250,7 @@ void BrowserView::OnWillChangeFocus(View* focused_before, View* focused_now) {
+@@ -6025,6 +6251,7 @@ void BrowserView::OnWillChangeFocus(View* focused_before, View* focused_now) {
  }
  void BrowserView::OnDidChangeFocus(View* focused_before, View* focused_now) {
    UpdateAccessibleNameForRootView();
@@ -42122,7 +42180,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  }
  
  WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() {
-@@ -6036,6 +6262,7 @@ const WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() const {
+@@ -6036,6 +6263,7 @@ const WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() const {
  }
  
  void BrowserView::PaintAsActiveChanged() {
@@ -42130,7 +42188,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
    // Do not propagate Browser active state changes if the Browser has already
    // been scheduled for destruction.
    if (browser_->IsDeleteScheduled()) {
-@@ -6109,6 +6336,220 @@ void BrowserView::UpdateAccessibleURLForRootView(const GURL& url) {
+@@ -6109,6 +6337,220 @@ void BrowserView::UpdateAccessibleURLForRootView(const GURL& url) {
    }
  }
  
@@ -42351,7 +42409,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..dad34fa734bff7037f2ac990ebabdb10
  void BrowserView::UpdateFullscreenAllowedFromPolicy(
      bool allowed_without_policy) {
    auto* fullscreen_pref_path = prefs::kFullscreenAllowed;
-@@ -6121,6 +6562,8 @@ void BrowserView::UpdateFullscreenAllowedFromPolicy(
+@@ -6121,6 +6563,8 @@ void BrowserView::UpdateFullscreenAllowedFromPolicy(
  
  void BrowserView::OnFirstPresentation(
      const viz::FrameTimingDetails& frame_timing_details) {
@@ -44773,7 +44831,7 @@ index e182430481fed7ac4c17b0fd11b57c3d511a80b9..fcc198b15c7110544be73f960a116b54
    // Creates a new tab for the first valid URL in `urls` and creates a split
    // with it and the active tab. If all URLs are blocked, then it will open
 diff --git a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
-index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..71fac9b01db4f50d05c134beab65438b02e33161 100644
+index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..8015c89cf4cb3c9c10f1e04173c7481c8f30f7c7 100644
 --- a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
 +++ b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
 @@ -13,6 +13,9 @@
@@ -44786,45 +44844,30 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..71fac9b01db4f50d05c134beab65438b
  #include "chrome/browser/ui/tab_ui_helper.h"
  #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
  #include "chrome/browser/ui/tabs/alert/tab_alert_icon.h"
-@@ -181,9 +184,18 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
+@@ -181,7 +184,8 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
      domain_url = tab_ui_helper->GetLastCommittedURL();
    }
  
 -  // Create the formatted domain, this will match the hover card domain.
-+  const auto* preferences = full_url_preferences_.prefs();
-+  const bool full_url = preferences && preferences->GetBoolean(
-+      omnibox::kPreventUrlElisionsInOmnibox);
-+  // Match native omnibox security formatting: retain scheme, complete host,
-+  // path, query and fragment; never expose embedded username/password. The
-+  // Label already uses DIRECTIONALITY_AS_URL and the formatter's IDN checks.
++  // Panes are labeled by domain, like Arc's pane header; the full URL stays
++  // in the address field.
    std::u16string domain;
--  if (IsNTP(domain_url)) {
-+  if (full_url && domain_url.is_valid() && !IsNTP(domain_url)) {
-+    domain = url_formatter::FormatUrl(domain_url,
-+        url_formatter::kFormatUrlOmitUsernamePassword,
-+        base::UnescapeRule::SPACES, nullptr, nullptr, nullptr);
-+  } else if (IsNTP(domain_url)) {
+   if (IsNTP(domain_url)) {
      domain = u"";
-   } else if (domain_url.SchemeIsFile()) {
-     domain = l10n_util::GetStringUTF16(IDS_HOVER_CARD_FILE_URL_SOURCE);
-@@ -203,12 +215,14 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
-         base::UnescapeRule::SPACES, nullptr, nullptr, nullptr);
-   }
-   domain_label_->SetText(domain);
--  domain_label_->SetElideBehavior(domain_url.IsStandard() &&
-+  domain_label_->SetElideBehavior(!full_url && domain_url.IsStandard() &&
-                                           !domain_url.SchemeIsFile() &&
+@@ -208,7 +212,11 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
                                            !domain_url.SchemeIsFileSystem()
                                        ? gfx::ELIDE_HEAD
                                        : gfx::ELIDE_TAIL);
 -  domain_label_->SetCustomTooltipText(base::ASCIIToUTF16(domain_url.spec()));
-+  // Tail elision keeps the origin visible. The native tooltip reveals the
-+  // complete formatted address; activating this pane exposes its real omnibox.
-+  domain_label_->SetCustomTooltipText(full_url ? domain : base::ASCIIToUTF16(domain_url.spec()));
++  // The native tooltip reveals the complete address, without credentials;
++  // activating this pane exposes its real omnibox.
++  domain_label_->SetCustomTooltipText(url_formatter::FormatUrl(domain_url,
++      url_formatter::kFormatUrlOmitUsernamePassword,
++      base::UnescapeRule::SPACES, nullptr, nullptr, nullptr));
  
    UpdateFavicon(tab_ui_helper);
  }
-@@ -221,6 +235,8 @@ void MultiContentsViewMiniToolbar::UpdateWebContents(views::WebView* web_view) {
+@@ -221,6 +229,8 @@ void MultiContentsViewMiniToolbar::UpdateWebContents(views::WebView* web_view) {
  }
  
  void MultiContentsViewMiniToolbar::ClearWebContents(views::WebView*) {
@@ -44833,7 +44876,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..71fac9b01db4f50d05c134beab65438b
    tab_alert_status_subscription_.reset();
    OnAlertStatusIndicatorChanged(std::nullopt);
    web_contents_ = nullptr;
-@@ -247,6 +263,17 @@ void MultiContentsViewMiniToolbar::OnThemeChanged() {
+@@ -247,6 +257,17 @@ void MultiContentsViewMiniToolbar::OnThemeChanged() {
  }
  
  void MultiContentsViewMiniToolbar::RegisterTabSubscriptions() {
@@ -46750,7 +46793,7 @@ index 0a5e9cce40424b65d14d006a59c8d22b7f130e46..f8e4037832510b7d9a4cec65d321c95c
      controller_observation_.Observe(controller);
    }
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fc81fe247d0483dc8d98aa9dc1e179dac7dfc01c 100644
+index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fae7b0e611a34368e18c8041378897c375a99c38 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
 @@ -10,6 +10,7 @@
@@ -47048,11 +47091,15 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fc81fe247d0483dc8d98aa9dc1e179da
    gfx::Rect bounds_without_endcaps(GetLocalBounds());
    bounds_without_endcaps.Inset(gfx::Insets::VH(0, border_radius));
    return bounds_without_endcaps;
-@@ -1388,6 +1530,15 @@ void LocationBarView::RefreshBackground() {
+@@ -1388,6 +1530,19 @@ void LocationBarView::RefreshBackground() {
    SkColor hovered =
        color_provider->GetColor(kColorLocationBarBackgroundHovered);
  
++  const auto* aux_toolbar = views::AsViewClass<ToolbarView>(parent());
++  const bool aux_in_sidebar =
++      aux_toolbar && aux_toolbar->IsAuxSidebarNavigationLayout();
 +  if (!is_caret_visible && !input_in_progress && !high_contrast &&
++      !aux_in_sidebar &&
 +      ((!is_popup_mode_ && browser_ &&
 +        browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL) ||
 +       !GetLocationBarModel()->ShouldDisplayURL())) {
@@ -47064,7 +47111,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fc81fe247d0483dc8d98aa9dc1e179da
    background_color_ = gfx::Tween::ColorValueBetween(opacity, normal, hovered);
    if (is_caret_visible) {
      // Match the background color to the popup if the Omnibox is visibly
-@@ -1620,6 +1771,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
+@@ -1620,6 +1775,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
    } else {
      omnibox_view_->SaveStateToTab(contents);
    }
@@ -47077,7 +47124,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fc81fe247d0483dc8d98aa9dc1e179da
  }
  
  LocationBarTesting* LocationBarView::GetLocationBarForTesting() {
-@@ -2003,6 +2160,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
+@@ -2003,6 +2164,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
  }
  
  void LocationBarView::OnChanged() {
@@ -47089,7 +47136,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fc81fe247d0483dc8d98aa9dc1e179da
    TRACE_EVENT("omnibox", "LocationBarView::OnChanged");
    // Ensure that background colors get updated on tab-switch.
    RefreshBackground();
-@@ -2033,6 +2195,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
+@@ -2033,6 +2199,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
  }
  
  void LocationBarView::OnOmniboxFocused() {
@@ -47102,7 +47149,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fc81fe247d0483dc8d98aa9dc1e179da
    if (views::FocusRing::Get(this)) {
      views::FocusRing::Get(this)->Refresh();
    }
-@@ -2092,6 +2260,7 @@ void LocationBarView::OnTouchUiChanged() {
+@@ -2092,6 +2264,7 @@ void LocationBarView::OnTouchUiChanged() {
    omnibox_view_->SetFontList(font_list);
    ime_inline_autocomplete_view_->SetFontList(font_list);
    omnibox_additional_text_view_->SetFontList(font_list);
@@ -47110,7 +47157,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fc81fe247d0483dc8d98aa9dc1e179da
    selected_keyword_view_->SetFontList(font_list);
    for (ContentSettingImageView* view : content_setting_views_) {
      view->SetFontList(font_list);
-@@ -2304,6 +2473,33 @@ ui::ImageModel LocationBarView::GetLocationIcon(
+@@ -2304,6 +2477,33 @@ ui::ImageModel LocationBarView::GetLocationIcon(
      return GetOmniboxController()->edit_model()->GetAddContextIcon(dip_size);
    }
  
@@ -47144,7 +47191,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fc81fe247d0483dc8d98aa9dc1e179da
    return omnibox_view_
               ? omnibox_view_->GetIcon(
                     dip_size, location_icon_view_->GetForegroundColor(),
-@@ -2421,3 +2617,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
+@@ -2421,3 +2621,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
  ADD_READONLY_PROPERTY_METADATA(gfx::Rect, LocalBoundsWithoutEndcaps)
  ADD_READONLY_PROPERTY_METADATA(bool, PopupMode)
  END_METADATA
@@ -54028,7 +54075,7 @@ index 564ea6dd95ef2fa401063b4306760ff5f63c1b32..a03e313683dd8237d522c66832767ea4
    void OnContextMenuShown();
    void OnContextMenuClosed();
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef727d5ccce9 100644
+index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..18f050b02584b33c10207e2fcc1861ebf7d139fa 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
 @@ -3,11 +3,22 @@
@@ -54392,7 +54439,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
  void ToolbarView::FinalizeHideGlicActorTaskIcon() {
    if (!glic_button_ || !glic_actor_task_icon_ ||
        !glic_actor_button_container_) {
-@@ -1366,8 +1592,67 @@ bool ToolbarView::GetAcceleratorForCommandId(
+@@ -1366,8 +1592,74 @@ bool ToolbarView::GetAcceleratorForCommandId(
  ////////////////////////////////////////////////////////////////////////////////
  // ToolbarView, views::View overrides:
  
@@ -54448,6 +54495,13 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
 +  return true;
 +}
 +
++int ToolbarView::GetAuxSidebarNavigationRowHeight() const {
++  return aux_sidebar_navigation_layout_
++             ? location_bar_->PreferredSize().height() +
++                   GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin)
++             : 0;
++}
++
  gfx::Size ToolbarView::CalculatePreferredSize(
      const views::SizeBounds& available_size) const {
 +  if (aux_sidebar_navigation_layout_) {
@@ -54460,7 +54514,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
    gfx::Size size;
    switch (display_mode_) {
      case DisplayMode::kCustomTab:
-@@ -1375,6 +1660,9 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+@@ -1375,6 +1667,9 @@ gfx::Size ToolbarView::CalculatePreferredSize(
        break;
      case DisplayMode::kLocation:
        size = location_bar_->PreferredSize();
@@ -54470,7 +54524,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
        break;
      case DisplayMode::kNormal:
        size = AccessiblePaneView::CalculatePreferredSize(available_size);
-@@ -1396,6 +1684,19 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+@@ -1396,6 +1691,19 @@ gfx::Size ToolbarView::CalculatePreferredSize(
  }
  
  gfx::Size ToolbarView::GetMinimumSize() const {
@@ -54490,7 +54544,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
    gfx::Size size;
    switch (display_mode_) {
      case DisplayMode::kCustomTab:
-@@ -1403,6 +1704,9 @@ gfx::Size ToolbarView::GetMinimumSize() const {
+@@ -1403,6 +1711,9 @@ gfx::Size ToolbarView::GetMinimumSize() const {
        break;
      case DisplayMode::kLocation:
        size = location_bar_->MinimumSize();
@@ -54500,7 +54554,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
        break;
      case DisplayMode::kNormal:
        size = AccessiblePaneView::GetMinimumSize();
-@@ -1469,8 +1773,16 @@ void ToolbarView::Layout(PassKey) {
+@@ -1469,8 +1780,16 @@ void ToolbarView::Layout(PassKey) {
      }
    }
  
@@ -54519,7 +54573,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
    LayoutSuperclass<AccessiblePaneView>(this);
  }
  
-@@ -1504,7 +1816,8 @@ void ToolbarView::ChildPreferredSizeChanged(views::View* child) {
+@@ -1504,7 +1823,8 @@ void ToolbarView::ChildPreferredSizeChanged(views::View* child) {
  
  void ToolbarView::ChildVisibilityChanged(views::View* child) {
    if (child == home_) {
@@ -54529,7 +54583,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
        base::UmaHistogramBoolean("Toolbar.Overflow.HomeButton", true);
      }
    }
-@@ -1674,6 +1987,13 @@ void ToolbarView::LayoutCommon() {
+@@ -1674,6 +1994,13 @@ void ToolbarView::LayoutCommon() {
  
    gfx::Insets interior_margin =
        GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
@@ -54543,7 +54597,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
  
    const bool is_trailing_contextual_tasks_visible =
        IsTrailingContextualTasksButtonVisible();
-@@ -1742,6 +2062,13 @@ void ToolbarView::LayoutCommon() {
+@@ -1742,6 +2069,13 @@ void ToolbarView::LayoutCommon() {
        interior_margin.set_right(0);
      }
    }
@@ -54557,7 +54611,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
    layout_manager_->SetInteriorMargin(interior_margin);
  
    // Extend buttons to the window edge if we're either in a maximized or
-@@ -1752,7 +2079,8 @@ void ToolbarView::LayoutCommon() {
+@@ -1752,7 +2086,8 @@ void ToolbarView::LayoutCommon() {
    // `SetIsMaximizedOrFullscreen` remains reliably synchronized with window
    // bounds without requiring supplemental widget observation hooks.
    const bool is_maximized_or_fullscreen =
@@ -54567,7 +54621,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
                                  browser_->GetWindow()->IsFullscreen());
  
    const int margin = is_maximized_or_fullscreen ? leading_interior_margin : 0;
-@@ -2059,11 +2387,14 @@ views::View* ToolbarView::GetViewForDrop() {
+@@ -2059,11 +2394,14 @@ views::View* ToolbarView::GetViewForDrop() {
  }
  
  void ToolbarView::OnChromeLabsPrefChanged() {
@@ -54583,7 +54637,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
        ShouldShowChromeLabsUI(browser_->GetProfile()));
    GetViewAccessibility().AnnounceText(l10n_util::GetStringUTF16(
        chrome_labs_action->GetVisible()
-@@ -2080,13 +2411,19 @@ void ToolbarView::LoadImages() {
+@@ -2080,13 +2418,19 @@ void ToolbarView::LoadImages() {
  }
  
  void ToolbarView::OnShowForwardButtonChanged() {
@@ -54606,7 +54660,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..95c2cef8c554f3e0a1edaeef7fdfef72
  }
  
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.h b/chrome/browser/ui/views/toolbar/toolbar_view.h
-index 0520c2901223d569f0266421d2e6c6f7dbaff718..8e397367bb1ebfad6b6e53dfebf6642987c9d8dc 100644
+index 0520c2901223d569f0266421d2e6c6f7dbaff718..e2ce9c3edfa3a64df8269214daffa86334a0c498 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.h
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
 @@ -13,6 +13,8 @@
@@ -54634,7 +54688,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..8e397367bb1ebfad6b6e53dfebf66429
  class AvatarToolbarButtonBrowserTest;
  class ToolbarController;
  class ToolbarDivider;
-@@ -120,6 +124,29 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -120,6 +124,32 @@ class ToolbarView : public views::AccessiblePaneView,
    // Create the contents of the Browser Toolbar.
    void Init();
  
@@ -54660,11 +54714,14 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..8e397367bb1ebfad6b6e53dfebf66429
 +  bool IsAuxSidebarNavigationLayout() const {
 +    return aux_sidebar_navigation_layout_;
 +  }
++  // Height of the location row the sidebar layout adds below the buttons;
++  // 0 otherwise. The titlebar excludes it so the traffic lights stay put.
++  int GetAuxSidebarNavigationRowHeight() const;
 +
    // Forces the toolbar (and transitively the location bar) to update its
    // current state.  If |tab| is non-NULL, we're switching (back?) to this tab
    // and should restore any previous location bar state (such as user editing)
-@@ -270,6 +297,8 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -270,6 +300,8 @@ class ToolbarView : public views::AccessiblePaneView,
    void ShowActorTaskListBubble() override;
    void CloseActorTaskListBubble() override;
    bool IsActorTaskListBubbleShowing() override;
@@ -54673,7 +54730,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..8e397367bb1ebfad6b6e53dfebf66429
  
    // Updates glic button parenting after hiding glic actor task icon.
    void FinalizeHideGlicActorTaskIcon();
-@@ -281,6 +310,10 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -281,6 +313,10 @@ class ToolbarView : public views::AccessiblePaneView,
    void SetToolbarVisibility(bool visible);
  
   private:
@@ -54684,7 +54741,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..8e397367bb1ebfad6b6e53dfebf66429
    FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
                             CircularButtonRetainsInteriorMarginsAndPosition);
    FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
-@@ -407,6 +440,7 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -407,6 +443,7 @@ class ToolbarView : public views::AccessiblePaneView,
    // |location_bar_| is guaranteed to exist. These pointers are owned by the
    // view hierarchy.
    raw_ptr<ToolbarButton> contextual_tasks_button_ = nullptr;
@@ -54692,7 +54749,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..8e397367bb1ebfad6b6e53dfebf66429
    raw_ptr<ToolbarButton> back_ = nullptr;
    raw_ptr<ToolbarButton> forward_ = nullptr;
    raw_ptr<ReloadButton> reload_ = nullptr;
-@@ -464,17 +498,32 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -464,17 +501,32 @@ class ToolbarView : public views::AccessiblePaneView,
        scoped_unowned_user_data_;
  
    raw_ptr<views::FlexLayout> layout_manager_ = nullptr;
