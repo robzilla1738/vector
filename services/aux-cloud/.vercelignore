@@ -1,5 +1,7 @@
 .env*
 !.env.example
+# The frozen lockfile includes this hook's checksum.
+!.pnpmfile.cjs
 evidence/
 node_modules/
 .next/
