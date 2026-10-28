@@ -1,0 +1,31 @@
+{
+ "format": "aux.signing-review-amendment.pending.v1",
+ "status": "awaiting owner approval",
+ "decision": "D7",
+ "reviewPinned": {
+  "path": "runtime/authority-review/signing-execution-review.json",
+  "field": "targetsInSigningOrder['.'].infoPlist",
+  "currentSha256": "ec755eaba4314cfee2338452e92cf10d6a841b7c0aa1fc66606368db1db2863a"
+ },
+ "proposedInfoPlist": {
+  "path": "/Users/rcourson/Documents/Vibe/Aux/out/live-inputs/completion-20261026/info-plist-a1/Info.plist",
+  "sha256": "1b605d2dbedfd5087ea0f1b94039924acd30fbb7ba683ae280f4bb19262036e7",
+  "bytes": 18666
+ },
+ "changedKeysOnly": {
+  "CFBundleShortVersionString": [
+   "155.0.8059.85",
+   "1.26.1016.1888"
+  ],
+  "CFBundleVersion": [
+   "8059.85",
+   "1016.1888"
+  ],
+  "NSHumanReadableCopyright": [
+   null,
+   "Copyright © 2026 Courson Digital LLC. Built on Chromium."
+  ]
+ },
+ "unchanged": "identifier, entitlements, signing identity, targets and every other Info.plist key (checked key by key)",
+ "toApply": "Approve; then a new approved review pins the proposed Info.plist, the executor accepts it as an outer-object replacement, and one reseal carries it."
+}

@@ -2413,7 +2413,7 @@ index eddd25c932ddba98c1a6985fc2810555c2463e45..1d37e5afe402307baa2eeedc5de5f47f
    }
  
 diff --git a/chrome/app/app-Info.plist b/chrome/app/app-Info.plist
-index 6fada0a2b1a1f4b5675fc657a3a7b2337e43c4a1..16bb433826040b85632223b4699a3157e7bfa3eb 100644
+index 6fada0a2b1a1f4b5675fc657a3a7b2337e43c4a1..8ece98d869aa84602410fc11ac15052df61874a3 100644
 --- a/chrome/app/app-Info.plist
 +++ b/chrome/app/app-Info.plist
 @@ -176,6 +176,10 @@
@@ -2427,6 +2427,24 @@ index 6fada0a2b1a1f4b5675fc657a3a7b2337e43c4a1..16bb433826040b85632223b4699a3157
  		<dict>
  			<key>CFBundleURLName</key>
  			<string>Web site URL</string>
+@@ -234,7 +238,7 @@
+ 				<string>public.content</string>
+ 			</array>
+ 			<key>UTTypeDescription</key>
+-			<string>Chromium Extension</string>
++			<string>Aux Extension</string>
+ 			<key>UTTypeIcons</key>
+ 			<dict>
+ 				<key>UTTypeIconBadgeName</key>
+@@ -262,7 +266,7 @@
+ 				<string>com.apple.web-internet-location</string>
+ 			</array>
+ 			<key>UTTypeDescription</key>
+-			<string>Chromium Shortcut</string>
++			<string>Aux Shortcut</string>
+ 			<key>UTTypeIcons</key>
+ 			<dict>
+ 				<key>UTTypeIconBadgeName</key>
 diff --git a/chrome/app/app-entitlements-aux-passkey.plist b/chrome/app/app-entitlements-aux-passkey.plist
 new file mode 100644
 index 0000000000000000000000000000000000000000..3c62921948d61edb13ea989b25b4dd42b83c30ad
@@ -2484,16 +2502,18 @@ index 0000000000000000000000000000000000000000..cee92b61a1e56cf4f5fac78a01f232d2
 +</plist>
 diff --git a/chrome/app/aux-product-Info.plist b/chrome/app/aux-product-Info.plist
 new file mode 100644
-index 0000000000000000000000000000000000000000..5b1228681e015da3c3f9412fc56599364bbe1504
+index 0000000000000000000000000000000000000000..c01c86fb97916f51d30893d468070b2fda40bb13
 --- /dev/null
 +++ b/chrome/app/aux-product-Info.plist
-@@ -0,0 +1,12 @@
+@@ -0,0 +1,14 @@
 +<?xml version="1.0" encoding="UTF-8"?>
 +<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 +<plist version="1.0">
 +<dict>
 +  <key>CrProductDirName</key>
 +  <string>Aux</string>
++  <key>LSMinimumSystemVersion</key>
++  <string>27.0.0</string>
 +  <key>NSHumanReadableCopyright</key>
 +  <string>Copyright © 2026 Courson Digital LLC. Built on Chromium.</string>
 +  <key>NSAppleEventsUsageDescription</key>
