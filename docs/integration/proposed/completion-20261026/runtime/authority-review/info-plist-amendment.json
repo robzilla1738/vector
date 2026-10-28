@@ -1,6 +1,6 @@
 {
- "format": "aux.signing-review-amendment.pending.v1",
- "status": "awaiting owner approval",
+ "format": "aux.signing-review-amendment.v1",
+ "status": "approved by the owner 2026-10-27; sealed as combined-info-plist-a1",
  "decision": "D7",
  "reviewPinned": {
   "path": "runtime/authority-review/signing-execution-review.json",
@@ -27,5 +27,5 @@
   ]
  },
  "unchanged": "identifier, entitlements, signing identity, targets and every other Info.plist key (checked key by key)",
- "toApply": "Approve; then a new approved review pins the proposed Info.plist, the executor accepts it as an outer-object replacement, and one reseal carries it."
+ "toApply": "Applied by scripts/candidate/repair_combined.py, which accepts an outer Info.plist only when the changed keys are within the three D7 keys."
 }

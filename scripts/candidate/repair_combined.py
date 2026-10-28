@@ -50,6 +50,10 @@ TABSEARCH = 'Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgi
 required = {DAEMON+'index.mjs', DAEMON+'aux-native-entry.mjs'}
 BACKGROUND = 'Contents/Resources/aux/apps/extension/dist/background.js'
 EXTENSION_MANIFEST = 'Contents/Resources/aux/apps/extension/dist/manifest.json'
+# The outer app's Info.plist may change only in the product version and copyright
+# (owner decision D7, approved 2026-10-27); identifier, entitlements and signing stay as reviewed.
+OUTER_INFO_PLIST = 'Contents/Info.plist'
+PRODUCT_IDENTITY_KEYS = {'CFBundleShortVersionString', 'CFBundleVersion', 'NSHumanReadableCopyright'}
 SHORTCUT_CAPTURE = 'Contents/Resources/aux/apps/extension/dist/assets/use-shortcut-capture-DGr8Ws5Z.js'
 SESSION_ROUTE = 'Contents/Resources/aux/apps/extension/dist/assets/_sessionId-ClN_BWh5.js'
 DAEMON_EXECUTABLE = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon'
@@ -60,7 +64,7 @@ def resource_leaf(target):
     return target.startswith(RESOURCE_ROOTS) and target.endswith(('.js', '.md', '.webp', '.webm', '.png', '.avif')) and '/_CodeSignature/' not in target and '..' not in Path(target).parts
 # Sealed by the Framework signature, so it may change only together with a Framework reseal.
 FRAMEWORK_RESOURCES_PAK = 'Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Resources/resources.pak'
-ENUMERATED = required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE, SESSION_ROUTE, DAEMON_EXECUTABLE, FRAMEWORK_RESOURCES_PAK}
+ENUMERATED = required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE, SESSION_ROUTE, DAEMON_EXECUTABLE, FRAMEWORK_RESOURCES_PAK, OUTER_INFO_PLIST}
 CLI_APP = 'Contents/Resources/aux/apps/cli/Aux CLI.app'
 # Legacy supplied-addon path. The selected native route owns installation
 # authority, so neither leaf is reachable; removal reseals the CLI object with
@@ -74,6 +78,10 @@ require(FRAMEWORK_RESOURCES_PAK not in actual_targets or FRAMEWORK in actual_tar
 require(len(actual_targets)==len(replacements) and required <= actual_targets and all(t in ENUMERATED or resource_leaf(t) for t in actual_targets), 'Only enumerated existing leaves may change')
 for item in replacements:
     pin(item['input'])
+    if item['target'] == OUTER_INFO_PLIST:
+        old_plist=plistlib.loads((APP/OUTER_INFO_PLIST).read_bytes());new_plist=plistlib.loads(Path(item['input']['path']).read_bytes())
+        changed_keys={key for key in old_plist.keys()|new_plist.keys() if old_plist.get(key)!=new_plist.get(key)}
+        require(changed_keys <= PRODUCT_IDENTITY_KEYS, 'Info.plist may change only its product version and copyright')
     if item['target'] == EXTENSION_MANIFEST:
         old_manifest=read(APP/EXTENSION_MANIFEST);new_manifest=read(pin(item['input']))
         old_version=old_manifest.pop('version');new_version=new_manifest.pop('version')
