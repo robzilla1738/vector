@@ -10,8 +10,9 @@ The excellence-audit batch is sealed as `7f810851` plus the media reseal `c45970
 
 | Role | Path | Inventory |
 |---|---|---|
-| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `e681affcb0e28bf2e25248a30af2f2fb7e6842ec08736e9767d75b9c4b5bc0b3` (receipt `combined-legacy-guard-removal-a2`) |
-| What that seal adds | The historical Keychain interposer `libaux-native-boundary.dylib` and the unloaded guard and probe files are removed, so no Aside Keychain name ships. Launch, quit, abort and relaunch observed clean | On top of `8e865b3e` |
+| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `27d6d831470054ae370734c6671517a544c3e0a7b070a51117a8453928180594` (receipt `combined-fix-batch-a1`) |
+| What that seal adds | Fixes from the first UI pass (`desktop/ui-pass-20261027`): the build uses the live production cloud now that the hosted deploy is approved (D1); all 59 changed framework paks ship (Aux logo on chrome://version, rebranded strings); Install CLI replaces an earlier Aux wrapper | On top of `e681affc` |
+| What `e681affc` added | The historical Keychain interposer `libaux-native-boundary.dylib` and the unloaded guard and probe files are removed, so no Aside Keychain name ships. Launch, quit, abort and relaunch observed clean | On top of `8e865b3e` |
 | What `8e865b3e` added | Product version 1.26.1016.1888 and the Courson Digital copyright in Info.plist (D7, owner-approved amendment `runtime/authority-review/info-plist-amendment.json`) | On top of `fda5a3a7` |
 | What `fda5a3a7` added | Native messaging asks the peer for the profile binding on the background launch, not the UI thread (`native/native-messaging-capture-a1`); Install CLI links `~/.local/bin/aux` to the bundled CLI, and the aux-browser skill documents its real commands (`integration/local-daemon-a2`); 468 unbuilt shell-era files deleted from the checkout | On top of `c4597021` |
 | What `c4597021` added | Eight extension images and both sign-in videos retouched so no Aside text or logo shows (`integration/brand-media-a1`) | On top of `7f810851` |

@@ -75,6 +75,10 @@ def resource_leaf(target):
     return target.startswith(RESOURCE_ROOTS) and target.endswith(('.js', '.md', '.webp', '.webm', '.png', '.avif')) and '/_CodeSignature/' not in target and '..' not in Path(target).parts
 # Sealed by the Framework signature, so it may change only together with a Framework reseal.
 FRAMEWORK_RESOURCES_PAK = 'Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Resources/resources.pak'
+FRAMEWORK_RESOURCES = 'Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Resources/'
+def framework_pak(target):
+    # Every resource and locale pak is sealed by the Framework signature, like resources.pak.
+    return target.startswith(FRAMEWORK_RESOURCES) and target.endswith('.pak') and '..' not in Path(target).parts and target.count('/') <= FRAMEWORK_RESOURCES.count('/') + 1
 ENUMERATED = required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE, SESSION_ROUTE, DAEMON_EXECUTABLE, FRAMEWORK_RESOURCES_PAK, OUTER_INFO_PLIST}
 CLI_APP = 'Contents/Resources/aux/apps/cli/Aux CLI.app'
 # Legacy supplied-addon path. The selected native route owns installation
@@ -91,8 +95,8 @@ removals = plan.get('removals', [])
 require(all(item['target'] in REMOVABLE for item in removals) and len({item['target'] for item in removals})==len(removals), 'Only enumerated legacy leaves may be removed')
 cli_changes = any(item['target'].startswith(CLI_APP+'/') for item in removals)
 actual_targets = {item['target'] for item in replacements}
-require(FRAMEWORK_RESOURCES_PAK not in actual_targets or FRAMEWORK in actual_targets, 'Framework resources change only with a Framework reseal')
-require(len(actual_targets)==len(replacements) and required <= actual_targets and all(t in ENUMERATED or resource_leaf(t) for t in actual_targets), 'Only enumerated existing leaves may change')
+require(not any(framework_pak(t) for t in actual_targets) or FRAMEWORK in actual_targets, 'Framework resources change only with a Framework reseal')
+require(len(actual_targets)==len(replacements) and required <= actual_targets and all(t in ENUMERATED or resource_leaf(t) or framework_pak(t) for t in actual_targets), 'Only enumerated existing leaves may change')
 for item in replacements:
     pin(item['input'])
     if item['target'] == OUTER_INFO_PLIST:

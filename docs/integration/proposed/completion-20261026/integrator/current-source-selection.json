@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "e681affcb0e28bf2e25248a30af2f2fb7e6842ec08736e9767d75b9c4b5bc0b3",
+  "signedInventorySha256": "27d6d831470054ae370734c6671517a544c3e0a7b070a51117a8453928180594",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -354,6 +354,14 @@
     "removed": [
       "native/libaux-native-boundary.dylib",
       "daemon and CLI native/aux-native.cjs, aux-native-guard.node, native-load-only-probe.cjs, native-load-diagnostic.cjs"
+    ]
+  },
+  "fixBatchRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-fix-batch-a1/receipt.json",
+    "sha256": "046e17c7386512815fabc5fa2c3a9f0bf310741c9b79cb7098996137f3068c4f",
+    "sources": [
+      "integration/production-cloud-a1",
+      "desktop/ui-pass-20261027"
     ]
   }
 }

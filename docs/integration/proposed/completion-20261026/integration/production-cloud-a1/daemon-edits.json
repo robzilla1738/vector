@@ -1,0 +1,35 @@
+{
+ "format": "aux.candidate-edits.v1",
+ "purpose": "Production cloud profile (D1 condition met) and CLI upgrade from an earlier wrapper.",
+ "files": [
+  {
+   "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+   "edits": [
+    {
+     "find": "`http://127.0.0.1:9/aux-unavailable/api`",
+     "replace": "`https://api.getaux.co`",
+     "count": 6,
+     "why": "D1: the hosted service is approved and live, so the build uses the reviewed production API (base URL and account issuer)."
+    },
+    {
+     "find": "`http://127.0.0.1:9/aux-unavailable/share`",
+     "replace": "`https://share.getaux.co`",
+     "count": 1,
+     "why": "Shared conversation links use the production share origin."
+    },
+    {
+     "find": "function isAllowedCorsOrigin(Cn){return isTrustedLocalUiOrigin(Cn)}",
+     "replace": "function isAllowedCorsOrigin(Cn){return Cn===`https://app.getaux.co`||Cn===`https://api.getaux.co`||isTrustedLocalUiOrigin(Cn)}",
+     "count": 1,
+     "why": "The production web app may call the local daemon, as the supplied build allowed its cloud origins."
+    },
+    {
+     "find": "if(ni&&!ni.isSymbolicLink())throw Error(`${ti} already exists and is not a link. Remove it and try again.`);",
+     "replace": "if(ni&&!ni.isSymbolicLink()&&!(ni.isFile()&&ni.size<4096&&/Aux CLI\\.app\\/Contents\\/MacOS\\/aux-cli/.test(readFileSync(ti,`utf8`))))throw Error(`${ti} already exists and is not an Aux CLI link. Remove it and try again.`);",
+     "count": 1,
+     "why": "Replace a wrapper script written by an earlier Aux CLI installer; refuse anything else."
+    }
+   ]
+  }
+ ]
+}

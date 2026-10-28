@@ -1,0 +1,21 @@
+{
+ "format": "aux.desktop.observation.v1",
+ "date": "2026-10-27",
+ "grants": "Accessibility, Automation (Aux, System Events), Screen Recording granted to the Claude Code engine (claude.app) on macOS 27 (Device Control and Data Access)",
+ "observed": {
+  "gracefulQuit": "quit Apple Event (same path as Aux > Quit): browser and daemon gone in 7 s, twice",
+  "settings": "sidebar has no Plan & Usage, Docs, Community or Send feedback; Developers has no Remote Control or Pro copy; CLI art shows the retouched /aux-browser",
+  "installCli": "Reinstall shows a confirm, then refused the old supplied-installer wrapper at ~/.local/bin/aux with a toast (defect 1, fixed in seal 27d6d831 to replace only an earlier Aux wrapper)",
+  "palette": "Cmd+T opens the centered palette and creates no tab until a choice (R14)",
+  "versionPage": "shows Aux; on 3b9f..e681 seals the logo was still the Chromium wordmark because only resources.pak was resealed (defect 2); seal 27d6d831 ships all 59 changed framework paks and the page shows the Aux mark",
+  "help": "Help > Aux Help opens https://app.getaux.co/docs, which renders the live docs page",
+  "newTabMenu": "profile menu shows only Sign in to resume sync and Settings (no Discord, no feedback)",
+  "signIn": "local-only build offered a sign-in it could not complete (defect 3); seal 27d6d831 uses the production cloud (api/share.getaux.co, daemon CORS admits app./api.getaux.co, localhost refused)",
+  "auxOpen": "bundled CLI through a symlink: aux open https://example.com/ --profile \"Your Aux\" navigated the active tab (R28); aux list and resolve answered JSON"
+ },
+ "notObserved": [
+  "full email/Google sign-in and J5 (needs an emailed code from the owner)",
+  "the R01-R30 journey list beyond the items above",
+  "1Password pairing (needs the Developer ID copy)"
+ ]
+}

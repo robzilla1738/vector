@@ -1,0 +1,40 @@
+{
+ "format": "aux.candidate-edits.v1",
+ "purpose": "Extension production cloud profile (D1 condition met).",
+ "files": [
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/background.js",
+   "edits": [
+    {
+     "find": "http://127.0.0.1:9/aux-unavailable/api",
+     "replace": "https://api.getaux.co",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/strip-markdown-DRcmtuJc.js",
+   "edits": [
+    {
+     "find": "http://127.0.0.1:9/aux-unavailable/api",
+     "replace": "https://api.getaux.co",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+   "edits": [
+    {
+     "find": "http://127.0.0.1:9/aux-unavailable/share/account",
+     "replace": "https://app.getaux.co/account",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+   "content": "{\n  \"manifest_version\": 3,\n  \"name\": \"Aux Browsing Agent\",\n  \"version\": \"1.26.1016.1890\",\n  \"version_name\": \"1.26.1016.1852\",\n  \"description\": \"Browsing agent for Aux browser\",\n  \"key\": \"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzMC8cpWmbybitC0CpBbGxSFeLgzUrsdv5xm6eIT87SSzJSs0rvGF5NLsyP0pfCcmUqkW/nGxMn1ykuillT19qe6dSi1QCKpkK2wuWoeM+5MWdRCLhM6E0LpWHXpIGn7RPjKvOJ8XWQtB/f0qW0T8M7T2t++4yei+gZUjUV4SUD0qYMK9IP+qnq2ZEOsRW4MfsOXVvPSWuQ4d5vvo6DrwL5wfhrVln9IxfhrMSLFoCgbGzOBThbgzZDIvqCOvJqrzp1hFzwQdiDLA/IR3RkIJW7OmyuM6/PizdGy5kSQcMnqX80f3or7G7kHn6iVdjFxsbt2JxYRZ3N/9wTxBGEMuAQIDAQAB\",\n  \"icons\": {\n    \"16\": \"icons/icon-16.png\",\n    \"48\": \"icons/icon-48.png\",\n    \"128\": \"icons/icon-128.png\"\n  },\n  \"action\": {\n    \"default_title\": \"Aux Browsing Agent\"\n  },\n  \"side_panel\": {\n    \"default_path\": \"sidepanel.html\"\n  },\n  \"chrome_url_overrides\": {\n    \"newtab\": \"newtab.html\"\n  },\n  \"permissions\": [\n    \"sidePanel\",\n    \"contextMenus\",\n    \"storage\",\n    \"activeTab\",\n    \"tabCapture\",\n    \"offscreen\",\n    \"debugger\",\n    \"downloads\",\n    \"favicon\",\n    \"history\",\n    \"bookmarks\",\n    \"topSites\",\n    \"browsingData\",\n    \"privacy\",\n    \"management\",\n    \"nativeMessaging\",\n    \"cookies\",\n    \"tabs\",\n    \"scripting\",\n    \"userScripts\",\n    \"webNavigation\",\n    \"sessions\",\n    \"tabGroups\",\n    \"alarms\",\n    \"notifications\",\n    \"dev.aux.blink.expose-wv\",\n    \"dev.aux.ext.private.account\",\n    \"dev.aux.ext.private.adblock\",\n    \"dev.aux.ext.private.browserImport\",\n    \"dev.aux.ext.private.notification\",\n    \"dev.aux.ext.private.omnibox\",\n    \"dev.aux.ext.private.browserPreferences\",\n    \"dev.aux.ext.private.miniPopup\",\n    \"dev.aux.ext.private.capture-tab-without-userinteraction\",\n    \"dev.aux.ext.private.launch-extension\"\n  ],\n  \"host_permissions\": [\n    \"<all_urls>\",\n    \"https://api.anthropic.com/*\"\n  ],\n  \"web_accessible_resources\": [\n    {\n      \"resources\": [\n        \"iframe.html\",\n        \"tab-preview-player.html\",\n        \"tabsearch.html\",\n        \"react-grab-bridge.js\",\n        \"assets/*\"\n      ],\n      \"matches\": [\n        \"<all_urls>\"\n      ]\n    }\n  ],\n  \"commands\": {\n    \"_execute_action\": {\n      \"suggested_key\": {\n        \"default\": \"Alt+Shift+B\",\n        \"mac\": \"Alt+Shift+B\"\n      },\n      \"description\": \"Open Aux sidepanel\"\n    }\n  },\n  \"externally_connectable\": {\n    \"ids\": []\n  },\n  \"sandbox\": {\n    \"pages\": [\n      \"visual-frame.html\"\n    ]\n  },\n  \"content_security_policy\": {\n    \"sandbox\": \"sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; child-src 'self';\",\n    \"extension_pages\": \"script-src 'self'; object-src 'self'\"\n  },\n  \"background\": {\n    \"service_worker\": \"background.js\",\n    \"type\": \"module\"\n  },\n  \"content_scripts\": [\n    {\n      \"matches\": [\n        \"<all_urls>\"\n      ],\n      \"js\": [\n        \"content/content.js\"\n      ],\n      \"run_at\": \"document_idle\"\n    },\n    {\n      \"matches\": [\n        \"https://docs.google.com/document/*\"\n      ],\n      \"js\": [\n        \"content/google-docs-selection-bridge.js\"\n      ],\n      \"run_at\": \"document_idle\",\n      \"world\": \"MAIN\"\n    }\n  ]\n}\n"
+  }
+ ]
+}
