@@ -163,6 +163,17 @@ def repin_runtime(app: Path, changed: list) -> int:
     return len(changed)
 
 
+def main_executable(app: Path, target: str) -> Path:
+    """The file a target's signature covers as code: a loose file itself, a bundle's executable."""
+    path = app / target
+    if not path.is_dir():
+        return path
+    if target.endswith('.framework'):
+        return path / path.stem
+    info = plistlib.loads((path / 'Contents/Info.plist').read_bytes())
+    return path / 'Contents/MacOS' / info['CFBundleExecutable']
+
+
 TEXT_SUFFIXES = ('.json', '.js', '.mjs', '.cjs', '.md', '.txt', '.plist')
 
 
@@ -265,11 +276,11 @@ def main() -> int:
 
     # 3. Nested Mach-O files that are not bundle targets: keep third-party Developer ID
     # signatures; in developer-id mode re-sign everything else with Aux's.
-    bundles = [t for t, _, _ in TARGETS if t.endswith(('.app', '.framework')) or t == '.']
-    loose = {t for t, _, _ in TARGETS if not t.endswith(('.app', '.framework')) and t != '.'}
+    # Target executables are signed with their target in step 4, never here.
+    covered = {main_executable(app, t) for t, _, _ in TARGETS if t != '.'}
     resigned, kept = [], {}
     for path in sorted((app / AUX).rglob('*'), key=lambda p: -len(p.parts)):
-        if not macho(path) or str(path.relative_to(app)) in loose:
+        if not macho(path) or path in covered:
             continue
         current = authority(path)
         kept[current] = kept.get(current, 0) + 1
@@ -286,9 +297,15 @@ def main() -> int:
         **{before: sha256(p) for p, before in resigned if runtime not in p.parents},
         **{old: sha256(p) for p, old in pins_before.items() if sha256(p) != old}})
 
-    # 4. Bundle targets, inside out.
-    signed = [sign(app, target, identifier, entitlements, identity, release, work)
-              for target, identifier, entitlements in TARGETS]
+    # 4. Targets, inside out. A helper's launch policy pins its executable's hash, and
+    # signing changes it, so each helper is re-pinned before the daemon seals the policy.
+    signed = []
+    for target, identifier, entitlements in TARGETS:
+        executable = main_executable(app, target) if target != '.' else None
+        before = sha256(executable) if executable else None
+        signed.append(sign(app, target, identifier, entitlements, identity, release, work))
+        if executable and target.startswith(AUX) and target != DAEMON_APP and sha256(executable) != before:
+            cascade += repin_cascade(app, {before: sha256(executable)})
     run(['codesign', '--verify', '--deep', '--strict', str(app)])
 
     receipt = {

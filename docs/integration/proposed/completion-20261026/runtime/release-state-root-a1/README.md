@@ -13,3 +13,14 @@ Chromium's crash database moves from `Application Support/Aux/Crashpad` to `User
 ## First launch (relink `release-state-root-a2`)
 
 The first launch of a newly assembled build was refused at readiness with `stage=currentCodeReadback error=identity`. The daemon's policy loader binds six of its own files (executable, `Info.plist`, `CodeResources`, the policy resource, `index.mjs`, `aux-native-entry.mjs`) and refuses if any `stat` field changes during the run. On the first execution of new code, macOS updated the daemon's `CodeResources` extended attributes about a minute after signing, which moved ctime and nothing else. A copy reusing the same code hashes started first time. `source/AuxSignedFreshBootstrapPolicyLoader.swift` drops ctime from that long-lived binding only. Device, inode, mode, links, owner, flags, size and mtime still must match, and the signature is re-validated. Short read-stability checks keep ctime. Relinked as `out/live-inputs/completion-20261026/release-state-root-a2/Aux Daemon` with both substitutions.
+
+## Developer ID (relink `release-state-root-a3`)
+
+The browser and daemon pinned the SHA-256 of one signing certificate, the Apple Development leaf, in four places: `AuxNativeParentColdLaunch.cc`, `AuxCliSealedImages.cc`, `AuxFreshBootstrapPolicy.swift` (browser) and `daemon-policy.swift`, plus `AuxSealedOuterBrowserParent.swift` on the daemon side. A Developer ID build was refused before any state was created. Both of Robert's leaves are now accepted, under the same team check:
+
+- Apple Development `ff0293a0…`, for local builds;
+- Developer ID Application `f3ee5520…`, for releases.
+
+The daemon was relinked with three substitutions (this folder's `source/`).
+
+`assemble.py` also no longer re-signs a target's own executable in the nested pass. Each helper's launch-policy pin (Computer Use, memory helper) is re-pinned right after that helper is signed, before the daemon bundle seals the policy.

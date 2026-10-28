@@ -72,6 +72,9 @@ enum AuxFreshBootstrapPolicyError:Error {case identity,policy,signature(OSStatus
 enum AuxFreshBootstrapIdentity {
     static let team="9F2JXY8TCK"
     static let leafCertificateSha256="ff0293a06f20704a1f3b3f2571b3362ef439a2dfb3b0bc90bcf3d5debfc73a1c"
+    // Developer ID Application: Robert Courson (9F2JXY8TCK), the release signer.
+    static let releaseLeafCertificateSha256="f3ee552083b70230a4d6e98a5c2dcb2957d7d635b034c0033f7a4556f011c2f6"
+    static func acceptsLeaf(_ sha256:String)->Bool{sha256==leafCertificateSha256||sha256==releaseLeafCertificateSha256}
     static let historicalHome="/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj"
     static let resource="AuxFreshBootstrapPolicy.json"
     static let resourceRelative="Resources/"+resource // SecCode resource base is Contents.
@@ -233,7 +236,7 @@ struct AuxCapturedFreshBootstrapSignature {
     let entitlements:[String:Any]
 }
 func validateCapturedFreshBootstrapSignature(_ captured:AuxCapturedFreshBootstrapSignature,role:AuxFreshBootstrapPolicyContents.Role,host:Bool,accessGroup:String)throws {
-    guard captured.team==AuxFreshBootstrapIdentity.team,captured.certificateSha256==AuxFreshBootstrapIdentity.leafCertificateSha256,
+    guard captured.team==AuxFreshBootstrapIdentity.team,AuxFreshBootstrapIdentity.acceptsLeaf(captured.certificateSha256),
           captured.identifier==(host ? role.identifier:"dev.aux.browser.runtime"),captured.flags & 0x2==0 else{throw AuxFreshBootstrapPolicyError.identity}
     if host {
         guard captured.applicationIdentifier==AuxFreshBootstrapIdentity.team+"."+role.identifier,AuxFreshBootstrapPolicyContents.validAccessGroup(accessGroup),captured.accessGroups==[accessGroup],captured.flags & 0x10000 != 0 else{throw AuxFreshBootstrapPolicyError.identity}
@@ -277,7 +280,7 @@ func validateCapturedFreshBootstrapImagePaths(_ paths:[String],bundle:String,pol
     guard observed==Set(expected.keys)else{throw AuxFreshBootstrapPolicyError.image}
 }
 func validateCapturedFreshBootstrapPdfSignature(_ captured:AuxCapturedFreshBootstrapSignature)throws {
-    guard captured.team==AuxFreshBootstrapIdentity.team,captured.certificateSha256==AuxFreshBootstrapIdentity.leafCertificateSha256,
+    guard captured.team==AuxFreshBootstrapIdentity.team,AuxFreshBootstrapIdentity.acceptsLeaf(captured.certificateSha256),
           captured.identifier==AuxFreshBootstrapPdfIdentity.identifier,captured.flags & 0x2==0,captured.entitlements.isEmpty,
           captured.applicationIdentifier.isEmpty,captured.accessGroups.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}
 }
@@ -286,7 +289,7 @@ func validateCapturedFreshBootstrapPdfBytes(sha256:String,bytes:Int,policy:AuxFr
 }
 
 func validateCapturedFreshBootstrapMacUtilitySignature(_ captured:AuxCapturedFreshBootstrapSignature)throws {
-    guard captured.team==AuxFreshBootstrapIdentity.team,captured.certificateSha256==AuxFreshBootstrapIdentity.leafCertificateSha256,
+    guard captured.team==AuxFreshBootstrapIdentity.team,AuxFreshBootstrapIdentity.acceptsLeaf(captured.certificateSha256),
           captured.identifier==AuxFreshBootstrapMacUtilitiesIdentity.identifier,captured.flags & 0x2==0,captured.entitlements.isEmpty,
           captured.applicationIdentifier.isEmpty,captured.accessGroups.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}
 }
@@ -334,7 +337,7 @@ struct AuxFreshBootstrapPtyArtifacts {
     }
 }
 func validateCapturedFreshBootstrapPtySignature(_ captured:AuxCapturedFreshBootstrapSignature,artifact:AuxFreshBootstrapPtyArtifact)throws {
-    guard captured.team==AuxFreshBootstrapIdentity.team,captured.certificateSha256==AuxFreshBootstrapIdentity.leafCertificateSha256,
+    guard captured.team==AuxFreshBootstrapIdentity.team,AuxFreshBootstrapIdentity.acceptsLeaf(captured.certificateSha256),
           captured.identifier==artifact.identifier,captured.flags & 0x2==0,captured.flags & 0x10000 != 0,
           captured.entitlements.isEmpty,captured.applicationIdentifier.isEmpty,captured.accessGroups.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}
 }
