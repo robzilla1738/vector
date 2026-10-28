@@ -29,6 +29,22 @@ def replace_one(argv: list[str], old: str, new: str) -> list[str]:
     return [new if value == old else value for value in argv]
 
 
+TMP = '/private/tmp/'
+PRESERVED = Path(__file__).resolve().parents[2] / 'out/live-inputs/tmp-preserved'
+
+
+def preserved(argv: list[str]) -> list[str]:
+    """macOS purges /private/tmp, partly or fully; recorded inputs there use their preserved copies."""
+    def one(value: str) -> str:
+        # A Swift module cache records its own path; swiftc rebuilds it where it was.
+        if TMP not in value or '/swift-cache' in value:
+            return value
+        head, tail = value.split(TMP, 1)
+        copy = PRESERVED / tail
+        return head + str(copy) if copy.exists() else value
+    return [one(value) for value in argv]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--compile-recipe', type=Path, required=True)
@@ -53,6 +69,7 @@ def main() -> int:
     for pair in args.substitute:
         old, new = pair.split('=', 1)
         link_argv = replace_one(link_argv, old, str(Path(new).resolve()))
+    compile_argv, link_argv = preserved(compile_argv), preserved(link_argv)
     (out / 'compile.json').write_text(json.dumps(compile_argv) + '\n')
     (out / 'link.json').write_text(json.dumps({'cwd': link['cwd'], 'argv': link_argv}) + '\n')
     for name, argv, cwd in (('compile', compile_argv, None), ('link', link_argv, link['cwd'])):

@@ -217,6 +217,7 @@ def main() -> int:
     parser.add_argument('--build', type=int, required=True)
     parser.add_argument('--identity', choices=('development', 'developer-id'), default='development')
     parser.add_argument('--daemon-profile', type=Path, help='Developer ID provisioning profile for the daemon')
+    parser.add_argument('--daemon-executable', type=Path, help='relinked aux-daemon (scripts/candidate/relink_daemon.py)')
     args = parser.parse_args()
 
     out = args.out.resolve()
@@ -255,6 +256,10 @@ def main() -> int:
         info.setdefault(key, text)
     info_path.write_bytes(plistlib.dumps(info))
 
+    if args.daemon_executable:
+        target = app / DAEMON_APP / 'Contents/MacOS/aux-daemon'
+        shutil.copy2(args.daemon_executable, target)
+        target.chmod(0o755)
     if args.daemon_profile:
         shutil.copy2(args.daemon_profile, app / DAEMON_APP / 'Contents/embedded.provisionprofile')
 
@@ -288,7 +293,8 @@ def main() -> int:
 
     receipt = {
         'format': 'aux.release-assembly.v1', 'version': args.version, 'build': args.build,
-        'identity': args.identity, 'identitySha1': identity, 'native': str(args.native), 'components': str(args.components),
+        'identity': args.identity, 'identitySha1': identity,
+        'daemonExecutable': {'path': str(args.daemon_executable), 'sha256': sha256(args.daemon_executable)} if args.daemon_executable else None, 'native': str(args.native), 'components': str(args.components),
         'componentsBundleSha256': sha256(out / 'stage-provenance-bundle.json'),
         'packageEdits': edits, 'transforms': transforms, 'nestedSignatures': kept, 'resignedNested': len(resigned),
         'repinnedRuntimeFiles': repinned, 'repinCascade': cascade, 'signed': signed, 'usageStrings': sorted(USAGE),
