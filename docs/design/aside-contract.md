@@ -26,7 +26,7 @@ Visible branding, the wire protocol and key domains on the candidate are Aux (au
 | `aside-daemon`, `Aside.*` | `aux-daemon`, `Aux.*` |
 | `aside.dk.*` | `aux.dk.v2` |
 
-Remaining: the supplied addon and its carrier were unreachable and are removed, so no `AsideNative*` export ships. The boundary guard `libaux-native-boundary.dylib` still lists the original keychain group and `aside.` prefixes as legacy acceptance; narrowing it reads and writes Keychain items, so it needs owner approval before any runtime check.
+Remaining: none. The supplied addon, its carrier, the historical Keychain interposer `libaux-native-boundary.dylib` and the unloaded guard and probe files are removed; the shipped native peer refuses `DYLD_INSERT_LIBRARIES`, and no Aside Keychain group or prefix ships.
 
 When the migration is authorized, change both sides, schemas, dispatch, health checks and byte-length calculations together. Never brand a challenge without its verifier. Never decrypt old ciphertext under a renamed HKDF domain. Existing state needs an explicit migration or a legacy reader; resets and owner-state access are not allowed. The migration includes no UI, geometry, CSS, typography, icon or interaction change. See [complete identity](../plans/2026-10-22-complete-aux-identity.md).
 

@@ -10,8 +10,9 @@ The excellence-audit batch is sealed as `7f810851` plus the media reseal `c45970
 
 | Role | Path | Inventory |
 |---|---|---|
-| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `8e865b3ed527e2decfd7ac86719863f8111dffe28a10d79b7669d0e826ca3f1f` (receipt `combined-info-plist-a1`) |
-| What that seal adds | Product version 1.26.1016.1888 and the Courson Digital copyright in Info.plist (D7, owner-approved amendment `runtime/authority-review/info-plist-amendment.json`) | On top of `fda5a3a7` |
+| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `e681affcb0e28bf2e25248a30af2f2fb7e6842ec08736e9767d75b9c4b5bc0b3` (receipt `combined-legacy-guard-removal-a2`) |
+| What that seal adds | The historical Keychain interposer `libaux-native-boundary.dylib` and the unloaded guard and probe files are removed, so no Aside Keychain name ships. Launch, quit, abort and relaunch observed clean | On top of `8e865b3e` |
+| What `8e865b3e` added | Product version 1.26.1016.1888 and the Courson Digital copyright in Info.plist (D7, owner-approved amendment `runtime/authority-review/info-plist-amendment.json`) | On top of `fda5a3a7` |
 | What `fda5a3a7` added | Native messaging asks the peer for the profile binding on the background launch, not the UI thread (`native/native-messaging-capture-a1`); Install CLI links `~/.local/bin/aux` to the bundled CLI, and the aux-browser skill documents its real commands (`integration/local-daemon-a2`); 468 unbuilt shell-era files deleted from the checkout | On top of `c4597021` |
 | What `c4597021` added | Eight extension images and both sign-in videos retouched so no Aside text or logo shows (`integration/brand-media-a1`) | On top of `7f810851` |
 | What `7f810851` added | Local-only daemon with narrowed trusted origins, a shutdown budget and no inherited provider keys (`integration/local-daemon-a1`); daemon drain watches the browser and both peer-loss deadlines start at first loss (`runtime/daemon-parent-liveness-a1`); memory census limited to this installation (`runtime/memory-census-scope-a1`); extension without billing, Pro, Remote Control, dev-cloud or Aside's Discord, one feedback entry (`integration/extension-ui-a1`); Framework with the real Keychain by default (D2), Gemini/Lens/Compose off, Help to Aux docs, Aux product logos, 47 strings rebranded, supervisor backoff and retry, and the shell retired (`native/shell-retirement-a1`) | On top of `3b9f9b68` |
@@ -60,16 +61,15 @@ The full Batch 3 pass: R01–R30 except R18 and R20, plus profile-note isolation
 
 The bundled `aux-cli` refuses to run when invoked directly ("packaged state identity is unsupported or unaccepted"). It is meant to be reached through the product's installed CLI path, which also needs the UI to set up (R28).
 
-### Identity, last piece (Batch 4)
+### Identity (complete)
 
-The supplied addon (`provided-native.node`) and its carrier were unreachable in the shipped product, so they were removed. No `AsideNative` symbol remains; details are in `runtime/addon-replacement-scope/README.md`. No delivered code writes Aside-named Keychain items either: the JS uses `AUX_KEYCHAIN_ID_PREFIX=aux`, and the daemon and its Swift code contain no `aside.` item names. What remains is only the boundary guard's legacy acceptance list in `libaux-native-boundary.dylib`: the original group constant and `aside.` prefixes. The daemon's Swift queries pass their own access group through that guard, so narrowing it needs a runtime check against the Keychain, which needs owner approval. Also staying: the runtime-provenance path inside the daemon.
+The supplied addon (`provided-native.node`) and its carrier were unreachable in the shipped product, so they were removed. No `AsideNative` symbol remains; details are in `runtime/addon-replacement-scope/README.md`. No delivered code writes Aside-named Keychain items either: the JS uses `AUX_KEYCHAIN_ID_PREFIX=aux`, and the daemon and its Swift code contain no `aside.` item names. The historical Keychain interposer `libaux-native-boundary.dylib`, which held the original group constant and `aside.` prefixes, was never loaded on the shipped route (the native peer refuses `DYLD_INSERT_LIBRARIES`) and is removed with the unloaded guard and probe files (seal `e681affc`). Identity is complete. Still staying: the runtime-provenance path inside the daemon.
 
 ### Waiting on the owner (excellence audit, 2026-10-27)
 
 - **D12, OS grants:** Accessibility and Automation for the terminal running Claude (or Computer use). Unblocks the journey pass, menu Quit, and checking every changed surface (settings, new-tab menu, help menu, chrome://version, palette, the retouched art). The 1Password native-messaging path (its binding request now runs off the UI thread) is compiled and sealed but only the pass can exercise it. The nested startup and shutdown `RunLoop`s stay: they are deliberate gates (no profile before the daemon is ready and authorized), and making them asynchronous would change startup behavior.
 - **D11, backup destination** for the off-machine encrypted backup of `out/` essentials and git.
 - **Hosted deploy:** approval, operator, alert recipient and monitor, plus setting the new `AUX_READINESS_SECRET` in Vercel; then J5. Optionally turn on Clerk's legal-consent setting. Help now opens `app.getaux.co/docs`, which serves the new pages only after this deploy.
-- **Keychain runtime check** to narrow the boundary guard's legacy list; D2's real Keychain is exercised only by a non-launcher start.
 - **CLI install (R28):** Install CLI now links the bundled CLI locally, and `aux list`/`aux resolve` work through such a link. Clicking Install in Settings › Developers and `aux open` need the journey pass.
 - Unchanged: Apple `2H4D7KNGUP` (REPL), the ChatGPT eligibility form, 1Password identity and vendor account.
 

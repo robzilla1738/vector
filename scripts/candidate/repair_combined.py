@@ -25,6 +25,17 @@ def pin(item):
     path = Path(item['path'])
     require(path.is_file() and not path.is_symlink() and sha(path)==item['sha256'], 'Changed repair input: '+str(path))
     return path
+# The owner-approved D7 amendment replaced the reviewed outer Info.plist; accept
+# exactly that replacement, and only for the plist the review pinned.
+INFO_PLIST_AMENDMENT = ROOT/'docs/integration/proposed/completion-20261026/runtime/authority-review/info-plist-amendment.json'
+def pin_info_plist(item):
+    path = Path(item['path'])
+    if path.is_file() and sha(path) == item['sha256']: return pin(item)
+    amendment = json.loads(INFO_PLIST_AMENDMENT.read_text())
+    require(amendment['reviewPinned']['currentSha256'] == item['sha256'] and
+            path.is_file() and not path.is_symlink() and sha(path) == amendment['proposedInfoPlist']['sha256'],
+            'Changed repair input: '+str(path))
+    return path
 def write_new(path, value):
     with Path(path).open('x') as stream: json.dump(value, stream, indent=2); stream.write('\n')
 parser=argparse.ArgumentParser()
@@ -69,7 +80,13 @@ CLI_APP = 'Contents/Resources/aux/apps/cli/Aux CLI.app'
 # Legacy supplied-addon path. The selected native route owns installation
 # authority, so neither leaf is reachable; removal reseals the CLI object with
 # its exact approved command, in the original signing order.
-REMOVABLE = {CLI_APP+'/Contents/Resources/native/provided-native.node', 'Contents/Resources/aux/native/aux-native-carrier'}
+DAEMON_APP = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app'
+# The historical Keychain interposer and its loaders: the shipped native peer refuses
+# DYLD_INSERT_LIBRARIES, and no code path loads the guard or probes.
+LEGACY_NATIVE_GUARD = {'Contents/Resources/aux/native/libaux-native-boundary.dylib',
+    *(app+'/Contents/Resources/native/'+leaf for app in (CLI_APP, DAEMON_APP)
+      for leaf in ('aux-native.cjs', 'aux-native-guard.node', 'native-load-only-probe.cjs', 'native-load-diagnostic.cjs'))}
+REMOVABLE = {CLI_APP+'/Contents/Resources/native/provided-native.node', 'Contents/Resources/aux/native/aux-native-carrier'} | LEGACY_NATIVE_GUARD
 removals = plan.get('removals', [])
 require(all(item['target'] in REMOVABLE for item in removals) and len({item['target'] for item in removals})==len(removals), 'Only enumerated legacy leaves may be removed')
 cli_changes = any(item['target'].startswith(CLI_APP+'/') for item in removals)
@@ -120,7 +137,7 @@ for item in replacements:
     require(rows[item['target']]['sha256']==item['beforeSha256'], 'Changed diagnostic preimage')
 for row in targets:
     if row['entitlements']: pin(row['entitlements'])
-    if row.get('infoPlist'): pin(row['infoPlist'])
+    if row.get('infoPlist'): pin_info_plist(row['infoPlist'])
 for item in review['preservedExactLeaves']:
     if not item['path'].endswith(('aux-pdf.node','aux-macos-utilities.node')): pin(item)
 pin(review['publicProfileActual'])

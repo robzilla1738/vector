@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "8e865b3ed527e2decfd7ac86719863f8111dffe28a10d79b7669d0e826ca3f1f",
+  "signedInventorySha256": "e681affcb0e28bf2e25248a30af2f2fb7e6842ec08736e9767d75b9c4b5bc0b3",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -347,5 +347,13 @@
     "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-info-plist-a1/receipt.json",
     "sha256": "6734abf13dde684fd9564186b4b731708cbd9c5d38333f119b5d0fde7e06a80c",
     "amendment": "docs/integration/proposed/completion-20261026/runtime/authority-review/info-plist-amendment.json"
+  },
+  "legacyGuardRemoval": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-legacy-guard-removal-a2/receipt.json",
+    "sha256": "d4f23e1812e7608a6305094a3388d379f2c6c8f55ede7fa66b742f430eddda5c",
+    "removed": [
+      "native/libaux-native-boundary.dylib",
+      "daemon and CLI native/aux-native.cjs, aux-native-guard.node, native-load-only-probe.cjs, native-load-diagnostic.cjs"
+    ]
   }
 }
