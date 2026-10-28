@@ -32,6 +32,7 @@ copy_in() { tart exec -i "$VM" bash -c "mkdir -p \"\$HOME/\$(dirname $2)\" && ca
 guest 'brew install gitleaks'
 # The pnpm shim lands beside node in /opt/homebrew/opt/node@24/bin, which CI puts on PATH.
 guest "corepack enable && corepack prepare pnpm@$PNPM_VERSION --activate"
+copy_in "$root/scripts/ci/post-boot.sh" .tartelet/post-boot.sh
 
 # Pre-warm the pnpm store with the public packages both lockfiles pin.
 copy_in "$root/pnpm-lock.yaml" warm/root/pnpm-lock.yaml

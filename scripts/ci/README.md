@@ -12,6 +12,7 @@ The GitHub App and repository settings are the owner's part: [owner plan, item 6
 - pnpm 11.27.1 through corepack.
 - Python 3 (from the image) and gitleaks.
 - A pnpm store pre-warmed from the committed lockfiles. Nothing secret: no tokens, Keychain items or `out/` inputs.
+- A post-boot hook waits for the desktop session before Tartelet opens the runner in Terminal. SSH can become ready before automatic login finishes.
 
 To rebuild after a lockfile or toolchain change, stop Tartelet, then run `tart delete aux-ci` and `scripts/ci/build-runner-image.sh`. Tart clones are copy-on-write, so the image costs little disk.
 
@@ -20,13 +21,16 @@ In Tartelet's settings:
 - **Virtual Machine:** `aux-ci`.
 - **SSH:** user `admin`, password `admin` (the Cirrus Labs image defaults; the VM is only reachable from this Mac).
 - **GitHub:** the App from owner item 6, runner scope Repository, `robzilla1738/vector`.
+- **Runner:** name `Aux Local macOS`, labels `tartelet,aux-macos`.
+
+The workflow requires the `aux-macos` label so jobs run on the disposable Tartelet VMs.
 
 ## Workflow
 
 `.github/workflows/ci.yml` runs on `push` to `main` and on manual dispatch, never on pull requests: the repository is public, and a pull-request trigger would let anyone run code on this Mac. It has read-only `contents` permission, pins `actions/checkout` to a commit SHA, and cancels a superseded run on the same ref. Jobs:
 
 1. **Hermetic tests:** `pnpm install --frozen-lockfile && pnpm test:ci`.
-2. **aux-cloud:** `pnpm test`, `pnpm typecheck` and `pnpm build`, with fixture environment values from `src/operations.test.ts`. No real secrets.
+2. **aux-cloud:** `pnpm test`, `pnpm typecheck`, `pnpm lint` and `pnpm build`, with fixture environment values from `src/operations.test.ts`. No real secrets.
 3. **gitleaks:** scans the pushed commit range (the head commit on manual runs) with `.gitleaks.toml` and `.gitleaksignore`.
 
 ## Hermetic and host-only tests
