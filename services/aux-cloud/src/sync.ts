@@ -159,14 +159,17 @@ for (const [plural, kind, schema] of [['projects', 'project', project]] as const
     return c.json({ ok: true });
   });
 }
+// The desktop PUTs one field at a time ({timezone} or {sync}), so writes merge,
+// and reads always carry the boolean sync its schema requires.
 syncRoutes.put('/users/settings', async c => {
-  const payload = await json(c.req.raw, z.record(z.string(), z.unknown()));
-  await sql`INSERT INTO sync_entities (user_id, kind, entity_id, payload) VALUES (${c.get('user').id}, 'settings', 'settings', ${JSON.stringify(payload)}::jsonb) ON CONFLICT (user_id, kind, entity_id) DO UPDATE SET payload = EXCLUDED.payload`;
+  const payload = await json(c.req.raw, z.object({ sync: z.boolean().optional(), timezone: z.string().max(64).optional() }).catchall(z.unknown()));
+  await sql`INSERT INTO sync_entities (user_id, kind, entity_id, payload) VALUES (${c.get('user').id}, 'settings', 'settings', ${JSON.stringify(payload)}::jsonb) ON CONFLICT (user_id, kind, entity_id) DO UPDATE SET payload = sync_entities.payload || EXCLUDED.payload`;
   return c.json({ ok: true });
 });
 syncRoutes.get('/users/settings', async c => {
   const [row] = await sql`SELECT payload FROM sync_entities WHERE user_id = ${c.get('user').id} AND kind = 'settings' AND entity_id = 'settings'`;
-  return c.json(row?.payload ?? {sync:false});
+  const payload = row?.payload ?? {};
+  return c.json({ ...payload, sync: payload.sync === true });
 });
 
 function wrappingKey() {

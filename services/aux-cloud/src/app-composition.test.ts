@@ -35,6 +35,22 @@ test('route middleware stays inside its own mount',async()=>{
   });
 });
 
+test('user settings merge partial writes and always read a boolean sync',async()=>{
+  await withMigratedDatabase(async query=>{
+    const user=randomUUID(),session=randomUUID();
+    const jwt=await new SignJWT({sid:session,sg:0}).setProtectedHeader({alg:'HS256'}).setSubject(user).setIssuer('https://api.getaux.co').setAudience('aux-desktop').setIssuedAt().setExpirationTime('10m').sign(new TextEncoder().encode(process.env.AUX_AUTH_SECRET));
+    await query('INSERT INTO aux_users(id,clerk_id,email) VALUES($1,$2,$3)',[user,'fixture-user','fixture-user@example.invalid']);
+    await query("INSERT INTO aux_sessions(id,user_id,access_hash,access_expires_at,expires_at,platform) VALUES($1,$2,$3,now()+interval '10minutes',now()+interval '1day','macos')",[session,user,createHash('sha256').update(jwt).digest('hex')]);
+    const settings=(method:string,body?:object)=>app.request('/api/v1/users/settings',{method,headers:{authorization:'Bearer '+jwt,'content-type':'application/json'},body:body&&JSON.stringify(body)});
+    assert.deepEqual(await (await settings('GET')).json(),{sync:false});
+    assert.equal((await settings('PUT',{timezone:'America/Chicago'})).status,200);
+    assert.deepEqual(await (await settings('GET')).json(),{timezone:'America/Chicago',sync:false});
+    assert.equal((await settings('PUT',{sync:true})).status,200);
+    assert.deepEqual(await (await settings('GET')).json(),{timezone:'America/Chicago',sync:true});
+    assert.equal((await settings('PUT',{sync:'yes'})).status,400);
+  });
+});
+
 test('installation-only routes refuse web sign-in sessions',async()=>{
   const gated=new Hono<{Variables:AuthVariables}>();
   gated.use('*',async(c,next)=>{c.set('user',{id:'u',clerkId:'c',email:'e',sessionId:c.req.header('x-session')!});await next();});
