@@ -73,6 +73,16 @@ class RuntimeRepin(unittest.TestCase):
             assemble.repin_runtime(app, [stray])
 
 
+class CrashUpload(unittest.TestCase):
+    def test_minidump_endpoint_from_dsn(self):
+        self.assertEqual(assemble.crash_upload_url('https://abc123@o1.ingest.sentry.io/42\n'),
+                         'https://o1.ingest.sentry.io/api/42/minidump/?sentry_key=abc123')
+
+    def test_refuses_malformed_dsn(self):
+        with self.assertRaises(SystemExit):
+            assemble.crash_upload_url('http://o1.ingest.sentry.io/42')
+
+
 class RepinCascade(unittest.TestCase):
     def test_follows_pins_of_pins(self):
         app = Path(tempfile.mkdtemp())

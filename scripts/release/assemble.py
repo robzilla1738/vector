@@ -83,6 +83,16 @@ RELEASE_MARKER_KEYS = ('version', 'implementation', 'daemonRuntime', 'identityPr
                        'stateIdentityVersion', 'nativeStartupMode', 'passwordManager')
 
 
+def crash_upload_url(dsn: str) -> str:
+    """Sentry's Crashpad minidump endpoint for a DSN (https://KEY@HOST/PROJECT)."""
+    from urllib.parse import urlsplit
+    parts = urlsplit(dsn.strip())
+    project = parts.path.strip('/')
+    if parts.scheme != 'https' or not parts.username or not parts.hostname or not project.isdigit():
+        raise SystemExit('the Sentry DSN is not https://KEY@HOST/PROJECT')
+    return f'https://{parts.hostname}/api/{project}/minidump/?sentry_key={parts.username}'
+
+
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -120,10 +130,13 @@ def macho(path: Path) -> bool:
         return handle.read(4) in MACHO_MAGIC
 
 
-def authority(path: Path) -> str:
+def signing_details(path: Path) -> tuple[str, str | None]:
+    """(first authority, identifier) of a file's current signature."""
     detail = subprocess.run(['codesign', '-dvv', str(path)], capture_output=True, text=True).stderr
-    names = [line[len('Authority='):] for line in detail.splitlines() if line.startswith('Authority=')]
-    return names[0] if names else ('adhoc' if 'Signature=adhoc' in detail else 'unsigned')
+    lines = detail.splitlines()
+    names = [line[len('Authority='):] for line in lines if line.startswith('Authority=')]
+    identifier = next((line[len('Identifier='):] for line in lines if line.startswith('Identifier=')), None)
+    return names[0] if names else ('adhoc' if 'Signature=adhoc' in detail else 'unsigned'), identifier
 
 
 def identity_sha1(kind: str) -> str:
@@ -228,6 +241,7 @@ def main() -> int:
     parser.add_argument('--build', type=int, required=True)
     parser.add_argument('--identity', choices=('development', 'developer-id'), default='development')
     parser.add_argument('--daemon-profile', type=Path, help='Developer ID provisioning profile for the daemon')
+    parser.add_argument('--crash-dsn-ref', help='op:// reference to the Sentry DSN, read with op-agents (never printed)')
     parser.add_argument('--daemon-executable', type=Path, help='relinked aux-daemon (scripts/candidate/relink_daemon.py)')
     args = parser.parse_args()
 
@@ -265,6 +279,13 @@ def main() -> int:
     info.update(CFBundleShortVersionString=args.version, CFBundleVersion=str(args.build))
     for key, text in USAGE.items():
         info.setdefault(key, text)
+    crash_host = None
+    if args.crash_dsn_ref:
+        dsn = subprocess.run(['op-agents', 'read', args.crash_dsn_ref], capture_output=True, text=True)
+        if dsn.returncode:
+            raise SystemExit('could not read the Sentry DSN from 1Password')
+        info['AuxCrashUploadURL'] = crash_upload_url(dsn.stdout)
+        crash_host = info['AuxCrashUploadURL'].split('/')[2]
     info_path.write_bytes(plistlib.dumps(info))
 
     if args.daemon_executable:
@@ -282,11 +303,13 @@ def main() -> int:
     for path in sorted((app / AUX).rglob('*'), key=lambda p: -len(p.parts)):
         if not macho(path) or path in covered:
             continue
-        current = authority(path)
+        current, identifier = signing_details(path)
         kept[current] = kept.get(current, 0) + 1
         if release and not current.startswith('Developer ID Application: '):
             before = sha256(path)
-            run(['codesign', '--force', '--sign', identity, '--options', 'runtime', '--timestamp', str(path)])
+            # Keep the identifier: the daemon policy requires dev.aux.browser.runtime on its addons.
+            keep = ['--identifier', identifier] if identifier and current != 'unsigned' else []
+            run(['codesign', '--force', '--sign', identity, '--options', 'runtime', '--timestamp', *keep, str(path)])
             resigned.append((path, before))
     runtime = app / AUX / 'agent-runtime'
     pins = app / NATIVE / 'runtime-source-pins.json'
@@ -313,7 +336,7 @@ def main() -> int:
         'identity': args.identity, 'identitySha1': identity,
         'daemonExecutable': {'path': str(args.daemon_executable), 'sha256': sha256(args.daemon_executable)} if args.daemon_executable else None, 'native': str(args.native), 'components': str(args.components),
         'componentsBundleSha256': sha256(out / 'stage-provenance-bundle.json'),
-        'packageEdits': edits, 'transforms': transforms, 'nestedSignatures': kept, 'resignedNested': len(resigned),
+        'crashUploadHost': crash_host, 'packageEdits': edits, 'transforms': transforms, 'nestedSignatures': kept, 'resignedNested': len(resigned),
         'repinnedRuntimeFiles': repinned, 'repinCascade': cascade, 'signed': signed, 'usageStrings': sorted(USAGE),
         'notarized': False, 'published': False,
     }
