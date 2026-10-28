@@ -45,7 +45,7 @@ async function seed(query:Query,blobs:Set<string>,user:string,tag:string){
   for(const [text,values] of statements)await query(text,values);
   return {jwt,session,email,files};
 }
-const rowsFor=async(query:Query,user:string)=>Object.fromEntries(await Promise.all([...userDataTables,'aux_sessions'].map(async table=>[table,Number((await query(`SELECT count(*) AS n FROM ${table} WHERE user_id=$1`,[user]))[0].n)])));
+const rowsFor=async(query:Query,user:string):Promise<Record<string,number>>=>Object.fromEntries(await Promise.all([...userDataTables,'aux_sessions'].map(async table=>[table,Number((await query(`SELECT count(*) AS n FROM ${table} WHERE user_id=$1`,[user]))[0].n)])));
 
 test('deleting an account removes its rows in every user table, its files and its Clerk identity, and nothing else',async()=>{
   await withMigratedDatabase(async(query,stats)=>{
