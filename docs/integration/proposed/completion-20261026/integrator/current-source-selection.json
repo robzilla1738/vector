@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "32ab761cfdc7da67058633f71ff13a0815b6da5faacc53daf222832be93987df",
+  "signedInventorySha256": "6b81a1bbe53b0ea07da35f0e715c150a558625bc37efdc60e9b3ee8025d129f7",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -392,6 +392,30 @@
     "sources": [
       "integration/ui-polish-a1 (Arc and Aside reference)",
       "durable checkout: location_bar_view sidebar field, profile picker and sign-in banners, split pane domain label, Peek and Quick window bar"
+    ]
+  },
+  "uiCardSidebarRepair": {
+    "paths": [
+      {
+        "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-ui-polish-c1/receipt.json",
+        "sha256": "ca1b3f3129e99109ff37a45abb616880c578745e65d7ca0ea28de87b40438ba8"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-ui-polish-c2/receipt.json",
+        "sha256": "c4a0449325fa3efaa7ff5ad59d5705e7f83649a82148b2c211fe8cf2e4f31cad"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-ui-polish-c3/receipt.json",
+        "sha256": "66a6300f7e74a1c448a05446679c72844d05471b3d3d688c0bc13983f7a577c5"
+      },
+      {
+        "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-ui-polish-c5/receipt.json",
+        "sha256": "b2c7edceed30aa5e6d53e9475c12c986bdcdb2e07ea301a2eb19c47e3cd8dd85"
+      }
+    ],
+    "sources": [
+      "integration/ui-polish-c1",
+      "durable checkout: page card insets, pane gap, Little Arc chip, sidebar grid and merged navigation row, Pins hidden when empty, forward overflow order"
     ]
   }
 }

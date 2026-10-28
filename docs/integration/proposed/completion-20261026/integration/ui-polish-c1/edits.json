@@ -1,0 +1,16 @@
+{
+ "format": "aux.candidate-edits.v1",
+ "purpose": "The Cmd+K palette shows the \"Recent files\" entry only when the query is empty or matches it, so it no longer outranks a matching command.",
+ "files": [
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+   "edits": [
+    {
+     "find": "if(!state)return context.mode==='commands'?[{id:'aux-file-entry',title:'Files',items:[row('aux-files-open','Recent files',{subtitle:'Downloads and files selected in this profile',actionLabel:'Open'})]},...sections]:sections;",
+     "replace": "if(!state){const q=query.trim().toLowerCase();return context.mode==='commands'&&(!q||'recent files downloads'.includes(q))?[{id:'aux-file-entry',title:'Files',items:[row('aux-files-open','Recent files',{subtitle:'Downloads and files selected in this profile',actionLabel:'Open'})]},...sections]:sections;}",
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

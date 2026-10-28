@@ -97,3 +97,10 @@ test('an obsolete finally callback cannot erase a newer request and cleanup fenc
  // works, while every action from the earlier effect remains stale.
  assert.equal(guard.begin().isCurrent(),true);
 });
+
+test('the Recent files entry shows for an empty or matching query only',()=>{
+ const context={success:true,generation:'g',mode:'commands'},others=[{id:'aux-commands',items:[]}];
+ assert.equal(filesSections(context,null,'',others)[0].id,'aux-file-entry');
+ assert.equal(filesSections(context,null,'files',others)[0].id,'aux-file-entry');
+ assert.deepEqual(filesSections(context,null,'quick window',others),others);
+});
