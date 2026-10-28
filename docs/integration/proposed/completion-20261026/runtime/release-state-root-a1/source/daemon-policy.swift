@@ -85,10 +85,15 @@ enum AuxFreshBootstrapPdfIdentity {
     static let identifier="dev.aux.browser.pdf"
     static let sha256="8145277feda966e4d2c8912baa6b72e06ae9ae0a1fd925a0376043c25f808881"
     static let bytes=9_437_920
+    // The same addon signed with Developer ID for release (release-addons-a1).
+    static let releaseSha256="e94ced74cb4116c44a79950c09446d75d77cce83d525ec25f54faf9d0c82bdbf"
+    static let releaseBytes=9_437_920
+    static func accepts(_ sha:String,_ count:Int)->Bool{(sha==sha256 && count==bytes)||(sha==releaseSha256 && count==releaseBytes)}
     static func validate(_ value:Any?)throws {
         guard let object=value as? [String:Any],Set(object.keys)==["path","identifier","sha256","bytes"],
-              object["path"] as? String==relativePath,object["identifier"] as? String==identifier,object["sha256"] as? String==sha256,
-              let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(bytes) else{throw AuxFreshBootstrapPolicyError.policy}
+              object["path"] as? String==relativePath,object["identifier"] as? String==identifier,let sha=object["sha256"] as? String,
+              let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(count.intValue),
+              accepts(sha,count.intValue) else{throw AuxFreshBootstrapPolicyError.policy}
     }
 }
 enum AuxFreshBootstrapMacUtilitiesIdentity {
@@ -97,10 +102,20 @@ enum AuxFreshBootstrapMacUtilitiesIdentity {
     // Exact derivative authorized by the two-addon local signing review.
     static let sha256="e7204915d9d656c2212153c0b9d3d734447278e4744fe6f407b1af767baa272e"
     static let bytes=409_728
+    // The same addon signed with Developer ID for release (release-addons-a1).
+    static let releaseSha256="66a616019b08bb18acaf7e5ddbfb9035d9c4e68dad5c7b06d99a6a102e5bc4c6"
+    static let releaseBytes=409_712
+    static func accepts(_ sha:String,_ count:Int)->Bool{(sha==sha256 && count==bytes)||(sha==releaseSha256 && count==releaseBytes)}
+    // Which accepted size is installed; the digest then must match that exact pair.
+    static func installedBytes(bundle:String)->Int {
+        var value=stat()
+        return lstat(bundle+"/"+relativePath,&value)==0 && Int(value.st_size)==releaseBytes ? releaseBytes:bytes
+    }
     static func validate(_ value:Any?)throws {
         guard let object=value as? [String:Any],Set(object.keys)==["path","identifier","sha256","bytes"],
-              object["path"] as? String==relativePath,object["identifier"] as? String==identifier,object["sha256"] as? String==sha256,
-              let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(bytes) else{throw AuxFreshBootstrapPolicyError.policy}
+              object["path"] as? String==relativePath,object["identifier"] as? String==identifier,let sha=object["sha256"] as? String,
+              let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(count.intValue),
+              accepts(sha,count.intValue) else{throw AuxFreshBootstrapPolicyError.policy}
     }
 }
 // A pre-generation resource contract. Decoding content grants no authority.
@@ -285,7 +300,7 @@ func validateCapturedFreshBootstrapPdfSignature(_ captured:AuxCapturedFreshBoots
           captured.applicationIdentifier.isEmpty,captured.accessGroups.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}
 }
 func validateCapturedFreshBootstrapPdfBytes(sha256:String,bytes:Int,policy:AuxFreshBootstrapPolicyContents)throws {
-    guard policy.includesPdf,sha256==policy.pdfSha256,bytes==policy.pdfBytes else{throw AuxFreshBootstrapPolicyError.image}
+    guard policy.includesPdf,AuxFreshBootstrapPdfIdentity.accepts(sha256,bytes) else{throw AuxFreshBootstrapPolicyError.image}
 }
 
 func validateCapturedFreshBootstrapMacUtilitySignature(_ captured:AuxCapturedFreshBootstrapSignature)throws {
@@ -294,7 +309,7 @@ func validateCapturedFreshBootstrapMacUtilitySignature(_ captured:AuxCapturedFre
           captured.applicationIdentifier.isEmpty,captured.accessGroups.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}
 }
 func validateCapturedFreshBootstrapMacUtilityBytes(sha256:String,bytes:Int,policy:AuxFreshBootstrapPolicyContents)throws {
-    guard policy.includesMacUtilities,sha256==AuxFreshBootstrapMacUtilitiesIdentity.sha256,bytes==AuxFreshBootstrapMacUtilitiesIdentity.bytes else{throw AuxFreshBootstrapPolicyError.image}
+    guard policy.includesMacUtilities,AuxFreshBootstrapMacUtilitiesIdentity.accepts(sha256,bytes) else{throw AuxFreshBootstrapPolicyError.image}
 }
 
 // v3 and v4 each have exactly two finite arm64 resources. Whole signed output bytes are

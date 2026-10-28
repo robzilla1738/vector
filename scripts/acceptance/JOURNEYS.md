@@ -73,5 +73,5 @@ Setup: `python3 scripts/acceptance/aux_drive.py check` must report all three per
 
 | ID | Needs |
 |---|---|
-| R18 | Official extension install and autofill. Desktop-app pairing needs a signed app in `/Applications` and a disposable 1Password account |
+| R18 | Official extension install and autofill. Desktop-app pairing needs a signed app in `/Applications`. Use Robert's existing personal 1Password account (his choice, 2026-10-28) with one clearly named dummy fixture login; never read, use, export or change real saved logins, and keep desktop accounts signed in |
 | X-native-host | A native-messaging host round trip through the host lease, using a dummy host |

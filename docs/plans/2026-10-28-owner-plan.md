@@ -27,7 +27,7 @@ Conventions:
 | 14 | Google Safe Browsing key | Phishing and malware protection | Google Cloud |
 | 15 | Widevine license and castLabs EVS | Netflix, Spotify, Disney+ playback | Vendor applications, external wait |
 | 16 | Apple `2H4D7KNGUP` follow-up | REPL (Bash, PTY, CLI) | External wait |
-| 17 | Disposable 1Password account | 1Password pairing test (R18) | Sign-up |
+| 17 | ~~Disposable 1Password account~~ Superseded: use the existing personal account with one dummy login (2026-10-28) | 1Password pairing test (R18) | Done |
 | 18 | ChatGPT eligibility form (optional) | In-app ChatGPT sign-in without the Codex CLI | Form |
 | 19 | Keychain check approval | Real-Keychain acceptance | When asked |
 | 20 | Approve each publication | The release itself | When asked |
@@ -41,7 +41,7 @@ Items 1, 4 and 5 are on the critical path: without them nothing can be verified,
 **Why.** Claude can't click, type or read the screen in Aux, so no journey has been driven on the current seal. Every UI check, the acceptance pass and the release checks wait on this.
 
 **Option A, recommended: grant the app this session runs in.**
-1. Open System Settings › Privacy & Security › Accessibility.
+1. Open System Settings › Privacy & Security › Accessibility (macOS 27: Device Control and Data Access).
 2. Turn on **Claude** (the desktop app running this session). If it isn't listed, press +, choose `/Applications/Claude.app`, and turn it on.
 3. Open Privacy & Security › Automation. Under Claude, turn on **System Events** and **Aux** if they're listed. If they aren't, they appear the first time Claude asks; click **Allow** on that prompt.
 4. Screen Recording already shows as allowed. If Privacy & Security › Screen & System Audio Recording doesn't list Claude, add it the same way.

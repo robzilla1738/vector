@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Drive the Aux candidate for the desktop acceptance pass.
 
-Needs Accessibility (keys, clicks, menus) and Screen Recording (shots) for the
+Needs Accessibility (macOS 27: Device Control and Data Access; keys, clicks, menus) and Screen Recording (shots) for the
 process running it, plus Automation for AppleScript URL/tab commands. Uses the
 candidate's own launcher and its disposable completion namespace only.
 

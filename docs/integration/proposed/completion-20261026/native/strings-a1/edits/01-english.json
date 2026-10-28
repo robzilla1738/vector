@@ -1460,5 +1460,11 @@
   "find": "      <!-- Bookmarks specific strings -->\n      <part file=\"bookmarks_strings.grdp\" />\n",
   "count": 1,
   "replace": "      <!-- Aux-owned native UI strings -->\n      <part file=\"aux_strings.grdp\" />\n\n      <!-- Bookmarks specific strings -->\n      <part file=\"bookmarks_strings.grdp\" />\n"
+ },
+ {
+  "path": "chrome/app/generated_resources.grd.gritdeps",
+  "find": "chrome/app/app_management_strings.grdp\n",
+  "replace": "chrome/app/app_management_strings.grdp\nchrome/app/aux_strings.grdp\n",
+  "count": 1
  }
 ]

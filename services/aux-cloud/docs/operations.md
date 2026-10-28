@@ -48,14 +48,25 @@ Vercel BotID does not fit here: it needs its client script on the page that make
 
 ### Vercel Firewall rules (owner)
 
-Project `aux-cloud`, team `robzilla1738s-projects`. The API answers both the canonical path and the rewritten short path (`next.config.ts` rewrites `/auth/*` to `/api/v1/auth/*`), and the Firewall sees the incoming path, so each rule matches both. Fixed window, keyed by IP, action deny (429) when exceeded.
+Project `aux-cloud`, team `robzilla1738s-projects`.
+
+**Live now** (read back 2026-10-28: firewall on, config `waf_ATjdQU5ObuOF` version 1, no draft). Fixed window, keyed by IP, action rate limit:
+
+| Rule | Match (POST) | Limit |
+|---|---|---|
+| Email code rate limit | `/api/v1/auth/email/start` | 5 per 600 s |
+| Email verify-code rate limit | `/api/v1/auth/email/verify-code` | 20 per 600 s |
+
+**Gap:** `next.config.ts` rewrites `/auth/*` to `/api/v1/auth/*`, and the Firewall matches the incoming path, so `POST /auth/email/start` and `/auth/email/verify-code` reach the same handlers without either rule. The service's own per-email, per-network and per-address limits still apply on both spellings; only the edge flood shield is missing.
+
+**Intended** (not yet published; changing production needs the owner's yes). Each rule matches both spellings, deny (429) for 5 minutes when exceeded:
 
 | Rule | Match (method POST, path equals) | Window | Requests per IP | Then |
 |---|---|---|---|---|
 | `Sign-in code send` | `/api/v1/auth/email/start` or `/auth/email/start` | 60 s | 10 | deny for 5 minutes |
 | `Sign-in code check` | `/api/v1/auth/email/verify-code` or `/auth/email/verify-code` | 60 s | 20 | deny for 5 minutes |
 
-The service limits stay the precise per-email and per-network control; these rules only stop floods before they reach a function. The same rules with the CLI (personal account), then `vercel firewall publish`:
+The service limits stay the precise per-email and per-network control; these rules only stop floods before they reach a function. To publish, replace the two live rules with these (CLI, personal account), then `vercel firewall publish`, then check that a burst on each spelling returns 429:
 
 ```sh
 vercel firewall rules add "Sign-in code send" \

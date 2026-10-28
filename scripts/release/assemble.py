@@ -294,6 +294,9 @@ def main() -> int:
     parser.add_argument('--build', type=int, required=True)
     parser.add_argument('--identity', choices=('development', 'developer-id'), default='development')
     parser.add_argument('--daemon-profile', type=Path, help='Developer ID provisioning profile for the daemon')
+    parser.add_argument('--release-addons', type=Path,
+                        help='aux-pdf.node and aux-macos-utilities.node already signed with Developer ID; '
+                             'their hashes are pinned in the browser and daemon policies')
     parser.add_argument('--crash-dsn-ref', help='op:// reference to the Sentry DSN, read with op-agents (never printed)')
     parser.add_argument('--daemon-executable', type=Path, help='relinked aux-daemon (scripts/candidate/relink_daemon.py)')
     args = parser.parse_args()
@@ -353,6 +356,14 @@ def main() -> int:
     # Target executables are signed with their target in step 4, never here.
     covered = {main_executable(app, t) for t, _, _ in TARGETS if t != '.'}
     resigned, kept = [], {}
+    # The daemon policies pin these addons' exact bytes, and a timestamped signature
+    # differs every time, so a release uses one fixed Developer ID copy of each.
+    if args.release_addons:
+        for name in ('aux-pdf.node', 'aux-macos-utilities.node'):
+            target = app / NATIVE / name
+            before = (sha256(target), target.stat().st_size)
+            shutil.copy2(args.release_addons / name, target)
+            resigned.append((target, before))
     for path in sorted((app / AUX).rglob('*'), key=lambda p: -len(p.parts)):
         if not macho(path) or path in covered:
             continue

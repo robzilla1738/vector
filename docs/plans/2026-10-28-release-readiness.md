@@ -17,7 +17,7 @@ The detailed, step-by-step versions are the [owner plan](2026-10-28-owner-plan.m
 ### Only Robert can do
 
 Access and identity
-1. Grant Accessibility and Automation to the terminal running Claude, or turn on Computer use (D12). Every UI journey, the acceptance pass and the release checks wait on this.
+1. ~~Grant Accessibility and Automation to the terminal running Claude (D12).~~ Done 2026-10-28; on macOS 27 Accessibility is "Device Control and Data Access", and `aux_drive.py check` passes from Claude.
 2. Import `Aux Developer ID Application - 2026.p12` (iCloud Drive) into the login Keychain, and choose "Always Allow" for `codesign` when it first asks.
 3. In the Apple Developer portal (team `9F2JXY8TCK`), create a Developer ID provisioning profile for `dev.aux.browser.daemon`, and tell Claude where it saved.
 4. Approve the one real-Keychain check (saved passwords and cookies across Quit), which touches Keychain (D2), when Claude asks.
@@ -26,7 +26,7 @@ Access and identity
 
 Accounts (use `hello@getaux.co` as the contact; put every key in the 1Password Agents vault, never in chat)
 7. Google Cloud: a Safe Browsing API key restricted to that API, or a Web Risk application if the free API doesn't fit (decision 7).
-8. Widevine: request a license at widevine.com, and open a castLabs EVS account for VMP signing (decision 8).
+8. Widevine: request a license at widevine.com, and get VMP signing (decision 8). Inquiries sent 2026-10-28. A native Chromium build needs castLabs' commercial 3PL audit before EVS access; free EVS covers only castLabs Electron builds.
 9. Sentry: one project for native crash reports, and its DSN (decision 6).
 10. Better Stack: an account plus an API token, so Claude can create the readiness monitor with alerts to `robertcourson96@gmail.com` (decision 12).
 11. Tartelet CI: create the GitHub App Tartelet asks for (it registers ephemeral runners) and install it on `robzilla1738/vector`. In the repo settings, set Actions to require approval for all outside collaborators.
@@ -39,8 +39,8 @@ Hosted service (Vercel `aux-cloud`, Neon, Resend)
 16. In Neon: confirm the point-in-time restore window for the Aux project (at least 7 days). The connected Neon account doesn't hold that project.
 
 External
-17. Follow up with Apple on `2H4D7KNGUP` (the Endpoint Security entitlement for the REPL).
-18. Create a disposable 1Password account for the pairing test.
+17. Follow up with Apple on `2H4D7KNGUP` (the Endpoint Security entitlement for the REPL). Sent 2026-10-28, case `103011717098`; awaiting Apple.
+18. ~~Create a disposable 1Password account for the pairing test.~~ Superseded: the existing personal account with one dummy login.
 19. ChatGPT eligibility form: optional now. With T3-style wiring (decision 1) Aux uses the user's own Codex CLI login and doesn't need its own OpenAI client. Submit it only if you want in-app ChatGPT sign-in without the CLI.
 
 Release stop point
@@ -209,7 +209,7 @@ Agent:
 
 - **Apple `2H4D7KNGUP`:** the Endpoint Security entitlement for the REPL (Bash, PTY and CLI). The source is complete and inactive. Activation steps are in `runtime/repl-activation-ready/README.md`.
 - **ChatGPT plan:** confirm the proposed answers and submit the eligibility form. When approved, wire Aux's own client ID, then test sign-in, consent, one authorized inference, refresh and revoke.
-- **1Password:** a Developer ID copy in `/Applications`, a disposable vendor account, and the official extension's autofill. Its native host runs in a sandbox that denies fork and exec, so check whether the desktop-app pairing works at all, then accept R18.
+- **1Password:** a Developer ID copy in `/Applications`, Robert's existing personal 1Password account with one dummy fixture login (no real logins touched), and the official extension's autofill. Its native host runs in a sandbox that denies fork and exec, so check whether the desktop-app pairing works at all, then accept R18.
 
 ## 7. Reproducibility and repo (agent unless noted)
 

@@ -1,0 +1,68 @@
+[
+ {
+  "path": "chrome/app/settings_strings.grdp",
+  "find": "<message name=\"IDS_SETTINGS_PEOPLE\" desc=\"Name of the settings page which manages the user's relationship to Google.\">\n      You and Google\n    </message>",
+  "replace": "<message name=\"IDS_SETTINGS_PEOPLE\" desc=\"Name of the settings page which manages the user's relationship to Aux.\">\n      You and Aux\n    </message>",
+  "count": 1
+ },
+ {
+  "path": "chrome/app/settings_strings.grdp",
+  "find": "<message name=\"IDS_SETTINGS_GOOGLE_SERVICES_PAGE_TITLE\" desc=\"Name of the settings page for managing Google services.\">\n      Google services\n    </message>",
+  "replace": "<message name=\"IDS_SETTINGS_GOOGLE_SERVICES_PAGE_TITLE\" desc=\"Name of the settings page for managing the services Aux uses.\">\n      Services\n    </message>",
+  "count": 1
+ },
+ {
+  "path": "chrome/app/resources/generated_resources_de.xtb",
+  "find": "</translationbundle>",
+  "replace": "<translation id=\"3669913555428117505\">Aux und ich</translation>\n</translationbundle>",
+  "count": 1
+ },
+ {
+  "path": "chrome/app/resources/generated_resources_es.xtb",
+  "find": "</translationbundle>",
+  "replace": "<translation id=\"3669913555428117505\">Tú y Aux</translation>\n</translationbundle>",
+  "count": 1
+ },
+ {
+  "path": "chrome/app/resources/generated_resources_fr.xtb",
+  "find": "</translationbundle>",
+  "replace": "<translation id=\"3669913555428117505\">Aux et vous</translation>\n</translationbundle>",
+  "count": 1
+ },
+ {
+  "path": "chrome/app/resources/generated_resources_it.xtb",
+  "find": "</translationbundle>",
+  "replace": "<translation id=\"3669913555428117505\">Tu e Aux</translation>\n</translationbundle>",
+  "count": 1
+ },
+ {
+  "path": "chrome/app/resources/generated_resources_ja.xtb",
+  "find": "</translationbundle>",
+  "replace": "<translation id=\"3669913555428117505\">Aux の設定</translation>\n</translationbundle>",
+  "count": 1
+ },
+ {
+  "path": "chrome/app/resources/generated_resources_ko.xtb",
+  "find": "</translationbundle>",
+  "replace": "<translation id=\"3669913555428117505\">내 Aux 설정</translation>\n</translationbundle>",
+  "count": 1
+ },
+ {
+  "path": "chrome/app/resources/generated_resources_pt-BR.xtb",
+  "find": "</translationbundle>",
+  "replace": "<translation id=\"3669913555428117505\">Você e o Aux</translation>\n</translationbundle>",
+  "count": 1
+ },
+ {
+  "path": "chrome/app/resources/generated_resources_zh-CN.xtb",
+  "find": "</translationbundle>",
+  "replace": "<translation id=\"3669913555428117505\">我与 Aux</translation>\n</translationbundle>",
+  "count": 1
+ },
+ {
+  "path": "chrome/app/resources/generated_resources_zh-TW.xtb",
+  "find": "</translationbundle>",
+  "replace": "<translation id=\"3669913555428117505\">你與 Aux</translation>\n</translationbundle>",
+  "count": 1
+ }
+]

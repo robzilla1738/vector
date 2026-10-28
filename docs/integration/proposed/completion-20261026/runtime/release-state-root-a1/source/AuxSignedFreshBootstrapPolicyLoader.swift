@@ -389,7 +389,7 @@ enum AuxSignedFreshBootstrapPolicyLoader {
                 try validateCapturedFreshBootstrapPdfBytes(sha256:pdfDigest(bundle:bundle,expectedBytes:policy.pdfBytes),bytes:policy.pdfBytes,policy:policy)
             } else if identifier==AuxFreshBootstrapMacUtilitiesIdentity.identifier {
                 try validateCapturedFreshBootstrapMacUtilitySignature(captured)
-                try validateCapturedFreshBootstrapMacUtilityBytes(sha256:nativeModuleDigest(bundle:bundle,expectedBytes:AuxFreshBootstrapMacUtilitiesIdentity.bytes,leaf:"aux-macos-utilities.node"),bytes:AuxFreshBootstrapMacUtilitiesIdentity.bytes,policy:policy)
+                try validateCapturedFreshBootstrapMacUtilityBytes(sha256:nativeModuleDigest(bundle:bundle,expectedBytes:AuxFreshBootstrapMacUtilitiesIdentity.installedBytes(bundle:bundle),leaf:"aux-macos-utilities.node"),bytes:AuxFreshBootstrapMacUtilitiesIdentity.installedBytes(bundle:bundle),policy:policy)
             } else if let pty=policy.ptyArtifacts,identifier==AuxFreshBootstrapPtyArtifacts.moduleIdentifier {
                 try validateCapturedFreshBootstrapPtySignature(captured,artifact:pty.module)
                 _ = try ptyResource(bundle:bundle,artifact:pty.module,executable:false)
@@ -660,7 +660,7 @@ extension AuxSignedFreshBootstrapPolicyLoader {
         guard ownStatus==errSecSuccess,let own else{throw AuxFreshBootstrapPolicyError.signature(ownStatus)}
         var ownStatic:SecStaticCode?;let copyStatus=SecCodeCopyStaticCode(own,[],&ownStatic)
         guard copyStatus==errSecSuccess,let ownStatic else{throw AuxFreshBootstrapPolicyError.signature(copyStatus)}
-        for (leaf,identifier,bytes) in [("aux-pdf.node",AuxFreshBootstrapPdfIdentity.identifier,policy.contents.pdfBytes),("aux-macos-utilities.node",AuxFreshBootstrapMacUtilitiesIdentity.identifier,AuxFreshBootstrapMacUtilitiesIdentity.bytes)] {
+        for (leaf,identifier,bytes) in [("aux-pdf.node",AuxFreshBootstrapPdfIdentity.identifier,policy.contents.pdfBytes),("aux-macos-utilities.node",AuxFreshBootstrapMacUtilitiesIdentity.identifier,AuxFreshBootstrapMacUtilitiesIdentity.installedBytes(bundle:policy.bundlePath))] {
             let path=policy.bundlePath+"/Contents/Resources/native/"+leaf
             let digest=try nativeModuleDigest(bundle:policy.bundlePath,expectedBytes:bytes,leaf:leaf)
             if identifier==AuxFreshBootstrapPdfIdentity.identifier{try validateCapturedFreshBootstrapPdfBytes(sha256:digest,bytes:bytes,policy:policy.contents)}

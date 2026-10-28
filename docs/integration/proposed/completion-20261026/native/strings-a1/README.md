@@ -1,12 +1,12 @@
 # strings-a1: Chrome/Chromium rewording and launch languages
 
-2026-10-28. Agent plan Phase 1A (Google and Chrome surfaces, strings) and Phase 3 (Languages, decision 9). Nothing was written to the checkout; every change is a count-checked edit spec for `scripts/candidate/apply_checkout_edits.py`.
+2026-10-28. Applied to the durable checkout on 2026-10-28 (01–04). Agent plan Phase 1A (Google and Chrome surfaces, strings) and Phase 3 (Languages, decision 9). Nothing was written to the checkout; every change is a count-checked edit spec for `scripts/candidate/apply_checkout_edits.py`.
 
 ## Apply
 
 ```sh
-python3 scripts/candidate/apply_checkout_edits.py --check docs/integration/proposed/completion-20261026/native/strings-a1/edits/0{1,2,3}-*.json
-python3 scripts/candidate/apply_checkout_edits.py         docs/integration/proposed/completion-20261026/native/strings-a1/edits/0{1,2,3}-*.json
+python3 scripts/candidate/apply_checkout_edits.py --check docs/integration/proposed/completion-20261026/native/strings-a1/edits/0{1,2,3,4}-*.json
+python3 scripts/candidate/apply_checkout_edits.py         docs/integration/proposed/completion-20261026/native/strings-a1/edits/0{1,2,3,4}-*.json
 python3 scripts/strings/build_checkout_strings.py check    # after applying: every Aux-changed message has all 9 launch translations
 ```
 
@@ -19,6 +19,7 @@ The applier simulates every edit in order first and writes nothing on any mismat
 | `edits/01-english.json` | Part A English rewording in `.grd/.grdp` (239 messages), the new `chrome/app/aux_strings.grdp` (291 `IDS_AUX_*` messages) and its `<part>` include in `generated_resources.grd` |
 | `edits/02-code.json` | C++ edits in 40 files (Aux-owned views, their Aux hunks in upstream views, and the restart dialog in `chrome_browser_main.cc`): 228 literals plus 16 formatted strings move to `l10n_util::GetString(F)UTF16(IDS_AUX_…)`, the 47 profile icon names move to IDs (`ProfileIndicatorIconDescriptor::label_id`), and the two includes each file needs |
 | `edits/03-xtb.json` | One append per `.xtb` (54 files): translations for es, fr, de, pt-BR, it, ja, ko, zh-CN, zh-TW |
+| `edits/04-settings-labels.json` | Settings labels without Google: "You and Google" → "You and Aux" (`IDS_SETTINGS_PEOPLE`) and "Google services" → "Services" (`IDS_SETTINGS_GOOGLE_SERVICES_PAGE_TITLE`), with the nine translations derived from Chromium's own. Applied after 01–03 |
 
 ## Sources (inputs to `scripts/strings/build_checkout_strings.py build`)
 

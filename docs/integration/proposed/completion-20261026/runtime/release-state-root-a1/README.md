@@ -24,3 +24,17 @@ The browser and daemon pinned the SHA-256 of one signing certificate, the Apple 
 The daemon was relinked with three substitutions (this folder's `source/`).
 
 `assemble.py` also no longer re-signs a target's own executable in the nested pass. Each helper's launch-policy pin (Computer Use, memory helper) is re-pinned right after that helper is signed, before the daemon bundle seals the policy.
+
+## Release addons (relinks `release-state-root-a4` to `a6`)
+
+Developer ID re-signing changes the bytes of `aux-pdf.node` and `aux-macos-utilities.node`, and their hashes and sizes are pinned in three places. `assemble.py --release-addons` takes copies already signed with Developer ID (`out/live-inputs/completion-20261026/release-addons-a1`), so every build ships the same release pair:
+
+| Addon | SHA-256 | Bytes |
+|---|---|---|
+| `aux-pdf.node` | `e94ced74…` | 9437920 |
+| `aux-macos-utilities.node` | `66a61601…` | 409712 |
+
+- **Policies** (`a4`, `a5`): `AuxFreshBootstrapPolicy.swift` (browser) and `daemon-policy.swift` accept the development pair or the release pair. The daemon reads the installed size, not the development size (`installedBytes`).
+- **Loaded-image captures** (`a6`): `source/pdf-lifetime.cc` and `source/utility-lifetime.cc` hash the loaded addon again before the daemon attaches its native task bindings. They still accepted only the development pair, so a Developer ID build reached the daemon but was refused at browser startup phase 6 with `AUX_NATIVE_TASK_LAYOUT_REQUIRED` (`captureStorageRoots` missing). Both now also accept the release pair. They were recompiled with the recorded `clang++` command; the unchanged source reproduces the recorded objects byte for byte. The daemon was relinked with the three Swift substitutions plus the two objects in `out/live-inputs/completion-20261026/release-lifetime-a1`.
+
+Developer ID build 19 with `a6` started on a fresh state folder; the daemon reported ready after about 60 seconds.
