@@ -7,6 +7,7 @@ Start with [STATUS](STATUS.md): the candidate, what was observed on it, and what
 | Need | Document |
 |---|---|
 | Candidate, observed work, open items | [STATUS.md](STATUS.md) |
+| Everything left before release | [plans/2026-10-28-release-readiness.md](plans/2026-10-28-release-readiness.md) |
 | Milestones and external gates | [ROADMAP-EXECUTION-GRAPH.md](ROADMAP-EXECUTION-GRAPH.md) |
 | Product rules, identity targets, isolation | [design/aside-contract.md](design/aside-contract.md) |
 | How the shipping product fits together | [ARCHITECTURE.md](ARCHITECTURE.md) |
@@ -22,6 +23,9 @@ The plans in [plans/](plans/) are dated decisions. Their requirements still appl
 - [Complete Aux identity](plans/2026-10-22-complete-aux-identity.md) (2026-10-22)
 - [Provider-funded launch](plans/2026-10-23-provider-funded-launch.md) (2026-10-23)
 - [Browser feature expansion](plans/2026-10-23-browser-feature-expansion.md) (2026-10-23): feature requirements R01–R30
+- [Pre-release completion](plans/2026-10-27-pre-release-completion.md) (2026-10-27): the six-batch plan the owner approved
+- [Excellence audit](plans/2026-10-27-excellence-audit.md) (2026-10-27): whole-product review and decisions D1–D12
+- [Release readiness](plans/2026-10-28-release-readiness.md) (2026-10-28): the full checklist from the current seal to a public release
 
 ## Evidence
 

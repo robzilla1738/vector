@@ -17,7 +17,7 @@ Neither is a release. `python3 scripts/verify-candidate.py` checks that the cand
 | `vendor/provided/` | Aux adaptations of supplied components: branding/identity transforms, adapters and their tests. |
 | `vendor/aside/` | Shims, patches and entitlements applied to the supplied binaries. |
 | `vendor/provided-ui/` | Aux branding assets for the supplied UI. |
-| `chromium/` | GN flags, the Chromium patch series and build notes. The Chromium checkout itself lives outside the repo. |
+| `chromium/` | GN flags, the complete Aux Chromium delta (`tree/`) and build notes. The Chromium checkout itself lives outside the repo. |
 | `assets/brand/` | Canonical logo `arch-mark.svg` and every asset derived from it. |
 | `services/aux-cloud/` | Hosted service (Next.js on Vercel), with its own package and lockfile. |
 | `test-inputs/` | Synthetic fixtures for native-messaging checks. |
@@ -55,4 +55,4 @@ Everything else in `out/` is a disposable build product.
 
 ## History
 
-The retired clean-room implementation (`apps/`, `packages/`), older receipts and the full pre-cleanup docs tree are at tag `archive/pre-cleanup-2026-10-27`. A bundle of every ref is in `/Users/rcourson/Documents/Aux-archive/aux-all-refs-2026-10-27.bundle`.
+The retired clean-room implementation (`apps/`, `packages/`), older receipts and the full pre-cleanup docs tree are at tag `archive/pre-cleanup-2026-10-27`. Bundles of every ref are in `/Users/rcourson/Documents/Aux-archive/` (`aux-all-refs-2026-10-27b.bundle` is the later one), and an encrypted copy of the irreplaceable inputs is in iCloud Drive ([docs/backup/2026-10-27.md](docs/backup/2026-10-27.md)).

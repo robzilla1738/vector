@@ -9,8 +9,8 @@ This is the complete Aux delta on Chromium 155.0.8059.85 (commit `0e66b94549a8bd
 
 ```sh
 python3 scripts/chromium-tree.py export <src> chromium/tree   # after a native batch
-python3 scripts/chromium-tree.py verify <src> chromium/tree   # replay in a temporary index; no checkout change
+python3 scripts/chromium-tree.py verify <src> chromium/tree   # replay in a temporary index; adds loose objects only
 python3 scripts/chromium-tree.py apply  <clean-src> chromium/tree
 ```
 
-`verify` replays the patch onto the base commit in a temporary Git index and checks every blob and archive entry against the manifest, so it never touches the checkout's index or files. Re-export after every native change so this folder always matches the tree the current candidate was built from.
+`verify` replays the patch onto the base commit in a temporary Git index and checks every blob and archive entry against the manifest, so it never touches the checkout's index or working files. It does add loose blob objects to the checkout's `.git`. Re-export after every native change so this folder always matches the tree the current candidate was built from.

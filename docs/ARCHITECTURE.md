@@ -4,7 +4,7 @@ Aux ships the supplied Aside implementation on Aux Chromium, rebranded. Product 
 
 ## The app
 
-`Aux.app` is a Chromium 155 build from the durable checkout with the Aux patch series applied. Its supplied components live under `Contents/Resources/aux/`:
+`Aux.app` is a Chromium 155 build from the durable checkout, which carries the Aux delta recorded in `chromium/tree/`. Its supplied components live under `Contents/Resources/aux/`:
 
 | Path | Component |
 |---|---|
@@ -13,7 +13,7 @@ Aux ships the supplied Aside implementation on Aux Chromium, rebranded. Product 
 | `apps/cli/Aux CLI.app` | Supplied CLI, authenticating to the same daemon. |
 | `apps/computer-use/` | Supplied Computer Use helper. |
 | `agent-runtime/`, `memory-distribution/` | Supplied Node/Python runtime and memory model payloads. Immutable seeds; mutable state goes to the Aux home. |
-| `native/` | Native boundary library and carrier for the original addon. |
+| `native/` | Empty. The supplied addon, its carrier and the historical Keychain interposer were unreachable and are removed (2026-10-27). |
 | `bundle.json`, `provenance/` | Stage manifest and the hashes of every input. |
 
 There is no Vault extension and no built-in password manager. Users bring a provider key or an eligible ChatGPT/Codex plan. Aux keeps its own home, app data, installation identity and ports (daemon 21520, bridge 21522, CDP 45203), separate from Aside.
@@ -23,8 +23,12 @@ There is no Vault extension and no built-in password manager. Users bring a prov
 1. **Stage.** `scripts/stage-provided.mjs` copies the pinned supplied inputs (`docs/source/*-inputs.json`, or the frozen snapshot in `out/`) and applies the Aux transforms in `scripts/lib/` and `vendor/provided/`. Each transform is count-checked against exact anchors.
 2. **Audit.** `scripts/check-provided.mjs` confirms that every file the transforms did not touch still matches its supplied bytes.
 3. **Assemble and package.** `scripts/assemble-provided.mjs` and `scripts/package-provided.mjs` combine the stage with a native Chromium build into `Aux.app`.
-4. **Native.** Chromium changes are patches in `chromium/patches/`, built from the durable checkout through `scripts/native-build.py`.
-5. **Repairs.** The current candidate was then repaired with receipt-bound deltas under `docs/integration/proposed/completion-20261026/`. Their exact inputs are in `integrator/current-source-selection.json`.
+4. **Native.** Chromium changes live in the durable checkout and are exported to `chromium/tree/` (`scripts/chromium-tree.py`). Builds go through `scripts/native-build.py`.
+5. **Repairs.** The current candidate is the A38 base plus receipt-bound deltas under `docs/integration/proposed/completion-20261026/`, applied by the repair executor in `scripts/candidate/`. Their exact inputs are in `integrator/current-source-selection.json`, and `python3 scripts/verify-candidate.py` checks the app still matches them. A fresh `stage:provided` does not reproduce the candidate on its own.
+
+## Hosted service
+
+`services/aux-cloud/` is the Next.js service on Vercel behind `api.`, `app.` and `share.getaux.co`: accounts (Clerk), device sessions, sync, shares, feedback uploads (Vercel Blob) and the public pages. It has no billing and no hosted inference. The desktop build talks to the production service; deploys are the owner's to run.
 
 ## Compatibility boundaries
 

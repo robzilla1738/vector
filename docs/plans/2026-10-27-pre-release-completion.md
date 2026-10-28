@@ -203,3 +203,4 @@ Batch 5 items start as soon as their approval lands (hosted can start after Batc
   - ChatGPT: needs the form submitted.
   - Legal: needs the missing facts.
 - **Batch 6:** STATUS, AGENTS.md, the contract and README updated to the current seal `3b9f9b68`; `scripts/verify-candidate.py` passes.
+- **2026-10-28:** the UI passes resealed through `b606bf7c`. The release audit and the remaining work toward a public release are in [2026-10-28 release readiness](2026-10-28-release-readiness.md).

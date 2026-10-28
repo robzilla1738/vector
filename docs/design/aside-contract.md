@@ -28,14 +28,14 @@ Visible branding, the wire protocol and key domains on the candidate are Aux (au
 
 Remaining: none. The supplied addon, its carrier, the historical Keychain interposer `libaux-native-boundary.dylib` and the unloaded guard and probe files are removed; the shipped native peer refuses `DYLD_INSERT_LIBRARIES`, and no Aside Keychain group or prefix ships.
 
-When the migration is authorized, change both sides, schemas, dispatch, health checks and byte-length calculations together. Never brand a challenge without its verifier. Never decrypt old ciphertext under a renamed HKDF domain. Existing state needs an explicit migration or a legacy reader; resets and owner-state access are not allowed. The migration includes no UI, geometry, CSS, typography, icon or interaction change. See [complete identity](../plans/2026-10-22-complete-aux-identity.md).
+Any further change to a wire or key format is a versioned migration: change both sides, schemas, dispatch, health checks and byte-length calculations together. Never brand a challenge without its verifier. Never decrypt old ciphertext under a renamed HKDF domain. Existing state needs an explicit migration or a legacy reader; resets and owner-state access are not allowed. The migration includes no UI, geometry, CSS, typography, icon or interaction change. See [complete identity](../plans/2026-10-22-complete-aux-identity.md).
 
 ## Isolation
 
 - **Standard browser profile isolation** (owner choice, 2026-10-23): personal and work cookies, extensions, site/provider/task state and all supervised Aux writers stay separate and settle before clean recovery. Unrelated apps under the same macOS user are outside this guarantee. See [the implementation scope](../integration/proposed/standard-profile-isolation/README.md).
 - Keep Aux state and endpoints separate from Aside. Defaults: daemon 21520, bridge 21522, secure CDP 45203. Never attach to or stop the owner's Aside services.
 - Bundled runtime, model and catalog payloads are immutable seeds; mutable npm/pip/bytecode state goes to the private Aux home. Preserve the original runtime validation, update failures and task-readiness behavior.
-- Preserve the original native addon. Use the reviewed fixed guard/interposer/carrier and the original DP semantics; no owner-group fallback, replacement PEM authority or file-Keychain backend.
+- The supplied native addon, carrier, guard and interposer are removed; the selected native route owns installation authority. Keep the original DP semantics: no owner-group fallback, replacement PEM authority or file-Keychain backend.
 - Do not fabricate onboarding completion, unlocked state, subscriptions or cloud responses.
 
 ## Evidence

@@ -5,8 +5,7 @@ Aux builds on Chromium `155.0.8059.85` (commit in [version.txt](version.txt)). T
 ## Here
 
 - [tree/](tree/README.md) is the complete, verified Aux delta on 155.0.8059.85: the record of every upstream change and the way to rebuild the native checkout.
-- `patches/benchmark/` holds stock-Chromium comparison patches used only for performance measurements.
 - `flags.*.gn` are GN argument sets. [flags.aux.gn](flags.aux.gn) is the local AuxFast build; `flags.fast.gn` and `flags.release.gn` are the official-build variants of the same browser; `flags.dev.gn` is its component build, and `flags.aside.gn` a plain Chromium component build. The retired shell flag no longer exists.
 - `tests/` holds native smoke scripts.
 
-The checkout already has the series applied, plus owner work. Never reset it, re-apply the series over it, or remove unrelated changes. The `aux-chromium` setup/push/pop tool that once rebuilt a fresh 154 checkout from the series stopped working when the shell was retired on 2026-10-18 and was removed; it is at tag `archive/pre-cleanup-2026-10-27`. A fresh checkout cannot be rebuilt from this repo today.
+The checkout already carries the delta, plus owner work. Never reset it, apply the tree over it, or remove unrelated changes. `scripts/chromium-tree.py verify` replays the delta onto the base commit in a temporary index, and `apply` targets a clean 155.0.8059.85 checkout. A clean apply followed by a full build has not been done yet, so rebuilding a fresh checkout from this repo is unproven. The old `aux-chromium` setup tool and the patch series are at tag `archive/pre-cleanup-2026-10-27`.
