@@ -1,0 +1,8 @@
+# gitleaks findings reviewed as non-secrets (see .gitleaks.toml for the rule-based allowlist).
+# HKDF test vector derived in the inbox-v2 receipt, not a key in use.
+docs/integration/proposed/aux-native-inbox-v2/inputs.json:generic-api-key:23
+# Content-addressed cache keys (SHA-256) for model and memory-runtime downloads.
+docs/integration/proposed/standard-profile-isolation/memory-runtime-v2-a1/actual-distribution-a1.json:generic-api-key:21
+docs/integration/proposed/standard-profile-isolation/memory-runtime-v2-a1/actual-distribution-a1.json:generic-api-key:26
+docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/index.mjs:generic-api-key:12
+docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/aux-native-entry.mjs:generic-api-key:12
