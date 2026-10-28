@@ -10,16 +10,91 @@ Legal and licensing (distribution rights, third-party licenses and notices, term
 
 Each item is marked **[owner]** (only Robert can do it), **[agent]** (Claude can do it, with the build, reseal and test the rules require) or **[external]** (waiting on a third party).
 
+## The two lists (2026-10-28)
+
+### Only Robert can do
+
+Access and identity
+1. Grant Accessibility and Automation to the terminal running Claude, or turn on Computer use (D12). Every UI journey, the acceptance pass and the release checks wait on this.
+2. Import `Aux Developer ID Application - 2026.p12` (iCloud Drive) into the login Keychain, and choose "Always Allow" for `codesign` when it first asks.
+3. In the Apple Developer portal (team `9F2JXY8TCK`), create a Developer ID provisioning profile for `dev.aux.browser.daemon`, and tell Claude where it saved.
+4. Approve the one real-Keychain check (saved passwords and cookies across Quit), which touches Keychain (D2), when Claude asks.
+5. Quit the running Aux candidate when Claude asks. It holds the state folders and blocks reseal launches.
+6. Run `out/cleanup-2026-10-28/cleanup.sh`. It removes the four merged Codex worktrees and moves `~/Applications/Aux.app` to the Trash; the safety check blocked Claude from doing it. Their HEADs are saved under `refs/archive/worktrees/codex-*`, and their untracked files are in `~/Documents/Aux-archive/worktree-salvage-2026-10-28/`.
+
+Accounts (use `hello@getaux.co` as the contact; put every key in the 1Password Agents vault, never in chat)
+7. Google Cloud: a Safe Browsing API key restricted to that API, or a Web Risk application if the free API doesn't fit (decision 7).
+8. Widevine: request a license at widevine.com, and open a castLabs EVS account for VMP signing (decision 8).
+9. Sentry: one project for native crash reports, and its DSN (decision 6).
+10. Better Stack: an account plus an API token, so Claude can create the readiness monitor with alerts to `robertcourson96@gmail.com` (decision 12).
+11. Tartelet CI: create the GitHub App Tartelet asks for (it registers ephemeral runners) and install it on `robzilla1738/vector`. In the repo settings, set Actions to require approval for all outside collaborators.
+
+Hosted service (Vercel `aux-cloud`, Neon, Resend)
+12. Deploy the service when Claude says it's ready: today `09c024eba` and `608f900e3`, later the hosted batch. Or tell Claude it may run production deploys.
+13. In Vercel: add a log drain to Better Stack, add the Firewall rate rule Claude specifies for the email-code route, delete the stale Stripe and hosted-AI variables and `AUX_PAYMENTS_ENABLED`/`AUX_HOSTED_AI_ENABLED`, and re-add the database URLs, Postgres passwords and Blob token as Sensitive.
+14. Delete the J5 test account (Settings › Account › Delete account in Aux), then tell Claude to run the cleanup check.
+15. In Resend: confirm `RESEND_FROM` is an `@getaux.co` sender and that SPF, DKIM and DMARC pass for getaux.co.
+16. In Neon: confirm the point-in-time restore window for the Aux project (at least 7 days). The connected Neon account doesn't hold that project.
+
+External
+17. Follow up with Apple on `2H4D7KNGUP` (the Endpoint Security entitlement for the REPL).
+18. Create a disposable 1Password account for the pairing test.
+19. ChatGPT eligibility form: optional now. With T3-style wiring (decision 1) Aux uses the user's own Codex CLI login and doesn't need its own OpenAI client. Submit it only if you want in-app ChatGPT sign-in without the CLI.
+
+Release stop point
+20. Approve each publication: uploading a build to `aux-downloads`, publishing the appcast, and putting the download page live. Claude builds, signs, notarizes and verifies everything up to that point, then stops.
+
+### Claude can do now
+
+Order: 1 and 2 first; 3–8 run alongside the native work; 9 and 10 wait on the owner items they name.
+
+1. **Push and back up.** Finish the secret scan, push `main` to `robzilla1738/vector`, and record it.
+2. **Product batch** (one native build, one reseal, a focused launch):
+   - Entitlements: camera, microphone, location and Apple Events on the app; Contacts and Apple Events on Computer Use.
+   - State folder `Aux`, public version 1.0.0 with an increasing build number, and no daemon version pin in the health check.
+   - Launch from Finder and the Dock with the real Keychain. Release mode compiles out the test hooks, the `/private/tmp` profile path, the candidate launcher's refusal and debug-level `LOG(ERROR)` traces.
+   - Google leftovers: Glic, Lens, Compose, AI Mode, actor and contextual tasks off by feature default; Google sign-in, sync and iOS promos off; the API-keys infobar suppressed; the 751 guard lines removed; about 340 Chrome and Chromium strings and the "Gemini in Aux" strings reworded; Chromium credited on the About page.
+   - Daemon: it relaunches after dying mid-session, the UI shows an "agent unavailable / retry" state, and the selected route is cached.
+   - Package: regenerate or strip `bundle.json`, the `.pyc` files, the venv paths, `runtime-text-root.json`, the `prepare-python.py` message and the CI path. Re-sign the 86 At Inc.-signed binaries under Aux, and drop the x64 prebuilds.
+   - Security cleanup: remove the Vault passkey broker, the Vault CDP trust, the legacy carrier route and the shell-era `chrome://aux` host. Stop inherited AWS, Bedrock, `HF_TOKEN` and other provider variables. Cap CDP challenges per peer.
+   - Bundle the 46 skill icons, then retire `dev-cloud`. Daemon CORS trusts `app.getaux.co` only.
+   - Fixes: the dead help link, `isAux`, the locale timestamp, the `org.chromium.*` file types, two unnamed buttons, the agent-running announcement, about 23 hard-coded colors, and naming ("Aux", "Aux Daemon").
+   - Archive the four old state folders once Aux has quit. Re-pin the visual baseline, and check the unretouched video frame by frame.
+3. **Providers, T3 style** (decision 1): detect and drive the official Codex, Claude Code, Cursor, Grok Build and OpenCode CLIs with the user's own login. Add install and sign-in guidance in Settings, and fall back to API keys for Kimi and Meta. Remove the borrowed Codex client ID and the Copilot VS Code headers.
+4. **Languages** (decision 9): move about 290 Aux native literals into `.grd`, and translate them, the extension UI and the reworded Chrome strings into Spanish, French, German, Portuguese (Brazil), Italian, Japanese, Korean and Simplified and Traditional Chinese. Unpin the extension from English.
+5. **Hosted batch** (ready for the owner to deploy):
+   - Vercel BotID on the email-code route, and the Firewall rule spec.
+   - `check-environment`: the readiness secret only in production, and `RESEND_FROM` must be `@getaux.co`.
+   - `Reply-To: hello@getaux.co` on sign-in mail; show the terms at desktop email-code sign-up and record age with consent.
+   - An end-to-end purge test, an operator-blocked share state, the share title cleared on unshare, and JSON auth and recovery logs with request IDs.
+   - zod past 4.6.6, the Clerk, Hono and Next patches, and a lint script.
+   - Redirects for `getaux.co/policy/*`, `/docs` and `/community`.
+6. **Release engineering:**
+   - A release configuration based on `flags.aux.gn` with GN asserts, a PGO profile, and a first official build compared with AuxFast.
+   - Sparkle: vendor a pinned `third_party/aux_sparkle`, remove the `assert(false …)`, generate Aux's own EdDSA key, add "Check for Updates…", and stop the daemon before an update replaces the app.
+   - A release script: sign inside out with hardened runtime and timestamps, notarize with the team profile (checked first), staple, build and sign the DMG, verify with `spctl`, generate the appcast, and stop before upload.
+   - Crashpad-to-Sentry wiring behind the opt-in prompt, ready for the DSN; a Widevine VMP signing step, ready for the EVS account.
+   - In `~/Documents/Vibe/aux-web` (Vercel `aux-web`, serves getaux.co): `/download` and `/updates/appcast.xml` pointing at `aux-downloads`, prepared but not deployed.
+7. **CI on this Mac:** install Tartelet, build a Tart image with Node, pnpm and Python from the existing `macos-tahoe-xcode` base, and add workflows for the hermetic tests, the service tests, `tsc` and `next build`. Lock triggers to pushes to `main` and manual runs. Native builds stay on the host.
+8. **Reproducibility:** a clean `chromium-tree.py apply` plus a full build in a separate directory (1.4 TB free), the tree manifest hash in every native receipt, one documented rebuild path, tests for the executor, `verify-candidate.py` and `aux_drive.py`, `verify-candidate.py` in `pnpm check`, missing-input tests that fail instead of skip, staging code moved out of `docs/integration`, and the `node_headers` symlink fixed.
+9. **Chromium updates:** a documented process and script to rebase `chromium/tree` onto each new Chrome stable, then the first rebase to the current stable.
+10. **After the owner items:**
+    - D12 grants: the full journey pass and release checks, one fix batch, then rerun only the failures.
+    - Developer ID and profile: the signed, notarized and stapled release candidate and DMG, verified, and stopped before publication.
+    - Keys and accounts: wire Safe Browsing, Sentry, Better Stack, Widevine and Tartelet as each arrives.
+    - Apple, OpenAI and 1Password: activate the REPL, ChatGPT and the 1Password pairing as each approval lands.
+11. **Docs:** keep STATUS, the contract and this checklist current after every batch.
+
 ## 1. Decisions (owner, 2026-10-28)
 
 Robert answered the first six; for the rest he asked for whatever gives the best product, so those are Claude's calls, recorded here.
 
 | # | Question | Decision |
 |---|---|---|
-| 1 | Subscription sign-in providers (Claude Pro/Max, Copilot, Kimi, Meta, Grok, the `openai-codex` login) | Keep: users can sign in with them. The provider list in the contract and AGENTS.md is widened to match. Each one still needs a real sign-in check in the acceptance pass |
+| 1 | Subscription sign-in providers (Claude Pro/Max, Copilot, Kimi, Meta, Grok, the `openai-codex` login) | Keep, and wire them the way T3 Code does: Aux drives each provider's own official CLI or SDK with the user's existing login (`codex login`, `claude auth login`, Cursor `agent login`, `grok login`, `opencode auth login`), instead of in-app OAuth with borrowed client IDs or spoofed editor headers. Aux detects which CLIs are installed and signed in, offers "Install" and "Sign in" links when they aren't, and falls back to API keys for providers without an official CLI (Kimi, Meta). Each one needs a real sign-in and chat check in the acceptance pass |
 | 2 | Release scope and signing | Allowed: distribution, notarization, release and Developer ID signing (`Developer ID Application: Robert Courson (9F2JXY8TCK)`) |
-| 3 | Final state location | `~/Library/Application Support/Aux` and `~/Library/Caches/Aux`, the standard single-word form (as Arc uses `Arc`). On this Mac `Aux`, `Aux Browser`, `Aux Browser A38 Disposable` and `Aux Browser Completion 20261026` already exist from earlier builds; move them to an archive folder, with the owner's yes, before the first launch of a release build, and never let the release adopt them |
-| 4 | Where updates and downloads live | The getaux.co website: `getaux.co/download` for the DMG and `getaux.co/updates/appcast.xml` for Sparkle. The DMG and update archives sit in a public Vercel Blob store (they are too large for a deployment) and the site links or redirects to them. Every release is immutable; the feed is published only after its files exist |
+| 3 | Final state location | `~/Library/Application Support/Aux` and `~/Library/Caches/Aux`, the standard single-word form (as Arc uses `Arc`). Owner approved archiving the four existing folders on this Mac (`Aux`, `Aux Browser`, `Aux Browser A38 Disposable`, `Aux Browser Completion 20261026`). They move to `~/Documents/Aux-archive/state-2026-10-28/` while no Aux process is running, before the first launch of the renamed build. The release must never adopt them |
+| 4 | Where updates and downloads live | The getaux.co website: `getaux.co/download` for the DMG and `getaux.co/updates/appcast.xml` for Sparkle. The files live in the public Vercel Blob store `aux-downloads` (`store_keswZfgEx7j6cpf0`, iad1, created 2026-10-28, not connected to `aux-cloud` so the service's Blob token is untouched). Every release is immutable; the feed is published only after its files exist |
 | 5 | Version scheme | Aux 1.0.0 as the public version (`CFBundleShortVersionString`), with an integer `CFBundleVersion` that increases on every build. Components keep their supplied internal versions, so the daemon health check must stop pinning `1.26.1016.1852` |
 | 6 | Crash reports | Opt-in, off by default: Aux asks once after the first crash. Crashpad minidumps go to Sentry's native minidump endpoint, with no URLs or page content attached. Needs a Sentry project (owner) and a privacy-page line (handled with legal) |
 | 7 | Safe Browsing | On. Chromium's built-in protection needs a Google Safe Browsing API key. Google limits that API to non-commercial use and points commercial products to the paid Web Risk API, which needs an application and approval. Aux takes no payments, so check which applies, then get the key and Claude wires it in. Until then, ship with Safe Browsing off and the API-keys infobar suppressed |
@@ -28,7 +103,7 @@ Robert answered the first six; for the rest he asked for whatever gives the best
 | 10 | `dev-cloud.getaux.co` | Retire it. Bundle the 46 built-in skill icons in the app (faster, private, offline), then remove the alias once no shipped build points at it |
 | 11 | Hosted site calling the local daemon | Yes, for `app.getaux.co` only. Drop `api.getaux.co` (it serves no pages, so it only adds attack surface). Every call still needs the daemon's session token |
 | 12 | Alerts and operations | Alert recipient `robertcourson96@gmail.com`. Uptime: a Better Stack monitor on readiness every 3 minutes, alerting after 2 failures. Sign-in abuse: Vercel BotID on the email-code route plus a Vercel Firewall rate rule. Preview builds: `check-environment` requires the readiness secret only in production (no production secrets copied to Preview) |
-| 13 | Repository identity | Fix `.git/config` so commits are `robzilla1738`. Don't rewrite history: receipts cite commit hashes, and a rewrite would break them. If code is ever published, publish a fresh export, not this history. Push `main` to the private `robzilla1738/vector` remote as the off-machine copy, once the owner confirms the remote is private |
+| 13 | Repository identity | Commits are `robzilla1738` (`.git/config` fixed 2026-10-28). No history rewrite: receipts cite commit hashes. `robzilla1738/vector` is public, and the owner approved pushing `main` there after a secret scan. CI runs on this Mac through Tartelet (ephemeral Tart VMs as self-hosted GitHub Actions runners). Because the repo is public, workflows run only on pushes to `main` and on manual dispatch, never on fork pull requests, and outside contributors' runs need approval |
 | 14 | Debug and test leftovers | The release build compiles out every test hook, the `/private/tmp` profile path, the candidate launcher's refusal, and the `LOG(ERROR)` traces below `WARNING` |
 | 15 | Customer-facing email | `hello@getaux.co` everywhere a user sees or replies to an address: support, feedback, share reports, the public pages, store and vendor listings, and the Sentry and Widevine contact. It is already the only address in the shipped app and the service. Sign-in code emails get `Reply-To: hello@getaux.co`, and `RESEND_FROM` must be an `@getaux.co` sender. `robertcourson96@gmail.com` gets internal alerts only and never appears to users |
 
@@ -143,16 +218,9 @@ Agent:
 - **[owner]** Remove the stale `~/Applications/Aux.app` launcher for the retired build, and the four Codex worktrees under `~/.codex/worktrees/aux-*` whose commits are already in `main` (if Codex isn't using them). Archive the four old state folders (decision 3).
 - Before any CI: decide what can run off this Mac. The build needs the durable checkout and the `out/` inputs.
 
-## 8. Accounts and approvals only the owner can get
+## 8. Owner and agent lists
 
-- Import the Developer ID p12 into the login Keychain, and create the Developer ID provisioning profile for `dev.aux.browser.daemon`.
-- Accessibility and Automation for the terminal running Claude, or Computer use (D12).
-- Google Safe Browsing key, or Web Risk approval (decision 7).
-- Widevine license and a castLabs EVS account (decision 8).
-- Sentry project for crash reports (decision 6).
-- Better Stack account for uptime alerts (decision 12).
-- A public Vercel Blob store for downloads, or approval for Claude to create one in the personal team (decision 4).
-- Confirm `robzilla1738/vector` is private before the first push (decision 13).
+The two working lists are at the top of this page.
 
 ## 9. Already done (don't redo)
 
