@@ -26,6 +26,7 @@ The plans in [plans/](plans/) are dated decisions. Their requirements still appl
 - [Pre-release completion](plans/2026-10-27-pre-release-completion.md) (2026-10-27): the six-batch plan the owner approved
 - [Excellence audit](plans/2026-10-27-excellence-audit.md) (2026-10-27): whole-product review and decisions D1–D12
 - [Release readiness](plans/2026-10-28-release-readiness.md) (2026-10-28): the full checklist from the current seal to a public release
+- [Owner plan](plans/2026-10-28-owner-plan.md) and [agent plan](plans/2026-10-28-agent-plan.md) (2026-10-28): the detailed steps for each side
 
 ## Evidence
 

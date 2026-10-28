@@ -12,6 +12,8 @@ Each item is marked **[owner]** (only Robert can do it), **[agent]** (Claude can
 
 ## The two lists (2026-10-28)
 
+The detailed, step-by-step versions are the [owner plan](2026-10-28-owner-plan.md) and the [agent plan](2026-10-28-agent-plan.md).
+
 ### Only Robert can do
 
 Access and identity
