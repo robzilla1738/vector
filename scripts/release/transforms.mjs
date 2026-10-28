@@ -3,17 +3,37 @@
 // Each transform is count-checked and throws on any mismatch, so a drifted input stops the release.
 //
 //   node scripts/release/transforms.mjs <staged Aux.app>
-import { readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { repoRoot } from '../lib/repo-root.mjs';
+import { RUNTIME_FILES, AGENT_PATH, CONNECT_DIALOG_PATH, integrateDaemon, integrateAgentList, integrateConnectDialog }
+  from '../../vendor/provided/provider-cli/integration.mjs';
 
 const app = process.argv[2];
 if (!app) throw new Error('usage: transforms.mjs <staged Aux.app>');
 const daemon = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources';
+const agent = 'Contents/Resources/aux/apps/extension/dist';
+
+// [label, repository source, staged destination]. New files only: an existing destination stops the release.
+const ADDITIONS = [
+  ...RUNTIME_FILES.map(file => ['provider CLI runtime', `vendor/provided/provider-cli/${file}`, `${daemon}/node-development/provider-cli/${file}`]),
+];
 
 // [label, relative file, async (text) => text]. Lanes add their transforms here.
-const TRANSFORMS = [];
+const TRANSFORMS = [
+  ['provider CLIs: daemon hooks, no borrowed sign-in', `${daemon}/node-development/aux-native-entry.mjs`, integrateDaemon],
+  ['provider CLIs: Agent provider list', `${agent}/${AGENT_PATH}`, integrateAgentList],
+  ['provider CLIs: connect dialogs', `${agent}/${CONNECT_DIALOG_PATH}`, integrateConnectDialog],
+];
 
 const applied = [];
+for (const [label, source, relative] of ADDITIONS) {
+  const file = path.join(app, relative);
+  if (existsSync(file)) throw new Error(`${label}: ${relative} already exists`);
+  mkdirSync(path.dirname(file), { recursive: true });
+  copyFileSync(path.join(repoRoot, source), file);
+  applied.push({ label, path: relative, added: true });
+}
 for (const [label, relative, transform] of TRANSFORMS) {
   const file = path.join(app, relative);
   const before = readFileSync(file, 'utf8');

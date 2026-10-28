@@ -1,6 +1,6 @@
 # Provider CLIs, the T3 Code way (provider-cli-a1)
 
-2026-10-28. Design for [decision 1](../../../../../plans/2026-10-28-release-readiness.md): users bring their Claude, ChatGPT/Codex, Cursor, Grok and OpenCode plans through each provider's **official CLI and the login they already have**. Aux ships no borrowed OAuth client and no impersonated client headers. Inventory of what ships today: [inventory.md](inventory.md). Code: `vendor/provided/provider-cli/` (tested, not yet integrated).
+2026-10-28. Design for [decision 1](../../../../../plans/2026-10-28-release-readiness.md): users bring their Claude, ChatGPT/Codex, Cursor, Grok and OpenCode plans through each provider's **official CLI and the login they already have**. Aux ships no borrowed OAuth client and no impersonated client headers. Inventory of what ships today: [inventory.md](inventory.md). Code: `vendor/provided/provider-cli/`, wired into release builds by `scripts/release/transforms.mjs` (see [Integration](#integration-release-build-2026-10-28)).
 
 ## Product decisions
 
@@ -83,15 +83,37 @@ Prompt exposure: Cursor and OpenCode take the prompt on argv (visible to the sam
 
 Not removed: API-key providers (`anthropic`, `openai`, `xai`, `kimi-coding`, `meta`, Copilot token env), hosted Aux paths, the `aux-chatgpt.cjs` module, and the `claude-code`/`openai-codex` ids, which the new CLI rows take over at integration.
 
-## Integration still required
+## Integration (release build, 2026-10-28)
 
-1. **Daemon delta** (`docs/integration/proposed/completion-20261026/runtime/…`, through `prepare_edits.py` and the repair executor):
-   - call `applyBorrowedIdentityRemoval({component:'daemon', path:'entry.mjs', text})` after the identity and provider-funded edits in `vendor/provided/provider-launch-stage.mjs` `compose()` (it runs on both SEA and `node-development` text);
-   - bundle `vendor/provided/provider-cli/*.mjs` next to `aux-native-entry.mjs` (as `native/aux-chatgpt.cjs` is today) and load it from the entry;
-   - add tRPC procedures beside `getSubscriptionUsage` (@12058816): `providerCli.status` (cached `detectAll` → `settingsRow`), `providerCli.refresh`, and a chat-runtime branch so a model whose provider is `codex`/`claude`/`cursor`/`grok`/`opencode` runs `runTurn` instead of pi-ai `stream`, mapping events onto the existing assistant event stream (`createAssistantMessageEventStream`);
-   - the `/mcp/v1/<profileId>` route and turn tokens beside `daemonAuthMiddleware` (@3027150); call `terminateAll()` in the daemon's shutdown path and `installExitCleanup()` at start.
-2. **Agent delta**: apply `applyBorrowedIdentityRemoval({component:'agent', path:'assets/strip-markdown-DRcmtuJc.js'})` in the agent pipeline next to `provider-funded-launch-ui.json` edits; re-point the `claude-code` and `openai-codex` rows in `connect-dialog-CacgpFap.js` (`Sn`, the Codex dialog) from the OAuth popup to the CLI status row, reusing the supplied dialog components (`P`, `I`, `A`, `w`, `ce`) and copy style; add Cursor, Grok and OpenCode rows to `aa`/`Zf` with the same components.
-3. **Reseal and accept**: one disposable launch; each row through not installed (PATH without the CLI), signed out (a disposable `CODEX_HOME`/`CLAUDE_CONFIG_DIR` with no login) and ready; one short prompt per provider **only with Robert's yes**; Stop mid-turn; Quit with no child left (`pgrep -g`).
+The release assembler wires all of this in: `scripts/release/transforms.mjs` copies the runtime files and applies count-checked edits from `integration.mjs` after the package edits. Nothing in the sealed candidate changes; a release built from it ships the result.
+
+- **Runtime files**: `aux-daemon.mjs`, `index.mjs`, `catalog.mjs`, `detect.mjs`, `drivers.mjs`, `process.mjs` and `stream.mjs` go to `node-development/provider-cli/` beside `aux-native-entry.mjs`. The entry loads them with `await import(new URL("./provider-cli/aux-daemon.mjs", import.meta.url))`, the same way it loads `aux-crypto/`. Importing them starts no process.
+- **Daemon** (14 edits plus the 28 borrowed-identity edits):
+  - The provider ids `openai-codex` (Codex CLI) and `claude-code` (Claude Code) now belong to the CLIs, plus new ids `cursor-cli`, `grok-cli`, `opencode-cli` and `copilot-cli`.
+  - The model manager resolves their models from detection, with api `aux-provider-cli` and no API key. The settings inventory shows a provider as connected while its CLI is ready. A stored OAuth credential from an older profile no longer connects these rows.
+  - The pi model runtime is wrapped: an `aux-provider-cli` model streams through `runTurn` and becomes pi assistant events (text, thinking, done or error). Other models are untouched.
+  - The Agent session's `streamFn` gives a CLI turn the session's own browser tools (`repl`, `webfetch`, `websearch`, `get_time`). Each tool call runs the same path as the Agent loop: argument validation, `beforeToolCall` and `afterToolCall` hooks, and the browser-tool owner wrapper.
+  - `models.providerCliStatus` and `models.providerCliRefresh` sit beside `getSubscriptionUsage`.
+  - `/mcp/v1/<turnId>` is answered inside `daemonAuthMiddleware`. It accepts loopback only, with a loopback Host, no `Origin` and no `Sec-Fetch-Site`, and requires the turn's 256-bit token. The token is compared by digest, lives only in daemon memory, and is revoked when the turn ends or after 30 min.
+  - `main()` calls `start()`, which sets the run folder `<AUX_HOME_PATH>/agent-cli` and installs `installExitCleanup()`. Shutdown awaits `stop()`, which revokes tokens and calls `terminateAll()`, before transports close.
+- **Agent**:
+  - The provider list drops the OAuth-only rows and gains Cursor, Grok Build and OpenCode CLI rows. The Claude and ChatGPT descriptions name their CLI.
+  - The ChatGPT and Claude connect dialogs, and the new rows, use one status dialog built from the supplied parts. It shows the CLI's message, version and account hint, links to the install guide, has copy buttons for the install, sign-in and sign-out commands, and offers *Check again* or *Done*.
+  - Copilot appears, unconnected, only when its CLI is installed.
+- **Detection cache**: Settings reuses a result for 30 s. Model lists and chat reuse it for 5 min, so inventory reads do not keep starting CLIs. A sign-in error from a CLI drops the cache.
+- **Tests**:
+  - `aux-daemon.test.mjs` (hermetic) runs fake CLIs and stubbed hooks through detection, inventory, model resolution, a streamed turn, sign-in errors, the MCP endpoint (token, scope, tool path, revocation) and cleanup.
+  - `integration.test.mjs` and `scripts/release/transforms.test.mjs` (host-only) apply every transform to copies of the candidate. They check counts, parsing and forbidden strings, then run the injected middleware, chat-turn branch and shutdown in isolation, and run `transforms.mjs` on a minimal staged app.
+
+Still open, and it needs a reseal or a release build plus a real launch:
+
+1. **Reseal and accept**: one disposable launch. Take each row through not installed (PATH without the CLI), signed out (a disposable `CODEX_HOME`/`CLAUDE_CONFIG_DIR` with no login) and ready. Send one short prompt per provider **only with Robert's yes**. Stop mid-turn. Quit with no child left (`pgrep -g`).
+2. **Not built yet**:
+   - *Open Terminal* (the dialog has copy buttons only).
+   - Icons for Cursor and Grok Build (they use the generic or xAI icon).
+   - CLI tool calls appear as reasoning lines ("Using repl"), not as tool rows.
+   - A CLI keeps no session, so each turn sends the earlier conversation as text, newest 60,000 characters.
+   - Background model work (titles, compaction) on a CLI model runs the CLI too.
 
 Open items to verify in that real check: Grok's `streaming-json` record shapes and its `--allow mcp__aux` rule; Cursor's MCP approval in `-p` mode; Codex MCP tool calls under `approvalPolicy:"never"` with `sandbox:"read-only"`; OpenCode `{env:…}` header interpolation in v2.
 
