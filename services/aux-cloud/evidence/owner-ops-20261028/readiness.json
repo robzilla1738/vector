@@ -1,0 +1,67 @@
+[
+  {
+    "host": "api.getaux.co",
+    "health": 200,
+    "unauthenticatedReadiness": 401,
+    "authenticatedReadiness": 200,
+    "deploymentId": "dpl_DEH7Lvy3FXWXfTiznh2eXgDNEGxw",
+    "status": "ready",
+    "schema": "current",
+    "requiredMigrations": 14,
+    "schemaManifestSha256": "797176bd2b67bfd2da2ff1deb8075f8f7d8adf6abd7c0fb8748154ce524784de",
+    "paymentsEnabled": false,
+    "hostedAiEnabled": false
+  },
+  {
+    "host": "app.getaux.co",
+    "health": 200,
+    "unauthenticatedReadiness": 401,
+    "authenticatedReadiness": 200,
+    "deploymentId": "dpl_DEH7Lvy3FXWXfTiznh2eXgDNEGxw",
+    "status": "ready",
+    "schema": "current",
+    "requiredMigrations": 14,
+    "schemaManifestSha256": "797176bd2b67bfd2da2ff1deb8075f8f7d8adf6abd7c0fb8748154ce524784de",
+    "paymentsEnabled": false,
+    "hostedAiEnabled": false
+  },
+  {
+    "host": "share.getaux.co",
+    "health": 200,
+    "unauthenticatedReadiness": 401,
+    "authenticatedReadiness": 200,
+    "deploymentId": "dpl_DEH7Lvy3FXWXfTiznh2eXgDNEGxw",
+    "status": "ready",
+    "schema": "current",
+    "requiredMigrations": 14,
+    "schemaManifestSha256": "797176bd2b67bfd2da2ff1deb8075f8f7d8adf6abd7c0fb8748154ce524784de",
+    "paymentsEnabled": false,
+    "hostedAiEnabled": false
+  },
+  {
+    "host": "dev-cloud.getaux.co",
+    "health": 200,
+    "unauthenticatedReadiness": 401,
+    "authenticatedReadiness": 200,
+    "deploymentId": "dpl_DEH7Lvy3FXWXfTiznh2eXgDNEGxw",
+    "status": "ready",
+    "schema": "current",
+    "requiredMigrations": 14,
+    "schemaManifestSha256": "797176bd2b67bfd2da2ff1deb8075f8f7d8adf6abd7c0fb8748154ce524784de",
+    "paymentsEnabled": false,
+    "hostedAiEnabled": false
+  },
+  {
+    "host": "aux-cloud.vercel.app",
+    "health": 200,
+    "unauthenticatedReadiness": 401,
+    "authenticatedReadiness": 200,
+    "deploymentId": "dpl_DEH7Lvy3FXWXfTiznh2eXgDNEGxw",
+    "status": "ready",
+    "schema": "current",
+    "requiredMigrations": 14,
+    "schemaManifestSha256": "797176bd2b67bfd2da2ff1deb8075f8f7d8adf6abd7c0fb8748154ce524784de",
+    "paymentsEnabled": false,
+    "hostedAiEnabled": false
+  }
+]
