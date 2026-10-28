@@ -1,0 +1,27 @@
+{
+  "format": "aux.deployed-readiness.v2",
+  "checkedAt": "2026-10-28T01:45:42.652Z",
+  "target": {
+    "format": "aux.readiness-target.v1",
+    "projectId": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+    "teamId": "team_aFPyA9tVAkB2WegquB3aADsL",
+    "environment": "production",
+    "origin": "https://api.getaux.co",
+    "deploymentId": "dpl_FCyG1B6SzBg4CTUSYpwru7krBxHo",
+    "assignmentVerifiedAt": "2026-10-28T01:45:39.181058+00:00"
+  },
+  "requiredMigrations": 13,
+  "schemaManifestSha256": "1789a3aa67cfbd0d395d7912bd2dacfcf6f1577367f2b43a5784cebe830af34e",
+  "checks": [
+    "public liveness 200",
+    "unauthenticated readiness 401",
+    "authenticated database/schema readiness 200",
+    "expected schema manifest",
+    "payments and hosted AI disabled"
+  ],
+  "writesPerformed": false,
+  "paidProviderCalls": 0,
+  "sourceContractsAccepted": false,
+  "providerSecretPairingVerified": false,
+  "maintenanceInvoked": false
+}

@@ -48,7 +48,9 @@
   "developmentDeploymentIdRequiredForThisAction": false,
   "fixtureApprovalRequiredBeforeFirstSend": true,
   "recipientConfirmation": "Owner supplied both receiving Gmail accounts in this completion chat; accounts are available in Aside. Preserve existing mail and any pre-existing Aux account. Only newly created, ledger-bound Aux fixture accounts are eligible for the separately approved deletion journey.",
-  "rollbackNote": "Re-point api/app/share to aux-cloud-9oc52fmgn (the previous deployment). Migration 013 is additive, so the previous code still runs on the current schema; it is not verified against current desktop contracts."
+  "rollbackNote": "Re-point api/app/share to aux-cloud-9oc52fmgn (the previous deployment). Migration 013 is additive, so the previous code still runs on the current schema; it is not verified against current desktop contracts.",
+  "productionDeploymentId": "dpl_FCyG1B6SzBg4CTUSYpwru7krBxHo",
+  "devCloud": "moved to the production deployment with owner approval (promotion), 2026-10-27"
  },
  "o1": {
   "proposedProvider": "DigitalOcean",
@@ -156,7 +158,7 @@
   "serviceOperator": "Robert Courson",
   "confirmedNotificationRecipient": "hello@getaux.co",
   "deploymentProtectionAccessVerified": true,
-  "maintenanceScheduleAndInvocationVerified": false,
+  "maintenanceScheduleAndInvocationVerified": true,
   "alertDeliveryVerified": false,
   "rollbackVerified": false,
   "activationApproved": true,

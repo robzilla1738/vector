@@ -12,3 +12,9 @@ Owner-approved ("get that live").
 Rollback: re-point the three aliases to `aux-cloud-9oc52fmgn-robzilla1738s-projects.vercel.app`.
 
 Not done here: J5 needs a cloud-enabled desktop build (this candidate is local-only, D1) and email codes to the owner's test inboxes; an external uptime monitor needs an account choice.
+
+## Promotion (owner approved, 2026-10-27)
+
+The `--skip-domain` deploy never registered the maintenance cron (`vercel crons list`: not deployed). A normal `vercel deploy --prod` of the same source produced `dpl_FCyG1B6SzBg4CTUSYpwru7krBxHo` and registered it. All five aliases now point to it, `dev-cloud.getaux.co` and `aux-cloud.vercel.app` included. Readiness passed again (`promoted-readiness.json`). The first scheduled run, at 20:50 Central, returned 200 with `aux.maintenance.completed`, `ok: true` and no failures.
+
+Rollback: re-point the aliases to `aux-cloud-9oc52fmgn-robzilla1738s-projects.vercel.app` (pre-activation) or `aux-cloud-2urdeebuy` (same source, no cron).
