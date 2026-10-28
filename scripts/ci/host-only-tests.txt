@@ -69,5 +69,6 @@ vendor/provided/daemon-adapter.test.mjs
 vendor/provided/daemon-node-cold-entry.test.mjs
 vendor/provided/daemon-node-development.test.mjs
 vendor/provided/provider-funded-launch.test.mjs
+vendor/provided/provider-cli/borrowed-identity-removal.test.mjs
 vendor/provided/runtime-cache-contract.test.mjs
 vendor/provided/skill-catalog-scope.test.mjs
