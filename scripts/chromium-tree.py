@@ -13,6 +13,10 @@ from pathlib import Path
 
 BASE = '0e66b94549a8bd85f03fbdf189b752d6e7b63c32'  # Chromium 155.0.8059.85
 SKIP = ('__pycache__/', '.pyc', '.DS_Store')
+REPO = Path(__file__).resolve().parent.parent
+# The only absolute links in the tree reach the frozen snapshot in this repo's out/
+# (aux_native_pdf_bridge/node_headers). They are re-rooted here on apply.
+SNAPSHOT = '/out/provided-source-snapshot-'
 
 
 def git(src, *args, env=None, data=None):
@@ -48,6 +52,25 @@ def changes(src):
     return sorted(tracked), sorted(added), sorted(deleted)
 
 
+def link_target(member):
+    head, marker, tail = member.linkname.partition(SNAPSHOT)
+    if not marker:
+        raise SystemExit(f'Archive link leaves the checkout: {member.name} -> {member.linkname}')
+    return str(REPO) + marker + tail
+
+
+def extract(archive_path, src):
+    """Extract added.tar.gz safely; absolute snapshot links point at this repo's out/."""
+    with tarfile.open(archive_path) as archive:
+        members = archive.getmembers()
+        external = [m for m in members if m.issym() and os.path.isabs(m.linkname)]
+        targets = {m.name: link_target(m) for m in external}
+        archive.extractall(src, members=[m for m in members if m.name not in targets], filter='data')
+    for name, target in targets.items():
+        (src/name).parent.mkdir(parents=True, exist_ok=True)
+        os.symlink(target, src/name)
+
+
 def export(src, dest):
     if git(src, 'rev-parse', 'HEAD').decode().strip() != BASE:
         raise SystemExit('Checkout HEAD is not the pinned base')
@@ -71,7 +94,9 @@ def export(src, dest):
     (dest/'manifest.json').write_text(json.dumps(manifest, indent=1, sort_keys=True) + '\n')
     (dest/'base.json').write_text(json.dumps({'chromium': '155.0.8059.85', 'commit': BASE,
         'tracked': len(tracked), 'added': len(added), 'deleted': len(deleted)}, indent=1) + '\n')
-    print(json.dumps({'tracked': len(tracked), 'added': len(added), 'deleted': len(deleted)}))
+    # Record manifestSha256 in the native receipt and current-source-selection.json.
+    print(json.dumps({'tracked': len(tracked), 'added': len(added), 'deleted': len(deleted),
+                      'manifestSha256': sha(dest/'manifest.json')}))
 
 
 def verify(src, dest):
@@ -108,8 +133,7 @@ def apply(src, dest):
     if git(src, 'rev-parse', 'HEAD').decode().strip() != BASE or git(src, 'status', '--porcelain', '--', '.', ':!out'):
         raise SystemExit('Apply needs a clean checkout of the pinned base')
     git(src, 'apply', '--binary', str(dest/'aux.patch'))
-    with tarfile.open(dest/'added.tar.gz') as archive:
-        archive.extractall(src, filter='data')
+    extract(dest/'added.tar.gz', src)
     manifest = json.loads((dest/'manifest.json').read_text())
     bad = [p for p, d in manifest['files'].items() if not (src/p).is_file() or sha(src/p) != d]
     if bad:

@@ -1,5 +1,6 @@
 """Round trip for chromium-tree.py on a tiny repository: export, verify, apply, refuse tampering."""
 import importlib.util
+import os
 import subprocess
 import tempfile
 import unittest
@@ -33,6 +34,7 @@ class ChromiumTreeTest(unittest.TestCase):
         (self.src / 'gone.txt').unlink()
         (self.src / 'aux').mkdir()
         (self.src / 'aux' / 'added.cc').write_text('// Aux\n')
+        (self.src / 'aux' / 'node_headers').symlink_to('/old/root/out/provided-source-snapshot-x/runtime/node')
         self.dest = self.work / 'tree'
         tree.export(self.src, self.dest)
 
@@ -44,6 +46,16 @@ class ChromiumTreeTest(unittest.TestCase):
         self.assertEqual((clean / 'kept.txt').read_text(), 'upstream\nAux edit\n')
         self.assertEqual((clean / 'aux' / 'added.cc').read_text(), '// Aux\n')
         self.assertFalse((clean / 'gone.txt').exists())
+        self.assertEqual(os.readlink(clean / 'aux' / 'node_headers'),
+                         str(tree.REPO) + '/out/provided-source-snapshot-x/runtime/node')
+
+    def test_links_outside_the_snapshot_are_refused(self):
+        (self.src / 'aux' / 'escape').symlink_to('/etc')
+        tree.export(self.src, self.dest)
+        clean = self.work / 'clean'
+        subprocess.run(['git', 'clone', '-q', str(self.src), str(clean)], check=True)
+        with self.assertRaises(SystemExit):
+            tree.apply(clean, self.dest)
 
     def test_export_is_byte_deterministic(self):
         first = (self.dest / 'added.tar.gz').read_bytes()
