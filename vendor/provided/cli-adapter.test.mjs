@@ -1,8 +1,7 @@
-import { frozenRoots } from '../../scripts/lib/provided-frozen-sources.mjs';
+import { requireInput } from '../../scripts/lib/inputs.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { adaptCliBinary, adaptCliCode } from './cli-adapter.mjs';
 import { findMachOSeaSection, readSeaBlob } from '../aside/lib/sea.mjs';
@@ -12,9 +11,8 @@ test('unrecognized CLI inputs fail before adaptation', () => {
   assert.throws(() => adaptCliBinary(Buffer.from('different executable')), /hash mismatch/);
 });
 
-const source = process.env.AUX_PROVIDED_CLI_BINARY ?? join(frozenRoots.cli, 'Contents/MacOS/aside');
-test('actual supplied CLI remains syntactically valid and its native loader cannot fall through to owner binding', { skip: !existsSync(source) }, () => {
-  const original = readFileSync(source);
+test('actual supplied CLI remains syntactically valid and its native loader cannot fall through to owner binding', () => {
+  const original = readFileSync(requireInput('frozenCliBinary'));
   const beforeSection = findMachOSeaSection(original);
   const before = readSeaBlob(original.subarray(beforeSection.offset, beforeSection.offset + beforeSection.size));
   const result = adaptCliBinary(original);

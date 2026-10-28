@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import {requireInput} from '../../scripts/lib/inputs.mjs';
 import assert from 'node:assert/strict';
 import { createHash, createPublicKey, generateKeyPairSync, randomBytes, verify } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -50,9 +51,9 @@ test('unknown supplied bundle rejected before any rewrite', () => {
   assert.throws(() => adaptDaemonCode('export {};'), /hash mismatch/);
 });
 
-const source = (process.env.AUX_PROVIDED_DAEMON_CODE ?? frozenDaemonCodeFile());
-test('pinned actual daemon keeps real plan checks and count-checked Aux branding with supplied wire spellings', { skip: !source }, () => {
-  const original = readFileSync(source, 'utf8');
+const source = () => requireInput('frozenDaemonCode', process.env.AUX_PROVIDED_DAEMON_CODE ?? frozenDaemonCodeFile() ?? undefined);
+test('pinned actual daemon keeps real plan checks and count-checked Aux branding with supplied wire spellings', () => {
+  const original = readFileSync(source(), 'utf8');
   assert.equal(createHash('sha256').update(original).digest('hex'), DAEMON_CODE_SHA256);
   const result = adaptDaemonCode(original);
   assert.ok(result.code.includes('ei.includes(Cn?.subscriptionPlan??`free`)'));

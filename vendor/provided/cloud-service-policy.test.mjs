@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import {requireInput} from '../../scripts/lib/inputs.mjs';
 import test from 'node:test';
 import {createHash} from 'node:crypto';
-import {existsSync,readFileSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {resolveCloudServicePolicy,cloudBuildOptionsFromEnvironment,transformReviewedCloudServicePolicy,reviewedAuxCloudOrigins,reviewedAuxDevelopmentCloudOrigins,localUnavailableOrigins} from './cloud-service-policy.mjs';
 import {adaptDaemonCode,DAEMON_CODE_SHA256} from './daemon-adapter.mjs';
@@ -10,7 +11,7 @@ import {transformProvidedUiBoundary} from '../../scripts/lib/provided-ui-boundar
 const enable={enableCloud:true,profile:'production'};
 const development={enableCloud:true,profile:'development'};
 const hash=value=>createHash('sha256').update(value).digest('hex');
-const originalPath=component=>new URL(`../../out/provided-source-audit/${component}-original.mjs`,import.meta.url);
+const originalPath=component=>requireInput(component==='daemon'?'sourceAuditDaemon':'sourceAuditCli');
 function replay(before,result){let text=before;for(const a of result.anchors){assert.equal(text.split(a.find).length-1,a.count,a.name);text=text.split(a.find).join(a.replace);}assert.equal(text,result.text);}
 function parses(text){execFileSync(process.execPath,['--input-type=module','--check'],{input:text,stdio:['pipe','pipe','pipe']});}
 
@@ -32,7 +33,7 @@ test('cloud build opt-in is explicit, fixed to Aux HTTPS origins and cannot take
 });
 
 for(const [component,adapter,pinnedHash]of [['daemon',adaptDaemonCode,DAEMON_CODE_SHA256],['cli',adaptCliCode,CLI_CODE_SHA256]]){
-  for(const profile of [enable,development])test(`actual pinned ${component} ${profile.profile} cloud policy replays exact anchors, fixes runtime override and preserves release/wire/crypto boundaries`,{skip:!existsSync(originalPath(component))},()=>{
+  for(const profile of [enable,development])test(`actual pinned ${component} ${profile.profile} cloud policy replays exact anchors, fixes runtime override and preserves release/wire/crypto boundaries`,()=>{
     const original=readFileSync(originalPath(component),'utf8');assert.equal(hash(original),pinnedHash);
     const local=adapter(original).code;
     assert.equal(transformReviewedCloudServicePolicy({component,path:'entry.mjs',text:local}).text,local);

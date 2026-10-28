@@ -1,8 +1,8 @@
+import { requireInput } from './inputs.mjs';
 import { frozenRoots } from './provided-frozen-sources.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
-  access,
   lstat,
   mkdir,
   mkdtemp,
@@ -138,18 +138,9 @@ test('memory distribution requires catalog hashes and rejects metadata symlinks'
   }
 });
 
-let missing = false;
-try {
-  await access(frozenRoots.runtime);
-  await access(join(frozenRoots.memory, 'memory-catalog.json'));
-} catch {
-  missing = true;
-}
-test('one actual supplied runtime stage preserves distribution bytes/links and relocates only pinned text', {
-  skip: missing
-    ? 'Pinned external static distributions are unavailable'
-    : false,
-}, async () => {
+test('one actual supplied runtime stage preserves distribution bytes/links and relocates only pinned text', async () => {
+  requireInput('frozenRuntime');
+  requireInput('frozenMemoryCatalog');
   const root = await mkdtemp(join(tmpdir(), 'aux-supplied-runtime-'));
   try {
     const finalRuntime =

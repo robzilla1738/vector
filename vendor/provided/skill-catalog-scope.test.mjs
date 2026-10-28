@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {requireInput} from '../../scripts/lib/inputs.mjs';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -9,8 +10,7 @@ const approvedCodeSha256 = 'fd6e5f1438ceabbbe2b31a129029e7d2c47697de207eacdf742a
 import { transformProvidedNativeUi } from './native-ui-compat.mjs';
 import {frozenDaemonCodeFile} from '../../scripts/lib/frozen-daemon-code.mjs';
 
-const source = (process.env.AUX_PROVIDED_DAEMON_CODE ?? frozenDaemonCodeFile());
-const assets = process.env.AUX_PROVIDED_AGENT_ASSETS;
+const source = () => requireInput('frozenDaemonCode', process.env.AUX_PROVIDED_DAEMON_CODE ?? frozenDaemonCodeFile() ?? undefined);
 const rows = [
   { name: 'password-manager', path: 'builtin/password-manager', enabled: true },
   { name: 'apple-passwords', path: 'builtin/apple-passwords', enabled: true },
@@ -20,8 +20,8 @@ const rows = [
 ];
 const retained = rows.slice(1);
 
-test('production adapter excludes retired builtin catalog and product router', { skip: !source }, () => {
-  const active = adaptDaemonCode(readFileSync(source, 'utf8'));
+test('production adapter excludes retired builtin catalog and product router', () => {
+  const active = adaptDaemonCode(readFileSync(source(), 'utf8'));
   assert.equal(active.sha256, approvedCodeSha256);
   assert.equal(active.code.includes('passwordManager:passwordManagerRouter'), false);
   const { code } = active;
@@ -47,9 +47,10 @@ test('production adapter excludes retired builtin catalog and product router', {
   }
 });
 
-test('actual Agent Settings selector excludes exact Vault path and display helper preserves IDs', { skip: !assets }, () => {
+test('actual Agent Settings selector excludes exact Vault path and display helper preserves IDs', () => {
+  const assets = requireInput('frozenAgentAssets');
   const catalog = transformProvidedNativeUi({ component: 'agent', path: 'assets/skills-CfSQ7MCw.js', text: readFileSync(join(assets, 'skills-CfSQ7MCw.js'), 'utf8') });
-  const selector = catalog.anchors.find((anchor) => anchor.kind === 'owner-scope').replace;
+  const selector = catalog.anchors.find((anchor) => anchor.find.includes('listSkillsForSettings')).replace;
   const options = runInNewContext(selector, {
     a: { projects: { listSkillsForSettings: { queryOptions: (_input, options) => options } } },
     i: 0, be: (value) => ({ skills: value, marker: 'preserved' }),

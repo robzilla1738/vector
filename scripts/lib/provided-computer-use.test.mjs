@@ -1,6 +1,7 @@
+import { requireInput } from './inputs.mjs';
 import { frozenRoots } from './provided-frozen-sources.mjs';
 import assert from 'node:assert/strict';
-import { access, readFile, mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { readFile, mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -23,15 +24,8 @@ const identities = {
   browserBundleId: 'dev.aux.browser',
   canaryBundleId: 'dev.aux.browser.canary',
 };
-let missing = false;
-try {
-  await access(frozenRoots.computerUse);
-} catch {
-  missing = true;
-}
-test('pinned helper branding updates exact strings/counts and preserves all bytes outside44 ranges', {
-  skip: missing ? 'Pinned static helper is unavailable' : false,
-}, async () => {
+test('pinned helper branding updates exact strings/counts and preserves all bytes outside44 ranges', async () => {
+  requireInput('frozenComputerUse');
   await verifyProvidedComputerUse(frozenRoots.computerUse);
   const source = await readFile(
     join(frozenRoots.computerUse, 'Contents/MacOS/aside-computer-use'),
@@ -156,9 +150,8 @@ test('pinned helper branding updates exact strings/counts and preserves all byte
   }
 });
 
-test('static bundle staging changes only identity/prose/art, preserves resources/modes, and refuses overwrite', {
-  skip: missing ? 'Pinned static helper is unavailable' : false,
-}, async () => {
+test('static bundle staging changes only identity/prose/art, preserves resources/modes, and refuses overwrite', async () => {
+  requireInput('frozenComputerUse');
   const directory = await mkdtemp(join(tmpdir(), 'aux-helper-bundle-'));
   const options = {
     sourceRoot: frozenRoots.computerUse,

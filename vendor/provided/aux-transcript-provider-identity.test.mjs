@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {requireInput} from '../../scripts/lib/inputs.mjs';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
@@ -31,9 +32,9 @@ test('refuses ambiguous, corrupt, incomplete, unsupported and no-longer-stopped 
  const bytes=Buffer.from(JSON.stringify(assistant)+'\n');let calls=0;await assert.rejects(prepareAuxTranscriptProviderIdentity({bytes,expectedSha256:sha(bytes),capability:{...capability,assertStopped:async()=>++calls===1}}),/capability/);
  await assert.rejects(prepareAuxTranscriptProviderIdentity({bytes,expectedSha256:'0'.repeat(64),capability}),/hash mismatch/);
 });
-const pinned=(process.env.AUX_PINNED_DAEMON_SOURCE ?? frozenDaemonCodeFile());
-test('pinned actual JSONL parse and context transformer retain signatures after fixed-offset migration',{skip:!pinned},async()=>{
- const source=readFileSync(pinned,'utf8');assert.equal(sha(Buffer.from(source)),AUX_TRANSCRIPT_SOURCE_SHA256);
+const pinned=()=>requireInput('frozenDaemonCode',process.env.AUX_PINNED_DAEMON_SOURCE??frozenDaemonCodeFile()??undefined);
+test('pinned actual JSONL parse and context transformer retain signatures after fixed-offset migration',async()=>{
+ const source=readFileSync(pinned(),'utf8');assert.equal(sha(Buffer.from(source)),AUX_TRANSCRIPT_SOURCE_SHA256);
  const audit=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-transcript-provider-identity/source-audit.json',import.meta.url)));
  for(const anchor of audit.anchors){assert.equal(source.split(anchor.find).length-1,anchor.count,anchor.name);assert.equal(source.indexOf(anchor.find),anchor.characterOffset,anchor.name)}
  const start=source.indexOf('function transformMessages('),end=source.indexOf('var NON_VISION_USER_IMAGE_PLACEHOLDER',start);assert.ok(start>=0&&end>start);

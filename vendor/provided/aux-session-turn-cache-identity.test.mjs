@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {requireInput} from '../../scripts/lib/inputs.mjs';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {createHash} from 'node:crypto';
@@ -28,9 +29,9 @@ test('unknown cache variants, duplicate keys, changed schema, WAL and lost stopp
  const bytes=fixture();await assert.rejects(prepareSessionTurnCacheIdentity({databaseBytes:bytes,expectedSha256:sha(bytes),walBytes:Buffer.from([1]),capability}),/WAL/);
  await assert.rejects(prepareSessionTurnCacheIdentity({databaseBytes:bytes,expectedSha256:sha(bytes),walBytes:null,capability:{...capability,assertStopped:async()=>false}}),/capability/);
 });
-const pinned=(process.env.AUX_PINNED_DAEMON_SOURCE ?? frozenDaemonCodeFile());
-test('schema derivation and single-element projection confirmed against pinned actual extractor',{skip:!pinned},()=>{
- const source=readFileSync(pinned,'utf8'),audit=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-session-turn-cache-identity/source-audit.json',import.meta.url)));assert.equal(sha(Buffer.from(source)),audit.daemonSourceSha256);
+const pinned=()=>requireInput('frozenDaemonCode',process.env.AUX_PINNED_DAEMON_SOURCE??frozenDaemonCodeFile()??undefined);
+test('schema derivation and single-element projection confirmed against pinned actual extractor',()=>{
+ const source=readFileSync(pinned(),'utf8'),audit=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/aux-session-turn-cache-identity/source-audit.json',import.meta.url)));assert.equal(sha(Buffer.from(source)),audit.daemonSourceSha256);
  for(const anchor of audit.anchors)assert.equal(source.split(anchor.find).length-1,anchor.count,anchor.name);
  const migration=audit.anchors.find(a=>a.name==='migration14').find.split('\n').filter(line=>!['session_run_memory_extractions','session_turn_memory_extractions','ALTER TABLE sessions'].some(part=>line.includes(part))).join('\n');
  assert.equal(PINNED_SESSION_TURN_CACHE_DDL,audit.anchors[0].find+'\n'+migration+'\n'+audit.anchors.find(a=>a.name==='migration18').find+'\n');
