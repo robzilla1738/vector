@@ -23,6 +23,28 @@ APP = CANDIDATE/'Aux.app'
 BUNDLE = 'dev.aux.browser'
 RUN = ROOT/'out/acceptance'/time.strftime('%Y%m%d')
 PROCESS = f'(first process whose bundle identifier is "{BUNDLE}")'
+# Required argument count per command (record takes extra evidence paths).
+ARITY = {'check': 0, 'launch': 0, 'quit': 0, 'abort': 0, 'key': 1, 'combo': 2, 'code': 1, 'menu': 1,
+         'click': 2, 'drag': 4, 'open': 1, 'shot': 1, 'record': 3}
+OUTCOMES = ('accepted', 'defect', 'external')
+
+
+def parse(args):
+    """Validate the whole command line before anything runs; usage errors exit without side effects."""
+    cmd, rest = (args[0], args[1:]) if args else ('check', [])
+    if cmd not in ARITY or len(rest) < ARITY[cmd] or (cmd != 'record' and len(rest) > ARITY[cmd]):
+        raise SystemExit(__doc__)
+    if cmd in ('code', 'click', 'drag') and not all(value.lstrip('-').isdigit() for value in rest):
+        raise SystemExit(f'{cmd} takes integers')
+    if cmd == 'combo' and not set(rest[1].split(',')) <= {'command', 'cmd', 'shift', 'option', 'control'}:
+        raise SystemExit('combo modifiers: command, shift, option, control')
+    if cmd == 'menu' and (len(rest[0].split('>')) < 2 or '' in rest[0].split('>')):
+        raise SystemExit('menu takes a path like "Tab>New Tab"')
+    if cmd in ('shot', 'record') and (not rest[0] or '/' in rest[0] or rest[0].startswith('.')):
+        raise SystemExit(f'{cmd} name must be a plain file name')
+    if cmd == 'record' and rest[1] not in OUTCOMES:
+        raise SystemExit('record outcome: ' + '|'.join(OUTCOMES))
+    return cmd, rest
 
 
 def osa(script, timeout=15):
@@ -41,7 +63,10 @@ def pids():
     out = subprocess.run(['ps', '-axo', 'pid=,ppid=,comm='], capture_output=True, text=True).stdout
     browser = daemon = None
     for line in out.splitlines():
-        pid, ppid, comm = line.split(None, 2)
+        fields = line.split(None, 2)
+        if len(fields) != 3:
+            continue
+        pid, ppid, comm = fields
         if comm == str(APP/'Contents/MacOS/Aux'):
             browser = int(pid)
         elif comm.endswith('Aux Daemon.app/Contents/MacOS/aux-daemon') and comm.startswith(str(APP)):
@@ -53,8 +78,17 @@ def listening():
     return subprocess.run(['lsof', '-nP', '-iTCP:21520', '-sTCP:LISTEN'], capture_output=True).returncode == 0
 
 
+def running():
+    """The browser and daemon PIDs; refuses (exits) when the candidate browser is not running."""
+    browser, daemon = pids()
+    if browser is None:
+        raise SystemExit('Aux is not running; nothing to do')
+    return browser, daemon
+
+
 def main(args):
-    cmd = args[0] if args else 'check'
+    cmd, rest = parse(args)
+    args = [cmd, *rest]
     if cmd == 'check':
         # An Apple Event to a stopped app launches it without the launcher's
         # --use-mock-keychain, so automation is checked only against a running Aux.
@@ -81,7 +115,7 @@ def main(args):
         else:
             raise SystemExit('daemon did not start; check for a stale daemon or a refused launch')
     elif cmd == 'quit':
-        browser, daemon = pids(); start = time.time()
+        browser, daemon = running(); start = time.time()
         osa(f'tell application "{APP}" to quit')
         while any(p and subprocess.run(['ps', '-p', str(p)], capture_output=True).returncode == 0 for p in (browser, daemon)):
             if time.time() - start > 60:
@@ -89,17 +123,17 @@ def main(args):
             time.sleep(0.5)
         print(f'quit settled in {time.time() - start:.1f}s')
     elif cmd == 'abort':
-        browser, daemon = pids(); start = time.time()
+        browser, daemon = running(); start = time.time()
         os.kill(browser, signal.SIGABRT)
-        while subprocess.run(['ps', '-p', str(daemon)], capture_output=True).returncode == 0:
+        while daemon and subprocess.run(['ps', '-p', str(daemon)], capture_output=True).returncode == 0:
             if time.time() - start > 60:
                 raise SystemExit('daemon still running 60 s after abort')
             time.sleep(0.5)
-        print(f'daemon exited {time.time() - start:.1f}s after abort')
+        print(f'daemon exited {time.time() - start:.1f}s after abort' if daemon else 'aborted; no daemon was running')
     elif cmd == 'key':
         front(); osa(f'tell application "System Events" to keystroke {json.dumps(args[1])}')
     elif cmd == 'combo':
-        mods = ', '.join(f'{m} down' for m in args[2].split(','))
+        mods = ', '.join(f'{"command" if m == "cmd" else m} down' for m in args[2].split(','))
         front(); osa(f'tell application "System Events" to keystroke {json.dumps(args[1])} using {{{mods}}}')
     elif cmd == 'code':
         front(); osa(f'tell application "System Events" to key code {int(args[1])}')
@@ -132,8 +166,6 @@ post(.leftMouseDown, {x1}, {y1}); for i in 1...20 {{ post(.leftMouseDragged, {x1
         data = json.loads(results.read_text()) if results.exists() else {'seal': None, 'results': {}}
         data['results'][args[1]] = {'outcome': args[2], 'note': args[3], 'evidence': args[4:], 'at': time.strftime('%Y-%m-%dT%H:%M:%S')}
         results.write_text(json.dumps(data, indent=1) + '\n'); print(f'{args[1]}: {args[2]}')
-    else:
-        raise SystemExit(__doc__)
 
 
 if __name__ == '__main__':
