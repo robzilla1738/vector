@@ -83,6 +83,16 @@ class CrashUpload(unittest.TestCase):
             assemble.crash_upload_url('http://o1.ingest.sentry.io/42')
 
 
+class RepinText(unittest.TestCase):
+    def test_size_only_changes_inside_the_digest_object(self):
+        text = 'const X={"a":{"size":5,"sha256":"OLD"},"b":{"size":5,"sha256":"other"}};'
+        self.assertEqual(assemble.repin_text(text, 'OLD', 'NEW', 5, 9),
+                         'const X={"a":{"size":9,"sha256":"NEW"},"b":{"size":5,"sha256":"other"}};')
+
+    def test_bare_digest_outside_an_object(self):
+        self.assertEqual(assemble.repin_text('pin=OLD;', 'OLD', 'NEW', 1, 2), 'pin=NEW;')
+
+
 class RepinCascade(unittest.TestCase):
     def test_follows_pins_of_pins(self):
         app = Path(tempfile.mkdtemp())
@@ -92,13 +102,16 @@ class RepinCascade(unittest.TestCase):
         seed.write_bytes(b'unsigned')
         old = assemble.sha256(seed)
         runtime = root / 'runtime.json'
-        runtime.write_text(json.dumps({'sha256': old}))
+        runtime.write_text(json.dumps({'files': [{'size': 8, 'sha256': old}]}, separators=(',', ':')))
         catalog = root / 'catalog.json'
-        catalog.write_text(json.dumps({'runtime': assemble.sha256(runtime)}))
-        seed.write_bytes(b'signed')
-        log = assemble.repin_cascade(app, {old: assemble.sha256(seed)})
-        self.assertEqual(json.loads(runtime.read_text())['sha256'], assemble.sha256(seed))
-        self.assertEqual(json.loads(catalog.read_text())['runtime'], assemble.sha256(runtime))
+        catalog.write_text(json.dumps({'runtime': {'bytes': runtime.stat().st_size, 'sha256': assemble.sha256(runtime)}}))
+        old_runtime_size = runtime.stat().st_size
+        seed.write_bytes(b'signed by Aux')
+        log = assemble.repin_cascade(app, {old: (assemble.sha256(seed), 8, 13)})
+        self.assertEqual(json.loads(runtime.read_text())['files'][0], {'size': 13, 'sha256': assemble.sha256(seed)})
+        self.assertEqual(json.loads(catalog.read_text())['runtime'],
+                         {'bytes': runtime.stat().st_size, 'sha256': assemble.sha256(runtime)})
+        self.assertNotEqual(old_runtime_size, runtime.stat().st_size)
         self.assertEqual(len(log), 2)
 
     def test_renames_directory_named_by_digest(self):
@@ -106,7 +119,7 @@ class RepinCascade(unittest.TestCase):
         old, new = 'a' * 64, 'b' * 64
         (app / assemble.AUX / f'runtimes/{old}').mkdir(parents=True)
         (app / assemble.AUX / 'catalog.json').write_text(f'"runtimes/{old}"')
-        assemble.repin_cascade(app, {old: new})
+        assemble.repin_cascade(app, {old: (new, 1, 1)})
         self.assertTrue((app / assemble.AUX / f'runtimes/{new}').is_dir())
         self.assertIn(new, (app / assemble.AUX / 'catalog.json').read_text())
 
@@ -115,7 +128,7 @@ class RepinCascade(unittest.TestCase):
         old = 'a' * 64
         (app / assemble.AUX / f'runtimes/{old}.tar').mkdir(parents=True)
         with self.assertRaises(SystemExit):
-            assemble.repin_cascade(app, {old: 'b' * 64})
+            assemble.repin_cascade(app, {old: ('b' * 64, 1, 1)})
 
 
 if __name__ == '__main__':

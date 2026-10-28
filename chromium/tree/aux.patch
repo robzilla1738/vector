@@ -2107,7 +2107,7 @@ index a1d061b8104d544644a42d8e212cce2fb8986117..c6c3e263e34ad57b8f12f05561a6db6b
          }
  
 diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
-index 8a60d7061bbfbeea1a15992ee0d9f2389b742f6e..7796dd7325eabb7f1440211f54a62e5217680c89 100644
+index 8a60d7061bbfbeea1a15992ee0d9f2389b742f6e..9da3622447064c9b1aa46d5d2601bfa88312b2d2 100644
 --- a/chrome/BUILD.gn
 +++ b/chrome/BUILD.gn
 @@ -72,6 +72,11 @@ declare_args() {
@@ -2136,8 +2136,8 @@ index 8a60d7061bbfbeea1a15992ee0d9f2389b742f6e..7796dd7325eabb7f1440211f54a62e52
 +
 +    }
 +    if (enable_aux_sparkle) {
-+      assert(false && chrome_mac_bundle_id == "dev.aux.browser",
-+             "Sparkle requires the Aux shell and bundle ID")
++      assert(enable_aux_browser && chrome_mac_bundle_id == "dev.aux.browser",
++             "Sparkle requires the Aux browser and bundle ID")
 +      assert(aux_sparkle_feed_url != "" && aux_sparkle_public_ed_key != "",
 +             "Sparkle requires a feed URL and EdDSA public key")
 +      info_plists += [ "$target_gen_dir/aux-sparkle-Info.plist" ]
@@ -2413,9 +2413,27 @@ index eddd25c932ddba98c1a6985fc2810555c2463e45..1d37e5afe402307baa2eeedc5de5f47f
    }
  
 diff --git a/chrome/app/app-Info.plist b/chrome/app/app-Info.plist
-index 6fada0a2b1a1f4b5675fc657a3a7b2337e43c4a1..8ece98d869aa84602410fc11ac15052df61874a3 100644
+index 6fada0a2b1a1f4b5675fc657a3a7b2337e43c4a1..ad239d2f4a508989af239d280751df3b37a15cdd 100644
 --- a/chrome/app/app-Info.plist
 +++ b/chrome/app/app-Info.plist
+@@ -117,7 +117,7 @@
+ 			<string>Viewer</string>
+ 			<key>LSItemContentTypes</key>
+ 			<array>
+-				<string>org.chromium.extension</string>
++				<string>dev.aux.extension</string>
+ 			</array>
+ 		</dict>
+ 		<dict>
+@@ -133,7 +133,7 @@
+ 			<string>Viewer</string>
+ 			<key>LSItemContentTypes</key>
+ 			<array>
+-				<string>org.chromium.shortcut</string>
++				<string>dev.aux.shortcut</string>
+ 			</array>
+ 		</dict>
+ 		<dict>
 @@ -176,6 +176,10 @@
  	</dict>
  	<key>CFBundleURLTypes</key>
@@ -2436,6 +2454,15 @@ index 6fada0a2b1a1f4b5675fc657a3a7b2337e43c4a1..8ece98d869aa84602410fc11ac15052d
  			<key>UTTypeIcons</key>
  			<dict>
  				<key>UTTypeIconBadgeName</key>
+@@ -243,7 +247,7 @@
+ 				<string>EXTENSION</string>
+ 			</dict>
+ 			<key>UTTypeIdentifier</key>
+-			<string>org.chromium.extension</string>
++			<string>dev.aux.extension</string>
+ 			<key>UTTypeTagSpecification</key>
+ 			<dict>
+ 				<key>public.filename-extension</key>
 @@ -262,7 +266,7 @@
  				<string>com.apple.web-internet-location</string>
  			</array>
@@ -2445,6 +2472,15 @@ index 6fada0a2b1a1f4b5675fc657a3a7b2337e43c4a1..8ece98d869aa84602410fc11ac15052d
  			<key>UTTypeIcons</key>
  			<dict>
  				<key>UTTypeIconBadgeName</key>
+@@ -271,7 +275,7 @@
+ 				<string>SHORTCUT</string>
+ 			</dict>
+ 			<key>UTTypeIdentifier</key>
+-			<string>org.chromium.shortcut</string>
++			<string>dev.aux.shortcut</string>
+ 			<key>UTTypeTagSpecification</key>
+ 			<dict>
+ 				<key>public.filename-extension</key>
 diff --git a/chrome/app/app-entitlements-aux-passkey.plist b/chrome/app/app-entitlements-aux-passkey.plist
 new file mode 100644
 index 0000000000000000000000000000000000000000..3c62921948d61edb13ea989b25b4dd42b83c30ad
@@ -2522,7 +2558,7 @@ index 0000000000000000000000000000000000000000..c01c86fb97916f51d30893d468070b2f
 +</plist>
 diff --git a/chrome/app/aux-sparkle-Info.plist b/chrome/app/aux-sparkle-Info.plist
 new file mode 100644
-index 0000000000000000000000000000000000000000..ab1d9cf3ae842673fff4591822541757dd9913c7
+index 0000000000000000000000000000000000000000..30d9b339de8ea05e3a06e5211b194bbaa6710a99
 --- /dev/null
 +++ b/chrome/app/aux-sparkle-Info.plist
 @@ -0,0 +1,12 @@
@@ -2535,7 +2571,7 @@ index 0000000000000000000000000000000000000000..ab1d9cf3ae842673fff4591822541757
 +  <key>SUPublicEDKey</key>
 +  <string>${AUX_SPARKLE_PUBLIC_ED_KEY}</string>
 +  <key>SUEnableAutomaticChecks</key>
-+  <false/>
++  <true/>
 +</dict>
 +</plist>
 diff --git a/chrome/app/aux_crash_reporting_mac.h b/chrome/app/aux_crash_reporting_mac.h
@@ -2577,7 +2613,7 @@ index 67f37eafaa58de562f7930cde137812301b086b3..8a09ee12765d296f98253dde94af1b21
  // Web app window commands
  #define IDC_COPY_URL                    34071
 diff --git a/chrome/app/chrome_crash_reporter_client.cc b/chrome/app/chrome_crash_reporter_client.cc
-index 64912e538f3b0b4acfbb21e0cd94a27b4329c7a2..4a866240170acf6babb4bb32d761609162ee65b9 100644
+index 64912e538f3b0b4acfbb21e0cd94a27b4329c7a2..6a99f6c44d9936b8795757a24629da04274db9f0 100644
 --- a/chrome/app/chrome_crash_reporter_client.cc
 +++ b/chrome/app/chrome_crash_reporter_client.cc
 @@ -17,6 +17,11 @@
@@ -2592,6 +2628,27 @@ index 64912e538f3b0b4acfbb21e0cd94a27b4329c7a2..4a866240170acf6babb4bb32d7616091
  #include "chrome/common/channel_info.h"
  #include "chrome/common/chrome_paths.h"
  #include "chrome/common/chrome_paths_internal.h"
+@@ -24,6 +29,9 @@
+ #include "chrome/common/env_vars.h"
+ #include "chrome/installer/util/google_update_settings.h"
+ #include "components/crash/core/common/crash_keys.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/app/aux_crash_reporting_mac.h"
++#endif
+ #include "components/metrics/system_profile_user_stream.h"
+ #include "components/version_info/version_info_values.h"
+ #include "content/public/common/content_switches.h"
+@@ -197,6 +205,10 @@ bool ChromeCrashReporterClient::GetCollectStatsConsent() {
+   // enabled. Right now if it is disabled we still generate the minidumps but we
+   // do not upload them.
+   return is_official_chrome_build;
++#elif BUILDFLAG(IS_MAC)
++  // Aux uploads only to its own configured endpoint, and only after the user's yes.
++  static_cast<void>(is_official_chrome_build);
++  return aux_crash_reporting::HasConsent();
+ #else   // !BUILDFLAG(IS_ANDROID)
+   if (!is_official_chrome_build) {
+     VLOG(1) << "GetCollectStatsConsent(): is_official_chrome_build is false "
 diff --git a/chrome/app/chrome_crash_reporter_client.h b/chrome/app/chrome_crash_reporter_client.h
 index 7f6390504ccd213c07a87e58288794d304474866..22a4a838cfb4c82279ea4d6787f14b255221bcad 100644
 --- a/chrome/app/chrome_crash_reporter_client.h
@@ -2613,10 +2670,10 @@ index 7f6390504ccd213c07a87e58288794d304474866..22a4a838cfb4c82279ea4d6787f14b25
  
  #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 diff --git a/chrome/app/chrome_crash_reporter_client_mac.mm b/chrome/app/chrome_crash_reporter_client_mac.mm
-index fd615c86084730bee69c4db74e4ea52c02397e72..af690eb13e806aaae0c222e3e527b1404bb60b96 100644
+index fd615c86084730bee69c4db74e4ea52c02397e72..f874b2a6c7b5f53bb2ccd21719338d84fbc38a64 100644
 --- a/chrome/app/chrome_crash_reporter_client_mac.mm
 +++ b/chrome/app/chrome_crash_reporter_client_mac.mm
-@@ -3,17 +3,119 @@
+@@ -3,17 +3,120 @@
  // found in the LICENSE file.
  
  #include "chrome/app/chrome_crash_reporter_client.h"
@@ -2731,7 +2788,8 @@ index fd615c86084730bee69c4db74e4ea52c02397e72..af690eb13e806aaae0c222e3e527b140
 +}  // namespace aux_crash_reporting
 +
 +std::string ChromeCrashReporterClient::GetUploadUrl() {
-+  return CrashReporterClient::GetUploadUrl();
++  // The endpoint comes from Info.plist (AuxCrashUploadURL); uploads also need consent.
++  return ConfiguredUploadURL();
 +}
  
  bool ChromeCrashReporterClient::ReportingIsEnforcedByPolicy(
@@ -2764,7 +2822,7 @@ index 1b476471618a77816529f2282e12be4c1f66c4bf..dae4137180064a06c245f60dc543342b
  #if defined(RENDERER_HELPER_EXECUTABLE)
    SetLLVMProfileProcessType(ProfileProcessType::kRenderer);
 diff --git a/chrome/app/chrome_main_delegate.cc b/chrome/app/chrome_main_delegate.cc
-index c027a43eb3e88e8bc92d06b89bd21af4819bfadb..72934c69512541be3f5a1111a033c3b4b5ccf899 100644
+index c027a43eb3e88e8bc92d06b89bd21af4819bfadb..5ecb998d31c63dcc0dff2a92e395fad01d926aed 100644
 --- a/chrome/app/chrome_main_delegate.cc
 +++ b/chrome/app/chrome_main_delegate.cc
 @@ -10,6 +10,7 @@
@@ -2904,7 +2962,7 @@ index c027a43eb3e88e8bc92d06b89bd21af4819bfadb..72934c69512541be3f5a1111a033c3b4
 +  if (!command_line->GetSwitchValueASCII(switches::kProcessType).empty()) {
 +    // Native helpers already have seatbelt. Their parent supplies the explicit
 +    // fixed path; no user DB, policy/root reopen, mkdir or sandbox widening here.
-+    constexpr std::string_view suffix = "/Library/Application Support/Aux Browser Completion 20261026/User Data";
++    constexpr std::string_view suffix = "/Library/Application Support/Aux/User Data";
 +    const std::string_view named = requested.value();
 +    if (!named.ends_with(suffix)) {
 +      return aux::state_identity::PackagedIdentityAllowsStartup(8) &&
@@ -2916,7 +2974,7 @@ index c027a43eb3e88e8bc92d06b89bd21af4819bfadb..72934c69512541be3f5a1111a033c3b4
 +        !aux::state_identity::PackagedIdentityAllowsStartup(9)) return false;
 +    const base::FilePath home_path(home);
 +    return InstallOrdinaryUserPathServices({home_path, requested,
-+        home_path.AppendASCII("Library/Caches/Aux Browser Completion 20261026")});
++        home_path.AppendASCII("Library/Caches/Aux")});
 +  }
 +  // This validates the actual current signed browser+child pair and exact
 +  // sealed policy BEFORE deriving or creating any OS-user directory.
@@ -12317,7 +12375,7 @@ index b58905ddb371f96377320c2948fe64bb17257663..db24ad9ec6fe8744c30491eb78cd8fa1
      "//chrome/browser/ui/autofill",
      "//chrome/browser/ui/autofill:impl",
 diff --git a/chrome/browser/actor/ui/actor_overlay_web_view.cc b/chrome/browser/actor/ui/actor_overlay_web_view.cc
-index 97c7a7eed035bd437b2eca2f56b42872947ec076..db6703a79aede24c425d96ae386d05f6ba76a789 100644
+index 97c7a7eed035bd437b2eca2f56b42872947ec076..f7d554194de3f2d032a180019eaea833246c04d7 100644
 --- a/chrome/browser/actor/ui/actor_overlay_web_view.cc
 +++ b/chrome/browser/actor/ui/actor_overlay_web_view.cc
 @@ -2,6 +2,10 @@
@@ -12338,7 +12396,7 @@ index 97c7a7eed035bd437b2eca2f56b42872947ec076..db6703a79aede24c425d96ae386d05f6
 +bool ActorOverlayWebView::CanRebindForAuxProfileSwitch() const {
 +  const auto aux_guard = [](bool value, const char* name, unsigned int count = 0) {
 +    if (!value) {
-+      LOG(ERROR) << "Aux actor admission overlay." << name << " failed=1 count=" << count;
++      LOG(WARNING) << "Aux actor admission overlay." << name << " failed=1 count=" << count;
 +    }
 +    return value;
 +  };
@@ -12475,7 +12533,7 @@ index 112adaba709ea0e7be0dad06946b73a4db9d63fd..8b35c4e1dac86351d48397cc5c4af37c
  
  #endif  // CHROME_BROWSER_ACTOR_UI_ACTOR_OVERLAY_WEB_VIEW_H_
 diff --git a/chrome/browser/actor/ui/actor_ui_tab_controller.cc b/chrome/browser/actor/ui/actor_ui_tab_controller.cc
-index af72dd4200b7a6e551f30e7698f674a466057a17..8770d52a8c34f75ccc5db8ed440a67bb72752f8f 100644
+index af72dd4200b7a6e551f30e7698f674a466057a17..b296cc0ea3546d23b3d860481ac0a113c7c5f20a 100644
 --- a/chrome/browser/actor/ui/actor_ui_tab_controller.cc
 +++ b/chrome/browser/actor/ui/actor_ui_tab_controller.cc
 @@ -2,12 +2,16 @@
@@ -12532,7 +12590,7 @@ index af72dd4200b7a6e551f30e7698f674a466057a17..8770d52a8c34f75ccc5db8ed440a67bb
 +bool ActorUiTabController::IsColdForAuxProfileSwitch() const {
 +  const auto aux_guard = [](bool value, const char* name, unsigned int count = 0) {
 +    if (!value) {
-+      LOG(ERROR) << "Aux actor admission tab." << name << " failed=1 count=" << count;
++      LOG(WARNING) << "Aux actor admission tab." << name << " failed=1 count=" << count;
 +    }
 +    return value;
 +  };
@@ -12745,7 +12803,7 @@ index a848b2a62cc4d85b40a21a83da8d75c07f147b8e..4240d3cef39c3f62b5a3aff154712e03
  
  }  // namespace actor::ui
 diff --git a/chrome/browser/actor/ui/actor_ui_window_controller.cc b/chrome/browser/actor/ui/actor_ui_window_controller.cc
-index a92a784fcfc163f1235bf8697561e1582ab361ee..6abb0574abde76c193fcfe556490a6d39484ed49 100644
+index a92a784fcfc163f1235bf8697561e1582ab361ee..9edd99b7db13c9505d0b7c31f86ac25de91dbae8 100644
 --- a/chrome/browser/actor/ui/actor_ui_window_controller.cc
 +++ b/chrome/browser/actor/ui/actor_ui_window_controller.cc
 @@ -2,8 +2,15 @@
@@ -12771,7 +12829,7 @@ index a92a784fcfc163f1235bf8697561e1582ab361ee..6abb0574abde76c193fcfe556490a6d3
 +bool ActorUiContentsContainerController::IsColdForAuxProfileSwitch() const {
 +  const auto aux_guard = [](bool value, const char* name, unsigned int count = 0) {
 +    if (value) {
-+      LOG(ERROR) << "Aux actor admission container." << name << " failed=1 count=" << count;
++      LOG(WARNING) << "Aux actor admission container." << name << " failed=1 count=" << count;
 +    }
 +    return value;
 +  };
@@ -12790,7 +12848,7 @@ index a92a784fcfc163f1235bf8697561e1582ab361ee..6abb0574abde76c193fcfe556490a6d3
 +  if (tab && ActorUiTabControllerInterface::From(tab)) {
 +    auto* actual = ActorUiTabController::Get(tab->GetUnownedUserDataHost());
 +    if (!actual) {
-+      LOG(ERROR) << "Aux actor admission container.tab-owner-missing";
++      LOG(WARNING) << "Aux actor admission container.tab-owner-missing";
 +      return false;
 +    }
 +    return actual->IsColdForAuxProfileSwitch();
@@ -12992,7 +13050,7 @@ index a92a784fcfc163f1235bf8697561e1582ab361ee..6abb0574abde76c193fcfe556490a6d3
 +bool ActorUiWindowController::CanRebindForAuxProfileSwitch() const {
 +  const auto aux_guard = [](bool value, const char* name, unsigned int count = 0) {
 +    if (value) {
-+      LOG(ERROR) << "Aux actor admission window." << name << " failed=1 count=" << count;
++      LOG(WARNING) << "Aux actor admission window." << name << " failed=1 count=" << count;
 +    }
 +    return value;
 +  };
@@ -13305,7 +13363,7 @@ index 3e4ccc511d02246b8cb80de6eb646d9ab9193df7..c1309440257fe753ef33ba97cf09d05f
  
  #endif  // CHROME_BROWSER_ACTOR_UI_ACTOR_UI_WINDOW_CONTROLLER_H_
 diff --git a/chrome/browser/actor/ui/handoff_button_controller.cc b/chrome/browser/actor/ui/handoff_button_controller.cc
-index f7f9ab96ebfb210a630e9fdb8e4726d258f20eb9..bae65c45fecfce73ce05716472702bc7827028dc 100644
+index f7f9ab96ebfb210a630e9fdb8e4726d258f20eb9..1f47928ade69c017b783d8b04b6937eda2e64e27 100644
 --- a/chrome/browser/actor/ui/handoff_button_controller.cc
 +++ b/chrome/browser/actor/ui/handoff_button_controller.cc
 @@ -2,6 +2,10 @@
@@ -13326,7 +13384,7 @@ index f7f9ab96ebfb210a630e9fdb8e4726d258f20eb9..bae65c45fecfce73ce05716472702bc7
 +bool HandoffButtonController::IsColdForAuxProfileSwitch() const {
 +  const auto aux_guard = [](bool value, const char* name, unsigned int count = 0) {
 +    if (!value) {
-+      LOG(ERROR) << "Aux actor admission handoff." << name << " failed=1 count=" << count;
++      LOG(WARNING) << "Aux actor admission handoff." << name << " failed=1 count=" << count;
 +    }
 +    return value;
 +  };
@@ -14264,10 +14322,18 @@ index 31f36e3ab558b9322f5d16e799f49ddd09078737..3e023837ca3021d9ba5b2164fa11374c
          .Add<bookmarks_api::mojom::BookmarksService>()
          .Add<extensions_bar::mojom::PageHandlerFactory>()
 diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_browser_main.cc
-index cbf3b6c563090a64c427e1b0ce8cbf7118aa82d2..fec158dc28453ba60fb3c618bac2e6a893a6a191 100644
+index cbf3b6c563090a64c427e1b0ce8cbf7118aa82d2..bb4b15716e90ed12f456fbab7b9165f758f53fef 100644
 --- a/chrome/browser/chrome_browser_main.cc
 +++ b/chrome/browser/chrome_browser_main.cc
-@@ -53,6 +53,20 @@
+@@ -42,6 +42,7 @@
+ #include "chrome/browser/first_run/first_run_features.h"
+ #include "chrome/browser/gpu/chrome_browser_main_extra_parts_gpu.h"
+ #include "chrome/browser/language/url_language_histogram_factory.h"
++#include "chrome/browser/lifetime/application_lifetime.h"
+ #include "chrome/browser/lifetime/browser_shutdown.h"
+ #include "chrome/browser/media/router/chrome_media_router_factory.h"
+ #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
+@@ -53,6 +54,20 @@
  #include "chrome/browser/metrics/expired_histograms_array.h"
  #include "chrome/browser/metrics/shutdown_watcher_helper.h"
  #include "chrome/browser/net/system_network_context_manager.h"
@@ -14288,7 +14354,71 @@ index cbf3b6c563090a64c427e1b0ce8cbf7118aa82d2..fec158dc28453ba60fb3c618bac2e6a8
  #include "chrome/browser/performance_manager/public/chrome_browser_main_extra_parts_performance_manager.h"
  #include "chrome/browser/performance_monitor/chrome_browser_main_extra_parts_performance_monitor.h"
  #include "chrome/browser/policy/chrome_browser_policy_connector.h"
-@@ -894,6 +908,10 @@ ChromeBrowserMainParts::~ChromeBrowserMainParts() {
+@@ -76,6 +91,11 @@
+ #include "chrome/browser/ui/color/chrome_color_mixers.h"
+ #include "chrome/browser/ui/javascript_dialogs/chrome_javascript_app_modal_dialog_view_factory.h"
+ #include "chrome/browser/ui/profiles/profile_error_dialog.h"
++#include "chrome/browser/ui/simple_message_box.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/app/aux_crash_reporting_mac.h"
++#include "components/crash/core/app/crashpad.h"
++#endif
+ #include "chrome/browser/ui/startup/bad_flags_prompt.h"
+ #include "chrome/browser/ui/webui/chrome_untrusted_web_ui_configs.h"
+ #include "chrome/browser/ui/webui/chrome_web_ui_configs.h"
+@@ -360,6 +380,51 @@
+ 
+ namespace {
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++// Crash reports reach Aux only with the user's yes, asked once after a crash
++// left a report behind and only when this build has an upload endpoint.
++void OfferAuxCrashReports() {
++  if (!aux_crash_reporting::HasConfiguredEndpoint() ||
++      aux_crash_reporting::HasUserChoice()) {
++    return;
++  }
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::BEST_EFFORT},
++      base::BindOnce([] {
++        std::vector<crash_reporter::Report> reports;
++        crash_reporter::GetReports(&reports);
++        return !reports.empty();
++      }),
++      base::BindOnce([](bool crashed) {
++        if (!crashed || browser_shutdown::HasShutdownStarted()) return;
++        chrome::ShowQuestionMessageBoxAsync(
++            gfx::NativeWindow(), u"Send crash reports to Aux?",
++            u"Aux quit unexpectedly. Crash reports help fix problems like "
++            u"this. They contain technical details about the crash, not your "
++            u"pages, passwords or files.",
++            base::BindOnce([](chrome::MessageBoxResult result) {
++              aux_crash_reporting::SetConsent(
++                  result == chrome::MESSAGE_BOX_RESULT_YES);
++            }));
++      }));
++}
++#endif
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++// The sealed native route never respawns its daemon within a run, so the way
++// back is a browser restart, which reopens the user's tabs.
++void OfferAuxAgentRestart() {
++  if (browser_shutdown::HasShutdownStarted()) return;
++  chrome::ShowQuestionMessageBoxAsync(
++      gfx::NativeWindow(), u"Aux's agent stopped",
++      u"Browsing still works, but the agent stopped unexpectedly. Restart Aux "
++      u"to bring it back? Your tabs will reopen.",
++      base::BindOnce([](chrome::MessageBoxResult result) {
++        if (result == chrome::MESSAGE_BOX_RESULT_YES) chrome::AttemptRestart();
++      }));
++}
++#endif
++
+ #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || \
+     BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+ constexpr base::FilePath::CharType kMediaHistoryDatabaseName[] =
+@@ -894,6 +959,10 @@ ChromeBrowserMainParts::~ChromeBrowserMainParts() {
    // browser_shutdown::ShutdownPostThreadsStop() I/O. The remaining
    // content-layer exit path is short and not worth a false-positive kill.
    shutdown_watchdog::OnShutdownComplete();
@@ -14299,7 +14429,7 @@ index cbf3b6c563090a64c427e1b0ce8cbf7118aa82d2..fec158dc28453ba60fb3c618bac2e6a8
  #endif
  }
  
-@@ -1004,6 +1022,13 @@ void ChromeBrowserMainParts::RecordBrowserStartupTime() {
+@@ -1004,6 +1073,13 @@ void ChromeBrowserMainParts::RecordBrowserStartupTime() {
  
  int ChromeBrowserMainParts::PreEarlyInitialization() {
    TRACE_EVENT0("startup", "ChromeBrowserMainParts::PreEarlyInitialization");
@@ -14313,17 +14443,21 @@ index cbf3b6c563090a64c427e1b0ce8cbf7118aa82d2..fec158dc28453ba60fb3c618bac2e6a8
    for (auto& chrome_extra_part : chrome_extra_parts_) {
      chrome_extra_part->PreEarlyInitialization();
    }
-@@ -1733,6 +1758,9 @@ void ChromeBrowserMainParts::PreBrowserStart() {
+@@ -1733,6 +1809,13 @@ void ChromeBrowserMainParts::PreBrowserStart() {
  
  void ChromeBrowserMainParts::PostBrowserStart() {
    TRACE_EVENT0("startup", "ChromeBrowserMainParts::PostBrowserStart");
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY) && BUILDFLAG(IS_MAC)
 +  aux::cli::StartNativeOpenServiceAtActualBrowserStartup();
 +#endif
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  content::GetUIThreadTaskRunner({})->PostDelayedTask(
++      FROM_HERE, base::BindOnce(&OfferAuxCrashReports), base::Seconds(8));
++#endif
    for (auto& chrome_extra_part : chrome_extra_parts_) {
      chrome_extra_part->PostBrowserStart();
    }
-@@ -1910,7 +1938,31 @@ int ChromeBrowserMainParts::PreMainMessageLoopRunImpl() {
+@@ -1910,7 +1993,34 @@ int ChromeBrowserMainParts::PreMainMessageLoopRunImpl() {
    }
  #endif
  
@@ -14346,6 +14480,9 @@ index cbf3b6c563090a64c427e1b0ce8cbf7118aa82d2..fec158dc28453ba60fb3c618bac2e6a8
 +    LOG(ERROR) << "Aux local browser startup failed";
 +    return CHROME_RESULT_CODE_MISSING_DATA;
 +  }
++  static base::NoDestructor<base::CallbackListSubscription> aux_agent_lost(
++      aux::BrowserPlatform::Get().ObserveDaemonLost(
++          base::BindRepeating(&OfferAuxAgentRestart)));
 +#endif
 +
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
@@ -14356,7 +14493,7 @@ index cbf3b6c563090a64c427e1b0ce8cbf7118aa82d2..fec158dc28453ba60fb3c618bac2e6a8
    PreProfileInit();
  
    // Register WebUI configs before profile creation, so that profile-level
-@@ -2234,6 +2286,29 @@ void ChromeBrowserMainParts::OnFirstIdle() {
+@@ -2234,6 +2344,29 @@ void ChromeBrowserMainParts::OnFirstIdle() {
  }
  
  void ChromeBrowserMainParts::PostMainMessageLoopRun() {
@@ -14386,7 +14523,7 @@ index cbf3b6c563090a64c427e1b0ce8cbf7118aa82d2..fec158dc28453ba60fb3c618bac2e6a8
    TRACE_EVENT_END("toplevel", perfetto::Track::FromPointer(this));
    TRACE_EVENT0("startup", "ChromeBrowserMainParts::PostMainMessageLoopRun");
  #if BUILDFLAG(IS_ANDROID)
-@@ -2282,6 +2357,10 @@ void ChromeBrowserMainParts::PostMainMessageLoopRun() {
+@@ -2282,6 +2415,10 @@ void ChromeBrowserMainParts::PostMainMessageLoopRun() {
  
    restart_mode_ = browser_shutdown::ShutdownPreThreadsStop();
    browser_process_->StartTearDown();
@@ -14397,7 +14534,7 @@ index cbf3b6c563090a64c427e1b0ce8cbf7118aa82d2..fec158dc28453ba60fb3c618bac2e6a8
  
    publisher_host_factory_resetter_.reset();
  #endif  // BUILDFLAG(IS_ANDROID)
-@@ -2294,6 +2373,10 @@ void ChromeBrowserMainParts::PostMainMessageLoopRun() {
+@@ -2294,6 +2431,10 @@ void ChromeBrowserMainParts::PostMainMessageLoopRun() {
  }
  
  void ChromeBrowserMainParts::PostDestroyThreads() {
@@ -14408,7 +14545,7 @@ index cbf3b6c563090a64c427e1b0ce8cbf7118aa82d2..fec158dc28453ba60fb3c618bac2e6a8
  #if BUILDFLAG(IS_ANDROID)
    // On Android, there is no quit/exit. So the browser's main message loop will
    // not finish.
-@@ -2352,8 +2435,16 @@ void ChromeBrowserMainParts::PostDestroyThreads() {
+@@ -2352,8 +2493,16 @@ void ChromeBrowserMainParts::PostDestroyThreads() {
  
    // From this point, the BrowserProcess class is no longer alive.
    browser_process_.reset();
@@ -22909,6 +23046,29 @@ index b8897968ca2a6268bb7d87f0c1b5086c49858a2d..a90ca37605e4b69ea644d3b9ebc51424
    if (!base::BlockTestsWritingToSpecialDirs::CanWriteToPath(file_path)) {
      return false;
    }
+diff --git a/chrome/browser/signin/account_consistency_mode_manager.cc b/chrome/browser/signin/account_consistency_mode_manager.cc
+index 7d4c893cbcd995c48a00631f9cbfd736fb188e63..4a845caa00fabbc3ad5dffac36c778592a5f592e 100644
+--- a/chrome/browser/signin/account_consistency_mode_manager.cc
++++ b/chrome/browser/signin/account_consistency_mode_manager.cc
+@@ -9,6 +9,7 @@
+ #include "base/command_line.h"
+ #include "base/logging.h"
+ #include "base/metrics/field_trial_params.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/metrics/histogram_macros.h"
+ #include "base/strings/string_util.h"
+ #include "build/build_config.h"
+@@ -146,7 +147,9 @@ AccountConsistencyModeManager::~AccountConsistencyModeManager() = default;
+ // static
+ void AccountConsistencyModeManager::RegisterProfilePrefs(
+     user_prefs::PrefRegistrySyncable* registry) {
+-  registry->RegisterBooleanPref(prefs::kSigninAllowedOnNextStartup, true);
++  // Aux has no Google account sign-in or sync; users can still opt in from settings.
++  registry->RegisterBooleanPref(prefs::kSigninAllowedOnNextStartup,
++                                !BUILDFLAG(ENABLE_AUX_BROWSER));
+ }
+ 
+ // static
 diff --git a/chrome/browser/site_token_provider/site_token_header_client.cc b/chrome/browser/site_token_provider/site_token_header_client.cc
 index e29294af1364696c7d76196769e8c92d4ae1cc60..f55b71f76ffbd07e51a60b83b1ce5e8fb0b40255 100644
 --- a/chrome/browser/site_token_provider/site_token_header_client.cc
@@ -24824,7 +24984,7 @@ index 30909a8d9313dfb4c30ab53e5ffb77bdce83afe2..63efdbd7879f5890b113cbf24d84bbf8
   private:
    void UpdateActionsForSharingHubPolicy();
 diff --git a/chrome/browser/ui/browser_actions.cc b/chrome/browser/ui/browser_actions.cc
-index 280e663b72b1a1fcfa886254859b08c616ae571a..5a904c3f78382f45899d50c5f9d7e4a8259c6baf 100644
+index 280e663b72b1a1fcfa886254859b08c616ae571a..f9a42d9405026cd3d1e82b23b88102d0ce746ebb 100644
 --- a/chrome/browser/ui/browser_actions.cc
 +++ b/chrome/browser/ui/browser_actions.cc
 @@ -10,6 +10,7 @@
@@ -25062,31 +25222,31 @@ index 280e663b72b1a1fcfa886254859b08c616ae571a..5a904c3f78382f45899d50c5f9d7e4a8
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +bool BrowserActions::CanRebindForAuxProfileSwitch(Profile* target) const {
 +  if (!(!aux_profile_switch_paused_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.actions.01";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.actions.01";
 +    return false;
 +  }
 +  if (!(root_action_item_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.actions.02";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.actions.02";
 +    return false;
 +  }
 +  if (!(&profile_.get() == bwi_->GetProfile())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.actions.03";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.actions.03";
 +    return false;
 +  }
 +  if (!(profile_->IsRegularProfile())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.actions.04";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.actions.04";
 +    return false;
 +  }
 +  if (!(target)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.actions.05";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.actions.05";
 +    return false;
 +  }
 +  if (!(target->IsRegularProfile())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.actions.06";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.actions.06";
 +    return false;
 +  }
 +  if (!(target != &profile_.get())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.actions.07";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.actions.07";
 +    return false;
 +  }
 +  return true;
@@ -26925,7 +27085,7 @@ index ef3ebaa68ad6ea801d151fb0bbf2b17851db44ce..75992f7bcd88a67f01ae0da4e194740b
        "browser_window_features.cc",
        "browser_window_interface_iterator_non_android.cc",
 diff --git a/chrome/browser/ui/browser_window/internal/browser_window_features.cc b/chrome/browser/ui/browser_window/internal/browser_window_features.cc
-index f911366792f8af3d948ccdf081890a12009714e5..6d40c3b3e343a4fc9971677f6f473a89b38ec178 100644
+index f911366792f8af3d948ccdf081890a12009714e5..a6cb4e878692b2353154e6347fc27a1f02c2c840 100644
 --- a/chrome/browser/ui/browser_window/internal/browser_window_features.cc
 +++ b/chrome/browser/ui/browser_window/internal/browser_window_features.cc
 @@ -3,10 +3,21 @@
@@ -26963,7 +27123,7 @@ index f911366792f8af3d948ccdf081890a12009714e5..6d40c3b3e343a4fc9971677f6f473a89
 +    if (source_pending.pending() || target_pending.pending()) {
 +      // Log the same observations that decide refusal, without profile paths,
 +      // identifiers, URLs, draft contents, or a second pending-state query.
-+      LOG(ERROR) << "Aux profile transition rejected: readiness.private-services.pending"
++      LOG(WARNING) << "Aux profile transition rejected: readiness.private-services.pending"
 +                 << " source(native_io=" << source_pending.native_io
 +                 << ",organization=" << source_pending.organization
 +                 << ",feature_state=" << source_pending.feature_state
@@ -26979,47 +27139,47 @@ index f911366792f8af3d948ccdf081890a12009714e5..6d40c3b3e343a4fc9971677f6f473a89
 +  }
 +  auto* view = browser_ ? BrowserView::GetBrowserViewForBrowser(browser_) : nullptr;
 +  if (!(target)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.private-services.01";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.private-services.01";
 +    return false;
 +  }
 +  if (!(target->IsRegularProfile())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.private-services.02";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.private-services.02";
 +    return false;
 +  }
 +  if (!(browser_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.private-services.03";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.private-services.03";
 +    return false;
 +  }
 +  if (!(browser_->GetProfile()->IsRegularProfile())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.private-services.04";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.private-services.04";
 +    return false;
 +  }
 +  if (!(view)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.private-services.05";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.private-services.05";
 +    return false;
 +  }
 +  if (!(!aux_private_profile_services_.active)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.private-services.06";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.private-services.06";
 +    return false;
 +  }
 +  if (!(media_router::CastBrowserController::CanReleaseForAuxProfileSwitch(browser_))) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.private-services.07";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.private-services.07";
 +    return false;
 +  }
 +  if (!((!extension_keybinding_registry_ || view->GetFocusManager()))) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.private-services.08";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.private-services.08";
 +    return false;
 +  }
 +  if (!((!incognito_clear_browsing_data_dialog_coordinator_ ||
 +          incognito_clear_browsing_data_dialog_coordinator_
 +              ->CanRebindForAuxProfileSwitch()))) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.private-services.09";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.private-services.09";
 +    return false;
 +  }
 +  if (!((!default_search_extension_controlled_controller_ ||
 +          default_search_extension_controlled_controller_
 +              ->CanRebindForAuxProfileSwitch()))) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.private-services.10";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.private-services.10";
 +    return false;
 +  }
 +  return true;
@@ -31033,6 +31193,35 @@ index 7e1709c6744f68a4e7aa92556a5a51c85e72c952..79818850935778dd982dfcaaa9f0d86a
 -         !IsFirstRunMarkedFinishedInPrefs();
 +         !IsFirstRunMarkedFinishedInPrefs() && true;
  }
+diff --git a/chrome/browser/ui/startup/infobar_utils.cc b/chrome/browser/ui/startup/infobar_utils.cc
+index 598e361a2988674243dd6ace9cc63de2f74ed1e1..c3d64dd6a09c798cad4aef6170fad0417a3a7bce 100644
+--- a/chrome/browser/ui/startup/infobar_utils.cc
++++ b/chrome/browser/ui/startup/infobar_utils.cc
+@@ -16,6 +16,7 @@
+ #include "base/rand_util.h"
+ #include "build/branding_buildflags.h"
+ #include "build/buildflag.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/infobars/browser_infobar_manager.h"
+ #include "chrome/browser/infobars/infobar_features.h"
+@@ -253,6 +254,8 @@ void AddInfoBarsIfNecessary(BrowserWindowInterface* browser,
+   infobars::ContentInfoBarManager* infobar_manager =
+       infobars::ContentInfoBarManager::FromWebContents(web_contents);
+ 
++  // Aux ships without Google API keys on purpose; the warning would only confuse.
++#if !BUILDFLAG(ENABLE_AUX_BROWSER)
+   if (!google_apis::HasAPIKeyConfigured()) {
+     if (infobars::IsInfoBarMigrated(
+             infobars::InfoBarDelegate::GOOGLE_API_KEYS_INFOBAR_DELEGATE)) {
+@@ -266,6 +269,7 @@ void AddInfoBarsIfNecessary(BrowserWindowInterface* browser,
+       GoogleApiKeysInfoBarDelegate::Create(infobar_manager);
+     }
+   }
++#endif
+ 
+   if (ObsoleteSystem::IsObsoleteNowOrSoon()) {
+     PrefService* local_state = g_browser_process->local_state();
 diff --git a/chrome/browser/ui/startup/startup_browser_creator.cc b/chrome/browser/ui/startup/startup_browser_creator.cc
 index 661831f8e98d65b9e2b4767f3424b49701be4665..a39a545d681c5bea2462f075e5cb69b633c113e5 100644
 --- a/chrome/browser/ui/startup/startup_browser_creator.cc
@@ -37693,7 +37882,7 @@ index ee117be4ec882f665722a5ed44780980edf7de3c..7ada3ed443632606d839b1c5e38199ee
      "//components/url_formatter",
 diff --git a/chrome/browser/ui/views/frame/aux_sidebar_view.cc b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
 new file mode 100644
-index 0000000000000000000000000000000000000000..89c3a69149c14ca5fa469493668ba730e6023561
+index 0000000000000000000000000000000000000000..9206fbeebd595190fc0de92e8eaf4883d1c8d0f8
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
 @@ -0,0 +1,3049 @@
@@ -38516,7 +38705,7 @@ index 0000000000000000000000000000000000000000..89c3a69149c14ca5fa469493668ba730
 +                          base::WeakPtr<Profile> source, std::string epoch,
 +                          base::OnceClosure action) {
 +  const bool current = IsCurrentProfileMenuSource(sender, source, epoch);
-+  LOG(ERROR) << "Aux profile menu action: source_current=" << current
++  LOG(WARNING) << "Aux profile menu action: source_current=" << current
 +             << " action_present=" << !!action;
 +  if (current) std::move(action).Run();
 +}
@@ -38533,13 +38722,13 @@ index 0000000000000000000000000000000000000000..89c3a69149c14ca5fa469493668ba730
 +  if (path.empty() || !source || !state || state->is_aux_profile_switch_cache() ||
 +      sender->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
 +      !IsCurrentProfileMenuSource(sender, source, epoch)) {
-+    LOG(ERROR) << "Aux ordinary profile selection: source gate rejected"
++    LOG(WARNING) << "Aux ordinary profile selection: source gate rejected"
 +               << " path_present=" << !path.empty()
 +               << " source_present=" << !!source
 +               << " state_present=" << !!state;
 +    return;
 +  }
-+  LOG(ERROR) << "Aux ordinary profile selection: native window dispatch";
++  LOG(WARNING) << "Aux ordinary profile selection: native window dispatch";
 +  // Ordinary profile selection activates/opens the native isolated window.
 +  // Preserve this window's live tabs, unsent drafts and profile-owned services.
 +  profiles::SwitchToProfile(path, /*always_create=*/false);
@@ -38876,7 +39065,7 @@ index 0000000000000000000000000000000000000000..89c3a69149c14ca5fa469493668ba730
 +
 +  ~AuxProfileMenu() override {
 +    weak_factory_.InvalidateWeakPtrs();
-+    LOG(ERROR) << "Aux primary profile menu: destroying pending_action="
++    LOG(WARNING) << "Aux primary profile menu: destroying pending_action="
 +               << !!pending_switch_;
 +    ForgetAuxProfileMenu(browser_, GetWidget());
 +    if (profile_actions_)
@@ -38888,7 +39077,7 @@ index 0000000000000000000000000000000000000000..89c3a69149c14ca5fa469493668ba730
 +      const bool posted = base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
 +          FROM_HERE, base::BindOnce(&RunProfileMenuAction, sender_, source_, source_epoch_,
 +                                    std::move(pending_switch_)));
-+      LOG(ERROR) << "Aux primary profile menu: action_posted=" << posted;
++      LOG(WARNING) << "Aux primary profile menu: action_posted=" << posted;
 +    }
 +  }
 +
@@ -38914,7 +39103,7 @@ index 0000000000000000000000000000000000000000..89c3a69149c14ca5fa469493668ba730
 + private:
 +#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
 +  void OnOrdinaryWindowClosing() {
-+    LOG(ERROR) << "Aux primary profile menu: native_window_closing pending_action="
++    LOG(WARNING) << "Aux primary profile menu: native_window_closing pending_action="
 +               << !!pending_switch_;
 +    // Create the weak, epoch-fenced continuation while the delegate is alive.
 +    // The real native close boundary, not delegate destruction, retires intent:
@@ -38932,7 +39121,7 @@ index 0000000000000000000000000000000000000000..89c3a69149c14ca5fa469493668ba730
 +    if (profile_actions) RetireAuxProfilePopup(profile_actions.get());
 +    if (action) {
 +      const bool posted = runner->PostTask(FROM_HERE, std::move(action));
-+      LOG(ERROR) << "Aux primary profile menu: closed_action_posted=" << posted;
++      LOG(WARNING) << "Aux primary profile menu: closed_action_posted=" << posted;
 +    }
 +  }
 +#endif
@@ -39170,7 +39359,7 @@ index 0000000000000000000000000000000000000000..89c3a69149c14ca5fa469493668ba730
 +  }
 +
 +  void SwitchTo(const base::FilePath& path) {
-+    LOG(ERROR) << "Aux primary profile menu: row_selected pending_action="
++    LOG(WARNING) << "Aux primary profile menu: row_selected pending_action="
 +               << !!pending_switch_
 +               << " same_profile=" << (path == browser_->GetProfile()->GetPath());
 +    if (pending_switch_ || path == browser_->GetProfile()->GetPath()) {
@@ -41526,7 +41715,7 @@ index 8354a9179ef79627b05447f3810808ccd6a0e78a..9e66453f2f10c20c5ad77ea9ff9b8f01
                  : GetFrameColor(BrowserFrameActiveState::kUseCurrent)));
    }
 diff --git a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
-index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..a68aa1f36f1f52b8302e16866495f626480f7f15 100644
+index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..0f90d7d55180bfa7a6bee71d4eebc5f17643390f 100644
 --- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
 +++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
 @@ -25,6 +25,10 @@
@@ -41614,7 +41803,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..a68aa1f36f1f52b8302e16866495f626
 +  static bool logged_aux_ask_validation = false;
 +  if (tag == IDC_AUX_ASK && !logged_aux_ask_validation) {
 +    logged_aux_ask_validation = true;
-+    LOG(ERROR) << "Aux Ask validation route=window browser=" << !!browser
++    LOG(WARNING) << "Aux Ask validation route=window browser=" << !!browser
 +               << " supports=" << (browser && chrome::SupportsCommand(browser, tag))
 +               << " enabled=" << (browser && chrome::IsCommandEnabled(browser, tag))
 +               << " actions=" << features::ShouldUseActionsForBrowserCommands();
@@ -41700,7 +41889,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..a68aa1f36f1f52b8302e16866495f626
    UpdateBackgroundColor();
  }
 diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
-index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..bab3da7382b8e76203e7cc4bae11e9eab109de51 100644
+index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..6478ec5f4966ce7a19c8f28a54df31d63d49abdd 100644
 --- a/chrome/browser/ui/views/frame/browser_view.cc
 +++ b/chrome/browser/ui/views/frame/browser_view.cc
 @@ -3,6 +3,27 @@
@@ -42377,27 +42566,27 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..bab3da7382b8e76203e7cc4bae11e9ea
 +#if BUILDFLAG(ENABLE_AUX_BROWSER)
 +bool BrowserView::CanRebindForAuxProfileSwitch(Profile* target) const {
 +  if (!(!aux_profile_switch_paused_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.view.01";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.view.01";
 +    return false;
 +  }
 +  if (!(GetProfile()->IsRegularProfile())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.view.02";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.view.02";
 +    return false;
 +  }
 +  if (!(target)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.view.03";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.view.03";
 +    return false;
 +  }
 +  if (!(target->IsRegularProfile())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.view.04";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.view.04";
 +    return false;
 +  }
 +  if (!(target != GetProfile())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.view.05";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.view.05";
 +    return false;
 +  }
 +  if (!(registrar_.prefs() == GetProfile()->GetPrefs())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.view.06";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.view.06";
 +    return false;
 +  }
 +  return true;
@@ -43520,7 +43709,7 @@ index fdbb4cf741eb3de803fdf4b053813d8f1ad2d16e..a77e9da5095e95eb74e2671d1fe6b916
      window->OnTopContainerViewBoundsChanged(bounds);
    }
 diff --git a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d8378a4ee 100644
+index 29dfbde914c55ad1453a1c70998c9299b49c1132..93937acb9c2b982d9672cd8d69e5cdbc795b4abe 100644
 --- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 @@ -26,6 +26,19 @@
@@ -43981,7 +44170,25 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d
    return gfx::Rect(params.visual_client_area.x(), original_top,
                     params.visual_client_area.width(),
                     params.visual_client_area.y() - original_top);
-@@ -1430,14 +1701,19 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1423,6 +1694,17 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+   } else {
+     background->SetPrimaryColor(CustomCornersBackground::ToolbarTheme());
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // With navigation on top, the toolbar sits on the window material like the
++  // sidebar beside it, as in Arc: no second band above the page card.
++  if (layout_data_->tab_strip_type == TabStripType::kVertical &&
++      !is_fullscreen(layout_data_->window_state) &&
++      !layout_data_->horizontal_layout.is_split_view &&
++      !AuxNavigationIsInSidebar(views())) {
++    background->SetPrimaryColor(CustomCornersBackground::ColorChoiceWithAlpha(
++        CustomCornersBackground::ToolbarTheme(), 0.0f));
++  }
++#endif
+ 
+   // By default, this is just a flat background.
+   CustomCornersBackground::Corners corners;
+@@ -1430,14 +1712,19 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    // Rounded corners are drawn in vertical tab strip mode when not maximized or
    // fullscreen.
    if (layout_data_->tab_strip_type == TabStripType::kVertical &&
@@ -44003,7 +44210,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d
        corners[CornerOrientation::kTopLeading] =
            background->GetWindowCorner(/*upper=*/true);
      }
-@@ -1484,6 +1760,11 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
+@@ -1484,6 +1771,11 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
  
  void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      const BrowserLayoutParams& params) {
@@ -44015,7 +44222,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d
    // Want to cut the vertical tabstrip and its decorations out of the top
    // container in transparency mode.
    CustomCornersBackground::Cutouts top_container_cutout_views;
-@@ -1496,6 +1777,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1496,6 +1788,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
                                                    1.0f);
    if (layout_data_->tab_strip_type == TabStripType::kVertical) {
      side_panel_start = views().vertical_tab_strip_region_view->bounds().right();
@@ -44028,7 +44235,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d
  
      // Vertical tabstrip goes all the way to the top of the window if it is not
      // collapsed or there are no caption buttons on the leading edge.
-@@ -1508,8 +1795,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1508,8 +1806,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      CHECK(vertical_tabs_background)
          << "Expected vertical tab strip to have a CustomCornersBackground.";
  
@@ -44043,7 +44250,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d
          frame_color.opacity = 0.0f;
        }
        // Use a curve that goes very close to 1 very quickly, but still has a
-@@ -1530,7 +1821,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1530,7 +1832,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
  
      // Ensure that corners of the window remain rounded.
      CustomCornersBackground::Corners vertical_tabs_corners;
@@ -44052,7 +44259,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d
        if (animation.top_offset == 0) {
          vertical_tabs_corners[CornerOrientation::kTopLeading] =
              vertical_tabs_background->GetWindowCorner(/*upper=*/true);
-@@ -1566,6 +1857,23 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1566,6 +1868,23 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
            vertical_tabs_bottom_corner_size;
      }
  
@@ -44076,7 +44283,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d
      vertical_tabs_background->SetCorners(vertical_tabs_corners);
  
      // When the organizer panel is animating open or closed and does not appear
-@@ -1621,6 +1929,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1621,6 +1940,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      };
      // Vertical tab strip always draws trailing edge.
      vertical_tabs_outline.trailing = true;
@@ -44084,7 +44291,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d
      // Top edge is drawn when the tabstrip is not flush with the edge of the
      // screen, or with a visual element that provides a natural border.
      if (animation.expand_on_hover_width > 0.0 || animation.top_corner < 0.0 ||
-@@ -1707,6 +2016,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1707,6 +2027,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        break;
      }
      case TabStripType::kVertical: {
@@ -44100,7 +44307,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d
        // Curve trailing corner when it becomes the top trailing corner of the
        // browser.
        if (layout_data_->window_state == WindowState::kNormal &&
-@@ -1722,7 +2040,30 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1722,7 +2051,30 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        // happen.
        break;
    }
@@ -44131,7 +44338,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d
  
    auto* const top_container_background =
        views().top_container->background()->AsA<CustomCornersBackground>();
-@@ -1733,9 +2074,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1733,9 +2085,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
    // is active for the current window.
    if (features::IsGlassFrameEnabled()) {
      if (!is_fullscreen(layout_data_->window_state)) {
@@ -44144,7 +44351,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..6eb7c407b061f932721ec9015499455d
          top_container_cutout_views.push_back(
              CustomCornersBackground::InverseOf(*toolbar_background));
        }
-@@ -1842,8 +2184,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1842,8 +2195,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
  
      // Need to ensure the bottom of the window is properly rounded for normal
      // windows.
@@ -47253,7 +47460,7 @@ index 0a5e9cce40424b65d14d006a59c8d22b7f130e46..f8e4037832510b7d9a4cec65d321c95c
      controller_observation_.Observe(controller);
    }
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fae7b0e611a34368e18c8041378897c375a99c38 100644
+index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..54ece589f113c4ade34837a2e34951e33b0ed0ec 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
 @@ -10,6 +10,7 @@
@@ -47659,82 +47866,82 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fae7b0e611a34368e18c8041378897c3
 +#if BUILDFLAG(ENABLE_AUX_BROWSER)
 +bool LocationBarView::CanPrepareForAuxProfileSwitch(Profile* target) const {
 +  if (!(target)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.01";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.01";
 +    return false;
 +  }
 +  if (!(target->IsRegularProfile())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.02";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.02";
 +    return false;
 +  }
 +  if (!(browser_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.03";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.03";
 +    return false;
 +  }
 +  if (!(browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.04";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.04";
 +    return false;
 +  }
 +  if (!(profile_ == browser_->GetProfile())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.05";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.05";
 +    return false;
 +  }
 +  if (!(is_initialized_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.06";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.06";
 +    return false;
 +  }
 +  if (!(!aux_profile_switch_paused_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.07";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.07";
 +    return false;
 +  }
 +  if (!(!in_popup_state_transition_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.08";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.08";
 +    return false;
 +  }
 +  if (!(!is_popup_mode_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.09";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.09";
 +    return false;
 +  }
 +  if (!(omnibox_controller_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.10";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.10";
 +    return false;
 +  }
 +  if (!(omnibox_view_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.11";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.11";
 +    return false;
 +  }
 +  if (!(selected_keyword_view_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.12";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.12";
 +    return false;
 +  }
 +  if (!(pref_registrar_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.13";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.13";
 +    return false;
 +  }
 +  if (omnibox_popup_aim_presenter_ &&
 +      !omnibox_popup_aim_presenter_->CanRetireUnusedForAuxProfileSwitch()) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.14";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.14";
 +    return false;
 +  }
 +  if (omnibox::IsWebUIOmniboxPopupEnabled() &&
 +      (!aux_classic_webui_popup_ ||
 +       !aux_classic_webui_popup_->CanPrepareForAuxProfileSwitch())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.16";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.16";
 +    return false;
 +  }
 +  if (!(!omnibox::IsWebUIOmniboxInBrowserViewEnabled())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.17";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.17";
 +    return false;
 +  }
 +  if (!(!base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup))) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.18";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.18";
 +    return false;
 +  }
 +  if (!(!omnibox_controller_->IsPopupOpen())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.19";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.19";
 +    return false;
 +  }
 +  if (!(omnibox_view_->CanPrepareForAuxProfileSwitch())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.20";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.20";
 +    return false;
 +  }
 +  // These checks come AFTER the original AIM renderer-reset acknowledgment,
@@ -47742,13 +47949,13 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fae7b0e611a34368e18c8041378897c3
 +  // The intermediate window-owned handoff must also be genuinely empty.
 +  const auto* context = browser_ ? SearchboxContextData::From(browser_) : nullptr;
 +  if (context && context->HasPendingContextForAuxProfileSwitch()) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.pending-context";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.pending-context";
 +    return false;
 +  }
 +  if (omnibox_popup_file_selector_ &&
 +      !omnibox_popup_file_selector_->CanRetireUnusedForAuxProfileSwitch(
 +          /*context_owners_settled=*/context != nullptr)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.location.15";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.location.15";
 +    return false;
 +  }
 +  return true;
@@ -47960,7 +48167,7 @@ index 9b355a43928455709f35ce2cf6711c0628adb8b8..3bb2cfcfe031490b8f15c26e3a9162a3
      SetBackgroundColor(SK_ColorTRANSPARENT);
    }
 diff --git a/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc b/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc
-index 1f49ae147f3960b7d8e930c9360e34f1fe0fad2c..6b8b935ab60e8c84e171724627419f435697f6f3 100644
+index 1f49ae147f3960b7d8e930c9360e34f1fe0fad2c..cf5de0dbc99505b3aac245fe5622d7d6cdb80641 100644
 --- a/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc
 +++ b/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc
 @@ -4,6 +4,7 @@
@@ -47995,44 +48202,44 @@ index 1f49ae147f3960b7d8e930c9360e34f1fe0fad2c..6b8b935ab60e8c84e171724627419f43
 +  const bool selected_context_released =
 +      aux_has_selected_files_ && context_owners_settled;
 +  if (aux_pending_file_operations_ != 0) {
-+    LOG(ERROR) << "Aux profile transition rejected: file-read-or-context-handoff";
++    LOG(WARNING) << "Aux profile transition rejected: file-read-or-context-handoff";
 +    return false;
 +  }
 +  if (aux_ever_started_work_ && !aux_canceled_dialog_complete_ &&
 +      !selected_context_released) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-started-work";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.file-started-work";
 +    return false;
 +  }
 +  if (file_dialog_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-dialog";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.file-dialog";
 +    return false;
 +  }
 +  if (web_contents_ && !selected_context_released) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-source-tab";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.file-source-tab";
 +    return false;
 +  }
 +  if (edit_model_ && !selected_context_released) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-edit-model";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.file-edit-model";
 +    return false;
 +  }
 +  if (deactivation_blocker_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-blocker";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.file-blocker";
 +    return false;
 +  }
 +  if (weak_factory_.HasWeakPtrs()) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-async-work";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.file-async-work";
 +    return false;
 +  }
 +  if (open_ai_mode_callback_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-open-callback";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.file-open-callback";
 +    return false;
 +  }
 +  if (file_chooser_opened_callback_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-chooser-open-callback";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.file-chooser-open-callback";
 +    return false;
 +  }
 +  if (file_chooser_closed_callback_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-chooser-close-callback";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.file-chooser-close-callback";
 +    return false;
 +  }
 +  return true;
@@ -48647,7 +48854,7 @@ index 8fa8ab9a1e05273acbf211a3f4d5eeebdb887a00..ef972b272daadff6662ba02f9b2e28f3
      "//chrome/browser/autocomplete",
      "//chrome/browser/themes",
 diff --git a/chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc b/chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc
-index b1803cc4c91d8025a4619413e7adfbfed92b574d..72b98b3b31e50b0f210bda83c10be28039c6c720 100644
+index b1803cc4c91d8025a4619413e7adfbfed92b574d..748b0a06f04aa6373a1e96f822bd2b11b54d90e7 100644
 --- a/chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc
 +++ b/chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc
 @@ -6,6 +6,7 @@
@@ -48666,16 +48873,16 @@ index b1803cc4c91d8025a4619413e7adfbfed92b574d..72b98b3b31e50b0f210bda83c10be280
 +  if (aux_ever_invoked_) {
 +    const auto* ui = contents_wrapper()->GetWebUIController();
 +    if (!aux_renderer_reset_complete_ || !ui || !ui->CanRetireAimForAuxProfileSwitch()) {
-+      LOG(ERROR) << "Aux profile transition rejected: aim-used.not-settled";
++      LOG(WARNING) << "Aux profile transition rejected: aim-used.not-settled";
 +      return false;
 +    }
 +  }
 +  if (active_web_contents_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.content-source-tab";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.content-source-tab";
 +    return false;
 +  }
 +  if (weak_factory_.HasWeakPtrs()) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.content-clear-callback";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.content-clear-callback";
 +    return false;
 +  }
 +  return true;
@@ -48855,7 +49062,7 @@ index a9a27b7c5f2dac0780cfeb6a540fd32ef0141ae0..f9f5136e337e164328759d2597a8e4de
                                                  ->GetTemplateURLService()
                                                  ->GetDefaultSearchProvider()) {
 diff --git a/chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc b/chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc
-index d9f429393e78fed2f5bfcde03bafe52c6200d519..1c0adc4368849871bf0f560d7ab10b294ca302e0 100644
+index d9f429393e78fed2f5bfcde03bafe52c6200d519..3aef16be4cb264d8f37d80ea1f0310a362c2e00e 100644
 --- a/chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc
 +++ b/chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc
 @@ -7,6 +7,7 @@
@@ -48872,28 +49079,28 @@ index d9f429393e78fed2f5bfcde03bafe52c6200d519..1c0adc4368849871bf0f560d7ab10b29
  
 +bool OmniboxPopupAimPresenter::CanRetireUnusedForAuxProfileSwitch() const {
 +  if (!(OmniboxPopupPresenterBase::CanRetireIdleClassicForAuxProfileSwitch())) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-presenter-base";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.aim-presenter-base";
 +    return false;
 +  }
 +  if (widget_observation_.IsObserving()) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-widget-observer";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.aim-widget-observer";
 +    return false;
 +  }
 +  if (focus_manager_observation_.IsObserving()) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-focus-observer";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.aim-focus-observer";
 +    return false;
 +  }
 +  if (is_restoring_focus_after_file_selection_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-focus-restoration";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.aim-focus-restoration";
 +    return false;
 +  }
 +  if (!(GetWebUIContent() != nullptr)) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-content-present";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.aim-content-present";
 +    return false;
 +  }
 +  if (!(static_cast<const OmniboxAimPopupWebUIContent*>(GetWebUIContent())
 +           ->CanRetireUnusedForAuxProfileSwitch())) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-content";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.aim-content";
 +    return false;
 +  }
 +  return true;
@@ -48988,7 +49195,7 @@ index 364547321cd07f194d41ac4cdb091108dafeca5d..702fa278c3f4d5576544b91f970b9a42
    void Show() override;
    void Hide() override;
 diff --git a/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc b/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
-index 4d709ce26b4b5b515ad9b4861cf86cc97fcc2ef9..630601abd755a3b36ee9273224551690a9ed8d2c 100644
+index 4d709ce26b4b5b515ad9b4861cf86cc97fcc2ef9..2266616b8c1ed2f85315583909eca91f39f5871a 100644
 --- a/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
 +++ b/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
 @@ -6,6 +6,7 @@
@@ -49005,7 +49212,7 @@ index 4d709ce26b4b5b515ad9b4861cf86cc97fcc2ef9..630601abd755a3b36ee9273224551690
  
 +bool OmniboxPopupPresenterBase::CanRetireUnusedForAuxProfileSwitch() const {
 +  if (aux_ever_invoked_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-invoked";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.presenter-invoked";
 +    return false;
 +  }
 +  return CanRetireIdleClassicForAuxProfileSwitch();
@@ -49013,35 +49220,35 @@ index 4d709ce26b4b5b515ad9b4861cf86cc97fcc2ef9..630601abd755a3b36ee9273224551690
 +
 +bool OmniboxPopupPresenterBase::CanRetireIdleClassicForAuxProfileSwitch() const {
 +  if (IsShown()) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-visible";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.presenter-visible";
 +    return false;
 +  }
 +  if (is_destroying_widget_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-destroying";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.presenter-destroying";
 +    return false;
 +  }
 +  if (!(widgets_pending_deletion_.empty())) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-pending-widget";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.presenter-pending-widget";
 +    return false;
 +  }
 +  if (permission_observation_.IsObserving()) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-permission-observer";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.presenter-permission-observer";
 +    return false;
 +  }
 +  if (is_prompt_showing_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-permission-prompt";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.presenter-permission-prompt";
 +    return false;
 +  }
 +  if (is_handling_prompt_dismissal_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-permission-dismissal";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.presenter-permission-dismissal";
 +    return false;
 +  }
 +  if (!(deactivation_blockers_count_ == 0)) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-blockers";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.presenter-blockers";
 +    return false;
 +  }
 +  if (focus_requested_) {
-+    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-focus";
++    LOG(WARNING) << "Aux profile transition rejected: aim-cold.presenter-focus";
 +    return false;
 +  }
 +  return true;
@@ -49152,7 +49359,7 @@ index 23971d8b4188f5f4e3583dc26ba8cf48f6da6ec4..937d6d8334abe887aa61c3f0a7e730fb
  
  void OmniboxPopupViewViews::OnPopupFirstPaintPresented(
 diff --git a/chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.cc b/chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.cc
-index 6fad0f3eaa0a396748ff03a3fce67e024282bf42..9cd01f0f9f94505f3b0c20fced49dfbef6c56dba 100644
+index 6fad0f3eaa0a396748ff03a3fce67e024282bf42..7d57889114221a7ec98c743490814e518fb5749a 100644
 --- a/chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.cc
 +++ b/chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.cc
 @@ -6,6 +6,8 @@
@@ -49178,7 +49385,7 @@ index 6fad0f3eaa0a396748ff03a3fce67e024282bf42..9cd01f0f9f94505f3b0c20fced49dfbe
  
 +bool OmniboxPopupViewWebUI::CanPrepareForAuxProfileSwitch() const {
 +  const auto reject = [](const char* stage) {
-+    LOG(ERROR) << "Aux profile transition rejected: " << stage;
++    LOG(WARNING) << "Aux profile transition rejected: " << stage;
 +    return false;
 +  };
 +  if (aux_profile_switch_paused_)
@@ -49195,12 +49402,12 @@ index 6fad0f3eaa0a396748ff03a3fce67e024282bf42..9cd01f0f9f94505f3b0c20fced49dfbe
 +      OmniboxPopupState::kNone)
 +    return reject("classic-idle.popup-state");
 +  if (!presenter_->CanRetireIdleClassicForAuxProfileSwitch()) {
-+    LOG(ERROR) << "Aux profile transition rejected: classic-idle.presenter";
++    LOG(WARNING) << "Aux profile transition rejected: classic-idle.presenter";
 +    return false;
 +  }
 +  auto* content = presenter_->GetWebUIContent();
 +  if (!content || !content->CanRetireIdleForAuxProfileSwitch()) {
-+    LOG(ERROR) << "Aux profile transition rejected: classic-idle.content-interaction";
++    LOG(WARNING) << "Aux profile transition rejected: classic-idle.content-interaction";
 +    return false;
 +  }
 +  return true;
@@ -54637,7 +54844,7 @@ index 04bd545acf62e2f1c9a7cee34befdd3a5c6b1cdc..cbd70759a3012e2fb5b79e340685c91a
  }
  
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c06dbf73523966ccf6b6564e57a85d003b3949b5 100644
+index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..6c0ce69839fbe677f25b8d2bdea9e9f38c7124bb 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
 @@ -3,11 +3,22 @@
@@ -54670,71 +54877,71 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c06dbf73523966ccf6b6564e57a85d00
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +bool ToolbarView::CanRebindOwnedActionsForAuxProfileSwitch() const {
 +  if (!(!aux_owned_actions_prepared_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.01";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.01";
 +    return false;
 +  }
 +  if (!(initialized_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.02";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.02";
 +    return false;
 +  }
 +  if (!(display_mode_ == DisplayMode::kNormal)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.03";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.03";
 +    return false;
 +  }
 +  if (!(browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.04";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.04";
 +    return false;
 +  }
 +  if (!(browser_->GetProfile()->IsRegularProfile())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.05";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.05";
 +    return false;
 +  }
 +  if (!(!toolbar_webview_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.06";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.06";
 +    return false;
 +  }
 +  if (!(!detached_toolbar_webview_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.07";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.07";
 +    return false;
 +  }
 +  if (!(!features::IsWebUIToolbarEnabled())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.08";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.08";
 +    return false;
 +  }
 +  if (!(!features::IsWebUIExtensionsContainerEnabled())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.09";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.09";
 +    return false;
 +  }
 +  if (!(!features::IsWebUIPinnedToolbarActionsEnabled())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.10";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.10";
 +    return false;
 +  }
 +  if (!(extensions_container_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.11";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.11";
 +    return false;
 +  }
 +  if (!(extensions_container_->parent() == this)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.12";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.12";
 +    return false;
 +  }
 +  if (!(pinned_toolbar_actions_container_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.13";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.13";
 +    return false;
 +  }
 +  if (!(pinned_toolbar_actions_container_->parent() == this)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.14";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.14";
 +    return false;
 +  }
 +  if (!(pinned_toolbar_actions_.get() == pinned_toolbar_actions_container_.get())) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.15";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.15";
 +    return false;
 +  }
 +  if (!(overflow_button_)) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.16";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.16";
 +    return false;
 +  }
 +  if (!((!toolbar_controller_ || !toolbar_controller_->IsMenuRunning()))) {
-+    LOG(ERROR) << "Aux profile transition rejected: readiness.toolbar-actions.17";
++    LOG(WARNING) << "Aux profile transition rejected: readiness.toolbar-actions.17";
 +    return false;
 +  }
 +  return true;
@@ -56207,7 +56414,7 @@ index baac6f2df13ddb51daafc9d0731c35e520695e6c..e225f61d8b0d0c7c78eabc29d16248ec
    void HandleGetStoredAccounts(const base::ListValue& args);
    void HandleStartSyncingWithEmail(const base::ListValue& args);
 diff --git a/chrome/browser/ui/webui/settings/settings_ui.cc b/chrome/browser/ui/webui/settings/settings_ui.cc
-index 781744f9cfdb691b41299d8b07c984888605366a..a4100d1ffbf82e0cd40e85df523e9d596f7368d5 100644
+index 781744f9cfdb691b41299d8b07c984888605366a..948b95a8b417b10470d0a4eed1623a0c44ed2b4d 100644
 --- a/chrome/browser/ui/webui/settings/settings_ui.cc
 +++ b/chrome/browser/ui/webui/settings/settings_ui.cc
 @@ -20,6 +20,7 @@
@@ -56222,7 +56429,7 @@ index 781744f9cfdb691b41299d8b07c984888605366a..a4100d1ffbf82e0cd40e85df523e9d59
        content::WebUIDataSource::CreateAndAdd(
            web_ui->GetWebContents()->GetBrowserContext(),
            chrome::kChromeUISettingsHost);
-+  html_source->AddBoolean("isAux", false);
++  html_source->AddBoolean("isAux", BUILDFLAG(ENABLE_AUX_BROWSER));
    html_source->OverrideContentSecurityPolicy(
        network::mojom::CSPDirectiveName::WorkerSrc,
        "worker-src blob: chrome://resources 'self';");
@@ -58300,8 +58507,24 @@ index 846e4777c4d2e983078ad629621a3eb3acf780e4..e0b49eb7890bc422d6f6a16966288b97
    ISOLATED_WORLD_ID_EXTENSIONS
  };
  // LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java)
+diff --git a/chrome/common/chrome_paths.cc b/chrome/common/chrome_paths.cc
+index 32d01c008e1341eb8142cd80e1c91afe7928ed42..04a46c1c7bcb501238a1915babf8d9c34dab10e6 100644
+--- a/chrome/common/chrome_paths.cc
++++ b/chrome/common/chrome_paths.cc
+@@ -224,6 +224,11 @@ bool PathProvider(int key, base::FilePath* result) {
+         return false;
+       }
+ #endif
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++      // Aux's support folder holds only User Data, Control and Tasks; crash
++      // reports live with the profile data the native startup selects.
++      cur = cur.Append(FILE_PATH_LITERAL("User Data"));
++#endif
+ #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
+       cur = cur.Append(FILE_PATH_LITERAL("Crashpad"));
+ #else
 diff --git a/chrome/common/chrome_paths_mac.mm b/chrome/common/chrome_paths_mac.mm
-index 6829c9cb92c228dd19d44c9f739bf4595720cc2d..639a8e42e27ded33a5c8a6112a1c98f9d0efa196 100644
+index 6829c9cb92c228dd19d44c9f739bf4595720cc2d..c4e4c4f9dcfcb278e68fc8f20febb1a8158d0246 100644
 --- a/chrome/common/chrome_paths_mac.mm
 +++ b/chrome/common/chrome_paths_mac.mm
 @@ -11,6 +11,9 @@
@@ -58320,10 +58543,10 @@ index 6829c9cb92c228dd19d44c9f739bf4595720cc2d..639a8e42e27ded33a5c8a6112a1c98f9
      return;
 +#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
 +  base::FilePath selected;
-+  const auto native_user_root = app_data_dir.AppendASCII("Aux Browser Completion 20261026/User Data");
++  const auto native_user_root = app_data_dir.AppendASCII("Aux/User Data");
 +  if (base::PathService::Get(chrome::DIR_USER_DATA, &selected) && selected == native_user_root &&
 +      (profile_dir == selected || selected.IsParent(profile_dir))) {
-+    auto native_cache = cache_dir.AppendASCII("Aux Browser Completion 20261026");
++    auto native_cache = cache_dir.AppendASCII("Aux");
 +    if (profile_dir == selected || selected.AppendRelativePath(profile_dir, &native_cache)) {
 +      *result = native_cache;
 +      return;
@@ -63522,7 +63745,7 @@ index 2d57e63270fb53e56b709455c7170b0fb6ee4e26..a0569d5f6a17aecdac2b96e748ca2b82
  
  enum ToolbarButtonType {
 diff --git a/components/components_chromium_strings.grd b/components/components_chromium_strings.grd
-index 154a93064247c70fbcb1c3096005f58050aaf87c..29c026d09c0428843c40091c7ec4fabe64ee17d1 100644
+index 154a93064247c70fbcb1c3096005f58050aaf87c..2d798f0c248aa71816ca3298ee28be3ab3561f6d 100644
 --- a/components/components_chromium_strings.grd
 +++ b/components/components_chromium_strings.grd
 @@ -196,7 +196,7 @@
@@ -63610,7 +63833,7 @@ index 154a93064247c70fbcb1c3096005f58050aaf87c..29c026d09c0428843c40091c7ec4fabe
  
        <message name="IDS_VERSION_UI_LICENSE" desc="The label below the copyright message, containing the URLs.">
 -        Chromium is made possible by the <ph name="BEGIN_LINK_CHROMIUM">&lt;a target="_blank" href="$1" aria-description="$3"&gt;</ph>Chromium<ph name="END_LINK_CHROMIUM">&lt;/a&gt;</ph> open source project and other <ph name="BEGIN_LINK_OSS">&lt;a target="_blank" href="$2" aria-description="$3"&gt;</ph>open source software<ph name="END_LINK_OSS">&lt;/a&gt;</ph>.
-+        Aux is made possible by the <ph name="BEGIN_LINK_CHROMIUM">&lt;a target="_blank" href="$1" aria-description="$3"&gt;</ph>Aux<ph name="END_LINK_CHROMIUM">&lt;/a&gt;</ph> open source project and other <ph name="BEGIN_LINK_OSS">&lt;a target="_blank" href="$2" aria-description="$3"&gt;</ph>open source software<ph name="END_LINK_OSS">&lt;/a&gt;</ph>.
++        Aux is made possible by the <ph name="BEGIN_LINK_CHROMIUM">&lt;a target="_blank" href="$1" aria-description="$3"&gt;</ph>Chromium<ph name="END_LINK_CHROMIUM">&lt;/a&gt;</ph> open source project and other <ph name="BEGIN_LINK_OSS">&lt;a target="_blank" href="$2" aria-description="$3"&gt;</ph>open source software<ph name="END_LINK_OSS">&lt;/a&gt;</ph>.
        </message>
  
        <if expr="is_chromeos">
@@ -88303,16 +88526,6 @@ index 63c2cc6e337aab5410a72e66aea70e206c16da1b..8b9b3f73681ee62b5b1a502a30746747
    // Info querying -------------------------------------------------------------
  
    // Returns true if the given structure exists.  Instead of test-then-create,
-diff --git a/third_party/aux_sparkle/.gitignore b/third_party/aux_sparkle/.gitignore
-new file mode 100644
-index 0000000000000000000000000000000000000000..8a66c659c15504b8ffa08be9b7504082c11eaa34
---- /dev/null
-+++ b/third_party/aux_sparkle/.gitignore
-@@ -0,0 +1,4 @@
-+/Sparkle.framework/
-+/bin/
-+/LICENSE
-+/.fetch-*/
 diff --git a/third_party/blink/common/BUILD.gn b/third_party/blink/common/BUILD.gn
 index 8e635b0da327aae8377bf2260113f395c835fa85..3aaef2ae236041a6c000607e9b5456b918053c12 100644
 --- a/third_party/blink/common/BUILD.gn

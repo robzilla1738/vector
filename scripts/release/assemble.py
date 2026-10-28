@@ -190,14 +190,67 @@ def main_executable(app: Path, target: str) -> Path:
 TEXT_SUFFIXES = ('.json', '.js', '.mjs', '.cjs', '.md', '.txt', '.plist')
 
 
+def enclosing_object(text: str, index: int) -> tuple[int, int] | None:
+    """Span of the innermost {...} around index, skipping JSON strings; None outside one."""
+    depth, start, in_string = 0, None, False
+    # The digest sits inside a JSON string: begin before its opening quote.
+    begin = index - 2 if index > 0 and text[index - 1] == '"' else index - 1
+    for i in range(begin, -1, -1):
+        ch = text[i]
+        if ch == '"' and (i == 0 or text[i - 1] != '\\'):
+            in_string = not in_string
+        elif not in_string and ch == '}':
+            depth += 1
+        elif not in_string and ch == '{':
+            if depth == 0:
+                start = i
+                break
+            depth -= 1
+    if start is None:
+        return None
+    depth, in_string = 0, False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if ch == '"' and text[i - 1] != '\\':
+            in_string = not in_string
+        elif not in_string and ch == '{':
+            depth += 1
+        elif not in_string and ch == '}':
+            depth -= 1
+            if depth == 0:
+                return start, i + 1
+    return None
+
+
+def repin_text(text: str, old: str, new: str, old_size: int, new_size: int) -> str:
+    """Swap a pinned digest; in the same object, a size/bytes field equal to the old size follows it."""
+    pieces, cursor = [], 0
+    while (index := text.find(old, cursor)) >= 0:
+        span = enclosing_object(text, index)
+        if span is None or span[0] < cursor:
+            pieces.append(text[cursor:index] + new)
+            cursor = index + len(old)
+            continue
+        start, end = span
+        body = text[start:end].replace(old, new)
+        for key in ('"size"', '"bytes"'):
+            for sep in (':', ': '):
+                body = body.replace(f'{key}{sep}{old_size},', f'{key}{sep}{new_size},').replace(
+                    f'{key}{sep}{old_size}}}', f'{key}{sep}{new_size}}}')
+        pieces.append(text[cursor:start] + body)
+        cursor = end
+    return ''.join(pieces) + text[cursor:]
+
+
 def repin_cascade(app: Path, changes: dict) -> list:
-    """Replace each changed file's old SHA-256 wherever the components pin it, then repeat for
-    the pinning files that change in turn. A directory named exactly by a digest (memory
-    runtimes are keyed by their runtime.json hash) is renamed with it; any other use refuses."""
+    """Replace each changed file's old SHA-256 (and its recorded size) wherever the components
+    pin it, then repeat for the pinning files that change in turn. changes maps an old digest to
+    (new digest, old size, new size). A directory named exactly by a digest (memory runtimes are
+    keyed by their runtime.json hash) is renamed with it; any other use in a path refuses."""
     root, log = app / AUX, []
     pending = dict(changes)
     while pending:
-        old, new = pending.popitem()
+        old, (new, old_size, new_size) = pending.popitem()
         for path in sorted(root.rglob(f'*{old}*'), key=lambda p: -len(p.parts)):
             if path.name != old or not path.is_dir():
                 raise SystemExit(f'digest {old[:12]} is part of a path name; refusing to re-pin it')
@@ -208,10 +261,10 @@ def repin_cascade(app: Path, changes: dict) -> list:
         for path in texts:
             text = path.read_text(encoding='utf-8', errors='surrogateescape')
             if old in text:
-                before = sha256(path)
-                path.write_text(text.replace(old, new), encoding='utf-8', errors='surrogateescape')
+                before, size = sha256(path), path.stat().st_size
+                path.write_text(repin_text(text, old, new, old_size, new_size), encoding='utf-8', errors='surrogateescape')
                 log.append({'path': str(path.relative_to(app)), 'replaced': old})
-                pending[before] = sha256(path)
+                pending[before] = (sha256(path), size, path.stat().st_size)
     return log
 
 
@@ -306,7 +359,7 @@ def main() -> int:
         current, identifier = signing_details(path)
         kept[current] = kept.get(current, 0) + 1
         if release and not current.startswith('Developer ID Application: '):
-            before = sha256(path)
+            before = (sha256(path), path.stat().st_size)
             # Keep the identifier: the daemon policy requires dev.aux.browser.runtime on its addons.
             keep = ['--identifier', identifier] if identifier and current != 'unsigned' else []
             run(['codesign', '--force', '--sign', identity, '--options', 'runtime', '--timestamp', *keep, str(path)])
@@ -314,21 +367,21 @@ def main() -> int:
     runtime = app / AUX / 'agent-runtime'
     pins = app / NATIVE / 'runtime-source-pins.json'
     pin_files = [pins, app / NATIVE / 'runtime-bootstrap.cjs']
-    pins_before = {p: sha256(p) for p in pin_files}
+    pins_before = {p: (sha256(p), p.stat().st_size) for p in pin_files}
     repinned = repin_runtime(app, [p for p, _ in resigned if runtime in p.parents])
     cascade = repin_cascade(app, {
-        **{before: sha256(p) for p, before in resigned if runtime not in p.parents},
-        **{old: sha256(p) for p, old in pins_before.items() if sha256(p) != old}})
+        **{old: (sha256(p), size, p.stat().st_size) for p, (old, size) in resigned if runtime not in p.parents},
+        **{old: (sha256(p), size, p.stat().st_size) for p, (old, size) in pins_before.items() if sha256(p) != old}})
 
     # 4. Targets, inside out. A helper's launch policy pins its executable's hash, and
     # signing changes it, so each helper is re-pinned before the daemon seals the policy.
     signed = []
     for target, identifier, entitlements in TARGETS:
         executable = main_executable(app, target) if target != '.' else None
-        before = sha256(executable) if executable else None
+        before = (sha256(executable), executable.stat().st_size) if executable else None
         signed.append(sign(app, target, identifier, entitlements, identity, release, work))
-        if executable and target.startswith(AUX) and target != DAEMON_APP and sha256(executable) != before:
-            cascade += repin_cascade(app, {before: sha256(executable)})
+        if executable and target.startswith(AUX) and target != DAEMON_APP and sha256(executable) != before[0]:
+            cascade += repin_cascade(app, {before[0]: (sha256(executable), before[1], executable.stat().st_size)})
     run(['codesign', '--verify', '--deep', '--strict', str(app)])
 
     receipt = {
@@ -336,6 +389,7 @@ def main() -> int:
         'identity': args.identity, 'identitySha1': identity,
         'daemonExecutable': {'path': str(args.daemon_executable), 'sha256': sha256(args.daemon_executable)} if args.daemon_executable else None, 'native': str(args.native), 'components': str(args.components),
         'componentsBundleSha256': sha256(out / 'stage-provenance-bundle.json'),
+        'chromiumTreeManifestSha256': sha256(HERE.parents[1] / 'chromium/tree/manifest.json'),
         'crashUploadHost': crash_host, 'packageEdits': edits, 'transforms': transforms, 'nestedSignatures': kept, 'resignedNested': len(resigned),
         'repinnedRuntimeFiles': repinned, 'repinCascade': cascade, 'signed': signed, 'usageStrings': sorted(USAGE),
         'notarized': False, 'published': False,
