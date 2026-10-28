@@ -1,0 +1,1879 @@
+{
+ "literals": {
+  "Agent Tabs": "IDS_AUX_AGENT_TABS",
+  "Close tab": "IDS_AUX_AGENT_TABS_CLOSE_TAB",
+  "Background tabs opened for work": "IDS_AUX_AGENT_TABS_SUBTITLE",
+  "Close all": "IDS_AUX_AGENT_TABS_CLOSE_ALL",
+  "Background tabs Aux opened": "IDS_AUX_AGENT_TABS_TOOLTIP",
+  "Delete": "IDS_AUX_DELETE",
+  "Cancel": "IDS_AUX_CANCEL",
+  "Save": "IDS_AUX_SAVE",
+  "Edit": "IDS_AUX_EDIT",
+  "Rename": "IDS_AUX_RENAME",
+  "Archive": "IDS_AUX_ARCHIVE",
+  "Close": "IDS_AUX_CLOSE",
+  "Open": "IDS_AUX_OPEN",
+  "Done": "IDS_AUX_DONE",
+  "Name": "IDS_AUX_NAME_FIELD",
+  "Clear": "IDS_AUX_CLEAR",
+  "Restore": "IDS_AUX_RESTORE",
+  "Reload": "IDS_AUX_RELOAD",
+  "Duplicate": "IDS_AUX_DUPLICATE",
+  "Remove bookmark": "IDS_AUX_BOOKMARK_DRAG_REMOVE",
+  "Add bookmark": "IDS_AUX_BOOKMARK_DRAG_ADD",
+  "Bookmarks": "IDS_AUX_BOOKMARKS",
+  "Unpin chat": "IDS_AUX_CHAT_UNPIN",
+  "Pin chat": "IDS_AUX_CHAT_PIN",
+  "Rename chat": "IDS_AUX_CHAT_RENAME",
+  "Archive Chat": "IDS_AUX_CHAT_ARCHIVE",
+  "Delete chat": "IDS_AUX_CHAT_DELETE",
+  "Bookmark chat": "IDS_AUX_CHAT_BOOKMARK",
+  "Mark as read": "IDS_AUX_MARK_AS_READ",
+  "Open folder in Finder": "IDS_AUX_CHAT_OPEN_FOLDER_IN_FINDER",
+  "Copy session ID": "IDS_AUX_CHAT_COPY_SESSION_ID",
+  "Open in a new tab": "IDS_AUX_CHAT_OPEN_IN_NEW_TAB",
+  "Session ID Copied!": "IDS_AUX_CHAT_SESSION_ID_COPIED",
+  "Choose a short, recognizable name.": "IDS_AUX_RENAME_DIALOG_SUBTITLE",
+  "New chat name": "IDS_AUX_CHAT_NEW_NAME_ACCESSIBLE",
+  "Delete chat?": "IDS_AUX_CHAT_DELETE_TITLE",
+  "This will permanently delete this chat and its messages.": "IDS_AUX_CHAT_DELETE_BODY",
+  "Aux navigation unavailable": "IDS_AUX_NAVIGATION_UNAVAILABLE_TITLE",
+  "Aux could not resolve this profile with its local service. Please retry after the browser finishes starting.": "IDS_AUX_NAVIGATION_UNAVAILABLE_BODY",
+  "Awaiting approval": "IDS_AUX_CHAT_AWAITING_APPROVAL",
+  "Awaiting answer": "IDS_AUX_CHAT_AWAITING_ANSWER",
+  "Mark all as read": "IDS_AUX_CHATS_MARK_ALL_READ",
+  "Archive all chats": "IDS_AUX_CHATS_ARCHIVE_ALL",
+  "Show all chats": "IDS_AUX_CHATS_SHOW_ALL",
+  "Archive all chats?": "IDS_AUX_CHATS_ARCHIVE_ALL_TITLE",
+  "This will archive all chats.": "IDS_AUX_CHATS_ARCHIVE_ALL_BODY",
+  "Untitled task": "IDS_AUX_UNTITLED_TASK",
+  "Chats": "IDS_AUX_CHATS",
+  "Chats with Aux": "IDS_AUX_CHATS_TOOLTIP",
+  "Show all": "IDS_AUX_SHOW_ALL",
+  "Profile name": "IDS_AUX_PROFILE_NAME_FIELD",
+  "Per-task tab cleanup policy is not exposed by the supplied runtime.": "IDS_AUX_TASK_ERROR_CLEANUP_UNSUPPORTED",
+  "The selected task identity is invalid.": "IDS_AUX_TASK_ERROR_INVALID_IDENTITY",
+  "The supplied task inventory is unavailable.": "IDS_AUX_TASK_ERROR_INVENTORY_UNAVAILABLE",
+  "The supplied task inventory has an invalid identity.": "IDS_AUX_TASK_ERROR_INVENTORY_INVALID",
+  "The selected task belongs to another browser profile or mode.": "IDS_AUX_TASK_ERROR_OTHER_PROFILE",
+  "This profile locked or its account changed. Reopen agent tabs.": "IDS_AUX_TASK_ERROR_PROFILE_LOCKED",
+  "The task's current tab ownership could not be verified.": "IDS_AUX_TASK_ERROR_OWNERSHIP_UNVERIFIED",
+  "This target is no longer owned by the selected task.": "IDS_AUX_TASK_ERROR_TARGET_NOT_OWNED",
+  "Some tabs remain open. Refresh to review them; a page may be waiting for confirmation.": "IDS_AUX_TASK_ERROR_TABS_REMAIN",
+  "Unlock Aux and finish setup for this browser profile.": "IDS_AUX_TASK_ERROR_UNLOCK_SETUP",
+  "Aux could not verify this installation. Reconnect the local browser.": "IDS_AUX_TASK_ERROR_INSTALLATION",
+  "Tasks could not be loaded. Aux will try reconnecting.": "IDS_AUX_TASK_ERROR_LOAD",
+  "Aux returned an invalid task projection.": "IDS_AUX_TASK_ERROR_INVALID_PROJECTION",
+  "Unlock this browser profile before loading its tasks.": "IDS_AUX_TASK_ERROR_UNLOCK_TO_LOAD",
+  "This task action is unavailable for this profile.": "IDS_AUX_TASK_ERROR_ACTION_UNAVAILABLE",
+  "This profile binding changed. Reopen the task.": "IDS_AUX_TASK_ERROR_BINDING_CHANGED",
+  "Reconnect this profile before trying again.": "IDS_AUX_TASK_ERROR_RECONNECT",
+  "This approval action is invalid.": "IDS_AUX_TASK_ERROR_INVALID_APPROVAL",
+  "This task action could not be saved. Try again.": "IDS_AUX_TASK_ERROR_SAVE_FAILED",
+  "Unlock this browser profile before opening agent tabs.": "IDS_AUX_TASK_ERROR_UNLOCK_TO_OPEN_TABS",
+  "New Chat": "IDS_AUX_NEW_CHAT",
+  "Select tabs already open in this window and Space. Open an unloaded tab with a regular click first.": "IDS_AUX_ORG_SELECT_HINT",
+  "Archived tabs and folders": "IDS_AUX_ORG_ARCHIVED",
+  "Back to tabs": "IDS_AUX_ORG_BACK_TO_TABS",
+  "Organization is not ready to save. Please try again.": "IDS_AUX_ORG_NOT_READY",
+  "This tab could not be opened in the current window.": "IDS_AUX_ORG_OPEN_FAILED",
+  "New folder": "IDS_AUX_NEW_FOLDER",
+  "The profile changed or is saving. Please try again.": "IDS_AUX_ORG_PROFILE_CHANGED_OR_SAVING",
+  "This item changed. Open its editor again.": "IDS_AUX_ORG_ITEM_CHANGED",
+  "Keep independent copy": "IDS_AUX_ORG_KEEP_INDEPENDENT_COPY",
+  "Close this view": "IDS_AUX_ORG_CLOSE_VIEW",
+  "Rename…": "IDS_AUX_RENAME_ELLIPSIS",
+  "New folder inside…": "IDS_AUX_ORG_NEW_FOLDER_INSIDE",
+  "Close this view (unload)": "IDS_AUX_ORG_CLOSE_VIEW_UNLOAD",
+  "Use shared URL from another window": "IDS_AUX_ORG_USE_SHARED_URL",
+  "Move to this Space": "IDS_AUX_ORG_MOVE_TO_THIS_SPACE",
+  "Pin to all Spaces": "IDS_AUX_ORG_PIN_TO_ALL_SPACES",
+  "All Spaces (Pins)": "IDS_AUX_ORG_ALL_SPACES_PINS",
+  "Move to": "IDS_AUX_ORG_MOVE_TO",
+  "Keep in this Space": "IDS_AUX_ORG_KEEP_IN_SPACE",
+  "Close tab everywhere (archive)": "IDS_AUX_ORG_CLOSE_EVERYWHERE",
+  "Remove folder, keep contents": "IDS_AUX_ORG_REMOVE_FOLDER_KEEP_CONTENTS",
+  "Archive folder and contents": "IDS_AUX_ORG_ARCHIVE_FOLDER",
+  "Undo organization change": "IDS_AUX_ORG_UNDO",
+  "The profile or tab list changed. Open the menu again.": "IDS_AUX_ORG_LIST_CHANGED_MENU",
+  "The page changed or could not be rebound. Its existing view was retained; check the tab list before retrying.": "IDS_AUX_ORG_REBIND_FAILED",
+  "This recovery view has active work and was retained.": "IDS_AUX_ORG_RECOVERY_RETAINED",
+  "The folder archive could not be saved. Existing views were retained.": "IDS_AUX_ORG_FOLDER_ARCHIVE_FAILED",
+  "This tab has active work and could not be unloaded.": "IDS_AUX_ORG_UNLOAD_BLOCKED",
+  "This page changed or has active work. Its current URL was retained.": "IDS_AUX_ORG_URL_RETAINED",
+  "The shared close could not be saved. Existing views were retained.": "IDS_AUX_ORG_SHARED_CLOSE_FAILED",
+  "Icon": "IDS_AUX_ORG_ICON_FIELD",
+  "Space icon or emoji": "IDS_AUX_ORG_ICON_ACCESSIBLE",
+  "Tabs changed. Please try again.": "IDS_AUX_ORG_ERROR_STALE",
+  "Saving changes. Please try again shortly.": "IDS_AUX_ORG_ERROR_BUSY",
+  "Pinned items stay available. Unpin before archiving.": "IDS_AUX_ORG_ERROR_PROTECTED_PIN",
+  "A folder cannot contain itself.": "IDS_AUX_ORG_ERROR_CYCLE",
+  "Move this Space’s contents before removing it.": "IDS_AUX_ORG_ERROR_NOT_EMPTY",
+  "The profile changed. Please try again.": "IDS_AUX_ORG_ERROR_PROFILE_CHANGED",
+  "Changes could not be saved. Your previous organization is retained.": "IDS_AUX_ORG_ERROR_SAVE_FAILED",
+  "This change could not be applied.": "IDS_AUX_ORG_ERROR_GENERIC",
+  "Pins": "IDS_AUX_PINS",
+  "Tabs": "IDS_AUX_TABS",
+  "New Tab": "IDS_AUX_NEW_TAB",
+  "Search": "IDS_AUX_SEARCH",
+  "Couldn't switch profiles": "IDS_AUX_PROFILE_SWITCH_FAILED_TITLE",
+  "The selected profile could not be loaded. Try selecting it again.": "IDS_AUX_PROFILE_SWITCH_LOAD_FAILED",
+  "Profile windows restored": "IDS_AUX_PROFILE_WINDOWS_RESTORED_TITLE",
+  "Aux restored this profile's saved windows separately, preserving their tabs and selections. Your original window and profile are unchanged.": "IDS_AUX_PROFILE_WINDOWS_RESTORED_BODY",
+  "This profile has an incomplete or unsupported saved window, or an app record without its required identity. Aux has preserved that session. Open the profile separately to recover it.": "IDS_AUX_PROFILE_SWITCH_UNSUPPORTED_SESSION",
+  "The profile's saved workspace could not be prepared. Finish any pending profile activity, then try again or reopen Aux.": "IDS_AUX_PROFILE_SWITCH_PREPARE_FAILED",
+  "Aux could not safely switch this window yet. Finish open dialogs or pending browser activity, then select the profile again.": "IDS_AUX_PROFILE_SWITCH_BUSY",
+  "The profile workspace was closed before preparation finished. Select the profile again to retry.": "IDS_AUX_PROFILE_SWITCH_CLOSED",
+  "Recent files": "IDS_AUX_RECENT_FILES",
+  "Edit profile": "IDS_AUX_EDIT_PROFILE",
+  "Profiles": "IDS_AUX_PROFILES",
+  "Profile actions": "IDS_AUX_PROFILE_ACTIONS",
+  "New profile": "IDS_AUX_NEW_PROFILE",
+  "Downloads": "IDS_AUX_DOWNLOADS",
+  "Extensions": "IDS_AUX_EXTENSIONS",
+  "History": "IDS_AUX_HISTORY",
+  "Developers": "IDS_AUX_DEVELOPERS",
+  "Settings": "IDS_AUX_SETTINGS",
+  "Incognito Window": "IDS_AUX_INCOGNITO_WINDOW",
+  "Show All Downloads": "IDS_AUX_SHOW_ALL_DOWNLOADS",
+  "Manage Extensions": "IDS_AUX_MANAGE_EXTENSIONS",
+  "Show Full History": "IDS_AUX_SHOW_FULL_HISTORY",
+  "Developer Tools": "IDS_AUX_DEVELOPER_TOOLS",
+  "JavaScript Console": "IDS_AUX_JAVASCRIPT_CONSOLE",
+  "View Source": "IDS_AUX_VIEW_SOURCE",
+  "Task Manager": "IDS_AUX_TASK_MANAGER",
+  "All bookmarks": "IDS_AUX_ALL_BOOKMARKS",
+  "Bookmark this tab": "IDS_AUX_BOOKMARK_THIS_TAB",
+  "This profile will be removed from this device.": "IDS_AUX_DELETE_PROFILE_BODY",
+  "Delete profile?": "IDS_AUX_DELETE_PROFILE_TITLE",
+  "Profile indicator menu": "IDS_AUX_PROFILE_INDICATOR_MENU",
+  "Change Icon": "IDS_AUX_CHANGE_ICON",
+  "Sign Out": "IDS_AUX_SIGN_OUT",
+  "Profile": "IDS_AUX_PROFILE",
+  "Switch profile": "IDS_AUX_SWITCH_PROFILE",
+  "Sidebar state cannot be restored by this native build.": "IDS_AUX_SIDEBAR_STATE_UNSUPPORTED",
+  "Untitled folder": "IDS_AUX_UNTITLED_FOLDER",
+  "Browse additional saved pages": "IDS_AUX_BROWSE_MORE_SAVED_PAGES",
+  "Open bookmarks": "IDS_AUX_OPEN_BOOKMARKS",
+  "No saved pages yet.": "IDS_AUX_NO_SAVED_PAGES",
+  "Unpin Tab": "IDS_AUX_UNPIN_TAB",
+  "Open all in new tabs": "IDS_AUX_OPEN_ALL_IN_NEW_TABS",
+  "Open in new tab": "IDS_AUX_OPEN_IN_NEW_TAB",
+  "Open all in new window": "IDS_AUX_OPEN_ALL_IN_NEW_WINDOW",
+  "Open in new window": "IDS_AUX_OPEN_IN_NEW_WINDOW",
+  "Unpin": "IDS_AUX_UNPIN",
+  "Pin": "IDS_AUX_PIN",
+  "Delete this saved folder?": "IDS_AUX_DELETE_SAVED_FOLDER_TITLE",
+  "Delete this saved page?": "IDS_AUX_DELETE_SAVED_PAGE_TITLE",
+  "The folder and its saved pages will be removed from this profile.": "IDS_AUX_DELETE_SAVED_FOLDER_BODY",
+  "This saved page will be removed from this profile.": "IDS_AUX_DELETE_SAVED_PAGE_BODY",
+  "Agent activity": "IDS_AUX_AGENT_ACTIVITY",
+  "Search tabs": "IDS_AUX_SEARCH_TABS",
+  "Space": "IDS_AUX_SPACE",
+  "Switch Space": "IDS_AUX_SWITCH_SPACE",
+  "Create a Space": "IDS_AUX_CREATE_SPACE",
+  "Choose Space": "IDS_AUX_CHOOSE_SPACE",
+  "New Space…": "IDS_AUX_NEW_SPACE_ELLIPSIS",
+  "Edit Space…": "IDS_AUX_EDIT_SPACE_ELLIPSIS",
+  "Remove empty Space": "IDS_AUX_REMOVE_EMPTY_SPACE",
+  "New folder in this Space…": "IDS_AUX_NEW_FOLDER_IN_SPACE",
+  "New pinned folder…": "IDS_AUX_NEW_PINNED_FOLDER_ELLIPSIS",
+  "The profile or tab list changed. Open the Space menu again.": "IDS_AUX_SPACE_LIST_CHANGED",
+  "New Space": "IDS_AUX_NEW_SPACE",
+  "Edit Space": "IDS_AUX_EDIT_SPACE",
+  "This Space changed. Open its editor again.": "IDS_AUX_SPACE_CHANGED",
+  "New pinned folder": "IDS_AUX_NEW_PINNED_FOLDER",
+  "Command input": "IDS_AUX_COMMAND_INPUT",
+  "Search commands, tabs or enter a URL": "IDS_AUX_COMMAND_PLACEHOLDER",
+  "Search or type a URL": "IDS_AUX_SEARCH_OR_TYPE_URL",
+  "Tidy current Space": "IDS_AUX_TIDY_CURRENT_SPACE",
+  "Tidy selected tabs": "IDS_AUX_TIDY_SELECTED_TABS",
+  "Clear tabs?": "IDS_AUX_CLEAR_TABS_TITLE",
+  "This will close all other tabs except AI tabs.": "IDS_AUX_CLEAR_TABS_BODY",
+  "Organizing tabs": "IDS_AUX_ORGANIZING_TABS",
+  "Tidy": "IDS_AUX_TIDY",
+  "Organize tabs with AI": "IDS_AUX_TIDY_TOOLTIP",
+  "Task details": "IDS_AUX_TASK_DETAILS",
+  "Deny": "IDS_AUX_DENY",
+  "Approve": "IDS_AUX_APPROVE",
+  "Answer": "IDS_AUX_ANSWER",
+  "Review": "IDS_AUX_REVIEW",
+  "Open conversation": "IDS_AUX_OPEN_CONVERSATION",
+  "Paused": "IDS_AUX_PROFILE_PAUSED",
+  "Drag tabs here to add bookmarks": "IDS_AUX_BOOKMARKS_EMPTY",
+  "Manage Bookmarks": "IDS_AUX_MANAGE_BOOKMARKS",
+  "Open in Incognito window": "IDS_AUX_OPEN_IN_INCOGNITO",
+  "Open in new tab group": "IDS_AUX_OPEN_IN_NEW_TAB_GROUP",
+  "Open in split view": "IDS_AUX_OPEN_IN_SPLIT_VIEW",
+  "Rename Folder": "IDS_AUX_RENAME_FOLDER",
+  "Edit Bookmark": "IDS_AUX_EDIT_BOOKMARK",
+  "Folder name": "IDS_AUX_FOLDER_NAME",
+  "URL": "IDS_AUX_URL_FIELD",
+  "Delete this folder and everything inside it?": "IDS_AUX_DELETE_FOLDER_BODY",
+  "Delete this bookmark?": "IDS_AUX_DELETE_BOOKMARK_BODY",
+  "Delete Folder": "IDS_AUX_DELETE_FOLDER",
+  "Delete Bookmark": "IDS_AUX_DELETE_BOOKMARK",
+  "Narrow split presentation": "IDS_AUX_SPLIT_NARROW_CONTROLS",
+  "Focus": "IDS_AUX_SPLIT_FOCUS",
+  "Focus selected split pane": "IDS_AUX_SPLIT_FOCUS_SELECTED_ACCESSIBLE",
+  "Split panes do not fit. Show one pane without closing the others.": "IDS_AUX_SPLIT_FOCUS_TOOLTIP",
+  "Select previous split pane": "IDS_AUX_SPLIT_PREVIOUS",
+  "Select next split pane": "IDS_AUX_SPLIT_NEXT",
+  "Show all panes": "IDS_AUX_SPLIT_SHOW_ALL",
+  "Focus selected pane": "IDS_AUX_SPLIT_FOCUS_SELECTED",
+  "All": "IDS_AUX_SPLIT_ALL",
+  "Tabs controlled by Aux while it works": "IDS_AUX_AGENT_GROUP_TOOLTIP",
+  "Syncing...": "IDS_AUX_SYNCING",
+  "Ask Aux": "IDS_AUX_ASK_AUX",
+  "Aux's agent stopped": "IDS_AUX_AGENT_STOPPED_TITLE",
+  "Browsing still works, but the agent stopped unexpectedly. Restart Aux to bring it back? Your tabs will reopen.": "IDS_AUX_AGENT_STOPPED_MESSAGE",
+  "Clear Browsing Data\\u2026": "IDS_AUX_CLEAR_BROWSING_DATA"
+ },
+ "messages": [
+  {
+   "name": "IDS_AUX_AGENT_TABS",
+   "text": "Agent Tabs",
+   "desc": "Title of the tab group and bubble that list background tabs the Aux agent opened while working."
+  },
+  {
+   "name": "IDS_AUX_AGENT_TABS_CLOSE_TAB",
+   "text": "Close tab",
+   "desc": "Tooltip and accessible name of the button that closes one agent tab in the Agent Tabs bubble."
+  },
+  {
+   "name": "IDS_AUX_AGENT_TABS_SUBTITLE",
+   "text": "Background tabs opened for work",
+   "desc": "Subtitle of the Agent Tabs bubble."
+  },
+  {
+   "name": "IDS_AUX_AGENT_TABS_CLOSE_ALL",
+   "text": "Close all",
+   "desc": "Button in the Agent Tabs bubble that closes every agent tab."
+  },
+  {
+   "name": "IDS_AUX_AGENT_TABS_TOOLTIP",
+   "text": "Background tabs Aux opened",
+   "desc": "Tooltip of the Agent Tabs indicator."
+  },
+  {
+   "name": "IDS_AUX_DELETE",
+   "text": "Delete",
+   "desc": "Button or menu item that deletes the selected item."
+  },
+  {
+   "name": "IDS_AUX_CANCEL",
+   "text": "Cancel",
+   "desc": "Dialog button that dismisses the dialog without changes."
+  },
+  {
+   "name": "IDS_AUX_SAVE",
+   "text": "Save",
+   "desc": "Dialog button that saves the entered name or bookmark."
+  },
+  {
+   "name": "IDS_AUX_EDIT",
+   "text": "Edit",
+   "desc": "Menu item that opens an editor for the selected bookmark."
+  },
+  {
+   "name": "IDS_AUX_RENAME",
+   "text": "Rename",
+   "desc": "Dialog title or menu item for renaming a folder."
+  },
+  {
+   "name": "IDS_AUX_ARCHIVE",
+   "text": "Archive",
+   "desc": "Button or menu item that archives the selected chat or chats."
+  },
+  {
+   "name": "IDS_AUX_CLOSE",
+   "text": "Close",
+   "desc": "Tab context menu item that closes the tab."
+  },
+  {
+   "name": "IDS_AUX_OPEN",
+   "text": "Open",
+   "desc": "Bookmark context menu item that opens the bookmark in the current tab."
+  },
+  {
+   "name": "IDS_AUX_DONE",
+   "text": "Done",
+   "desc": "Button that closes the profile icon picker."
+  },
+  {
+   "name": "IDS_AUX_NAME_FIELD",
+   "text": "Name",
+   "desc": "Label of the name text field in a rename or edit dialog."
+  },
+  {
+   "name": "IDS_AUX_CLEAR",
+   "text": "Clear",
+   "desc": "Button in the sidebar Tabs section that closes all other tabs."
+  },
+  {
+   "name": "IDS_AUX_RESTORE",
+   "text": "Restore",
+   "desc": "Menu item that restores an archived tab or folder."
+  },
+  {
+   "name": "IDS_AUX_RELOAD",
+   "text": "Reload",
+   "desc": "Tab context menu item that reloads the tab."
+  },
+  {
+   "name": "IDS_AUX_DUPLICATE",
+   "text": "Duplicate",
+   "desc": "Tab context menu item that duplicates the tab."
+  },
+  {
+   "name": "IDS_AUX_BOOKMARK_DRAG_REMOVE",
+   "text": "Remove bookmark",
+   "desc": "Hint shown while dragging a bookmark out of the bookmarks list."
+  },
+  {
+   "name": "IDS_AUX_BOOKMARK_DRAG_ADD",
+   "text": "Add bookmark",
+   "desc": "Hint shown while dragging a tab into the bookmarks list."
+  },
+  {
+   "name": "IDS_AUX_BOOKMARKS",
+   "text": "Bookmarks",
+   "desc": "Title of the sidebar Bookmarks section and its menu row."
+  },
+  {
+   "name": "IDS_AUX_CHAT_UNPIN",
+   "text": "Unpin chat",
+   "desc": "Chat context menu item."
+  },
+  {
+   "name": "IDS_AUX_CHAT_PIN",
+   "text": "Pin chat",
+   "desc": "Chat context menu item."
+  },
+  {
+   "name": "IDS_AUX_CHAT_RENAME",
+   "text": "Rename chat",
+   "desc": "Chat context menu item and title of the rename dialog."
+  },
+  {
+   "name": "IDS_AUX_CHAT_ARCHIVE",
+   "text": "Archive Chat",
+   "desc": "Chat context menu item and tooltip of the archive button on a chat row."
+  },
+  {
+   "name": "IDS_AUX_CHAT_DELETE",
+   "text": "Delete chat",
+   "desc": "Chat context menu item."
+  },
+  {
+   "name": "IDS_AUX_CHAT_BOOKMARK",
+   "text": "Bookmark chat",
+   "desc": "Chat context menu item that saves the chat as a bookmark."
+  },
+  {
+   "name": "IDS_AUX_MARK_AS_READ",
+   "text": "Mark as read",
+   "desc": "Chat context menu item."
+  },
+  {
+   "name": "IDS_AUX_CHAT_OPEN_FOLDER_IN_FINDER",
+   "text": "Open folder in Finder",
+   "desc": "Chat context menu item that shows the chat's working folder in the macOS Finder."
+  },
+  {
+   "name": "IDS_AUX_CHAT_COPY_SESSION_ID",
+   "text": "Copy session ID",
+   "desc": "Chat context menu item that copies the chat's technical session ID."
+  },
+  {
+   "name": "IDS_AUX_CHAT_OPEN_IN_NEW_TAB",
+   "text": "Open in a new tab",
+   "desc": "Chat context menu item."
+  },
+  {
+   "name": "IDS_AUX_CHAT_SESSION_ID_COPIED",
+   "text": "Session ID Copied!",
+   "desc": "Toast shown after the chat's session ID was copied to the clipboard."
+  },
+  {
+   "name": "IDS_AUX_RENAME_DIALOG_SUBTITLE",
+   "text": "Choose a short, recognizable name.",
+   "desc": "Subtitle of the dialogs that rename a chat or a profile."
+  },
+  {
+   "name": "IDS_AUX_CHAT_NEW_NAME_ACCESSIBLE",
+   "text": "New chat name",
+   "desc": "Accessible name of the text field in the rename chat dialog."
+  },
+  {
+   "name": "IDS_AUX_CHAT_DELETE_TITLE",
+   "text": "Delete chat?",
+   "desc": "Title of the confirmation dialog before a chat is deleted."
+  },
+  {
+   "name": "IDS_AUX_CHAT_DELETE_BODY",
+   "text": "This will permanently delete this chat and its messages.",
+   "desc": "Body of the confirmation dialog before a chat is deleted."
+  },
+  {
+   "name": "IDS_AUX_NAVIGATION_UNAVAILABLE_TITLE",
+   "text": "Aux navigation unavailable",
+   "desc": "Title of an error dialog shown when a chat cannot be opened."
+  },
+  {
+   "name": "IDS_AUX_NAVIGATION_UNAVAILABLE_BODY",
+   "text": "Aux could not resolve this profile with its local service. Please retry after the browser finishes starting.",
+   "desc": "Body of an error dialog shown when a chat cannot be opened because Aux's local service is not ready."
+  },
+  {
+   "name": "IDS_AUX_CHAT_AWAITING_APPROVAL",
+   "text": "Awaiting approval",
+   "desc": "Badge on a chat row: the agent waits for the user to approve an action."
+  },
+  {
+   "name": "IDS_AUX_CHAT_AWAITING_ANSWER",
+   "text": "Awaiting answer",
+   "desc": "Badge on a chat row: the agent asked the user a question."
+  },
+  {
+   "name": "IDS_AUX_CHATS_MARK_ALL_READ",
+   "text": "Mark all as read",
+   "desc": "Menu item in the Chats section header."
+  },
+  {
+   "name": "IDS_AUX_CHATS_ARCHIVE_ALL",
+   "text": "Archive all chats",
+   "desc": "Menu item in the Chats section header."
+  },
+  {
+   "name": "IDS_AUX_CHATS_SHOW_ALL",
+   "text": "Show all chats",
+   "desc": "Menu item in the Chats section header."
+  },
+  {
+   "name": "IDS_AUX_CHATS_ARCHIVE_ALL_TITLE",
+   "text": "Archive all chats?",
+   "desc": "Title of the confirmation dialog before all chats are archived."
+  },
+  {
+   "name": "IDS_AUX_CHATS_ARCHIVE_ALL_BODY",
+   "text": "This will archive all chats.",
+   "desc": "Body of the confirmation dialog before all chats are archived."
+  },
+  {
+   "name": "IDS_AUX_UNTITLED_TASK",
+   "text": "Untitled task",
+   "desc": "Name shown for an agent task that has no title yet."
+  },
+  {
+   "name": "IDS_AUX_CHATS",
+   "text": "Chats",
+   "desc": "Title of the sidebar section that lists conversations with the Aux agent."
+  },
+  {
+   "name": "IDS_AUX_CHATS_TOOLTIP",
+   "text": "Chats with Aux",
+   "desc": "Tooltip of the Chats section header."
+  },
+  {
+   "name": "IDS_AUX_SHOW_ALL",
+   "text": "Show all",
+   "desc": "Row at the end of the Chats section that shows every chat."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_NAME_FIELD",
+   "text": "Profile name",
+   "desc": "Placeholder and accessible name of the profile name text field."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_CLEANUP_UNSUPPORTED",
+   "text": "Per-task tab cleanup policy is not exposed by the supplied runtime.",
+   "desc": "Error shown in the task list when a task's tab cleanup setting cannot be changed."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_INVALID_IDENTITY",
+   "text": "The selected task identity is invalid.",
+   "desc": "Error shown in the agent task list."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_INVENTORY_UNAVAILABLE",
+   "text": "The supplied task inventory is unavailable.",
+   "desc": "Error shown in the agent task list when the list of tasks cannot be read."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_INVENTORY_INVALID",
+   "text": "The supplied task inventory has an invalid identity.",
+   "desc": "Error shown in the agent task list."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_OTHER_PROFILE",
+   "text": "The selected task belongs to another browser profile or mode.",
+   "desc": "Error shown in the agent task list."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_PROFILE_LOCKED",
+   "text": "This profile locked or its account changed. Reopen agent tabs.",
+   "desc": "Error shown in the agent task list."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_OWNERSHIP_UNVERIFIED",
+   "text": "The task's current tab ownership could not be verified.",
+   "desc": "Error shown in the agent task list."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_TARGET_NOT_OWNED",
+   "text": "This target is no longer owned by the selected task.",
+   "desc": "Error shown in the agent task list: the tab no longer belongs to the task."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_TABS_REMAIN",
+   "text": "Some tabs remain open. Refresh to review them; a page may be waiting for confirmation.",
+   "desc": "Error shown after closing a task's tabs when some could not close."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_UNLOCK_SETUP",
+   "text": "Unlock Aux and finish setup for this browser profile.",
+   "desc": "Error shown in the agent task list for a locked profile."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_INSTALLATION",
+   "text": "Aux could not verify this installation. Reconnect the local browser.",
+   "desc": "Error shown in the agent task list."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_LOAD",
+   "text": "Tasks could not be loaded. Aux will try reconnecting.",
+   "desc": "Error shown in the agent task list."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_INVALID_PROJECTION",
+   "text": "Aux returned an invalid task projection.",
+   "desc": "Error shown in the agent task list when Aux's local service returned unreadable task data."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_UNLOCK_TO_LOAD",
+   "text": "Unlock this browser profile before loading its tasks.",
+   "desc": "Error shown in the agent task list."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_ACTION_UNAVAILABLE",
+   "text": "This task action is unavailable for this profile.",
+   "desc": "Error shown after a task action fails."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_BINDING_CHANGED",
+   "text": "This profile binding changed. Reopen the task.",
+   "desc": "Error shown after a task action fails because the profile changed."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_RECONNECT",
+   "text": "Reconnect this profile before trying again.",
+   "desc": "Error shown after a task action fails."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_INVALID_APPROVAL",
+   "text": "This approval action is invalid.",
+   "desc": "Error shown after approving or denying an agent action fails."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_SAVE_FAILED",
+   "text": "This task action could not be saved. Try again.",
+   "desc": "Error shown after a task action fails."
+  },
+  {
+   "name": "IDS_AUX_TASK_ERROR_UNLOCK_TO_OPEN_TABS",
+   "text": "Unlock this browser profile before opening agent tabs.",
+   "desc": "Error shown when agent tabs cannot be opened for a locked profile."
+  },
+  {
+   "name": "IDS_AUX_NEW_CHAT",
+   "text": "New Chat",
+   "desc": "Button that starts a new conversation with the Aux agent."
+  },
+  {
+   "name": "IDS_AUX_ORG_SELECT_HINT",
+   "text": "Select tabs already open in this window and Space. Open an unloaded tab with a regular click first.",
+   "desc": "Status hint shown when the user tries to multi-select a tab that is not loaded."
+  },
+  {
+   "name": "IDS_AUX_ORG_ARCHIVED",
+   "text": "Archived tabs and folders",
+   "desc": "Button that shows archived tabs and folders in the sidebar."
+  },
+  {
+   "name": "IDS_AUX_ORG_BACK_TO_TABS",
+   "text": "Back to tabs",
+   "desc": "Button that leaves the archived tabs view."
+  },
+  {
+   "name": "IDS_AUX_ORG_NOT_READY",
+   "text": "Organization is not ready to save. Please try again.",
+   "desc": "Status message in the sidebar tab list."
+  },
+  {
+   "name": "IDS_AUX_ORG_OPEN_FAILED",
+   "text": "This tab could not be opened in the current window.",
+   "desc": "Status message in the sidebar tab list."
+  },
+  {
+   "name": "IDS_AUX_NEW_FOLDER",
+   "text": "New folder",
+   "desc": "Title of the dialog that creates a folder in the sidebar."
+  },
+  {
+   "name": "IDS_AUX_ORG_PROFILE_CHANGED_OR_SAVING",
+   "text": "The profile changed or is saving. Please try again.",
+   "desc": "Status message in the sidebar tab list."
+  },
+  {
+   "name": "IDS_AUX_ORG_ITEM_CHANGED",
+   "text": "This item changed. Open its editor again.",
+   "desc": "Status message shown when an item changed while its editor was open."
+  },
+  {
+   "name": "IDS_AUX_ORG_KEEP_INDEPENDENT_COPY",
+   "text": "Keep independent copy",
+   "desc": "Menu item for a tab shared across windows: keep this window's copy separate."
+  },
+  {
+   "name": "IDS_AUX_ORG_CLOSE_VIEW",
+   "text": "Close this view",
+   "desc": "Menu item that closes this window's view of a shared tab."
+  },
+  {
+   "name": "IDS_AUX_RENAME_ELLIPSIS",
+   "text": "Rename…",
+   "desc": "Context menu item that opens the rename dialog."
+  },
+  {
+   "name": "IDS_AUX_ORG_NEW_FOLDER_INSIDE",
+   "text": "New folder inside…",
+   "desc": "Context menu item on a sidebar folder."
+  },
+  {
+   "name": "IDS_AUX_ORG_CLOSE_VIEW_UNLOAD",
+   "text": "Close this view (unload)",
+   "desc": "Context menu item that unloads a sidebar tab without removing it."
+  },
+  {
+   "name": "IDS_AUX_ORG_USE_SHARED_URL",
+   "text": "Use shared URL from another window",
+   "desc": "Menu item for a tab shared across windows: load the address another window navigated to."
+  },
+  {
+   "name": "IDS_AUX_ORG_MOVE_TO_THIS_SPACE",
+   "text": "Move to this Space",
+   "desc": "Context menu item that moves a pinned item into the current Space."
+  },
+  {
+   "name": "IDS_AUX_ORG_PIN_TO_ALL_SPACES",
+   "text": "Pin to all Spaces",
+   "desc": "Context menu item that pins an item so it shows in every Space."
+  },
+  {
+   "name": "IDS_AUX_ORG_ALL_SPACES_PINS",
+   "text": "All Spaces (Pins)",
+   "desc": "Move-to submenu item for the Pins section shared by all Spaces."
+  },
+  {
+   "name": "IDS_AUX_ORG_MOVE_TO",
+   "text": "Move to",
+   "desc": "Context submenu that lists Spaces and folders to move an item to."
+  },
+  {
+   "name": "IDS_AUX_ORG_KEEP_IN_SPACE",
+   "text": "Keep in this Space",
+   "desc": "Checkable context menu item."
+  },
+  {
+   "name": "IDS_AUX_ORG_CLOSE_EVERYWHERE",
+   "text": "Close tab everywhere (archive)",
+   "desc": "Context menu item that closes a shared tab in every window and archives it."
+  },
+  {
+   "name": "IDS_AUX_ORG_REMOVE_FOLDER_KEEP_CONTENTS",
+   "text": "Remove folder, keep contents",
+   "desc": "Context menu item on a sidebar folder."
+  },
+  {
+   "name": "IDS_AUX_ORG_ARCHIVE_FOLDER",
+   "text": "Archive folder and contents",
+   "desc": "Context menu item on a sidebar folder."
+  },
+  {
+   "name": "IDS_AUX_ORG_UNDO",
+   "text": "Undo organization change",
+   "desc": "Context menu item that undoes the last sidebar reorganization."
+  },
+  {
+   "name": "IDS_AUX_ORG_LIST_CHANGED_MENU",
+   "text": "The profile or tab list changed. Open the menu again.",
+   "desc": "Status message in the sidebar tab list."
+  },
+  {
+   "name": "IDS_AUX_ORG_REBIND_FAILED",
+   "text": "The page changed or could not be rebound. Its existing view was retained; check the tab list before retrying.",
+   "desc": "Status message in the sidebar tab list."
+  },
+  {
+   "name": "IDS_AUX_ORG_RECOVERY_RETAINED",
+   "text": "This recovery view has active work and was retained.",
+   "desc": "Status message in the sidebar tab list."
+  },
+  {
+   "name": "IDS_AUX_ORG_FOLDER_ARCHIVE_FAILED",
+   "text": "The folder archive could not be saved. Existing views were retained.",
+   "desc": "Status message in the sidebar tab list."
+  },
+  {
+   "name": "IDS_AUX_ORG_UNLOAD_BLOCKED",
+   "text": "This tab has active work and could not be unloaded.",
+   "desc": "Status message in the sidebar tab list."
+  },
+  {
+   "name": "IDS_AUX_ORG_URL_RETAINED",
+   "text": "This page changed or has active work. Its current URL was retained.",
+   "desc": "Status message in the sidebar tab list."
+  },
+  {
+   "name": "IDS_AUX_ORG_SHARED_CLOSE_FAILED",
+   "text": "The shared close could not be saved. Existing views were retained.",
+   "desc": "Status message in the sidebar tab list."
+  },
+  {
+   "name": "IDS_AUX_ORG_ICON_FIELD",
+   "text": "Icon",
+   "desc": "Label of the icon text field in the Space editor."
+  },
+  {
+   "name": "IDS_AUX_ORG_ICON_ACCESSIBLE",
+   "text": "Space icon or emoji",
+   "desc": "Accessible name of the icon text field in the Space editor."
+  },
+  {
+   "name": "IDS_AUX_ORG_ERROR_STALE",
+   "text": "Tabs changed. Please try again.",
+   "desc": "Error shown when the sidebar changed while saving."
+  },
+  {
+   "name": "IDS_AUX_ORG_ERROR_BUSY",
+   "text": "Saving changes. Please try again shortly.",
+   "desc": "Error shown while sidebar changes are still saving."
+  },
+  {
+   "name": "IDS_AUX_ORG_ERROR_PROTECTED_PIN",
+   "text": "Pinned items stay available. Unpin before archiving.",
+   "desc": "Error shown when the user archives a pinned item."
+  },
+  {
+   "name": "IDS_AUX_ORG_ERROR_CYCLE",
+   "text": "A folder cannot contain itself.",
+   "desc": "Error shown when a folder is dropped into itself."
+  },
+  {
+   "name": "IDS_AUX_ORG_ERROR_NOT_EMPTY",
+   "text": "Move this Space’s contents before removing it.",
+   "desc": "Error shown when the user removes a Space that is not empty."
+  },
+  {
+   "name": "IDS_AUX_ORG_ERROR_PROFILE_CHANGED",
+   "text": "The profile changed. Please try again.",
+   "desc": "Error shown in the sidebar."
+  },
+  {
+   "name": "IDS_AUX_ORG_ERROR_SAVE_FAILED",
+   "text": "Changes could not be saved. Your previous organization is retained.",
+   "desc": "Error shown in the sidebar."
+  },
+  {
+   "name": "IDS_AUX_ORG_ERROR_GENERIC",
+   "text": "This change could not be applied.",
+   "desc": "Error shown in the sidebar."
+  },
+  {
+   "name": "IDS_AUX_PINS",
+   "text": "Pins",
+   "desc": "Title of the sidebar section of items pinned to every Space."
+  },
+  {
+   "name": "IDS_AUX_TABS",
+   "text": "Tabs",
+   "desc": "Title of the sidebar Tabs section."
+  },
+  {
+   "name": "IDS_AUX_NEW_TAB",
+   "text": "New Tab",
+   "desc": "Row or command that opens a new tab."
+  },
+  {
+   "name": "IDS_AUX_SEARCH",
+   "text": "Search",
+   "desc": "Accessible name of the sidebar search button."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_SWITCH_FAILED_TITLE",
+   "text": "Couldn't switch profiles",
+   "desc": "Title of the warning shown when switching profiles fails."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_SWITCH_LOAD_FAILED",
+   "text": "The selected profile could not be loaded. Try selecting it again.",
+   "desc": "Message shown when switching profiles fails."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_WINDOWS_RESTORED_TITLE",
+   "text": "Profile windows restored",
+   "desc": "Title of the message shown after a profile's windows were restored separately."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_WINDOWS_RESTORED_BODY",
+   "text": "Aux restored this profile's saved windows separately, preserving their tabs and selections. Your original window and profile are unchanged.",
+   "desc": "Body of the message shown after a profile's windows were restored separately."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_SWITCH_UNSUPPORTED_SESSION",
+   "text": "This profile has an incomplete or unsupported saved window, or an app record without its required identity. Aux has preserved that session. Open the profile separately to recover it.",
+   "desc": "Message shown when switching profiles fails."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_SWITCH_PREPARE_FAILED",
+   "text": "The profile's saved workspace could not be prepared. Finish any pending profile activity, then try again or reopen Aux.",
+   "desc": "Message shown when switching profiles fails."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_SWITCH_BUSY",
+   "text": "Aux could not safely switch this window yet. Finish open dialogs or pending browser activity, then select the profile again.",
+   "desc": "Message shown when switching profiles fails."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_SWITCH_CLOSED",
+   "text": "The profile workspace was closed before preparation finished. Select the profile again to retry.",
+   "desc": "Message shown when switching profiles fails."
+  },
+  {
+   "name": "IDS_AUX_RECENT_FILES",
+   "text": "Recent files",
+   "desc": "Title of the sidebar section of recently downloaded or attached files."
+  },
+  {
+   "name": "IDS_AUX_EDIT_PROFILE",
+   "text": "Edit profile",
+   "desc": "Title of the dialog that renames a profile."
+  },
+  {
+   "name": "IDS_AUX_PROFILES",
+   "text": "Profiles",
+   "desc": "Caption above the list of profiles in the profile menu, and tooltip of the profile button."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ACTIONS",
+   "text": "Profile actions",
+   "desc": "Accessible name of the profile actions button."
+  },
+  {
+   "name": "IDS_AUX_NEW_PROFILE",
+   "text": "New profile",
+   "desc": "Profile menu row that creates a profile."
+  },
+  {
+   "name": "IDS_AUX_DOWNLOADS",
+   "text": "Downloads",
+   "desc": "Profile menu row that opens the downloads submenu."
+  },
+  {
+   "name": "IDS_AUX_EXTENSIONS",
+   "text": "Extensions",
+   "desc": "Profile menu row that opens the extensions submenu."
+  },
+  {
+   "name": "IDS_AUX_HISTORY",
+   "text": "History",
+   "desc": "Profile menu row that opens the history submenu."
+  },
+  {
+   "name": "IDS_AUX_DEVELOPERS",
+   "text": "Developers",
+   "desc": "Profile menu row that opens the developer tools submenu."
+  },
+  {
+   "name": "IDS_AUX_SETTINGS",
+   "text": "Settings",
+   "desc": "Menu row that opens Aux settings."
+  },
+  {
+   "name": "IDS_AUX_INCOGNITO_WINDOW",
+   "text": "Incognito Window",
+   "desc": "Profile menu row that opens an Incognito window."
+  },
+  {
+   "name": "IDS_AUX_SHOW_ALL_DOWNLOADS",
+   "text": "Show All Downloads",
+   "desc": "Downloads submenu item."
+  },
+  {
+   "name": "IDS_AUX_MANAGE_EXTENSIONS",
+   "text": "Manage Extensions",
+   "desc": "Extensions submenu item."
+  },
+  {
+   "name": "IDS_AUX_SHOW_FULL_HISTORY",
+   "text": "Show Full History",
+   "desc": "History submenu item."
+  },
+  {
+   "name": "IDS_AUX_CLEAR_BROWSING_DATA",
+   "text": "Clear Browsing Data…",
+   "desc": "History submenu item."
+  },
+  {
+   "name": "IDS_AUX_DEVELOPER_TOOLS",
+   "text": "Developer Tools",
+   "desc": "Developers submenu item."
+  },
+  {
+   "name": "IDS_AUX_JAVASCRIPT_CONSOLE",
+   "text": "JavaScript Console",
+   "desc": "Developers submenu item."
+  },
+  {
+   "name": "IDS_AUX_VIEW_SOURCE",
+   "text": "View Source",
+   "desc": "Developers submenu item that shows the page source."
+  },
+  {
+   "name": "IDS_AUX_TASK_MANAGER",
+   "text": "Task Manager",
+   "desc": "Developers submenu item."
+  },
+  {
+   "name": "IDS_AUX_ALL_BOOKMARKS",
+   "text": "All bookmarks",
+   "desc": "Bookmarks submenu item."
+  },
+  {
+   "name": "IDS_AUX_BOOKMARK_THIS_TAB",
+   "text": "Bookmark this tab",
+   "desc": "Bookmarks submenu item."
+  },
+  {
+   "name": "IDS_AUX_DELETE_PROFILE_BODY",
+   "text": "This profile will be removed from this device.",
+   "desc": "Body of the confirmation dialog before an unnamed profile is deleted."
+  },
+  {
+   "name": "IDS_AUX_DELETE_PROFILE_TITLE",
+   "text": "Delete profile?",
+   "desc": "Title of the confirmation dialog before a profile is deleted."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_INDICATOR_MENU",
+   "text": "Profile indicator menu",
+   "desc": "Accessible title of the menu opened from a profile's icon."
+  },
+  {
+   "name": "IDS_AUX_CHANGE_ICON",
+   "text": "Change Icon",
+   "desc": "Profile icon menu row that opens the icon picker."
+  },
+  {
+   "name": "IDS_AUX_SIGN_OUT",
+   "text": "Sign Out",
+   "desc": "Profile icon menu row that signs out of the profile's Aux account."
+  },
+  {
+   "name": "IDS_AUX_PROFILE",
+   "text": "Profile",
+   "desc": "Generic name of a profile when it has no name; also the profile button's accessible name."
+  },
+  {
+   "name": "IDS_AUX_SWITCH_PROFILE",
+   "text": "Switch profile",
+   "desc": "Accessible name of the button that switches profiles."
+  },
+  {
+   "name": "IDS_AUX_SIDEBAR_STATE_UNSUPPORTED",
+   "text": "Sidebar state cannot be restored by this native build.",
+   "desc": "Error shown when a saved sidebar layout cannot be restored."
+  },
+  {
+   "name": "IDS_AUX_UNTITLED_FOLDER",
+   "text": "Untitled folder",
+   "desc": "Name shown for a bookmark folder with no title."
+  },
+  {
+   "name": "IDS_AUX_BROWSE_MORE_SAVED_PAGES",
+   "text": "Browse additional saved pages",
+   "desc": "Row at the end of a long bookmarks list."
+  },
+  {
+   "name": "IDS_AUX_OPEN_BOOKMARKS",
+   "text": "Open bookmarks",
+   "desc": "Row at the end of the bookmarks list that opens the bookmark manager."
+  },
+  {
+   "name": "IDS_AUX_NO_SAVED_PAGES",
+   "text": "No saved pages yet.",
+   "desc": "Empty state of the sidebar Bookmarks section."
+  },
+  {
+   "name": "IDS_AUX_UNPIN_TAB",
+   "text": "Unpin Tab",
+   "desc": "Tab context menu item."
+  },
+  {
+   "name": "IDS_AUX_OPEN_ALL_IN_NEW_TABS",
+   "text": "Open all in new tabs",
+   "desc": "Bookmark folder context menu item."
+  },
+  {
+   "name": "IDS_AUX_OPEN_IN_NEW_TAB",
+   "text": "Open in new tab",
+   "desc": "Bookmark context menu item."
+  },
+  {
+   "name": "IDS_AUX_OPEN_ALL_IN_NEW_WINDOW",
+   "text": "Open all in new window",
+   "desc": "Bookmark folder context menu item."
+  },
+  {
+   "name": "IDS_AUX_OPEN_IN_NEW_WINDOW",
+   "text": "Open in new window",
+   "desc": "Bookmark context menu item."
+  },
+  {
+   "name": "IDS_AUX_UNPIN",
+   "text": "Unpin",
+   "desc": "Chat context menu item."
+  },
+  {
+   "name": "IDS_AUX_PIN",
+   "text": "Pin",
+   "desc": "Chat context menu item that pins the chat."
+  },
+  {
+   "name": "IDS_AUX_DELETE_SAVED_FOLDER_TITLE",
+   "text": "Delete this saved folder?",
+   "desc": "Title of the confirmation dialog before a bookmark folder is deleted."
+  },
+  {
+   "name": "IDS_AUX_DELETE_SAVED_PAGE_TITLE",
+   "text": "Delete this saved page?",
+   "desc": "Title of the confirmation dialog before a bookmark is deleted."
+  },
+  {
+   "name": "IDS_AUX_DELETE_SAVED_FOLDER_BODY",
+   "text": "The folder and its saved pages will be removed from this profile.",
+   "desc": "Body of the confirmation dialog before a bookmark folder is deleted."
+  },
+  {
+   "name": "IDS_AUX_DELETE_SAVED_PAGE_BODY",
+   "text": "This saved page will be removed from this profile.",
+   "desc": "Body of the confirmation dialog before a bookmark is deleted."
+  },
+  {
+   "name": "IDS_AUX_AGENT_ACTIVITY",
+   "text": "Agent activity",
+   "desc": "Tooltip and accessible name of the sidebar button that shows what the Aux agent is doing."
+  },
+  {
+   "name": "IDS_AUX_SEARCH_TABS",
+   "text": "Search tabs",
+   "desc": "Tooltip and accessible name of the sidebar tab search button."
+  },
+  {
+   "name": "IDS_AUX_SPACE",
+   "text": "Space",
+   "desc": "Default label of the Space selector button. A Space is a named set of tabs, like a workspace."
+  },
+  {
+   "name": "IDS_AUX_SWITCH_SPACE",
+   "text": "Switch Space",
+   "desc": "Tooltip of the Space selector button."
+  },
+  {
+   "name": "IDS_AUX_CREATE_SPACE",
+   "text": "Create a Space",
+   "desc": "Tooltip of the button that creates a Space."
+  },
+  {
+   "name": "IDS_AUX_CHOOSE_SPACE",
+   "text": "Choose Space",
+   "desc": "Label of the Space selector when no Space is active."
+  },
+  {
+   "name": "IDS_AUX_NEW_SPACE_ELLIPSIS",
+   "text": "New Space…",
+   "desc": "Space menu item."
+  },
+  {
+   "name": "IDS_AUX_EDIT_SPACE_ELLIPSIS",
+   "text": "Edit Space…",
+   "desc": "Space menu item."
+  },
+  {
+   "name": "IDS_AUX_REMOVE_EMPTY_SPACE",
+   "text": "Remove empty Space",
+   "desc": "Space menu item."
+  },
+  {
+   "name": "IDS_AUX_NEW_FOLDER_IN_SPACE",
+   "text": "New folder in this Space…",
+   "desc": "Space menu item."
+  },
+  {
+   "name": "IDS_AUX_NEW_PINNED_FOLDER_ELLIPSIS",
+   "text": "New pinned folder…",
+   "desc": "Space menu item that creates a folder in the Pins section shared by all Spaces."
+  },
+  {
+   "name": "IDS_AUX_SPACE_LIST_CHANGED",
+   "text": "The profile or tab list changed. Open the Space menu again.",
+   "desc": "Tooltip shown when the Space menu is stale."
+  },
+  {
+   "name": "IDS_AUX_NEW_SPACE",
+   "text": "New Space",
+   "desc": "Title of the dialog that creates a Space."
+  },
+  {
+   "name": "IDS_AUX_EDIT_SPACE",
+   "text": "Edit Space",
+   "desc": "Title of the dialog that edits a Space."
+  },
+  {
+   "name": "IDS_AUX_SPACE_CHANGED",
+   "text": "This Space changed. Open its editor again.",
+   "desc": "Tooltip shown when a Space changed while its editor was open."
+  },
+  {
+   "name": "IDS_AUX_NEW_PINNED_FOLDER",
+   "text": "New pinned folder",
+   "desc": "Title of the dialog that creates a folder in the Pins section."
+  },
+  {
+   "name": "IDS_AUX_COMMAND_INPUT",
+   "text": "Command input",
+   "desc": "Accessible name of the text field in the command bar."
+  },
+  {
+   "name": "IDS_AUX_COMMAND_PLACEHOLDER",
+   "text": "Search commands, tabs or enter a URL",
+   "desc": "Placeholder of the command bar text field."
+  },
+  {
+   "name": "IDS_AUX_SEARCH_OR_TYPE_URL",
+   "text": "Search or type a URL",
+   "desc": "Placeholder of the address bar and the command bar."
+  },
+  {
+   "name": "IDS_AUX_TIDY_CURRENT_SPACE",
+   "text": "Tidy current Space",
+   "desc": "Menu item: organize the current Space's tabs with AI."
+  },
+  {
+   "name": "IDS_AUX_TIDY_SELECTED_TABS",
+   "text": "Tidy selected tabs",
+   "desc": "Menu item: organize the selected tabs with AI."
+  },
+  {
+   "name": "IDS_AUX_CLEAR_TABS_TITLE",
+   "text": "Clear tabs?",
+   "desc": "Title of the confirmation dialog before tabs are closed."
+  },
+  {
+   "name": "IDS_AUX_CLEAR_TABS_BODY",
+   "text": "This will close all other tabs except AI tabs.",
+   "desc": "Body of the confirmation dialog before tabs are closed."
+  },
+  {
+   "name": "IDS_AUX_ORGANIZING_TABS",
+   "text": "Organizing tabs",
+   "desc": "Accessible name of the Tidy button while it works."
+  },
+  {
+   "name": "IDS_AUX_TIDY",
+   "text": "Tidy",
+   "desc": "Button in the sidebar Tabs section that organizes tabs with AI."
+  },
+  {
+   "name": "IDS_AUX_TIDY_TOOLTIP",
+   "text": "Organize tabs with AI",
+   "desc": "Tooltip of the Tidy button."
+  },
+  {
+   "name": "IDS_AUX_TASK_DETAILS",
+   "text": "Task details",
+   "desc": "Title of the task review bubble when the action has no title."
+  },
+  {
+   "name": "IDS_AUX_DENY",
+   "text": "Deny",
+   "desc": "Button that rejects an action the agent asked to take."
+  },
+  {
+   "name": "IDS_AUX_APPROVE",
+   "text": "Approve",
+   "desc": "Button that allows an action the agent asked to take."
+  },
+  {
+   "name": "IDS_AUX_ANSWER",
+   "text": "Answer",
+   "desc": "Button that opens the agent's question so the user can answer."
+  },
+  {
+   "name": "IDS_AUX_REVIEW",
+   "text": "Review",
+   "desc": "Button that opens a draft the agent wants approved."
+  },
+  {
+   "name": "IDS_AUX_OPEN_CONVERSATION",
+   "text": "Open conversation",
+   "desc": "Button that opens the agent conversation for a task."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_PAUSED",
+   "text": "Paused",
+   "desc": "Label on the profile button when the profile's Aux account sign-in is paused."
+  },
+  {
+   "name": "IDS_AUX_BOOKMARKS_EMPTY",
+   "text": "Drag tabs here to add bookmarks",
+   "desc": "Empty state of the bookmarks list."
+  },
+  {
+   "name": "IDS_AUX_MANAGE_BOOKMARKS",
+   "text": "Manage Bookmarks",
+   "desc": "Bookmark folder context menu item."
+  },
+  {
+   "name": "IDS_AUX_OPEN_IN_INCOGNITO",
+   "text": "Open in Incognito window",
+   "desc": "Bookmark context menu item."
+  },
+  {
+   "name": "IDS_AUX_OPEN_IN_NEW_TAB_GROUP",
+   "text": "Open in new tab group",
+   "desc": "Bookmark context menu item."
+  },
+  {
+   "name": "IDS_AUX_OPEN_IN_SPLIT_VIEW",
+   "text": "Open in split view",
+   "desc": "Bookmark context menu item."
+  },
+  {
+   "name": "IDS_AUX_RENAME_FOLDER",
+   "text": "Rename Folder",
+   "desc": "Title of the dialog that renames a bookmark folder."
+  },
+  {
+   "name": "IDS_AUX_EDIT_BOOKMARK",
+   "text": "Edit Bookmark",
+   "desc": "Title of the dialog that edits a bookmark."
+  },
+  {
+   "name": "IDS_AUX_FOLDER_NAME",
+   "text": "Folder name",
+   "desc": "Accessible name of the folder name text field."
+  },
+  {
+   "name": "IDS_AUX_URL_FIELD",
+   "text": "URL",
+   "desc": "Accessible name of the bookmark address text field."
+  },
+  {
+   "name": "IDS_AUX_DELETE_FOLDER_BODY",
+   "text": "Delete this folder and everything inside it?",
+   "desc": "Body of the confirmation dialog before an unnamed bookmark folder is deleted."
+  },
+  {
+   "name": "IDS_AUX_DELETE_BOOKMARK_BODY",
+   "text": "Delete this bookmark?",
+   "desc": "Body of the confirmation dialog before an unnamed bookmark is deleted."
+  },
+  {
+   "name": "IDS_AUX_DELETE_FOLDER",
+   "text": "Delete Folder",
+   "desc": "Title of the confirmation dialog before a bookmark folder is deleted."
+  },
+  {
+   "name": "IDS_AUX_DELETE_BOOKMARK",
+   "text": "Delete Bookmark",
+   "desc": "Title of the confirmation dialog before a bookmark is deleted."
+  },
+  {
+   "name": "IDS_AUX_SPLIT_NARROW_CONTROLS",
+   "text": "Narrow split presentation",
+   "desc": "Accessible name of the controls shown when split view panes are too narrow to show side by side."
+  },
+  {
+   "name": "IDS_AUX_SPLIT_FOCUS",
+   "text": "Focus",
+   "desc": "Short button label: show only the selected split view pane."
+  },
+  {
+   "name": "IDS_AUX_SPLIT_FOCUS_SELECTED_ACCESSIBLE",
+   "text": "Focus selected split pane",
+   "desc": "Accessible name of the split view Focus button."
+  },
+  {
+   "name": "IDS_AUX_SPLIT_FOCUS_TOOLTIP",
+   "text": "Split panes do not fit. Show one pane without closing the others.",
+   "desc": "Tooltip of the split view Focus button."
+  },
+  {
+   "name": "IDS_AUX_SPLIT_PREVIOUS",
+   "text": "Select previous split pane",
+   "desc": "Button that selects the previous split view pane."
+  },
+  {
+   "name": "IDS_AUX_SPLIT_NEXT",
+   "text": "Select next split pane",
+   "desc": "Button that selects the next split view pane."
+  },
+  {
+   "name": "IDS_AUX_SPLIT_SHOW_ALL",
+   "text": "Show all panes",
+   "desc": "Accessible name of the split view button when one pane is focused."
+  },
+  {
+   "name": "IDS_AUX_SPLIT_FOCUS_SELECTED",
+   "text": "Focus selected pane",
+   "desc": "Accessible name of the split view button when all panes are shown."
+  },
+  {
+   "name": "IDS_AUX_SPLIT_ALL",
+   "text": "All",
+   "desc": "Short button label: show all split view panes again."
+  },
+  {
+   "name": "IDS_AUX_AGENT_GROUP_TOOLTIP",
+   "text": "Tabs controlled by Aux while it works",
+   "desc": "Tooltip of the tab group that holds tabs the Aux agent is using."
+  },
+  {
+   "name": "IDS_AUX_SYNCING",
+   "text": "Syncing...",
+   "desc": "Label in the sidebar while bookmarks and tabs sync."
+  },
+  {
+   "name": "IDS_AUX_ASK_AUX",
+   "text": "Ask Aux",
+   "desc": "Toolbar button that opens the Aux agent side panel."
+  },
+  {
+   "name": "IDS_AUX_AGENT_STOPPED_TITLE",
+   "text": "Aux's agent stopped",
+   "desc": "Title of the dialog shown when Aux's background agent stops unexpectedly."
+  },
+  {
+   "name": "IDS_AUX_AGENT_STOPPED_MESSAGE",
+   "text": "Browsing still works, but the agent stopped unexpectedly. Restart Aux to bring it back? Your tabs will reopen.",
+   "desc": "Body of the dialog shown when Aux's background agent stops unexpectedly. Yes restarts Aux."
+  },
+  {
+   "name": "IDS_AUX_BOOKMARK_DRAG_REMOVE_NAMED",
+   "text": "Remove bookmark: <ph name=\"TITLE\">$1<ex>Example Domain</ex></ph>",
+   "desc": "Hint shown while dragging a named bookmark out of the bookmarks list."
+  },
+  {
+   "name": "IDS_AUX_BOOKMARK_DRAG_ADD_NAMED",
+   "text": "Add to bookmarks: <ph name=\"TITLE\">$1<ex>Example Domain</ex></ph>",
+   "desc": "Hint shown while dragging a named tab into the bookmarks list."
+  },
+  {
+   "name": "IDS_AUX_SHARED_URL_LINE",
+   "text": "Shared URL: <ph name=\"URL\">$1<ex>https://example.com/</ex></ph>",
+   "desc": "Tooltip line for a tab shared across windows: the address another window navigated to."
+  },
+  {
+   "name": "IDS_AUX_SHARED_UPDATE_HINT",
+   "text": "Updated in another window. Right-click to use the shared URL or keep an independent copy.",
+   "desc": "Tooltip line for a tab another window navigated."
+  },
+  {
+   "name": "IDS_AUX_CLOSED_FROM_SHARED_LIST",
+   "text": "Closed from the shared list. This window's page and history were retained. Right-click to keep an independent copy or close this view.",
+   "desc": "Tooltip line for a tab that another window closed."
+  },
+  {
+   "name": "IDS_AUX_SWITCH_TO_PROFILE",
+   "text": "Switch to <ph name=\"PROFILE_NAME\">$1<ex>Work</ex></ph>",
+   "desc": "Accessible name of a profile dot in the sidebar."
+  },
+  {
+   "name": "IDS_AUX_RECENT_FILE_UNAVAILABLE",
+   "text": "<ph name=\"FILE_NAME\">$1<ex>report.pdf</ex></ph> — unavailable",
+   "desc": "Label of a recent file that no longer exists."
+  },
+  {
+   "name": "IDS_AUX_RECENT_FILE_TOOLTIP",
+   "text": "<ph name=\"FILE_NAME\">$1<ex>report.pdf</ex></ph> — drag to attach; click to show in Finder",
+   "desc": "Tooltip of a recent file in the sidebar."
+  },
+  {
+   "name": "IDS_AUX_RECENT_FILE_UNAVAILABLE_TOOLTIP",
+   "text": "<ph name=\"FILE_NAME\">$1<ex>report.pdf</ex></ph> — unavailable. Select or download this file again.",
+   "desc": "Tooltip of a recent file that no longer exists."
+  },
+  {
+   "name": "IDS_AUX_NEW_PROFILE_DEFAULT_NAME",
+   "text": "Profile <ph name=\"NUMBER\">$1<ex>2</ex></ph>",
+   "desc": "Default name of a new profile."
+  },
+  {
+   "name": "IDS_AUX_DELETE_NAMED_PROFILE_BODY",
+   "text": "\"<ph name=\"PROFILE_NAME\">$1<ex>Work</ex></ph>\" will be removed from this device.",
+   "desc": "Body of the confirmation dialog before a named profile is deleted."
+  },
+  {
+   "name": "IDS_AUX_SPACE_ACCESSIBLE_NAME",
+   "text": "Space: <ph name=\"SPACE_NAME\">$1<ex>Work</ex></ph>",
+   "desc": "Accessible name of the Space selector button."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_PAUSED_ACCESSIBLE",
+   "text": "<ph name=\"PROFILE_NAME\">$1<ex>Work</ex></ph>, Paused",
+   "desc": "Accessible name of the profile button when the Aux account sign-in is paused."
+  },
+  {
+   "name": "IDS_AUX_DELETE_NAMED_FOLDER_BODY",
+   "text": "Delete \"<ph name=\"FOLDER_NAME\">$1<ex>Reading</ex></ph>\" and everything inside it?",
+   "desc": "Body of the confirmation dialog before a named bookmark folder is deleted."
+  },
+  {
+   "name": "IDS_AUX_DELETE_NAMED_BOOKMARK_BODY",
+   "text": "Delete \"<ph name=\"BOOKMARK_NAME\">$1<ex>Example Domain</ex></ph>\"?",
+   "desc": "Body of the confirmation dialog before a named bookmark is deleted."
+  },
+  {
+   "name": "IDS_AUX_SPLIT_PANE_POSITION",
+   "text": "<ph name=\"ACTION\">$1<ex>Show all panes</ex></ph> (pane <ph name=\"INDEX\">$2<ex>1</ex></ph> of <ph name=\"COUNT\">$3<ex>3</ex></ph>)",
+   "desc": "Accessible name of the split view button with the selected pane position."
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_SUN",
+   "text": "Sun",
+   "desc": "Name of the \"sun\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_MOON",
+   "text": "Moon",
+   "desc": "Name of the \"moon\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_CLOUD",
+   "text": "Cloud",
+   "desc": "Name of the \"cloud\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_ZAP",
+   "text": "Zap",
+   "desc": "Name of the \"zap\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_HEART",
+   "text": "Heart",
+   "desc": "Name of the \"heart\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_FLAME",
+   "text": "Flame",
+   "desc": "Name of the \"flame\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_STAR",
+   "text": "Star",
+   "desc": "Name of the \"star\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_MAGIC_WAND",
+   "text": "Magic wand",
+   "desc": "Name of the \"magic wand\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_THUMBS_UP",
+   "text": "Thumbs up",
+   "desc": "Name of the \"thumbs up\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_DIAMOND",
+   "text": "Diamond",
+   "desc": "Name of the \"diamond\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_BOOK",
+   "text": "Book",
+   "desc": "Name of the \"book\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_MAGIC_BOOK",
+   "text": "Magic book",
+   "desc": "Name of the \"magic book\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_HOURGLASS",
+   "text": "Hourglass",
+   "desc": "Name of the \"hourglass\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_CLOCK",
+   "text": "Clock",
+   "desc": "Name of the \"clock\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_SMILE",
+   "text": "Smile",
+   "desc": "Name of the \"smile\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_SLIME",
+   "text": "Slime",
+   "desc": "Name of the \"slime\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_LOCK",
+   "text": "Lock",
+   "desc": "Name of the \"lock\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_MAP_PIN",
+   "text": "Map pin",
+   "desc": "Name of the \"map pin\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_PIN",
+   "text": "Pin",
+   "desc": "Name of the \"pin\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_TAG",
+   "text": "Tag",
+   "desc": "Name of the \"tag\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_FLAG",
+   "text": "Flag",
+   "desc": "Name of the \"flag\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_SHOPPING_BAG",
+   "text": "Shopping bag",
+   "desc": "Name of the \"shopping bag\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_SUITCASE",
+   "text": "Suitcase",
+   "desc": "Name of the \"suitcase\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_BANKNOTE",
+   "text": "Banknote",
+   "desc": "Name of the \"banknote\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_TELESCOPE",
+   "text": "Telescope",
+   "desc": "Name of the \"telescope\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_TROPHY",
+   "text": "Trophy",
+   "desc": "Name of the \"trophy\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_ROCKET",
+   "text": "Rocket",
+   "desc": "Name of the \"rocket\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_TICKET",
+   "text": "Ticket",
+   "desc": "Name of the \"ticket\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_CAMERA",
+   "text": "Camera",
+   "desc": "Name of the \"camera\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_FOLDER",
+   "text": "Folder",
+   "desc": "Name of the \"folder\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_BOOKMARK",
+   "text": "Bookmark",
+   "desc": "Name of the \"bookmark\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_PENCIL",
+   "text": "Pencil",
+   "desc": "Name of the \"pencil\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_WRITE",
+   "text": "Write",
+   "desc": "Name of the \"write\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_BRUSH",
+   "text": "Brush",
+   "desc": "Name of the \"brush\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_PALETTE",
+   "text": "Palette",
+   "desc": "Name of the \"palette\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_HALF_CIRCLE",
+   "text": "Half circle",
+   "desc": "Name of the \"half circle\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_ATOM",
+   "text": "Atom",
+   "desc": "Name of the \"atom\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_HEADPHONES",
+   "text": "Headphones",
+   "desc": "Name of the \"headphones\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_BELL",
+   "text": "Bell",
+   "desc": "Name of the \"bell\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_EMAIL",
+   "text": "Email",
+   "desc": "Name of the \"email\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_CHART",
+   "text": "Chart",
+   "desc": "Name of the \"chart\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_CIRCLE",
+   "text": "Circle",
+   "desc": "Name of the \"circle\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_SQUARE",
+   "text": "Square",
+   "desc": "Name of the \"square\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_FLOWER",
+   "text": "Flower",
+   "desc": "Name of the \"flower\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_CURSOR",
+   "text": "Cursor",
+   "desc": "Name of the \"cursor\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_CONSOLE",
+   "text": "Console",
+   "desc": "Name of the \"console\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  },
+  {
+   "name": "IDS_AUX_PROFILE_ICON_BUBBLE",
+   "text": "Bubble",
+   "desc": "Name of the \"bubble\" profile icon, read as its tooltip and accessible name in the icon picker.",
+   "meaning": "Profile icon name"
+  }
+ ],
+ "icons": [
+  "Sun",
+  "Moon",
+  "Cloud",
+  "Zap",
+  "Heart",
+  "Flame",
+  "Star",
+  "Magic wand",
+  "Thumbs up",
+  "Diamond",
+  "Book",
+  "Magic book",
+  "Hourglass",
+  "Clock",
+  "Smile",
+  "Slime",
+  "Lock",
+  "Map pin",
+  "Pin",
+  "Tag",
+  "Flag",
+  "Shopping bag",
+  "Suitcase",
+  "Banknote",
+  "Telescope",
+  "Trophy",
+  "Rocket",
+  "Ticket",
+  "Camera",
+  "Folder",
+  "Bookmark",
+  "Pencil",
+  "Write",
+  "Brush",
+  "Palette",
+  "Half circle",
+  "Atom",
+  "Headphones",
+  "Bell",
+  "Email",
+  "Chart",
+  "Circle",
+  "Square",
+  "Flower",
+  "Cursor",
+  "Console",
+  "Bubble"
+ ],
+ "special": [
+  {
+   "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+   "find": "  return (detached ? u\"Remove bookmark: \" : u\"Add to bookmarks: \") + title;",
+   "replace": "  return l10n_util::GetStringFUTF16(detached ? IDS_AUX_BOOKMARK_DRAG_REMOVE_NAMED\n                                             : IDS_AUX_BOOKMARK_DRAG_ADD_NAMED,\n                                    title);"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+   "find": "SetTooltipText(base::UTF8ToUTF16(shown.current_url) + u\"\\nShared URL: \" + base::UTF8ToUTF16(entry.current_url) +\n            u\"\\nUpdated in another window. Right-click to use the shared URL or keep an independent copy.\");",
+   "replace": "SetTooltipText(base::UTF8ToUTF16(shown.current_url) + u\"\\n\" +\n            l10n_util::GetStringFUTF16(IDS_AUX_SHARED_URL_LINE,\n                                       base::UTF8ToUTF16(entry.current_url)) +\n            u\"\\n\" + l10n_util::GetStringUTF16(IDS_AUX_SHARED_UPDATE_HINT));"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+   "find": "row->SetTooltipText(base::UTF8ToUTF16(recovery.current_url) +\n              u\"\\nClosed from the shared list. This window's page and history were retained. Right-click to keep an independent copy or close this view.\");",
+   "replace": "row->SetTooltipText(base::UTF8ToUTF16(recovery.current_url) + u\"\\n\" +\n              l10n_util::GetStringUTF16(IDS_AUX_CLOSED_FROM_SHARED_LIST));"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+   "find": "button->GetViewAccessibility().SetName(u\"Switch to \" + label);",
+   "replace": "button->GetViewAccessibility().SetName(\n        l10n_util::GetStringFUTF16(IDS_AUX_SWITCH_TO_PROFILE, label));"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+   "find": "std::make_unique<views::Label>(available_ ? name : name + u\" — unavailable\"));",
+   "replace": "std::make_unique<views::Label>(\n        available_ ? name\n                   : l10n_util::GetStringFUTF16(IDS_AUX_RECENT_FILE_UNAVAILABLE, name)));"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+   "find": "SetTooltipText(available_ ? name + u\" — drag to attach; click to show in Finder\"\n                             : name + u\" — unavailable. Select or download this file again.\");",
+   "replace": "SetTooltipText(l10n_util::GetStringFUTF16(\n        available_ ? IDS_AUX_RECENT_FILE_TOOLTIP\n                   : IDS_AUX_RECENT_FILE_UNAVAILABLE_TOOLTIP,\n        name));"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+   "find": "GetViewAccessibility().SetName(available_ ? name : name + u\" — unavailable\");",
+   "replace": "GetViewAccessibility().SetName(\n        available_ ? name\n                   : l10n_util::GetStringFUTF16(IDS_AUX_RECENT_FILE_UNAVAILABLE, name));"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+   "find": "name = u\"Profile \" + base::NumberToString16(index);",
+   "replace": "name = l10n_util::GetStringFUTF16(IDS_AUX_NEW_PROFILE_DEFAULT_NAME,\n                                      base::NumberToString16(index));"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+   "find": ": u\"\\\"\" + name + u\"\\\" will be removed from this device.\";",
+   "replace": ": l10n_util::GetStringFUTF16(\n                         IDS_AUX_DELETE_NAMED_PROFILE_BODY, name);"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+   "find": "std::u16string(icon.label)",
+   "replace": "l10n_util::GetStringUTF16(icon.label_id)",
+   "count": 2
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+   "find": "SetName(u\"Space: \" + base::UTF8ToUTF16(space.name));",
+   "replace": "SetName(l10n_util::GetStringFUTF16(\n          IDS_AUX_SPACE_ACCESSIBLE_NAME, base::UTF8ToUTF16(space.name)));"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+   "find": "    accessible += u\", Paused\";",
+   "replace": "    accessible = l10n_util::GetStringFUTF16(IDS_AUX_PROFILE_PAUSED_ACCESSIBLE,\n                                            accessible);"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+   "find": ": u\"Delete \\\"\" + node->GetTitle() + u\"\\\" and everything inside it?\";",
+   "replace": ": l10n_util::GetStringFUTF16(IDS_AUX_DELETE_NAMED_FOLDER_BODY,\n                                         node->GetTitle());"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+   "find": ": u\"Delete \\\"\" + node->GetTitle() + u\"\\\"?\";",
+   "replace": ": l10n_util::GetStringFUTF16(\n                                          IDS_AUX_DELETE_NAMED_BOOKMARK_BODY,\n                                          node->GetTitle());"
+  },
+  {
+   "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+   "find": "narrow_focus_button_->SetAccessibleName(label + u\" (pane \" +\n      base::UTF8ToUTF16(std::to_string(active_index_ + 1)) + u\" of \" +\n      base::UTF8ToUTF16(std::to_string(pane_count_)) + u\")\");",
+   "replace": "narrow_focus_button_->SetAccessibleName(l10n_util::GetStringFUTF16(\n      IDS_AUX_SPLIT_PANE_POSITION, label,\n      base::UTF8ToUTF16(std::to_string(active_index_ + 1)),\n      base::UTF8ToUTF16(std::to_string(pane_count_))));"
+  },
+  {
+   "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+   "find": "? u\"\\nShared URL: \" + base::UTF8ToUTF16(entry.saved.url.spec()) +\n            u\"\\nUpdated in another window. Right-click to use the shared URL or keep an independent copy.\"",
+   "replace": "? u\"\\n\" +\n              l10n_util::GetStringFUTF16(IDS_AUX_SHARED_URL_LINE,\n                                         base::UTF8ToUTF16(entry.saved.url.spec())) +\n              u\"\\n\" + l10n_util::GetStringUTF16(IDS_AUX_SHARED_UPDATE_HINT)"
+  },
+  {
+   "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h",
+   "find": "  std::u16string_view label;",
+   "replace": "  int label_id;  // Message ID of the icon name."
+  }
+ ],
+ "icon_file": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+ "skipped": {
+  "Aux Tasks": "Name of the bookmark folder that stores agent tasks; it is matched by name, so it stays a fixed identifier.",
+  "Aux": "Product name in the location bar.",
+  "png, jpg, jpeg, gif, webp, heic, heif, avif, tif, tiff, bmp, svg, mov, mp4, m4v, webm, mkv, avi": "File extensions, not UI text."
+ }
+}

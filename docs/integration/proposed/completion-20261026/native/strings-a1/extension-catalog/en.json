@@ -1,0 +1,2732 @@
+{
+ "common.cancel": {
+  "message": "Cancel",
+  "description": "Button: dismiss a dialog without changing anything. Used on many surfaces.",
+  "source": "assets/import-browser-DwQpkFpc.js",
+  "anchor": "children:\"Cancel\""
+ },
+ "common.delete": {
+  "message": "Delete",
+  "description": "Button: permanently delete an item. Used on many surfaces.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "action:\"Delete\""
+ },
+ "common.retry": {
+  "message": "Retry",
+  "description": "Button: try a failed load again.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "children:\"Retry\""
+ },
+ "common.try_again": {
+  "message": "Try again",
+  "description": "Button: retry after an error.",
+  "source": "assets/model-select-BvZsM1Kl.js",
+  "anchor": "children:\"Try again\""
+ },
+ "common.close": {
+  "message": "Close",
+  "description": "Button or tooltip: close a panel or dialog.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "label:\"Close\""
+ },
+ "common.back": {
+  "message": "Back",
+  "description": "Button: go to the previous step.",
+  "source": "assets/import-browser-DwQpkFpc.js",
+  "anchor": "children:\"Back\""
+ },
+ "common.next": {
+  "message": "Next",
+  "description": "Button: go to the next step.",
+  "source": "assets/import-browser-DwQpkFpc.js",
+  "anchor": "children:\"Next\""
+ },
+ "common.skip": {
+  "message": "Skip",
+  "description": "Button: skip an onboarding step.",
+  "source": "assets/import-browser-DwQpkFpc.js",
+  "anchor": "children:\"Skip\""
+ },
+ "common.continue": {
+  "message": "Continue",
+  "description": "Button: continue to the next step.",
+  "source": "assets/use-browser-importer-GNOc7eYC.js",
+  "anchor": "children:\"Continue\""
+ },
+ "common.save": {
+  "message": "Save",
+  "description": "Button: save changes.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Save\""
+ },
+ "common.rename": {
+  "message": "Rename",
+  "description": "Menu item: rename the item.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Rename\""
+ },
+ "common.archive": {
+  "message": "Archive",
+  "description": "Menu item or button: archive a chat (glossary: Archive).",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "action:\"Archive\""
+ },
+ "common.share": {
+  "message": "Share",
+  "description": "Menu item: share a chat via link.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Share\""
+ },
+ "common.send": {
+  "message": "Send",
+  "description": "Button: send a message or instruction.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "children:\"Send\""
+ },
+ "common.confirm": {
+  "message": "Confirm",
+  "description": "Button: confirm the pending agent action.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "children:\"Confirm\""
+ },
+ "common.allow": {
+  "message": "Allow",
+  "description": "Button: allow the agent to perform an action.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "label:\"Allow\""
+ },
+ "common.deny": {
+  "message": "Deny",
+  "description": "Button: refuse the agent action (glossary: Deny).",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "label:\"Deny\""
+ },
+ "common.open": {
+  "message": "Open",
+  "description": "Button: open the selected item.",
+  "source": "assets/tabsearch-3k_2hgil.js",
+  "anchor": "actionLabel:\"Open\""
+ },
+ "common.settings": {
+  "message": "Settings",
+  "description": "Button or link: open Aux settings (glossary: Settings).",
+  "source": "assets/sidebar-Cj9gldy1.js",
+  "anchor": "children:\"Settings\""
+ },
+ "common.copy": {
+  "message": "Copy",
+  "description": "Button: copy to the clipboard.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "ck:n,tooltip:\"Copy\",chil"
+ },
+ "common.copied": {
+  "message": "Copied",
+  "description": "Status after copying to the clipboard.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"Copied\""
+ },
+ "common.edit": {
+  "message": "Edit",
+  "description": "Button: edit the item.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Edit\""
+ },
+ "common.remove": {
+  "message": "Remove",
+  "description": "Button: remove the item.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "content:\"Remove\""
+ },
+ "common.stop": {
+  "message": "Stop",
+  "description": "Button: stop the running agent task.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Stop\""
+ },
+ "common.done": {
+  "message": "Done",
+  "description": "Button: finish and close.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Done\""
+ },
+ "common.add": {
+  "message": "Add",
+  "description": "Button: add an item to a list.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Add\""
+ },
+ "common.create": {
+  "message": "Create",
+  "description": "Button: create a new item.",
+  "source": "assets/projects-D_csJvC9.js",
+  "anchor": "title:\"Create\""
+ },
+ "common.apply": {
+  "message": "Apply",
+  "description": "Button: apply the chosen settings.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "\"Apply\""
+ },
+ "common.search_ellipsis": {
+  "message": "Search…",
+  "description": "Placeholder in a search field.",
+  "source": "assets/sidebar-Cj9gldy1.js",
+  "anchor": "placeholder:\"Search…\""
+ },
+ "common.load_more": {
+  "message": "Load more",
+  "description": "Button at the end of a list: load older items.",
+  "source": "assets/-components-4o0FSqQ9.js",
+  "anchor": "children:\"Load more\""
+ },
+ "sidebar.chats": {
+  "message": "Chats",
+  "description": "Sidebar section heading listing chats (glossary: Chats).",
+  "source": "assets/sidebar-Cj9gldy1.js",
+  "anchor": "children:\"Chats\""
+ },
+ "sidebar.close": {
+  "message": "Close sidebar",
+  "description": "Tooltip/aria-label: hide the chat sidebar.",
+  "source": "assets/sidebar-Cj9gldy1.js",
+  "anchor": "\"aria-label\":\"Close sidebar\""
+ },
+ "sidebar.new_chat": {
+  "message": "New chat",
+  "description": "Button: start a new chat (glossary: New Chat).",
+  "source": "assets/sidebar-Cj9gldy1.js",
+  "anchor": "children:\"New chat\""
+ },
+ "sidebar.projects": {
+  "message": "Projects",
+  "description": "Sidebar section heading listing projects.",
+  "source": "assets/sidebar-Cj9gldy1.js",
+  "anchor": "children:\"Projects\""
+ },
+ "sidebar.search_chats": {
+  "message": "Search chats",
+  "description": "Button/aria-label: search through chats.",
+  "source": "assets/sidebar-Cj9gldy1.js",
+  "anchor": "\"aria-label\":\"Search chats\""
+ },
+ "sidebar.toggle": {
+  "message": "Toggle sidebar",
+  "description": "Tooltip/aria-label: show or hide the chat sidebar.",
+  "source": "assets/sidebar-Cj9gldy1.js",
+  "anchor": "\"aria-label\":\"Toggle sidebar\""
+ },
+ "sidepanel.new_session": {
+  "message": "New Session",
+  "description": "Side panel header button: start a new agent session.",
+  "source": "assets/sidepanel-CI-CbXmY.js",
+  "anchor": "title:\"New Session\""
+ },
+ "sidepanel.close": {
+  "message": "Close side panel",
+  "description": "Tooltip: close the side panel.",
+  "source": "assets/-components-4o0FSqQ9.js",
+  "anchor": "content:\"Close side panel\""
+ },
+ "sidepanel.loading_sessions": {
+  "message": "Loading sessions...",
+  "description": "Status while the session list loads.",
+  "source": "assets/-components-4o0FSqQ9.js",
+  "anchor": "children:\"Loading sessions...\""
+ },
+ "sidepanel.new_session_lower": {
+  "message": "New session",
+  "description": "Menu item: start a new agent session.",
+  "source": "assets/-components-4o0FSqQ9.js",
+  "anchor": "\"aria-label\":\"New session\""
+ },
+ "sidepanel.open_in_new_tab": {
+  "message": "Open in new tab",
+  "description": "Menu item: open this chat in a new browser tab.",
+  "source": "assets/-components-4o0FSqQ9.js",
+  "anchor": "content:\"Open in new tab\""
+ },
+ "sidepanel.open_in_tab": {
+  "message": "Open in tab",
+  "description": "Tooltip: move the side panel chat into a tab.",
+  "source": "assets/-components-4o0FSqQ9.js",
+  "anchor": "\"aria-label\":\"Open in tab\""
+ },
+ "tabsearch.bookmarks": {
+  "message": "Bookmarks",
+  "description": "Tab search result group heading (glossary: Bookmark).",
+  "source": "assets/tabsearch-3k_2hgil.js",
+  "anchor": "title:\"Bookmarks\""
+ },
+ "tabsearch.extensions": {
+  "message": "Extensions",
+  "description": "Tab search result group heading (glossary: Extensions).",
+  "source": "assets/tabsearch-3k_2hgil.js",
+  "anchor": "title:\"Extensions\""
+ },
+ "tabsearch.history": {
+  "message": "History",
+  "description": "Tab search result group heading (glossary: History).",
+  "source": "assets/tabsearch-3k_2hgil.js",
+  "anchor": "title:\"History\""
+ },
+ "tabsearch.no_results": {
+  "message": "No results",
+  "description": "Empty state when nothing matches the query.",
+  "source": "assets/tabsearch-3k_2hgil.js",
+  "anchor": "children:\"No results\""
+ },
+ "tabsearch.open_tabs": {
+  "message": "Open Tabs",
+  "description": "Tab search result group heading: tabs that are open now.",
+  "source": "assets/tabsearch-3k_2hgil.js",
+  "anchor": "title:\"Open Tabs\""
+ },
+ "tabsearch.recently_closed": {
+  "message": "Recently Closed",
+  "description": "Tab search result group heading: recently closed tabs.",
+  "source": "assets/tabsearch-3k_2hgil.js",
+  "anchor": "title:\"Recently Closed\""
+ },
+ "tabsearch.reopen": {
+  "message": "Reopen",
+  "description": "Action on a recently closed tab: reopen it.",
+  "source": "assets/tabsearch-3k_2hgil.js",
+  "anchor": "actionLabel:\"Reopen\""
+ },
+ "tabsearch.switch_to_tab": {
+  "message": "Switch to Tab",
+  "description": "Action on an open tab: switch to it.",
+  "source": "assets/tabsearch-3k_2hgil.js",
+  "anchor": "actionLabel:\"Switch to Tab\""
+ },
+ "newtab.mode_search": {
+  "message": "Search",
+  "description": "New tab mode switch: web search mode.",
+  "source": "assets/newtab-CnOLQ0yu.js",
+  "anchor": "children:\"Search\""
+ },
+ "newtab.mode_ask": {
+  "message": "Ask",
+  "description": "New tab mode switch: ask the Aux agent mode.",
+  "source": "assets/newtab-CnOLQ0yu.js",
+  "anchor": "children:\"Ask\""
+ },
+ "newtab.drop_to_attach": {
+  "message": "Drop to attach",
+  "description": "Overlay while dragging a file onto the Ask box.",
+  "source": "assets/newtab-CnOLQ0yu.js",
+  "anchor": "\"Drop to attach\""
+ },
+ "newtab.drag_image_lens": {
+  "message": "Drag an image to search with Google Lens",
+  "description": "Overlay while dragging an image onto the search box. \"Google Lens\" is a product name.",
+  "source": "assets/newtab-CnOLQ0yu.js",
+  "anchor": "\"Drag an image to search with Google Lens\""
+ },
+ "newtab.incognito_explainer": {
+  "message": "Incognito mode is for temporary work or browsing in Aux. The agent runs without your saved memories or history tools, and the session stays out of your regular task list. It is not a way to hide from the websites you visit.",
+  "description": "New tab tooltip explaining incognito mode (glossary: Incognito window).",
+  "source": "assets/newtab-CnOLQ0yu.js",
+  "anchor": "children:\"Incognito mode is for temporary work or browsing in Aux. The agent runs without your saved memories or history tools, and the session stays out of your regular task list. It is not a way to hide from the websites you visit.\""
+ },
+ "newtab.placeholder_search": {
+  "message": "Search or type a URL",
+  "description": "New tab input placeholder in search mode.",
+  "source": "assets/newtab-editor-u_GbForB.js",
+  "anchor": "search:\"Search or type a URL\""
+ },
+ "newtab.placeholder_ask": {
+  "message": "Ask Aux a task, @ for context",
+  "description": "New tab input placeholder in Ask mode. Keep \"@\".",
+  "source": "assets/newtab-editor-u_GbForB.js",
+  "anchor": "ask:\"Ask Aux a task, @ for context\""
+ },
+ "minipopup.add_attachment": {
+  "message": "Add attachment",
+  "description": "Tooltip: add an attachment to the message.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "\"aria-label\":\"Add attachment\""
+ },
+ "minipopup.ask_aux": {
+  "message": "Ask Aux",
+  "description": "Mini popup title (glossary: Ask Aux).",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "placeholder:\"Ask Aux\""
+ },
+ "minipopup.attach_folder": {
+  "message": "Attach folder",
+  "description": "Menu item: attach a folder.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "children:\"Attach folder\""
+ },
+ "minipopup.browser_profile": {
+  "message": "Browser profile",
+  "description": "Menu label: the browser profile the task uses (glossary: Profile).",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "\"aria-label\":\"Browser profile\""
+ },
+ "minipopup.clear_draft_failed": {
+  "message": "Could not clear the saved draft. Keep this window open and try again.",
+  "description": "Error toast.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "\"Could not clear the saved draft. Keep this window open and try again.\""
+ },
+ "minipopup.remove_draft_failed": {
+  "message": "Could not remove the saved draft. Keep this window open and try again before entering incognito.",
+  "description": "Error toast.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "\"Could not remove the saved draft. Keep this window open and try again before entering incognito.\""
+ },
+ "minipopup.save_draft_failed": {
+  "message": "Could not save this draft. Keep this window open and try again.",
+  "description": "Error toast.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "\"Could not save this draft. Keep this window open and try again.\""
+ },
+ "minipopup.developer": {
+  "message": "Developer",
+  "description": "Permission mode name: developer.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "children:\"Developer\""
+ },
+ "minipopup.disable_memory": {
+  "message": "Disable memory extraction",
+  "description": "Option label in incognito settings.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "children:\"Disable memory extraction\""
+ },
+ "minipopup.final_confirm": {
+  "message": "Final confirm",
+  "description": "Permission option: ask before final actions.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "children:\"Final confirm\""
+ },
+ "minipopup.incognito_hint": {
+  "message": "If enabled, browsing history and memory will not be used.",
+  "description": "Description under the incognito option.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "children:\"If enabled, browsing history and memory will not be used.\""
+ },
+ "minipopup.incognito_mode": {
+  "message": "Incognito mode",
+  "description": "Option label (glossary: Incognito).",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "children:\"Incognito mode\""
+ },
+ "minipopup.open_in_browser": {
+  "message": "Open in browser",
+  "description": "Button: open the conversation in the main browser window.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "label:\"Open in browser\""
+ },
+ "minipopup.password_access": {
+  "message": "Password access",
+  "description": "Permission option: allow access to passwords.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "children:\"Password access\""
+ },
+ "minipopup.permission": {
+  "message": "Permission",
+  "description": "Menu heading: agent permission level.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "children:\"Permission\""
+ },
+ "minipopup.reply_placeholder": {
+  "message": "Reply, @ for context",
+  "description": "Composer placeholder. Keep \"@\".",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "placeholder:\"Reply, @ for context\""
+ },
+ "minipopup.upload": {
+  "message": "Upload photos & file",
+  "description": "Menu item: upload photos and files.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "children:\"Upload photos & file\""
+ },
+ "minipopup.attach_more": {
+  "message": "Attach files, incognito, and more",
+  "description": "Tooltip on the composer \"+\" button.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "payload:\"Attach files, incognito, and more\""
+ },
+ "minipopup.ask_before_actions": {
+  "message": "Ask before actions like send, pay, delete, or submit.",
+  "description": "Description of the Final confirm option.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "\"Ask before actions like send, pay, delete, or submit.\""
+ },
+ "minipopup.read_only_note": {
+  "message": "Read only cannot take actions, so Final confirm is off.",
+  "description": "Explanation shown when Read only mode is selected.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "\"Read only cannot take actions, so Final confirm is off.\""
+ },
+ "minipopup.switch_profile": {
+  "message": "Switch browser profile",
+  "description": "Menu item.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "payload:\"Switch browser profile\""
+ },
+ "minipopup.projects_permissions": {
+  "message": "Projects & permissions",
+  "description": "Menu heading.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "payload:\"Projects & permissions\""
+ },
+ "minipopup.select_profile_failed": {
+  "message": "Failed to select profile",
+  "description": "Error toast.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "message:\"Failed to select profile\""
+ },
+ "minipopup.folder_picker_error": {
+  "message": "There was an error opening the folder picker.",
+  "description": "Error toast.",
+  "source": "assets/minipopup-LkDLFvnq.js",
+  "anchor": "message:\"There was an error opening the folder picker.\""
+ },
+ "island.open_profile_menu": {
+  "message": "Open profile menu",
+  "description": "aria-label of the profile button.",
+  "source": "assets/island-C0ouZ54e.js",
+  "anchor": "\"aria-label\":\"Open profile menu\""
+ },
+ "island.sign_in_resume_sync": {
+  "message": "Sign in to resume sync",
+  "description": "Profile menu item shown when sync is paused (glossary: Sign in).",
+  "source": "assets/island-C0ouZ54e.js",
+  "anchor": "children:\"Sign in to resume sync\""
+ },
+ "settings.nav.personal": {
+  "message": "Personal",
+  "description": "Settings sidebar group heading.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Personal\""
+ },
+ "settings.nav.agent": {
+  "message": "Agent",
+  "description": "Settings sidebar group heading (glossary: Agent).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Agent\""
+ },
+ "settings.nav.features": {
+  "message": "Features",
+  "description": "Settings sidebar group heading.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Features\""
+ },
+ "settings.nav.archived": {
+  "message": "Archived",
+  "description": "Settings sidebar group heading for archived items.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Archived\""
+ },
+ "settings.account": {
+  "message": "Account",
+  "description": "Settings page title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Account\""
+ },
+ "settings.agents": {
+  "message": "Agents",
+  "description": "Settings page title (glossary: Agent).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Agents\""
+ },
+ "settings.appearance": {
+  "message": "Appearance",
+  "description": "Settings page title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Appearance\""
+ },
+ "settings.archived_chats": {
+  "message": "Archived chats",
+  "description": "Settings page title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Archived chats\""
+ },
+ "settings.channels": {
+  "message": "Channels",
+  "description": "Settings page title: messenger channels.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Channels\""
+ },
+ "settings.communications": {
+  "message": "Communications",
+  "description": "Settings page title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "label:\"Communications\""
+ },
+ "settings.context_awareness": {
+  "message": "Context Awareness",
+  "description": "Settings page title: feature name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "label:\"Context Awareness\""
+ },
+ "settings.developers": {
+  "message": "Developers",
+  "description": "Settings page title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Developers\""
+ },
+ "settings.experimental": {
+  "message": "Experimental",
+  "description": "Settings page title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "label:\"Experimental\""
+ },
+ "settings.general": {
+  "message": "General",
+  "description": "Settings page title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"General\""
+ },
+ "settings.lasso": {
+  "message": "Lasso",
+  "description": "Settings page title: Lasso selection feature.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Lasso\""
+ },
+ "settings.memory": {
+  "message": "Memory",
+  "description": "Settings page title: agent memory.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Memory\""
+ },
+ "settings.mini_popup": {
+  "message": "Mini popup",
+  "description": "Settings page title: the Mini popup chat window.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Mini popup\""
+ },
+ "settings.models": {
+  "message": "Models",
+  "description": "Settings page title: AI models.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Models\""
+ },
+ "settings.overview": {
+  "message": "Overview",
+  "description": "Settings page title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "label:\"Overview\""
+ },
+ "settings.plugins_mcps": {
+  "message": "Plugins & MCPs",
+  "description": "Settings page title. \"MCP\" stays as is.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "label:\"Plugins & MCPs\""
+ },
+ "settings.routines": {
+  "message": "Routines",
+  "description": "Settings page title (glossary: Routine).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Routines\""
+ },
+ "settings.security_privacy": {
+  "message": "Security & Privacy",
+  "description": "Settings page title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Security & Privacy\""
+ },
+ "settings.skills": {
+  "message": "Skills",
+  "description": "Settings page title (glossary: Skill).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Skills\""
+ },
+ "settings.statistics": {
+  "message": "Statistics",
+  "description": "Settings page title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Statistics\""
+ },
+ "settings.notification_use": {
+  "message": "Notification Use",
+  "description": "Settings page title: sites whose notifications AI may read.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Notification Use\""
+ },
+ "settings.search_settings": {
+  "message": "Search settings",
+  "description": "Placeholder of the settings search field.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "\"aria-label\":\"Search settings\""
+ },
+ "settings.no_settings_found": {
+  "message": "No settings found",
+  "description": "Empty state of the settings search.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "children:\"No settings found\""
+ },
+ "settings.search_results": {
+  "message": "Settings search results",
+  "description": "aria-label of the settings search results list.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "\"aria-label\":\"Settings search results\""
+ },
+ "settings.access_permission": {
+  "message": "Access permission",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "s\"},{title:\"Access permission\",desc"
+ },
+ "settings.ads_privacy": {
+  "message": "Ads privacy",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Ads privacy\""
+ },
+ "settings.advanced": {
+  "message": "Advanced",
+  "description": "Section heading.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Advanced\"},{ti"
+ },
+ "settings.agents_cli": {
+  "message": "Allow agents to interact with Aux through CLI and skills",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Allow agents to interact with Aux through CLI and skills\""
+ },
+ "settings.third_party_cookies": {
+  "message": "Allow third-party cookies",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Allow third-party cookies\""
+ },
+ "settings.approved_people_empty": {
+  "message": "Approved people will appear here.",
+  "description": "Empty state of the approved-people list.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Approved people will appear here.\""
+ },
+ "settings.ask_on_tab_switch": {
+  "message": "Ask Aux on tab switch",
+  "description": "Setting name (glossary: Ask Aux).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Ask Aux on tab switch\""
+ },
+ "settings.attach_images": {
+  "message": "Attach images",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "\"aria-label\":\"Attach images\""
+ },
+ "settings.attachments_limit": {
+  "message": "Attachments must total 7MB or less.",
+  "description": "Validation message. Keep \"7MB\".",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "\"Attachments must total 7MB or less.\""
+ },
+ "settings.auto_pip": {
+  "message": "Auto Picture-in-Picture",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Auto Picture-in-Picture\""
+ },
+ "settings.close_agent_tabs": {
+  "message": "Automatically close tabs Aux used for tasks",
+  "description": "Setting description (glossary: Tab).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Automatically close tabs Aux used for tasks\""
+ },
+ "settings.aux_skills": {
+  "message": "Aux Skills",
+  "description": "Section heading (glossary: Skill).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Aux Skills\""
+ },
+ "settings.aux_account": {
+  "message": "Aux account",
+  "description": "Section heading.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Aux account\""
+ },
+ "settings.sandbox_description": {
+  "message": "Aux runs commands in a sandbox, which keeps its work limited to the files and folders you allow.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Aux runs commands in a sandbox, which keeps its work limited to the files and folders you allow.\""
+ },
+ "settings.avatar": {
+  "message": "Avatar",
+  "description": "Setting name: profile picture.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Avatar\""
+ },
+ "settings.background_service": {
+  "message": "Background service",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Background service\""
+ },
+ "settings.browser": {
+  "message": "Browser",
+  "description": "Section heading.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Browser\""
+ },
+ "settings.browser_data_recovery": {
+  "message": "Browser data recovery",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Browser data recovery\""
+ },
+ "settings.choose_how_aux_looks": {
+  "message": "Choose how Aux looks",
+  "description": "Description of the Theme setting.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Choose how Aux looks\""
+ },
+ "settings.tab_switcher_order_desc": {
+  "message": "Choose how tabs are ordered when switching.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Choose how tabs are ordered when switching.\""
+ },
+ "settings.new_tab_position_desc": {
+  "message": "Choose where new tabs are added in the sidebar.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Choose where new tabs are added in the sidebar.\""
+ },
+ "settings.customize_sidebar_desc": {
+  "message": "Choose which sections appear above your tabs.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Choose which sections appear above your tabs.\""
+ },
+ "settings.clean_up_agent_tabs": {
+  "message": "Clean up agent tabs",
+  "description": "Setting name (glossary: Agent tabs).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Clean up agent tabs\""
+ },
+ "settings.completion_sound": {
+  "message": "Completion sound",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Completion sound\""
+ },
+ "settings.configure": {
+  "message": "Configure",
+  "description": "Button or nav item: configure.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "label:\"Configure\""
+ },
+ "settings.connect": {
+  "message": "Connect",
+  "description": "Button: connect an account or service.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Connect\"},{ti"
+ },
+ "settings.current_version": {
+  "message": "Current version",
+  "description": "Label next to the installed version.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Current version\""
+ },
+ "settings.customize_tidy_tabs": {
+  "message": "Customize Tidy Tabs",
+  "description": "Setting name (glossary: Tidy, Tab).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Customize Tidy Tabs\""
+ },
+ "settings.customize_sidebar": {
+  "message": "Customize sidebar",
+  "description": "Setting name (glossary: Sidebar).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Customize sidebar\""
+ },
+ "settings.default_model": {
+  "message": "Default model",
+  "description": "Setting name: default AI model.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Default model\""
+ },
+ "settings.default_search_engine": {
+  "message": "Default search engine",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Default search engine\""
+ },
+ "settings.delete_account": {
+  "message": "Delete account",
+  "description": "Button/setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Delete account\""
+ },
+ "settings.delete_browsing_history": {
+  "message": "Delete browsing history",
+  "description": "Setting name (glossary: History).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Delete browsing history\""
+ },
+ "settings.delete_history_desc": {
+  "message": "Delete history, cookies, cache, and more",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Delete history, cookies, cache, and more\""
+ },
+ "settings.feedback_placeholder": {
+  "message": "Describe your feedback…",
+  "description": "Feedback text box placeholder.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "placeholder:\"Describe your feedback…\""
+ },
+ "settings.discard_feedback": {
+  "message": "Discard feedback?",
+  "description": "Dialog title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Discard feedback?\""
+ },
+ "settings.disconnect": {
+  "message": "Disconnect",
+  "description": "Button: disconnect an account or service.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Disconnect\""
+ },
+ "settings.lasso_text_hint": {
+  "message": "Drag text click the blue dot.",
+  "description": "Lasso help text: drag over text, then click the blue dot. Keep it short.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Drag text click the blue dot.\""
+ },
+ "settings.image_size_limit": {
+  "message": "Each image must be 3MB or smaller.",
+  "description": "Validation message. Keep \"3MB\".",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "\"Each image must be 3MB or smaller.\""
+ },
+ "settings.email": {
+  "message": "Email",
+  "description": "Setting name: email address.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Email\""
+ },
+ "settings.enable_mini_popup": {
+  "message": "Enable Mini popup",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Enable Mini popup\""
+ },
+ "settings.enable_lasso": {
+  "message": "Enable on lasso selection",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Enable on lasso selection\""
+ },
+ "settings.enable_text_selection": {
+  "message": "Enable on text selection",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Enable on text selection\""
+ },
+ "settings.enable_sandbox": {
+  "message": "Enable sandbox",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Enable sandbox\""
+ },
+ "settings.extension_shortcuts": {
+  "message": "Extension shortcuts",
+  "description": "Setting name (glossary: Extensions).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Extension shortcuts\""
+ },
+ "settings.feedback_sent": {
+  "message": "Feedback sent. Thank you!",
+  "description": "Toast after feedback is sent.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "\"Feedback sent. Thank you!\""
+ },
+ "settings.follow_up_behavior": {
+  "message": "Follow-up behavior",
+  "description": "Setting name: what happens to follow-up messages while Aux works.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "gents.\"},{title:\"Follow-up behavior\",descripti"
+ },
+ "settings.help_improve": {
+  "message": "Help improve Aux",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Help improve Aux\""
+ },
+ "settings.hotkey": {
+  "message": "Hotkey",
+  "description": "Setting name: keyboard shortcut.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Hotkey\""
+ },
+ "settings.recent_chats_desc": {
+  "message": "How many recent chats to show in the sidebar.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"How many recent chats to show in the sidebar.\""
+ },
+ "settings.image_generation_model": {
+  "message": "Image generation model",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Image generation model\""
+ },
+ "settings.import_bookmarks": {
+  "message": "Import bookmarks",
+  "description": "Setting name/button (glossary: Bookmark).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Import bookmarks\""
+ },
+ "settings.import_from_browser": {
+  "message": "Import from another browser",
+  "description": "Setting name/button.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Import from another browser\""
+ },
+ "settings.keyboard_shortcut": {
+  "message": "Keyboard shortcut",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Keyboard shortcut\""
+ },
+ "settings.imessage_desc": {
+  "message": "Let Aux read your iMessages and send messages you approve.",
+  "description": "Setting description. \"iMessage\" is a product name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Let Aux read your iMessages and send messages you approve.\""
+ },
+ "settings.mcps": {
+  "message": "MCPs",
+  "description": "Settings page title. Keep \"MCPs\".",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"MCPs\""
+ },
+ "settings.dns_desc": {
+  "message": "Manage DNS, SSL certificates and Safe Browsing settings",
+  "description": "Setting description. \"Safe Browsing\" follows Chromium's translation.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Manage DNS, SSL certificates and Safe Browsing settings\""
+ },
+ "settings.ad_topics_desc": {
+  "message": "Manage ad topics, site-suggested ads, and ad measurement",
+  "description": "Setting description; follows Chromium wording.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Manage ad topics, site-suggested ads, and ad measurement\""
+ },
+ "settings.manage_filters": {
+  "message": "Manage filters",
+  "description": "Button: manage ad-block filters.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Manage filters\""
+ },
+ "settings.extension_shortcuts_desc": {
+  "message": "Manage shortcuts for Aux extensions",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Manage shortcuts for Aux extensions\""
+ },
+ "settings.site_permissions_desc": {
+  "message": "Manage site permissions (location, camera, pop-ups, and more)",
+  "description": "Setting description; follows Chromium wording.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Manage site permissions (location, camera, pop-ups, and more)\""
+ },
+ "settings.messages_access": {
+  "message": "Messages access",
+  "description": "Setting name: access to the macOS Messages app.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Messages access\""
+ },
+ "settings.new_tab_mode": {
+  "message": "New tab mode",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"New tab mode\""
+ },
+ "settings.new_tab_position": {
+  "message": "New tab position",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"New tab position\""
+ },
+ "settings.no_paired_people": {
+  "message": "No paired people",
+  "description": "Empty state.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"No paired people\""
+ },
+ "settings.new_tab_mode_desc": {
+  "message": "Open new tabs in Search or Ask",
+  "description": "Setting description; \"Search\" and \"Ask\" are the new tab mode names.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Open new tabs in Search or Ask\""
+ },
+ "settings.delete_account_desc": {
+  "message": "Permanently delete your account and all associated data",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Permanently delete your account and all associated data\""
+ },
+ "settings.completion_sound_desc": {
+  "message": "Play a sound when agents finish or need attention",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Play a sound when agents finish or need attention\""
+ },
+ "settings.preferred_languages": {
+  "message": "Preferred languages",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Preferred languages\""
+ },
+ "settings.follow_up_desc": {
+  "message": "Queue follow-ups while Aux runs or steer the current run.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "behavior\",description:\"Queue follow-ups while Aux runs or steer the current run.\"},{title:\"Messa"
+ },
+ "settings.file_permission_desc": {
+  "message": "Read and write permission for agents.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Read and write permission for agents.\""
+ },
+ "settings.recent_chats": {
+  "message": "Recent chats in sidebar",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Recent chats in sidebar\""
+ },
+ "settings.reconnect": {
+  "message": "Reconnect",
+  "description": "Button: reconnect a messenger channel.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Reconnect\""
+ },
+ "settings.require_mention_desc": {
+  "message": "Require an @mention for the bot to respond in a thread or topic.",
+  "description": "Setting description. Keep \"@\".",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Require an @mention for the bot to respond in a thread or topic.\""
+ },
+ "settings.require_mentions": {
+  "message": "Require mentions in threads",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Require mentions in threads\""
+ },
+ "settings.screenshot": {
+  "message": "Screenshot",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Screenshot\""
+ },
+ "settings.send_feedback": {
+  "message": "Send feedback",
+  "description": "Button/dialog title.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "children:\"Send feedback\""
+ },
+ "settings.bot_access_desc": {
+  "message": "Set who can use this bot to run browser tasks.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Set who can use this bot to run browser tasks.\""
+ },
+ "settings.feedback_desc": {
+  "message": "Share bugs, ideas, or anything else. We read every message.",
+  "description": "Feedback dialog description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "children:\"Share bugs, ideas, or anything else. We read every message.\""
+ },
+ "settings.share_reports_desc": {
+  "message": "Share crash reports, bug reports, and usage statistics.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Share crash reports, bug reports, and usage statistics.\""
+ },
+ "settings.shrink_tabs": {
+  "message": "Shrink tabs to fit",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Shrink tabs to fit\""
+ },
+ "settings.site_settings": {
+  "message": "Site settings",
+  "description": "Setting name; follows Chromium wording.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Site settings\""
+ },
+ "settings.spell_check": {
+  "message": "Spell check",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Spell check\""
+ },
+ "settings.tab_style": {
+  "message": "Tab style",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Tab style\""
+ },
+ "settings.tab_switcher_order": {
+  "message": "Tab switcher order",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Tab switcher order\""
+ },
+ "settings.shrink_tabs_desc": {
+  "message": "Tabs shrink to fit as the tab bar fills up.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Tabs shrink to fit as the tab bar fills up.\""
+ },
+ "settings.task_notifications": {
+  "message": "Task notifications",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Task notifications\""
+ },
+ "settings.last_used_model_desc": {
+  "message": "The last used model becomes the default for new chat",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"The last used model becomes the default for new chat\""
+ },
+ "settings.theme": {
+  "message": "Theme",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Theme\""
+ },
+ "settings.transparency": {
+  "message": "Transparency",
+  "description": "Setting name: window transparency.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Transparency\""
+ },
+ "settings.reconnect_desc": {
+  "message": "Use this when messages stop arriving.",
+  "description": "Description of the Reconnect button.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Use this when messages stop arriving.\""
+ },
+ "settings.third_party_cookies_desc": {
+  "message": "Used for embedded content, ads, and tracking by websites.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Used for embedded content, ads, and tracking by websites.\""
+ },
+ "settings.view_browsing_history": {
+  "message": "View browsing history",
+  "description": "Button (glossary: History).",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"View browsing history\""
+ },
+ "settings.tab_switch_desc": {
+  "message": "When you switch tabs, start a new chat or keep the current chat.",
+  "description": "Setting description.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"When you switch tabs, start a new chat or keep the current chat.\""
+ },
+ "settings.reconnect_later": {
+  "message": "You can reconnect later by adding this again.",
+  "description": "Confirmation dialog text.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"You can reconnect later by adding this again.\""
+ },
+ "settings.feedback_lost": {
+  "message": "Your feedback will be lost.",
+  "description": "Confirmation dialog text.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "description:\"Your feedback will be lost.\""
+ },
+ "settings.your_name": {
+  "message": "Your name",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Your name\""
+ },
+ "settings.zoom_level": {
+  "message": "Zoom level",
+  "description": "Setting name.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "title:\"Zoom level\""
+ },
+ "settings.email_placeholder": {
+  "message": "e.g. john@example.com",
+  "description": "Email field placeholder; adapt the example name to the locale, keep it an email address.",
+  "source": "assets/route-TQyeTEXE.js",
+  "anchor": "placeholder:\"e.g. john@example.com\""
+ },
+ "general.about_aux": {
+  "message": "About Aux",
+  "description": "Section heading.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "title:\"About Aux\""
+ },
+ "general.already_imported": {
+  "message": "Already imported",
+  "description": "Status of a browser that was already imported.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Already imported\""
+ },
+ "general.check_for_updates": {
+  "message": "Check for updates",
+  "description": "Button.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Check for updates\""
+ },
+ "general.copyright": {
+  "message": "Copyright © 2026 Courson Digital LLC. All rights reserved.",
+  "description": "Legal line; keep the company name and year.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "\"Copyright © 2026 Courson Digital LLC. All rights reserved.\""
+ },
+ "general.detected_browser": {
+  "message": "Detected browser",
+  "description": "Label.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "nt-[450]\",children:\"Detected browser\"}),(0,A.jsx)(Lm"
+ },
+ "general.developer_mode": {
+  "message": "Developer mode",
+  "description": "Setting name; follows Chromium extensions wording.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "title:\"Developer mode\""
+ },
+ "general.import": {
+  "message": "Import",
+  "description": "Button.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Import\""
+ },
+ "general.import_cancelled": {
+  "message": "Import cancelled.",
+  "description": "Toast.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Import cancelled.\""
+ },
+ "general.import_complete": {
+  "message": "Import complete.",
+  "description": "Toast.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Import complete.\""
+ },
+ "general.manage_extension_permissions": {
+  "message": "Manage extension permissions or load your own extension.",
+  "description": "Setting description.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "description:\"Manage extension permissions or load your own extension.\""
+ },
+ "general.manage_extensions": {
+  "message": "Manage extensions",
+  "description": "Button (glossary: Extensions).",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Manage extensions\""
+ },
+ "general.no_browsers_found": {
+  "message": "No browsers found",
+  "description": "Empty state.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"No browsers found\""
+ },
+ "general.preferences": {
+  "message": "Preferences",
+  "description": "Section heading.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "title:\"Preferences\""
+ },
+ "general.set_as_default": {
+  "message": "Set as default",
+  "description": "Button: make Aux the default browser.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Set as default\""
+ },
+ "general.sign_in": {
+  "message": "Sign in",
+  "description": "Button (glossary: Sign in).",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Sign in\""
+ },
+ "general.sign_out": {
+  "message": "Sign out",
+  "description": "Button (glossary: Sign out).",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Sign out\""
+ },
+ "general.languages_desc": {
+  "message": "Websites use the first matching language in this list when available.",
+  "description": "Setting description.",
+  "source": "assets/general-3dgRbrRk.js",
+  "anchor": "children:\"Websites use the first matching language in this list when available.\""
+ },
+ "memory.configure": {
+  "message": "Configure memories",
+  "description": "Section heading.",
+  "source": "assets/settings-DguZi_c6.js",
+  "anchor": "children:\"Configure memories\""
+ },
+ "memory.description": {
+  "message": "Control how Aux generates and retains memories across all Projects.",
+  "description": "Page description.",
+  "source": "assets/settings-DguZi_c6.js",
+  "anchor": "children:\"Control how Aux generates and retains memories across all Projects.\""
+ },
+ "memory.enable": {
+  "message": "Enable memories",
+  "description": "Setting name.",
+  "source": "assets/settings-DguZi_c6.js",
+  "anchor": "title:\"Enable memories\""
+ },
+ "memory.episodic_retention": {
+  "message": "Episodic memory retention",
+  "description": "Setting name.",
+  "source": "assets/settings-DguZi_c6.js",
+  "anchor": "title:\"Episodic memory retention\""
+ },
+ "memory.generate_from_chats": {
+  "message": "Generate new memories from chats",
+  "description": "Setting name.",
+  "source": "assets/settings-DguZi_c6.js",
+  "anchor": "description:\"Generate new memories from chats\""
+ },
+ "memory.retention_desc": {
+  "message": "How long to keep daily observation logs",
+  "description": "Setting description.",
+  "source": "assets/settings-DguZi_c6.js",
+  "anchor": "description:\"How long to keep daily observation logs\""
+ },
+ "memory.never_forget": {
+  "message": "Never forget",
+  "description": "Retention option.",
+  "source": "assets/settings-DguZi_c6.js",
+  "anchor": "children:\"Never forget\""
+ },
+ "memory.days_30": {
+  "message": "30 days",
+  "description": "Retention option. Keep the number.",
+  "source": "assets/settings-DguZi_c6.js",
+  "anchor": "children:\"30 days\""
+ },
+ "memory.days_90": {
+  "message": "90 days",
+  "description": "Retention option. Keep the number.",
+  "source": "assets/settings-DguZi_c6.js",
+  "anchor": "children:\"90 days\""
+ },
+ "minipopup_settings.chat_anytime": {
+  "message": "Chat with Aux anytime",
+  "description": "Settings card title.",
+  "source": "assets/mini-popup-BBLwe-a8.js",
+  "anchor": "children:\"Chat with Aux anytime\""
+ },
+ "minipopup_settings.update_failed": {
+  "message": "Couldn’t update mini popup",
+  "description": "Error toast.",
+  "source": "assets/mini-popup-BBLwe-a8.js",
+  "anchor": "\"Couldn’t update mini popup\""
+ },
+ "minipopup_settings.shortcut_failed": {
+  "message": "Couldn’t update shortcut",
+  "description": "Error toast.",
+  "source": "assets/mini-popup-BBLwe-a8.js",
+  "anchor": "\"Couldn’t update shortcut\""
+ },
+ "minipopup_settings.shortcut_updated": {
+  "message": "Mini popup shortcut updated",
+  "description": "Toast.",
+  "source": "assets/mini-popup-BBLwe-a8.js",
+  "anchor": "\"Mini popup shortcut updated\""
+ },
+ "minipopup_settings.description": {
+  "message": "Open Aux with your shortcut and start chatting from anywhere.",
+  "description": "Settings card description.",
+  "source": "assets/mini-popup-BBLwe-a8.js",
+  "anchor": "children:\"Open Aux with your shortcut and start chatting from anywhere.\""
+ },
+ "archived.pagination": {
+  "message": "Archived chats pagination",
+  "description": "aria-label of the pagination control.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "\"aria-label\":\"Archived chats pagination\""
+ },
+ "archived.chat_actions": {
+  "message": "Chat actions",
+  "description": "aria-label of the per-chat menu button.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "\"aria-label\":\"Chat actions\""
+ },
+ "archived.empty_hint": {
+  "message": "Chats you archive will appear here.",
+  "description": "Empty state description.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "children:\"Chats you archive will appear here.\""
+ },
+ "archived.kept_until_deleted": {
+  "message": "Chats you archived are kept here until you delete them.",
+  "description": "Page description.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "children:\"Chats you archived are kept here until you delete them.\""
+ },
+ "archived.delete_failed": {
+  "message": "Could not delete chat.",
+  "description": "Error toast.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "\"Could not delete chat.\""
+ },
+ "archived.unarchive_failed": {
+  "message": "Could not unarchive chat.",
+  "description": "Error toast.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "\"Could not unarchive chat.\""
+ },
+ "archived.load_failed": {
+  "message": "Couldn’t load archived chats",
+  "description": "Error state title.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "children:\"Couldn’t load archived chats\""
+ },
+ "archived.delete_title": {
+  "message": "Delete chat?",
+  "description": "Confirmation dialog title.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "title:\"Delete chat?\""
+ },
+ "archived.next_page": {
+  "message": "Next page",
+  "description": "aria-label.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "\"aria-label\":\"Next page\""
+ },
+ "archived.empty": {
+  "message": "No archived chats",
+  "description": "Empty state title.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "children:\"No archived chats\""
+ },
+ "archived.please_try_again": {
+  "message": "Please try again.",
+  "description": "Error state description.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "children:\"Please try again.\""
+ },
+ "archived.previous_page": {
+  "message": "Previous page",
+  "description": "aria-label.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "\"aria-label\":\"Previous page\""
+ },
+ "archived.delete_desc": {
+  "message": "This will permanently delete this chat and its messages.",
+  "description": "Confirmation dialog text.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "description:\"This will permanently delete this chat and its messages.\""
+ },
+ "archived.unarchive": {
+  "message": "Unarchive",
+  "description": "Menu item: restore an archived chat.",
+  "source": "assets/archived-chats-BgWKiXTB.js",
+  "anchor": "children:\"Unarchive\""
+ },
+ "approval.access_network": {
+  "message": "Access network",
+  "description": "Permission kind requested by the agent.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "label:\"Access network\""
+ },
+ "approval.allow_action": {
+  "message": "Allow Aux to do this action?",
+  "description": "Approval card title.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "children:\"Allow Aux to do this action?\"}),p."
+ },
+ "approval.waiting": {
+  "message": "Aux is waiting for your confirmation",
+  "description": "Status line.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "children:\"Aux is waiting for your confirmation\""
+ },
+ "approval.close_custom_answer": {
+  "message": "Close custom answer",
+  "description": "aria-label.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "\"aria-label\":\"Close custom answer\""
+ },
+ "approval.required": {
+  "message": "Confirmation required",
+  "description": "Approval card heading.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "\"aria-label\":\"Confirmation required\""
+ },
+ "approval.custom_answer": {
+  "message": "Custom answer",
+  "description": "Button: type your own answer.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "children:\"Custom answer\""
+ },
+ "approval.dont_ask_again": {
+  "message": "Do not ask again for this action",
+  "description": "Checkbox label.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "children:\"Do not ask again for this action\""
+ },
+ "approval.read": {
+  "message": "Read",
+  "description": "Permission kind: read access.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "\"Read\":\"Wri"
+ },
+ "approval.write": {
+  "message": "Write",
+  "description": "Permission kind: write access.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "\"Read\":\"Write\""
+ },
+ "approval.send_instructions": {
+  "message": "Send instructions",
+  "description": "Button.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "\"Send instructions\""
+ },
+ "approval.tell_aux": {
+  "message": "Tell Aux what to do instead",
+  "description": "Input placeholder.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "placeholder:\"Tell Aux what to do instead\""
+ },
+ "approval.change_plan_hint": {
+  "message": "To change the plan, reply below. Sending instructions won’t confirm this action.",
+  "description": "Hint text under the approval card.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "children:\"To change the plan, reply below. Sending instructions won’t confirm this action.\""
+ },
+ "approval.waiting_parent": {
+  "message": "Waiting for permission in the parent chat.",
+  "description": "Status shown in a subagent chat.",
+  "source": "assets/permission-approval-D-GTf91U.js",
+  "anchor": "children:\"Waiting for permission in the parent chat.\""
+ },
+ "models.load_failed": {
+  "message": "Couldn't load models",
+  "description": "Error state.",
+  "source": "assets/model-select-BvZsM1Kl.js",
+  "anchor": "children:\"Couldn't load models\""
+ },
+ "models.fast": {
+  "message": "Fast",
+  "description": "Speed option name.",
+  "source": "assets/model-select-BvZsM1Kl.js",
+  "anchor": "-50\",children:\"Fast\"}),(0"
+ },
+ "models.no_matching": {
+  "message": "No matching models",
+  "description": "Empty search result.",
+  "source": "assets/model-select-BvZsM1Kl.js",
+  "anchor": "children:\"No matching models\""
+ },
+ "models.none_available": {
+  "message": "No models are available",
+  "description": "Empty state.",
+  "source": "assets/model-select-BvZsM1Kl.js",
+  "anchor": "children:\"No models are available\""
+ },
+ "models.reasoning": {
+  "message": "Reasoning",
+  "description": "Label: reasoning effort.",
+  "source": "assets/model-select-BvZsM1Kl.js",
+  "anchor": "children:\"Reasoning\""
+ },
+ "models.search": {
+  "message": "Search models",
+  "description": "Search placeholder.",
+  "source": "assets/model-select-BvZsM1Kl.js",
+  "anchor": "placeholder:\"Search models\""
+ },
+ "models.speed": {
+  "message": "Speed",
+  "description": "Label.",
+  "source": "assets/model-select-BvZsM1Kl.js",
+  "anchor": "children:\"Speed\""
+ },
+ "models.standard": {
+  "message": "Standard",
+  "description": "Speed option name.",
+  "source": "assets/model-select-BvZsM1Kl.js",
+  "anchor": "children:\"Standard\""
+ },
+ "onboarding.learn_context": {
+  "message": "Ask Aux to learn from your context so it can work proactively with less input.",
+  "description": "Onboarding card description.",
+  "source": "assets/onboarding-helper-BVYyPOep.js",
+  "anchor": "description:\"Ask Aux to learn from your context so it can work proactively with less input.\""
+ },
+ "onboarding.suggest_tasks_desc": {
+  "message": "Ask Aux to look through your recent work and suggest tasks it can automate.",
+  "description": "Onboarding card description.",
+  "source": "assets/onboarding-helper-BVYyPOep.js",
+  "anchor": "description:\"Ask Aux to look through your recent work and suggest tasks it can automate.\""
+ },
+ "onboarding.automate_routines": {
+  "message": "Automate my routines",
+  "description": "Onboarding card title (glossary: Routine).",
+  "source": "assets/onboarding-helper-BVYyPOep.js",
+  "anchor": "title:\"Automate my routines\""
+ },
+ "onboarding.customize_aux": {
+  "message": "Customize Aux",
+  "description": "Onboarding card title.",
+  "source": "assets/onboarding-helper-BVYyPOep.js",
+  "anchor": "title:\"Customize Aux\""
+ },
+ "onboarding.customize_desc": {
+  "message": "Make Aux yours with custom skills, memory, shortcuts, and preferences.",
+  "description": "Onboarding card description.",
+  "source": "assets/onboarding-helper-BVYyPOep.js",
+  "anchor": "description:\"Make Aux yours with custom skills, memory, shortcuts, and preferences.\""
+ },
+ "onboarding.open_settings": {
+  "message": "Open Settings",
+  "description": "Button.",
+  "source": "assets/onboarding-helper-BVYyPOep.js",
+  "anchor": "label:\"Open Settings\""
+ },
+ "onboarding.setup_memory": {
+  "message": "Set up Aux's memory",
+  "description": "Onboarding card title.",
+  "source": "assets/onboarding-helper-BVYyPOep.js",
+  "anchor": "title:\"Set up Aux's memory\""
+ },
+ "onboarding.show_suggested": {
+  "message": "Show suggested tasks",
+  "description": "Button.",
+  "source": "assets/onboarding-helper-BVYyPOep.js",
+  "anchor": "children:\"Show suggested tasks\""
+ },
+ "onboarding.suggested_tasks": {
+  "message": "Suggested tasks",
+  "description": "Heading.",
+  "source": "assets/onboarding-helper-BVYyPOep.js",
+  "anchor": "children:\"Suggested tasks\""
+ },
+ "onboarding.use_prompt": {
+  "message": "Use this prompt",
+  "description": "Button: put the suggested prompt in the composer.",
+  "source": "assets/onboarding-helper-BVYyPOep.js",
+  "anchor": "mpt\",label:\"Use this prompt\",prompt:`R"
+ },
+ "onboarding.import_title": {
+  "message": "Import from your browser",
+  "description": "Onboarding step title.",
+  "source": "assets/import-browser-DwQpkFpc.js",
+  "anchor": "children:\"Import from your browser\""
+ },
+ "onboarding.import_desc": {
+  "message": "Bring your browser history, cookies, and bookmarks",
+  "description": "Onboarding step description.",
+  "source": "assets/import-browser-DwQpkFpc.js",
+  "anchor": "\"Bring your browser history, cookies, and bookmarks\""
+ },
+ "onboarding.browsers": {
+  "message": "Browsers",
+  "description": "List heading.",
+  "source": "assets/import-browser-DwQpkFpc.js",
+  "anchor": "\"aria-label\":\"Browsers\""
+ },
+ "onboarding.no_browsers": {
+  "message": "No browsers available to import. You can skip this step and import later in Settings.",
+  "description": "Empty state.",
+  "source": "assets/import-browser-DwQpkFpc.js",
+  "anchor": "children:\"No browsers available to import. You can skip this step and import later in Settings.\""
+ },
+ "onboarding.done.customize_hint": {
+  "message": "Appearance, Tab style, Mini popup..",
+  "description": "Card subtitle listing settings names.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "children:\"Appearance, Tab style, Mini popup..\""
+ },
+ "onboarding.done.applying": {
+  "message": "Applying…",
+  "description": "Button while applying settings.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "\"Applying…\""
+ },
+ "onboarding.done.cli_installed": {
+  "message": "Aux CLI installed.",
+  "description": "Toast. \"CLI\" stays.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "\"Aux CLI installed.\""
+ },
+ "onboarding.done.cli_failed": {
+  "message": "Could not install Aux CLI.",
+  "description": "Error toast.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "\"Could not install Aux CLI.\""
+ },
+ "onboarding.done.settings_failed": {
+  "message": "Could not load some settings. Close and reopen this dialog to retry.",
+  "description": "Error message.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "children:\"Could not load some settings. Close and reopen this dialog to retry.\""
+ },
+ "onboarding.done.adblock_failed": {
+  "message": "Could not set up Adblock. You can enable it in Settings → Privacy.",
+  "description": "Error message. Keep the → arrow.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "\"Could not set up Adblock. You can enable it in Settings → Privacy.\""
+ },
+ "onboarding.done.customize_appearance": {
+  "message": "Customize appearance",
+  "description": "Card title.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "children:\"Customize appearance\""
+ },
+ "onboarding.done.start_browsing_desc": {
+  "message": "Easily start browsing or run task when you need it",
+  "description": "Card description.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "description:\"Easily start browsing or run task when you need it\""
+ },
+ "onboarding.done.get_started": {
+  "message": "Get started",
+  "description": "Primary button.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "children:\"Get started\""
+ },
+ "onboarding.done.agents_browsing": {
+  "message": "Give your agents powerful browsing capability.",
+  "description": "Card description (glossary: Agent).",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "children:\"Give your agents powerful browsing capability.\""
+ },
+ "onboarding.done.loading_settings": {
+  "message": "Loading settings…",
+  "description": "Status.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "children:\"Loading settings…\""
+ },
+ "onboarding.done.mini_popup_desc": {
+  "message": "Open Mini popup from anywhere with your shortcut",
+  "description": "Card description.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "description:\"Open Mini popup from anywhere with your shortcut\""
+ },
+ "onboarding.done.default_browser": {
+  "message": "Set Aux as your default browser",
+  "description": "Card title.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "label:\"Set Aux as your default browser\""
+ },
+ "onboarding.done.setup_cli": {
+  "message": "Set up Aux CLI",
+  "description": "Card title.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "children:\"Set up Aux CLI\""
+ },
+ "onboarding.done.unavailable_settings": {
+  "message": "Some settings are unavailable in this browser version.",
+  "description": "Notice.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "children:\"Some settings are unavailable in this browser version.\""
+ },
+ "onboarding.done.first_task": {
+  "message": "Start browsing or run your first task with Aux.",
+  "description": "Page description.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "children:\"Start browsing or run your first task with Aux.\""
+ },
+ "onboarding.done.update_for_shortcut": {
+  "message": "Update Aux to customize this shortcut.",
+  "description": "Notice.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "description:\"Update Aux to customize this shortcut.\""
+ },
+ "onboarding.done.switch_back": {
+  "message": "You can switch back anytime",
+  "description": "Hint under the default-browser card.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "description:\"You can switch back anytime\""
+ },
+ "onboarding.done.all_set": {
+  "message": "You’re all set!",
+  "description": "Final onboarding title.",
+  "source": "assets/done-DPzI9pFd.js",
+  "anchor": "children:\"You’re all set!\""
+ },
+ "onboarding.fda.still_no_access": {
+  "message": "Aux Computer Use still does not have access. Add it in System Settings and try again.",
+  "description": "Error. \"System Settings\" is the macOS app name: use its localized name.",
+  "source": "assets/full-disk-access-BmnWkbG2.js",
+  "anchor": "\"Aux Computer Use still does not have access. Add it in System Settings and try again.\""
+ },
+ "onboarding.fda.needs_permissions": {
+  "message": "Aux needs macOS permissions to read and send messages you approve.",
+  "description": "Description.",
+  "source": "assets/full-disk-access-BmnWkbG2.js",
+  "anchor": "children:\"Aux needs macOS permissions to read and send messages you approve.\""
+ },
+ "onboarding.fda.enable_messages": {
+  "message": "Enable Aux with Messages",
+  "description": "Title. \"Messages\" is the macOS app name: use its localized name.",
+  "source": "assets/full-disk-access-BmnWkbG2.js",
+  "anchor": "children:\"Enable Aux with Messages\""
+ },
+ "onboarding.fda.enabled": {
+  "message": "Enabled",
+  "description": "Status.",
+  "source": "assets/full-disk-access-BmnWkbG2.js",
+  "anchor": "\"Enabled\""
+ },
+ "onboarding.fda.confirm_enabled": {
+  "message": "I've enabled the macOS permission. Please continue.",
+  "description": "Message the user sends to the agent.",
+  "source": "assets/full-disk-access-BmnWkbG2.js",
+  "anchor": "text:\"I've enabled the macOS permission. Please continue.\""
+ },
+ "onboarding.fda.setup_done": {
+  "message": "Messages access is set up.",
+  "description": "Toast.",
+  "source": "assets/full-disk-access-BmnWkbG2.js",
+  "anchor": "\"Messages access is set up.\""
+ },
+ "onboarding.fda.cancelled": {
+  "message": "Permission setup cancelled.",
+  "description": "Toast.",
+  "source": "assets/full-disk-access-BmnWkbG2.js",
+  "anchor": "\"Permission setup cancelled.\""
+ },
+ "onboarding.importer.approve_prompt": {
+  "message": "Approve the prompt to continue.",
+  "description": "Hint.",
+  "source": "assets/use-browser-importer-GNOc7eYC.js",
+  "anchor": "\"Approve the prompt to continue.\""
+ },
+ "onboarding.importer.choose_profile": {
+  "message": "Choose a profile",
+  "description": "Dialog title (glossary: Profile).",
+  "source": "assets/use-browser-importer-GNOc7eYC.js",
+  "anchor": "children:\"Choose a profile\""
+ },
+ "onboarding.importer.export_safari": {
+  "message": "Export your safari data first",
+  "description": "Dialog title.",
+  "source": "assets/use-browser-importer-GNOc7eYC.js",
+  "anchor": "children:\"Export your safari data first\""
+ },
+ "onboarding.importer.zip_read_failed": {
+  "message": "Failed to read the ZIP file",
+  "description": "Error.",
+  "source": "assets/use-browser-importer-GNOc7eYC.js",
+  "anchor": "\"Failed to read the ZIP file\""
+ },
+ "onboarding.importer.understand": {
+  "message": "I understand",
+  "description": "Button.",
+  "source": "assets/use-browser-importer-GNOc7eYC.js",
+  "anchor": "children:\"I understand\""
+ },
+ "onboarding.importer.grant_permission": {
+  "message": "Please grant permission",
+  "description": "Title.",
+  "source": "assets/use-browser-importer-GNOc7eYC.js",
+  "anchor": "children:\"Please grant permission\""
+ },
+ "onboarding.importer.upload_zip": {
+  "message": "Please upload a ZIP file",
+  "description": "Error.",
+  "source": "assets/use-browser-importer-GNOc7eYC.js",
+  "anchor": "\"Please upload a ZIP file\""
+ },
+ "onboarding.importer.already_imported": {
+  "message": "This browser profile has already been imported.",
+  "description": "Notice.",
+  "source": "assets/use-browser-importer-GNOc7eYC.js",
+  "anchor": "\"This browser profile has already been imported.\""
+ },
+ "onboarding.importer.upload_file": {
+  "message": "Upload file",
+  "description": "Button.",
+  "source": "assets/use-browser-importer-GNOc7eYC.js",
+  "anchor": "\"Upload file\""
+ },
+ "onboarding.importer.system_permission": {
+  "message": "Your system may ask for permission to read browser data.",
+  "description": "Hint.",
+  "source": "assets/use-browser-importer-GNOc7eYC.js",
+  "anchor": "\"Your system may ask for permission to read browser data.\""
+ },
+ "session.share_snapshot_desc": {
+  "message": "A snapshot of this chat will be available to anyone with the link. Messages added later won't appear.",
+  "description": "Share dialog description.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"A snapshot of this chat will be available to anyone with the link. Messages added later won't appear.\""
+ },
+ "session.active": {
+  "message": "Active",
+  "description": "Routine status.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "\"Active\""
+ },
+ "session.anyone_with_link": {
+  "message": "Anyone with the link",
+  "description": "Share option.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Anyone with the link\""
+ },
+ "session.anyone_can_view": {
+  "message": "Anyone with the link can view this chat",
+  "description": "Share option description.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Anyone with the link can view this chat\""
+ },
+ "session.archive_title": {
+  "message": "Archive chat?",
+  "description": "Confirmation dialog title.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "title:\"Archive chat?\""
+ },
+ "session.no_longer_shared": {
+  "message": "Chat is no longer shared",
+  "description": "Toast.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "\"Chat is no longer shared\""
+ },
+ "session.rename_hint": {
+  "message": "Choose a short, recognizable name.",
+  "description": "Rename dialog description.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Choose a short, recognizable name.\""
+ },
+ "session.completed": {
+  "message": "Completed",
+  "description": "Status.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "\"Completed\""
+ },
+ "session.copied": {
+  "message": "Copied!",
+  "description": "Toast after copying.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "\"Copied!\""
+ },
+ "session.copy_link": {
+  "message": "Copy link",
+  "description": "Button.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "\"Copy link\""
+ },
+ "session.copy_session_id": {
+  "message": "Copy session ID",
+  "description": "Menu item. \"ID\" stays.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Copy session ID\""
+ },
+ "session.delete_title": {
+  "message": "Delete chat?",
+  "description": "Confirmation dialog title.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "title:\"Delete chat?\""
+ },
+ "session.dont_share": {
+  "message": "Don't share",
+  "description": "Share option: keep the chat private.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Don't share\""
+ },
+ "session.last_run": {
+  "message": "Last run",
+  "description": "Routine detail label.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Last run\""
+ },
+ "session.next_run": {
+  "message": "Next run",
+  "description": "Routine detail label.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Next run\""
+ },
+ "session.outputs": {
+  "message": "Outputs",
+  "description": "Panel heading: files the task produced.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Outputs\""
+ },
+ "session.paused": {
+  "message": "Paused",
+  "description": "Status.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "\"Completed\":\"Paused\""
+ },
+ "session.rename_chat": {
+  "message": "Rename chat",
+  "description": "Dialog title.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Rename chat\""
+ },
+ "session.repeat": {
+  "message": "Repeat",
+  "description": "Routine detail label: repeat schedule.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Repeat\""
+ },
+ "session.routine_actions": {
+  "message": "Routine actions",
+  "description": "aria-label of the routine menu (glossary: Routine).",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "\"aria-label\":\"Routine actions\""
+ },
+ "session.routine_details": {
+  "message": "Routine details",
+  "description": "Panel heading.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Routine details\""
+ },
+ "session.runs_on": {
+  "message": "Runs on",
+  "description": "Routine detail label: device it runs on.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Runs on\""
+ },
+ "session.send_feedback": {
+  "message": "Send feedback",
+  "description": "Menu item.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Send feedback\""
+ },
+ "session.share_url_copied": {
+  "message": "Share URL copied",
+  "description": "Toast. \"URL\" stays.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "\"Share URL copied\""
+ },
+ "session.share_chat": {
+  "message": "Share chat",
+  "description": "Dialog title.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "\"aria-label\":\"Share chat\""
+ },
+ "session.started_by": {
+  "message": "Started by",
+  "description": "Label.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Started by\""
+ },
+ "session.status": {
+  "message": "Status",
+  "description": "Label.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Status\""
+ },
+ "session.subagents": {
+  "message": "Subagents",
+  "description": "Panel heading: helper agents spawned by this task.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "label:\"Subagents\""
+ },
+ "session.switch_to_tab": {
+  "message": "Switch to tab",
+  "description": "Button: switch to the tab the agent uses.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"Switch to tab\""
+ },
+ "session.not_shared": {
+  "message": "This chat will not be shared",
+  "description": "Share option description.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "children:\"This chat will not be shared\""
+ },
+ "session.archive_desc": {
+  "message": "This will archive this chat.",
+  "description": "Confirmation dialog text.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "description:\"This will archive this chat.\""
+ },
+ "session.todo_list": {
+  "message": "Todo list",
+  "description": "Panel heading: the task plan checklist.",
+  "source": "assets/_sessionId-ClN_BWh5.js",
+  "anchor": "label:\"Todo list\""
+ },
+ "composer.add_comment": {
+  "message": "Add an optional comment...",
+  "description": "Placeholder.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "placeholder:\"Add an optional comment...\""
+ },
+ "composer.add_to_chat": {
+  "message": "Add to chat",
+  "description": "Button.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Add to chat\""
+ },
+ "composer.ask_side_chat": {
+  "message": "Ask in side chat",
+  "description": "Menu item.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Ask in side chat\""
+ },
+ "composer.attach_folder": {
+  "message": "Attach folder",
+  "description": "Menu item.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Attach folder\""
+ },
+ "composer.cancel_queue_edit": {
+  "message": "Cancel queue edit",
+  "description": "Button.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"aria-label\":\"Cancel queue edit\""
+ },
+ "composer.clear_chat": {
+  "message": "Clear chat?",
+  "description": "Confirmation dialog title.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "title:\"Clear chat?\""
+ },
+ "composer.clear_queue": {
+  "message": "Clear queue",
+  "description": "Button.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "label:\"Clear queue\""
+ },
+ "composer.compacting": {
+  "message": "Compacting context…",
+  "description": "Status while the conversation context is summarized.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"Compacting context…\""
+ },
+ "composer.context_compacted": {
+  "message": "Context compacted",
+  "description": "Status after the context was summarized.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"Context compacted\",{id:"
+ },
+ "composer.options": {
+  "message": "Composer options",
+  "description": "aria-label.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "a.jsx)(J,{\"aria-label\":\"Composer options\",className:Y(\"t"
+ },
+ "composer.connect_provider": {
+  "message": "Connect an AI provider to start chatting",
+  "description": "Empty state (glossary: Provider).",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "description:\"Connect an AI provider to start chatting\""
+ },
+ "composer.connect_subscription": {
+  "message": "Connect my AI subscription",
+  "description": "Button.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "description:\"Connect my AI subscription\""
+ },
+ "composer.connection_interrupted": {
+  "message": "Connection interrupted",
+  "description": "Status.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Connection interrupted\"})]})"
+ },
+ "composer.copied_clipboard": {
+  "message": "Copied to clipboard!",
+  "description": "Toast.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"Copied to clipboard!\")},[n"
+ },
+ "composer.copy_path": {
+  "message": "Copy path",
+  "description": "Menu item: copy a file path.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Copy path\""
+ },
+ "composer.dictate": {
+  "message": "Dictate",
+  "description": "Button: voice dictation.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Dictate\""
+ },
+ "composer.drop_hint": {
+  "message": "Drop files or folders anywhere in this chat to attach",
+  "description": "Overlay while dragging files.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Drop files or folders anywhere in this chat to attach\""
+ },
+ "composer.edit_message": {
+  "message": "Edit message",
+  "description": "Button.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "placeholder:\"Edit message\""
+ },
+ "composer.effort": {
+  "message": "Effort",
+  "description": "Label: reasoning effort.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"Effort\""
+ },
+ "composer.failed": {
+  "message": "Failed",
+  "description": "Status.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "title:\"Failed\""
+ },
+ "composer.incognito_desc": {
+  "message": "If you enable incognito mode, your browsing history and memory will not be used.",
+  "description": "Description.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"If you enable incognito mode, your browsing history and memory will not be used.\""
+ },
+ "composer.incognito": {
+  "message": "Incognito",
+  "description": "Label (glossary: Incognito).",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"Incognito\""
+ },
+ "composer.interrupted_prompt": {
+  "message": "Interrupted - What should Aux do instead?",
+  "description": "Composer placeholder after the user interrupts a task.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Interrupted - What should Aux do instead?\""
+ },
+ "composer.memory_updated": {
+  "message": "Memory updated",
+  "description": "Status chip.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Memory updated\"})]})"
+ },
+ "composer.model": {
+  "message": "Model",
+  "description": "Label: AI model.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"Effort\":\"Model\""
+ },
+ "composer.new_side_chat": {
+  "message": "New side chat",
+  "description": "Button.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"New side chat\""
+ },
+ "composer.no_models": {
+  "message": "No models available",
+  "description": "Empty state.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"No models available\""
+ },
+ "composer.open_file": {
+  "message": "Open file",
+  "description": "Button.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "ary\",\"aria-label\":\"Open file\",onCl"
+ },
+ "composer.path_copied": {
+  "message": "Path copied",
+  "description": "Toast.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"Path copied\""
+ },
+ "composer.queue_paused": {
+  "message": "Queue paused because you interrupted",
+  "description": "Status.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Queue paused because you interrupted\""
+ },
+ "composer.queued_messages": {
+  "message": "Queued messages",
+  "description": "Heading.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"aria-label\":\"Queued messages\""
+ },
+ "composer.resume": {
+  "message": "Resume",
+  "description": "Button.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"Resume\""
+ },
+ "composer.running": {
+  "message": "Running",
+  "description": "Status.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "title:\"Running\""
+ },
+ "composer.send_message": {
+  "message": "Send message",
+  "description": "Button/aria-label.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "label:\"Send message\""
+ },
+ "composer.send_now": {
+  "message": "Send now",
+  "description": "Button.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Send now\""
+ },
+ "composer.side_chat": {
+  "message": "Side chat",
+  "description": "Label.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Side chat\""
+ },
+ "composer.sign_in": {
+  "message": "Sign in",
+  "description": "Button (glossary: Sign in).",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "actionLabel:\"Sign in\""
+ },
+ "composer.subagents": {
+  "message": "Subagents",
+  "description": "Heading.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Subagents\""
+ },
+ "composer.expiry_notice": {
+  "message": "Task session will be expired after 30 days.",
+  "description": "Notice. Keep the number.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Task session will be expired after 30 days.\""
+ },
+ "composer.clear_chat_desc": {
+  "message": "This will permanently delete all messages in this chat.",
+  "description": "Confirmation dialog text.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "description:\"This will permanently delete all messages in this chat.\""
+ },
+ "composer.todos": {
+  "message": "Todos",
+  "description": "Heading: task checklist.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Todos\""
+ },
+ "composer.toggle_side_panel": {
+  "message": "Toggle side panel",
+  "description": "aria-label.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"aria-label\":\"Toggle side panel\""
+ },
+ "composer.turn_off_incognito": {
+  "message": "Turn off incognito mode",
+  "description": "Button.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "\"aria-label\":\"Turn off incognito mode\""
+ },
+ "composer.upload": {
+  "message": "Upload photos, videos & files",
+  "description": "Menu item.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Upload photos, videos & files\""
+ },
+ "composer.draft_saved": {
+  "message": "Your message draft is saved and will return when this closes.",
+  "description": "Notice.",
+  "source": "assets/session-composer-Dc0LRfZA.js",
+  "anchor": "children:\"Your message draft is saved and will return when this closes.\""
+ },
+ "conversation.add_reaction": {
+  "message": "Add reaction",
+  "description": "aria-label.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"aria-label\":\"Add reaction\""
+ },
+ "conversation.attach_limit": {
+  "message": "Attach up to 8 files per message.",
+  "description": "Validation message. Keep the number.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"Attach up to 8 files per message.\""
+ },
+ "conversation.attachments_total": {
+  "message": "Attachments must total 20 MB or less.",
+  "description": "Validation message. Keep \"20 MB\".",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"Attachments must total 20 MB or less.\""
+ },
+ "conversation.attachment_size": {
+  "message": "Each attachment must be 10 MB or smaller.",
+  "description": "Validation message. Keep \"10 MB\".",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"Each attachment must be 10 MB or smaller.\""
+ },
+ "conversation.typing": {
+  "message": "Aux is typing",
+  "description": "Status / aria-label.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"aria-label\":\"Aux is typing\""
+ },
+ "conversation.cancel_reply": {
+  "message": "Cancel reply",
+  "description": "Button.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"aria-label\":\"Cancel reply\""
+ },
+ "conversation.copy_message": {
+  "message": "Copy message",
+  "description": "Menu item.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"aria-label\":\"Copy message\""
+ },
+ "conversation.copy_failed": {
+  "message": "Could not copy message",
+  "description": "Error toast.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"Could not copy message\""
+ },
+ "conversation.answer_failed": {
+  "message": "Could not send your answer. Retry the message below.",
+  "description": "Error.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "children:\"Could not send your answer. Retry the message below.\""
+ },
+ "conversation.reply_failed": {
+  "message": "Couldn't finish this reply.",
+  "description": "Error.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "children:\"Couldn't finish this reply.\""
+ },
+ "conversation.go_to_original": {
+  "message": "Go to original message",
+  "description": "Button.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"aria-label\":\"Go to original message\""
+ },
+ "conversation.loading_messages": {
+  "message": "Loading messages",
+  "description": "Status.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"aria-label\":\"Loading messages\""
+ },
+ "conversation.message_actions": {
+  "message": "Message actions",
+  "description": "aria-label.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"aria-label\":\"Message actions\""
+ },
+ "conversation.message_copied": {
+  "message": "Message copied",
+  "description": "Toast.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"Message copied\""
+ },
+ "conversation.needs_attention": {
+  "message": "Needs attention",
+  "description": "Status.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "label:\"Needs attention\""
+ },
+ "conversation.new_messages": {
+  "message": "New messages",
+  "description": "Divider label.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"aria-label\":\"New messages\""
+ },
+ "conversation.reply": {
+  "message": "Reply",
+  "description": "Button.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"aria-label\":\"Reply\""
+ },
+ "conversation.scroll_to_bottom": {
+  "message": "Scroll to bottom",
+  "description": "Button/aria-label.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"aria-label\":\"Scroll to bottom\""
+ },
+ "conversation.search_emoji": {
+  "message": "Search emoji…",
+  "description": "Search placeholder.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "placeholder:\"Search emoji…\""
+ },
+ "conversation.get_started": {
+  "message": "Send a message to get started.",
+  "description": "Empty chat hint.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "children:\"Send a message to get started.\""
+ },
+ "conversation.sending": {
+  "message": "Sending…",
+  "description": "Status.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "children:\"Sending…\""
+ },
+ "conversation.stopped": {
+  "message": "Stopped",
+  "description": "Status.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "label:\"Stopped\""
+ },
+ "conversation.type_own_answer": {
+  "message": "Type your own answer",
+  "description": "Placeholder.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "placeholder:\"Type your own answer\""
+ },
+ "conversation.voice_input": {
+  "message": "Voice input",
+  "description": "Button/aria-label.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "\"aria-label\":\"Voice input\""
+ },
+ "conversation.working": {
+  "message": "Working",
+  "description": "Status: the agent is working.",
+  "source": "assets/conversation-D9Q3VEsl.js",
+  "anchor": "label:\"Working\""
+ },
+ "tasks.all_projects": {
+  "message": "All projects",
+  "description": "Filter option.",
+  "source": "assets/tasks-D7OPjR17.js",
+  "anchor": "children:\"All projects\""
+ },
+ "tasks.all_statuses": {
+  "message": "All statuses",
+  "description": "Filter option.",
+  "source": "assets/tasks-D7OPjR17.js",
+  "anchor": "label:\"All statuses\""
+ },
+ "tasks.ask_placeholder": {
+  "message": "Ask AI a task, @ for context",
+  "description": "Composer placeholder. Keep \"@\".",
+  "source": "assets/tasks-D7OPjR17.js",
+  "anchor": "placeholder:\"Ask AI a task, @ for context\""
+ },
+ "tasks.card": {
+  "message": "Card",
+  "description": "View option: card layout.",
+  "source": "assets/tasks-D7OPjR17.js",
+  "anchor": "label:\"Card\""
+ },
+ "tasks.list": {
+  "message": "List",
+  "description": "View option: list layout.",
+  "source": "assets/tasks-D7OPjR17.js",
+  "anchor": "label:\"List\""
+ },
+ "tasks.filter_chats": {
+  "message": "Filter chats",
+  "description": "aria-label.",
+  "source": "assets/tasks-D7OPjR17.js",
+  "anchor": "\"aria-label\":\"Filter chats\""
+ },
+ "tasks.needs_review": {
+  "message": "Needs review",
+  "description": "Status.",
+  "source": "assets/tasks-D7OPjR17.js",
+  "anchor": "label:\"Needs review\""
+ },
+ "tasks.newest_first": {
+  "message": "Newest first",
+  "description": "Sort option.",
+  "source": "assets/tasks-D7OPjR17.js",
+  "anchor": "label:\"Newest first\""
+ },
+ "tasks.oldest_first": {
+  "message": "Oldest first",
+  "description": "Sort option.",
+  "source": "assets/tasks-D7OPjR17.js",
+  "anchor": "label:\"Oldest first\""
+ },
+ "tasks.search": {
+  "message": "Search tasks",
+  "description": "Search placeholder (glossary: Task).",
+  "source": "assets/tasks-D7OPjR17.js",
+  "anchor": "\"aria-label\":\"Search tasks\",vari"
+ },
+ "tasks.all_chats": {
+  "message": "All Chats",
+  "description": "Filter option (glossary: Chats).",
+  "source": "assets/tasks-CtF0WxoJ.js",
+  "anchor": "\"All Chats\""
+ },
+ "tasks.all_routines": {
+  "message": "All Routines",
+  "description": "Filter option (glossary: Routine).",
+  "source": "assets/tasks-CtF0WxoJ.js",
+  "anchor": "\"All Routines\""
+ },
+ "tasks.routines_desc": {
+  "message": "Let Aux handle the tasks you do on repeat.",
+  "description": "Empty state description.",
+  "source": "assets/tasks-CtF0WxoJ.js",
+  "anchor": "children:\"Let Aux handle the tasks you do on repeat.\""
+ },
+ "tasks.needs_input": {
+  "message": "Needs your input",
+  "description": "Status.",
+  "source": "assets/tasks-CtF0WxoJ.js",
+  "anchor": "children:\"Needs your input\""
+ },
+ "tasks.no_routines": {
+  "message": "No routines",
+  "description": "Empty state.",
+  "source": "assets/tasks-CtF0WxoJ.js",
+  "anchor": "children:\"No routines\""
+ },
+ "tasks.unread_chats": {
+  "message": "Unread chats",
+  "description": "Filter option.",
+  "source": "assets/tasks-CtF0WxoJ.js",
+  "anchor": "\"aria-label\":\"Unread chats\""
+ },
+ "tasks.unread_routines": {
+  "message": "Unread routines",
+  "description": "Filter option.",
+  "source": "assets/tasks-CtF0WxoJ.js",
+  "anchor": "\"aria-label\":\"Unread routines\""
+ },
+ "projects.description": {
+  "message": "Bring related tasks, instructions, and context together whenever a project needs its own space.",
+  "description": "Empty state description.",
+  "source": "assets/projects-D_csJvC9.js",
+  "anchor": "children:\"Bring related tasks, instructions, and context together whenever a project needs its own space.\""
+ },
+ "projects.create": {
+  "message": "Create a Project",
+  "description": "Button.",
+  "source": "assets/projects-D_csJvC9.js",
+  "anchor": "children:\"Create a Project\""
+ },
+ "projects.make_room": {
+  "message": "Make room for focused work",
+  "description": "Empty state title.",
+  "source": "assets/projects-D_csJvC9.js",
+  "anchor": "children:\"Make room for focused work\""
+ },
+ "projects.load_failed": {
+  "message": "Projects could not be loaded.",
+  "description": "Error.",
+  "source": "assets/projects-D_csJvC9.js",
+  "anchor": "children:\"Projects could not be loaded.\""
+ },
+ "feedback.add_context": {
+  "message": "Add any context, comments, or issues…",
+  "description": "Placeholder.",
+  "source": "assets/session-feedback-dialog-BjDg0W8m.js",
+  "anchor": "placeholder:\"Add any context, comments, or issues…\""
+ },
+ "feedback.saved_privately": {
+  "message": "Saved privately for review.",
+  "description": "Toast.",
+  "source": "assets/session-feedback-dialog-BjDg0W8m.js",
+  "anchor": "\"Saved privately for review.\""
+ },
+ "feedback.submit": {
+  "message": "Submit",
+  "description": "Button.",
+  "source": "assets/session-feedback-dialog-BjDg0W8m.js",
+  "anchor": "children:\"Submit\""
+ },
+ "feedback.privacy_desc": {
+  "message": "This saves your feedback and session data privately for Aux review.",
+  "description": "Dialog description.",
+  "source": "assets/session-feedback-dialog-BjDg0W8m.js",
+  "anchor": "\"This saves your feedback and session data privately for Aux review.\""
+ },
+ "contextmenu.capture": {
+  "message": "Capture",
+  "description": "Right-click menu item: capture the page, selection, image or link.",
+  "source": "background.js",
+  "anchor": "title: \"Capture\""
+ },
+ "contextmenu.translate_page": {
+  "message": "Translate this page",
+  "description": "Right-click menu item.",
+  "source": "background.js",
+  "anchor": "title: \"Translate this page\""
+ }
+}

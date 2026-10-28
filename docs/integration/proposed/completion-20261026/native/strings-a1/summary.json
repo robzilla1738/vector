@@ -1,0 +1,22 @@
+{
+ "english_edits": 244,
+ "reworded_messages": 239,
+ "skipped_messages": 155,
+ "aux_messages": 291,
+ "code_edits": 397,
+ "xtb_files": 54,
+ "translations_per_locale": {
+  "es": 1072,
+  "fr": 1072,
+  "de": 1072,
+  "pt-BR": 1072,
+  "it": 1072,
+  "ja": 1072,
+  "ko": 1072,
+  "zh-CN": 1072,
+  "zh-TW": 1072
+ },
+ "mechanical_translations": 7156,
+ "manual_translation_requests": 377,
+ "manual_translations_missing": 0
+}
