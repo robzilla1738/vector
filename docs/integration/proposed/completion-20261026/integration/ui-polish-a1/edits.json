@@ -1,0 +1,56 @@
+{
+ "format": "aux.candidate-edits.v1",
+ "purpose": "UI pass polish: settings and chat search placeholders read \"Search…\"; the palette shows Aux, not the extension URL, for Aux pages; a failed account event refresh no longer keeps the native owner at Quit (signed-in Quit took about 25 s).",
+ "files": [
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+   "edits": [
+    {
+     "find": "placeholder:\"Search..\"",
+     "replace": "placeholder:\"Search…\"",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/sidebar-Cj9gldy1.js",
+   "edits": [
+    {
+     "find": "placeholder:\"Search..\"",
+     "replace": "placeholder:\"Search…\"",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/tasks-D7OPjR17.js",
+   "edits": [
+    {
+     "find": "placeholder:\"Search..\"",
+     "replace": "placeholder:\"Search…\"",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+   "edits": [
+    {
+     "find": "title:tab.title||tab.url,subtitle:tab.url,",
+     "replace": "title:tab.title||tab.url,subtitle:tab.url.startsWith('chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/')?'Aux':tab.url,",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+   "edits": [
+    {
+     "find": "async function auxRunEventRefresh(callback) {\n  const state = auxEventPollState(), boundary = auxBrokerBoundary();\n  const pending = boundary.awaited(callback);\n  state.refreshes.add(pending);\n  try { return await pending; }\n  finally { state.refreshes.delete(pending); }\n}",
+     "replace": "async function auxRunEventRefresh(callback) {\n  const state = auxEventPollState(), boundary = auxBrokerBoundary();\n  // A failed refresh (offline, a bad server reply) has still settled; its caller\n  // retries it. Only the caller sees the error, so the broker does not count it\n  // as unsettled work and keep the native owner at Quit.\n  const pending = boundary.awaited(async () => { try { return { value: await callback() }; } catch (error) { return { error }; } });\n  state.refreshes.add(pending);\n  try { const result = await pending; if ('error' in result) throw result.error; return result.value; }\n  finally { state.refreshes.delete(pending); }\n}",
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

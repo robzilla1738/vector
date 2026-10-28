@@ -65,4 +65,6 @@ test('logical tab and Space results retain identity, independent views and real 
  await commitNavigation(api,c,tabs[1]);assert.deepEqual(seen,{generation:c.generation,kind:'activate-logical-tab',id:'b',organizationOwner:'native-owner',organizationRevision:'42'});
  await commitNavigation(api,c,result.find(section=>section.id==='aux-spaces').items[1]);assert.equal(seen.kind,'select-space');assert.equal(seen.id,'s2');
  assert.equal(navigationSections(c,'Other view',original).find(section=>section.id==='aux-logical-tabs').items.length,1);
+ const internal={...c,organization:{...c.organization,tabs:[{id:'n',title:'New Tab',url:'chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/newtab.html',nativeTabId:10}]}};
+ assert.equal(navigationSections(internal,'',original).find(section=>section.id==='aux-logical-tabs').items[0].subtitle,'Aux');
 });

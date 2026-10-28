@@ -38,6 +38,14 @@ test('actual poll class retains cursor, refreshes once, rejects late owners and 
   assert.equal(aborted,true);assert.equal(f.client.pending,undefined);assert.equal(f.client.running,false);assert.equal(f.context.auxEventPollState().clients.size,0);
 });
 
+test('a failed refresh reaches its caller but settles cleanly for the broker',async()=>{
+  const f=fixture(),settled=[];
+  f.context.auxBrokerBoundary=()=>({awaited:callback=>{const work=Promise.resolve().then(callback);work.then(()=>settled.push('fulfilled'),()=>settled.push('rejected'));return work;}});
+  await assert.rejects(f.context.auxRunEventRefresh(async()=>{throw Error('Synthetic refresh failure');}),/Synthetic refresh failure/);
+  assert.equal(await f.context.auxRunEventRefresh(async()=>'ok'),'ok');
+  assert.deepEqual(settled,['fulfilled','fulfilled']);assert.equal(f.context.auxEventPollState().refreshes.size,0);
+});
+
 test('oversized or malformed snapshots stay offline with bounded retries and no invalidation success',async()=>{
   const f=fixture();f.client.start();f.setReply(async()=>new Response('x'.repeat(9000)));f.client.tick();await f.client.pending;
   assert.equal(f.events.length,0);assert.equal(f.client.cursor,undefined);assert.equal(f.errors.length,1);assert.ok(f.timers.at(-1).delay>=120_000);

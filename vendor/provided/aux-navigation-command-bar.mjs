@@ -36,7 +36,7 @@ export function navigationSections(context, query, sections) {
     const query=text.toLowerCase(),matches=value=>!query||value.toLowerCase().includes(query);
     const logical=(organization.tabs??[]).filter(tab=>matches(`${tab.title} ${tab.url}`)).slice(0,100)
       .map(tab=>({id:`aux-logical:${tab.id}`,kind:'aux-logical-tab',logicalId:tab.id,
-        title:tab.title||tab.url,subtitle:tab.url,
+        title:tab.title||tab.url,subtitle:tab.url.startsWith('chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/')?'Aux':tab.url,
         actionLabel:Number.isInteger(tab.nativeTabId)?'Switch':'Open here'}));
     const spaces=(organization.spaces??[]).filter(space=>matches(space.title))
       .sort((a,b)=>Number(BigInt(a.order??0)-BigInt(b.order??0))).slice(0,100)

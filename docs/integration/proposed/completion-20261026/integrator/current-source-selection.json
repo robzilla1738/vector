@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "060843df1a21579f6038b477e2b5f7b11ef28bed1481f1caad7152232be2ab6c",
+  "signedInventorySha256": "a790e49fb1730cefe7782cbe9c7aef7fdf6f67f19181402cef251a56d9eb56bd",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -376,6 +376,14 @@
     "sha256": "d8bf1ad2c8a055136f9a03e39d6d891a7c39e5bc08af8004c0da48362654a0b4",
     "sources": [
       "integration/blob-upload-origin-a1"
+    ]
+  },
+  "uiPolishRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-ui-polish-a1/receipt.json",
+    "sha256": "982b0c048363985a08e940dcaa389f472a9b272b619286a45508502232b0bf5a",
+    "sources": [
+      "integration/ui-polish-a1",
+      "durable checkout: aux_preview, toolbar/browser_view titlebar, aux_recent_files_section, tab_search tab_data.ts, aux_mini_popup default, main_menu_builder, render_view_context_menu"
     ]
   }
 }

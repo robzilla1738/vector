@@ -11,9 +11,12 @@ export async function auxStopEventPolling() {
 }
 export async function auxRunEventRefresh(callback) {
   const state = auxEventPollState(), boundary = auxBrokerBoundary();
-  const pending = boundary.awaited(callback);
+  // A failed refresh (offline, a bad server reply) has still settled; its caller
+  // retries it. Only the caller sees the error, so the broker does not count it
+  // as unsettled work and keep the native owner at Quit.
+  const pending = boundary.awaited(async () => { try { return { value: await callback() }; } catch (error) { return { error }; } });
   state.refreshes.add(pending);
-  try { return await pending; }
+  try { const result = await pending; if ('error' in result) throw result.error; return result.value; }
   finally { state.refreshes.delete(pending); }
 }
 export function auxCreateEventPollClientClass() {

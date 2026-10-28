@@ -10,8 +10,9 @@ The excellence-audit batch is sealed as `7f810851` plus the media reseal `c45970
 
 | Role | Path | Inventory |
 |---|---|---|
-| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `060843df1a21579f6038b477e2b5f7b11ef28bed1481f1caad7152232be2ab6c` (receipt `combined-blob-upload-origin-a1`) |
-| What that seal adds | Private uploads accept the Vercel Blob API presign host `https://vercel.com/api/blob/` (`integration/blob-upload-origin-a1`), so session feedback saves | On top of `c718c7dc` |
+| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `a790e49fb1730cefe7782cbe9c7aef7fdf6f67f19181402cef251a56d9eb56bd` (receipt `combined-ui-polish-a1`) |
+| What that seal adds | UI pass fixes (`integration/ui-polish-a1`): traffic lights stay aligned with sidebar navigation on; Peek centers on its window and dismisses with Escape or a click back on the window; file-type icons in Recent files; Aux pages read "Aux" in the split chooser and palette; "Search…"; Mini popup default Control-Shift-Space (macOS 27 took Shift-Command-Space); no Lens or AI Mode menu items; a failed account event refresh no longer stalls Quit | On top of `060843df` |
+| What `060843df` added | Private uploads accept the Vercel Blob API presign host `https://vercel.com/api/blob/` (`integration/blob-upload-origin-a1`), so session feedback saves | On top of `c718c7dc` |
 | What `c718c7dc` added | Feedback compares session timestamps by value, not by Date reference, so it no longer reports "The original feedback session changed." (`integration/feedback-timestamp-a1`) | On top of `27d6d831` |
 | What `27d6d831` added | Fixes from the first UI pass (`desktop/ui-pass-20261027`): the build uses the live production cloud now that the hosted deploy is approved (D1); all 59 changed framework paks ship (Aux logo on chrome://version, rebranded strings); Install CLI replaces an earlier Aux wrapper | On top of `e681affc` |
 | What `e681affc` added | The historical Keychain interposer `libaux-native-boundary.dylib` and the unloaded guard and probe files are removed, so no Aside Keychain name ships. Launch, quit, abort and relaunch observed clean | On top of `8e865b3e` |
