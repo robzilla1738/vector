@@ -35,6 +35,118 @@
    "why": "Messenger bot help pointed at an unreachable placeholder; it opens the Aux docs.",
    "find": "M=`http://127.0.0.1:9/aux-unavailable/docs/help/channels-${t===\"grok-bot\"?t:t.split(\"-\")[1]}.md`",
    "replace": "M=`https://app.getaux.co/docs`"
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/island-C0ouZ54e.js",
+   "count": 1,
+   "why": "The new tab page drops its profile menu; the browser sidebar has the profile button.",
+   "find": ",!o&&l&&(0,e.jsx)(xe,{})]",
+   "replace": "]"
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/onboarding-helper-BVYyPOep.js",
+   "count": 1,
+   "why": "New tab suggestions: read the omnibox mode so the chips can sit under the Ask controls in Ask mode.",
+   "find": "import{a as A,s as I}from\"./newtab-CnOLQ0yu.js\"",
+   "replace": "import{a as A,o as auxNewTab,s as I}from\"./newtab-CnOLQ0yu.js\""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/onboarding-helper-BVYyPOep.js",
+   "count": 1,
+   "why": "New tab suggestions: read the omnibox mode so the chips can sit under the Ask controls in Ask mode.",
+   "find": "const o=I(),{broadcast:a}=y()",
+   "replace": "const o=I(),{omniboxMode:auxMode}=auxNewTab(),{broadcast:a}=y()"
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/onboarding-helper-BVYyPOep.js",
+   "count": 1,
+   "why": "New tab suggestions: with no chats they sit about 24px under the search bar (under the Ask controls row in Ask mode) instead of a page gap further down.",
+   "find": "className:\"group/onboarding-helper [interpolate-size:allow-keywords]\"",
+   "replace": "className:\"group/onboarding-helper [interpolate-size:allow-keywords]\",style:t>0?void 0:{marginTop:auxMode===\"ask\"?\"-1.5rem\":\"-4.5rem\",transition:\"margin-top .15s ease-out\"}"
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/onboarding-helper-BVYyPOep.js",
+   "count": 1,
+   "why": "New tab suggestions: centered at the search bar's width (max 50rem less 2rem a side, as #new-tab-omnibox and its card).",
+   "find": "l(\"space-y-2 pt-2 pb-6 opacity-0 transition-all duration-100\"",
+   "replace": "l(\"mx-auto w-full max-w-200 px-8 pb-6 opacity-0 transition-all duration-100\""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/onboarding-helper-BVYyPOep.js",
+   "count": 1,
+   "why": "New tab suggestions: no section heading above the chips.",
+   "find": "(0,e.jsx)(\"div\",{className:\"mx-auto flex max-w-[827px] items-center justify-between gap-1\",children:(0,e.jsx)(\"h2\",{className:\"text-surface-primary-foreground font-display pl-2 text-base font-[450] select-none\",children:\"Suggested tasks\"})}),",
+   "replace": ""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/onboarding-helper-BVYyPOep.js",
+   "count": 1,
+   "why": "New tab suggestions: one centered, wrapping row of compact chips (neutral icon and short title, description as tooltip) replaces the gradient art cards and their prompt buttons; each chip runs the same action.",
+   "find": "className:\"mx-auto grid max-w-[827px] grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] justify-center gap-4\",children:m.map((r,s)=>(0,e.jsxs)(H,{children:[(0,e.jsxs)(z,{children:[(0,e.jsxs)(\"div\",{className:\"absolute top-1/2 left-1/2 z-1 flex size-20 -translate-1/2 items-center justify-center rounded-2xl bg-linear-to-b from-white/10 to-white/50 text-white\",children:[r.type===\"task\"&&(0,e.jsx)(O,{className:\"size-14\"}),r.type===\"routine\"&&(0,e.jsx)(_,{className:\"size-12\"}),r.type===\"etc\"&&(0,e.jsx)(b,{className:\"size-12\"})]}),(0,e.jsx)(\"img\",{src:B[s],alt:r.title,loading:\"lazy\",decoding:\"async\",className:\"pointer-events-none absolute size-full object-cover object-center select-none\"})]}),(0,e.jsxs)(M,{children:[(0,e.jsx)(D,{children:r.title}),(0,e.jsx)(P,{children:r.description})]}),(0,e.jsxs)(G,{onClick:g(r),children:[(0,e.jsx)(\"span\",{children:r.action.label}),(0,e.jsx)(C,{\"data-icon\":\"inline-end\"})]})]},r.id??r.title))",
+   "replace": "className:\"flex flex-wrap justify-center gap-2\",children:m.map(r=>(0,e.jsxs)(\"button\",{type:\"button\",title:r.description,onClick:g(r),className:\"bg-secondary hover:bg-accent text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-sm font-medium outline-none transition-colors select-none focus-visible:ring-[3px] [&_svg]:size-4 [&_svg]:shrink-0\",children:[r.type===\"task\"&&(0,e.jsx)(O,{}),r.type===\"routine\"&&(0,e.jsx)(_,{}),r.type===\"etc\"&&(0,e.jsx)(b,{}),(0,e.jsx)(\"span\",{children:r.title})]},r.id??r.title))"
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/onboarding-helper-BVYyPOep.js",
+   "count": 1,
+   "why": "New tab suggestions: the fold toggle names them plainly.",
+   "find": "children:\"Show suggested tasks\"",
+   "replace": "children:\"Show suggestions\""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/onboarding-helper-BVYyPOep.js",
+   "count": 1,
+   "why": "New tab suggestions: short chip title.",
+   "find": "title:\"Set up Aux's memory\"",
+   "replace": "title:\"Set up memory\""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/onboarding-helper-BVYyPOep.js",
+   "count": 1,
+   "why": "New tab suggestions: short chip title.",
+   "find": "title:\"Automate my routines\"",
+   "replace": "title:\"Automate routines\""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/tasks-CtF0WxoJ.js",
+   "count": 1,
+   "why": "New tab: the chat list wrapper takes no space when it has nothing to show.",
+   "find": "className:\"mb-12\"",
+   "replace": "className:\"mb-12 empty:hidden\""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/-layouts-CcApOQbE.js",
+   "count": 1,
+   "why": "Settings content sits flush in the native page card: no border, ring, shadow or corner radius of its own; a 1px divider separates it from the settings nav.",
+   "find": "p=\"bg-web-content-background ring-border-surface-strong ring-[0.5] size-full rounded-[22px] border shadow-xs squircle\"",
+   "replace": "p=\"bg-web-content-background size-full border-l\""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/route-DMfKuXmY.js",
+   "count": 1,
+   "why": "Settings content sits flush in the native page card: no inset around the content panel.",
+   "find": "className:\"size-full p-1.5 pt-0\"",
+   "replace": "className:\"size-full\""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/inbox-BIWs6dWb.js",
+   "count": 1,
+   "why": "Settings content sits flush in the native page card: no inset around the notification settings panel.",
+   "find": "className:\"size-full p-1.5 pt-0\"",
+   "replace": "className:\"size-full\""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/route-BiU8pLwS.js",
+   "count": 1,
+   "why": "Chats and projects sit flush in the native page card: no top hairline drawn over the page edge.",
+   "find": "E=({visible:r})=>r?(0,n.jsx)(\"div\",{\"aria-hidden\":!0,className:\"pointer-events-none absolute inset-0 z-50 shadow-[inset_0_0.5px_0_var(--border)]\"}):null",
+   "replace": "E=()=>null"
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+   "count": 1,
+   "why": "Side panel chat menu: with no chats it says so in a muted item (like its loading item) instead of opening an empty bar.",
+   "find": "children:[w&&(0,s.jsx)(I,{disabled:!0,children:\"Loading sessions...\"}),",
+   "replace": "children:[w&&(0,s.jsx)(I,{disabled:!0,children:\"Loading sessions...\"}),!w&&!c.length&&(0,s.jsx)(I,{disabled:!0,children:\"No chats yet\"}),"
   }
  ]
 }

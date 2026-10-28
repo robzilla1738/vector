@@ -30,7 +30,9 @@ python3 scripts/release/package.py --release out/release/1.0.0-<build>
    - the daemon trusts only `app.getaux.co` among remote origins;
    - inherited cloud, provider and GitHub credentials are dropped;
    - skill icons load from `app.getaux.co`;
-   - the messenger help links open the Aux docs.
+   - the messenger help links open the Aux docs;
+   - the new tab page drops its profile menu (the browser sidebar has one) and shows its suggestions as a centered row of compact chips instead of gradient cards;
+   - settings content sits flush in the native page card (no inset, border or radius of its own), divided from the settings nav by a 1px line.
    - `scripts/release/transforms.mjs` then adds the provider CLI runtime beside the daemon entry and applies its count-checked transforms: borrowed sign-in clients removed, provider CLI hooks in the daemon, CLI rows and dialogs in the Agent ([provider CLIs](../integration/proposed/completion-20261026/runtime/provider-cli-a1/design.md#integration-release-build-2026-10-28)).
 3. Ships a small `bundle.json` with only the keys the browser and CLI validate (`aux_packaged_state_identity.h`). The full stage provenance is kept next to the app as `stage-provenance-bundle.json`.
 4. Sets the public version (1.0.0) and an increasing build number, and adds the camera, microphone, location and Bluetooth usage strings.

@@ -56,8 +56,20 @@ def osa(script, timeout=15):
 
 
 def front():
-    osa(f'tell application "System Events" to set frontmost of {PROCESS} to true')
+    # Aux's own Apple Events (Automation); System Events' frontmost needs assistive
+    # access for osascript itself, which macOS 27 does not inherit from the host.
+    osa(f'tell application "{APP}" to activate')
     time.sleep(0.3)
+
+
+def mouse(events):
+    """Posts CoreGraphics mouse events [(type, x, y)] from Swift, which inherits the host's access."""
+    posts = '; '.join(f'post(.{kind}, {x}, {y})' for kind, x, y in events)
+    swift = ('import CoreGraphics; import Foundation\n'
+             'func post(_ t: CGEventType, _ x: Int, _ y: Int) { CGEvent(mouseEventSource: nil, mouseType: t, '
+             'mouseCursorPosition: CGPoint(x: x, y: y), mouseButton: .left)!.post(tap: .cghidEventTap); usleep(40000) }\n'
+             + posts)
+    subprocess.run(['swift', '-e', swift], check=True)
 
 
 def pids():
@@ -94,7 +106,10 @@ def main(args):
         # An Apple Event to a stopped app launches it without the launcher's
         # --use-mock-keychain, so automation is checked only against a running Aux.
         aux_running = subprocess.run(['pgrep', '-f', f'{APP}/Contents/MacOS/Aux'], capture_output=True).returncode == 0
-        checks = [('accessibility', 'tell application "System Events" to key code 63')]
+        trusted = subprocess.run(['swift', '-e', 'import ApplicationServices; print(AXIsProcessTrusted())'],
+                                 capture_output=True, text=True).stdout.strip() == 'true'
+        print('accessibility', 'ok' if trusted else 'refused (Device Control and Data Access on macOS 27)')
+        checks = []
         if aux_running:
             checks.append(('automation', f'tell application "{APP}" to count windows'))
         else:
@@ -145,14 +160,14 @@ def main(args):
             target += f' of menu item {json.dumps(name)} of menu {json.dumps(name)}'
         front(); osa(f'tell application "System Events" to tell {PROCESS} to click {target} of menu bar item {json.dumps(parts[0])} of menu bar 1')
     elif cmd == 'click':
-        front(); osa(f'tell application "System Events" to click at {{{int(args[1])}, {int(args[2])}}}')
+        x, y = int(args[1]), int(args[2]); front()
+        mouse([('mouseMoved', x, y), ('leftMouseDown', x, y), ('leftMouseUp', x, y)])
     elif cmd == 'drag':
         # System Events has no drag; use a CoreGraphics event sequence via Swift.
         x1, y1, x2, y2 = map(int, args[1:5]); front()
-        swift = f'''import CoreGraphics; import Foundation
-func post(_ t: CGEventType, _ x: Int, _ y: Int) {{ CGEvent(mouseEventSource: nil, mouseType: t, mouseCursorPosition: CGPoint(x: x, y: y), mouseButton: .left)!.post(tap: .cghidEventTap); usleep(40000) }}
-post(.leftMouseDown, {x1}, {y1}); for i in 1...20 {{ post(.leftMouseDragged, {x1} + ({x2}-{x1})*i/20, {y1} + ({y2}-{y1})*i/20) }}; post(.leftMouseUp, {x2}, {y2})'''
-        subprocess.run(['swift', '-e', swift], check=True)
+        mouse([('leftMouseDown', x1, y1)] +
+              [('leftMouseDragged', x1 + (x2 - x1) * i // 20, y1 + (y2 - y1) * i // 20) for i in range(1, 21)] +
+              [('leftMouseUp', x2, y2)])
     elif cmd == 'open':
         front(); osa(f'tell application "{APP}" to set URL of active tab of front window to {json.dumps(args[1])}')
     elif cmd == 'shot':
