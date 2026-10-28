@@ -71,7 +71,6 @@ The supplied addon (`provided-native.node`) and its carrier were unreachable in 
 - **Hosted deploy:** approval, operator, alert recipient and monitor, plus setting the new `AUX_READINESS_SECRET` in Vercel; then J5. Optionally turn on Clerk's legal-consent setting. Help now opens `app.getaux.co/docs`, which serves the new pages only after this deploy.
 - **Keychain runtime check** to narrow the boundary guard's legacy list; D2's real Keychain is exercised only by a non-launcher start.
 - **CLI install (R28):** Install CLI now links the bundled CLI locally, and `aux list`/`aux resolve` work through such a link. Clicking Install in Settings › Developers and `aux open` need the journey pass.
-- **Codex worktrees** under `~/.codex/worktrees`: keep or remove.
 - Unchanged: Apple `2H4D7KNGUP` (REPL), the ChatGPT eligibility form, 1Password identity and vendor account.
 
 ### External gates (Batch 5)
@@ -87,7 +86,7 @@ The supplied addon (`provided-native.node`) and its carrier were unreachable in 
 - The candidate is reproducible as the A38 base plus the ordered repair chain. `python3 scripts/verify-candidate.py` checks every pin and recomputes the whole app inventory with the executor's helper; it passes with 69 pins and 11,200 entries. A fresh `stage:provided` is the predecessor pipeline and stops at its Agent revision review (`provided-ui.test.mjs` stays skipped).
 - `chromium/tree/` is the complete Chromium delta: 1,609 tracked, 867 added and 31 deleted paths, verified by replay. It replaces the old patch series.
 - Acceptance driver: `scripts/acceptance/aux_drive.py` (check, launch, quit, abort, key, menu, click, drag, open, shot, record) and the journey list `scripts/acceptance/JOURNEYS.md`. `aux_drive.py check` reports Screen Recording ok, but Accessibility and Automation still refused (2026-10-27).
-- Worktrees (2026-10-27): the 4 clean worktrees already merged into `main` were removed, and their branches kept. 57 remain: 5 merged with uncommitted changes, and 52 holding commits not in `main`. Some, such as the detached Codex worktrees, are reachable only from the worktree itself. Keep those.
+- Worktrees (2026-10-27, owner: remove only if safe): 44 clean worktrees under `~/Documents/Aux-archive/worktrees` were removed after saving each HEAD as `refs/archive/worktrees/<name>`. 13 remain on purpose: 11 hold uncommitted changes, and 2 clean Codex worktrees under `~/.codex/worktrees` may be in use by Codex.
 - Inputs that receipts cite under `/private/tmp` are preserved in `out/live-inputs/tmp-preserved/` with a hash manifest.
 - `~/Applications/Aux.app` is the 2026-10-19 launcher for the retired independent build, not this candidate.
 
