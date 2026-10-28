@@ -1,0 +1,40 @@
+{
+ "format": "aux.release-package-edits.v1",
+ "edits": [
+  {
+   "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+   "count": 1,
+   "why": "The local daemon trusts only the hosted app page, not the API host, which serves no pages (decision 11).",
+   "find": "Cn===`https://app.getaux.co`||Cn===`https://api.getaux.co`||isTrustedLocalUiOrigin(Cn)",
+   "replace": "Cn===`https://app.getaux.co`||isTrustedLocalUiOrigin(Cn)"
+  },
+  {
+   "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+   "count": 1,
+   "why": "Credentials inherited from a launching shell (cloud, Hugging Face, GitHub and other providers) never reach the daemon or the commands it runs.",
+   "find": "const provider=/^(OPENAI|AZURE_OPENAI|ANTHROPIC|GEMINI|GOOGLE_GENERATIVE_AI|GOOGLE|MISTRAL|GROQ|XAI|DEEPSEEK|OPENROUTER|AI_GATEWAY|COHERE|PERPLEXITY|TOGETHER|FIREWORKS|CEREBRAS|HF|HUGGINGFACE)_(API_KEY|ADMIN_KEY|AUTH_TOKEN|OAUTH_TOKEN|ACCESS_TOKEN)$/;",
+   "replace": "const provider=/^(?:(?:OPENAI|AZURE_OPENAI|ANTHROPIC|GEMINI|GOOGLE_GENERATIVE_AI|GOOGLE|MISTRAL|GROQ|XAI|DEEPSEEK|OPENROUTER|AI_GATEWAY|COHERE|PERPLEXITY|TOGETHER|FIREWORKS|CEREBRAS|HF|HUGGINGFACE|HUGGING_FACE_HUB|MOONSHOT|KIMI|ZAI|MINIMAX|META|LLAMA|COPILOT|GITHUB|GH|CURSOR|VERCEL|CLOUDFLARE|REPLICATE|VOYAGE|ELEVENLABS)_(?:API_KEY|ADMIN_KEY|AUTH_TOKEN|OAUTH_TOKEN|ACCESS_TOKEN|TOKEN|API_TOKEN|OIDC_TOKEN)|AWS_(?:ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN|BEARER_TOKEN_BEDROCK|PROFILE)|AZURE_(?:CLIENT_SECRET|CLIENT_ID|TENANT_ID)|GOOGLE_APPLICATION_CREDENTIALS)$/;"
+  },
+  {
+   "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/static/skills/builtin/**/SKILL.md",
+   "total": 47,
+   "why": "Built-in skill icons load from the production app host, so the dev-cloud alias can be retired (decision 10).",
+   "find": "https://dev-cloud.getaux.co/builtin-skills/",
+   "replace": "https://app.getaux.co/builtin-skills/"
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/channels-CJn5l9_T.js",
+   "count": 1,
+   "why": "Messenger bot help pointed at an unreachable placeholder; it opens the Aux docs.",
+   "find": "cs=s=>`http://127.0.0.1:9/aux-unavailable/docs/help/channels-${s}.md`",
+   "replace": "cs=s=>`https://app.getaux.co/docs`"
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/assets/channels-CJn5l9_T.js",
+   "count": 1,
+   "why": "Messenger bot help pointed at an unreachable placeholder; it opens the Aux docs.",
+   "find": "M=`http://127.0.0.1:9/aux-unavailable/docs/help/channels-${t===\"grok-bot\"?t:t.split(\"-\")[1]}.md`",
+   "replace": "M=`https://app.getaux.co/docs`"
+  }
+ ]
+}
