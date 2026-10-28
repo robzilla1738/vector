@@ -62,6 +62,19 @@ The bundled `aux-cli` refuses to run when invoked directly ("packaged state iden
 
 The supplied addon (`provided-native.node`) and its carrier were unreachable in the shipped product, so they were removed. No `AsideNative` symbol remains; details are in `runtime/addon-replacement-scope/README.md`. No delivered code writes Aside-named Keychain items either: the JS uses `AUX_KEYCHAIN_ID_PREFIX=aux`, and the daemon and its Swift code contain no `aside.` item names. What remains is only the boundary guard's legacy acceptance list in `libaux-native-boundary.dylib`: the original group constant and `aside.` prefixes. The daemon's Swift queries pass their own access group through that guard, so narrowing it needs a runtime check against the Keychain, which needs owner approval. Also staying: the runtime-provenance path inside the daemon.
 
+### Waiting on the owner (excellence audit, 2026-10-27)
+
+- **D12, OS grants:** Accessibility and Automation for the terminal running Claude (or Computer use). Unblocks the journey pass, menu Quit, and checking every changed surface (settings, new-tab menu, help menu, chrome://version, palette, the retouched art). Two native items wait on that same pass because their path can't be exercised without it: moving native-messaging `Capture()` off the UI thread, and replacing the nested shutdown `RunLoop`s.
+- **D11, backup destination** for the off-machine encrypted backup of `out/` essentials and git.
+- **D7 version and copyright:** in source (`aux_product_version`, `NSHumanReadableCopyright`). The approved signing review pins the outer `Info.plist`, so it ships at the next full assembly, which needs a new signing review.
+- **Bulk delete of 128 unbuilt shell-era sources** in the checkout (`native/shell-retirement-a1/unbuilt-sources.txt`).
+- **Hosted deploy:** approval, operator, alert recipient and monitor, plus setting the new `AUX_READINESS_SECRET` in Vercel; then J5. Optionally turn on Clerk's legal-consent setting. Help now opens `app.getaux.co/docs`, which serves the new pages only after this deploy.
+- **Legal:** confirm the published terms and privacy wording (taken from `proposed-decisions.md`; governing law reads as the LLC's state of organization; processors stated as US).
+- **Keychain runtime check** to narrow the boundary guard's legacy list; D2's real Keychain is exercised only by a non-launcher start.
+- **CLI install (R28):** the macOS installer fetches from an unavailable release server and the bundled CLI refuses direct runs; a local installer needs the journey pass to design and check. The aux-browser skill text points at the same dead installer.
+- **Codex worktrees** under `~/.codex/worktrees`: keep or remove.
+- Unchanged: Apple `2H4D7KNGUP` (REPL), the ChatGPT eligibility form, 1Password identity and vendor account.
+
 ### External gates (Batch 5)
 
 - **REPL (Bash/PTY/CLI):** the source is complete, rebased onto the current seal (browser overlay, daemon JS with every current rule, and the daemon main with the peer-loss bound, which compiles), and inactive. Waiting on Apple `2H4D7KNGUP`; the remaining steps are in `runtime/repl-activation-ready/README.md`.
