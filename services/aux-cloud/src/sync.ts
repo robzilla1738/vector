@@ -248,7 +248,9 @@ export async function publishShareForUser(userId: string, value: unknown) {
     WHERE user_id = ${userId} AND revoked_at IS NULL AND source_session_id <> ${payload.sourceSessionId}`;
   if (Number(used.count) >= SHARE_LIMIT) fail(409, 'SHARE_LIMIT_REACHED', `You can keep up to ${SHARE_LIMIT} shared conversations. Unshare one and retry.`);
   if (Number(used.bytes) + size > SHARE_QUOTA_BYTES) fail(413, 'SHARE_STORAGE_FULL', 'Shared conversations are using all 100 MB. Unshare some and retry.');
-  const [row] = await sql`INSERT INTO shared_sessions (id, user_id, source_session_id, title, messages) VALUES (${randomBytes(18).toString('base64url')}, ${userId}, ${payload.sourceSessionId}, ${payload.title}, ${JSON.stringify(payload.messages)}::jsonb) ON CONFLICT (user_id, source_session_id) DO UPDATE SET title = EXCLUDED.title, messages = EXCLUDED.messages, revoked_at = NULL, id = CASE WHEN shared_sessions.revoked_at IS NOT NULL THEN EXCLUDED.id ELSE shared_sessions.id END, created_at = CASE WHEN shared_sessions.revoked_at IS NOT NULL THEN now() ELSE shared_sessions.created_at END RETURNING id, title, created_at`;
+  const [row] = await sql`INSERT INTO shared_sessions (id, user_id, source_session_id, title, messages) VALUES (${randomBytes(18).toString('base64url')}, ${userId}, ${payload.sourceSessionId}, ${payload.title}, ${JSON.stringify(payload.messages)}::jsonb) ON CONFLICT (user_id, source_session_id) DO UPDATE SET title = EXCLUDED.title, messages = EXCLUDED.messages, revoked_at = NULL, id = CASE WHEN shared_sessions.revoked_at IS NOT NULL THEN EXCLUDED.id ELSE shared_sessions.id END, created_at = CASE WHEN shared_sessions.revoked_at IS NOT NULL THEN now() ELSE shared_sessions.created_at END WHERE shared_sessions.blocked_at IS NULL RETURNING id, title, created_at`;
+  // An operator takedown holds: the owner cannot republish that conversation.
+  if (!row) fail(403, 'SHARE_BLOCKED', 'This conversation was taken down and cannot be shared again. Contact hello@getaux.co.');
   return { id: row.id, title: row.title, createdAt: new Date(row.created_at).toISOString() };
 }
 syncRoutes.post('/shared-sessions', async c => c.json(await publishShareForUser(c.get('user').id, await json(c.req.raw, share))));
@@ -257,7 +259,7 @@ syncRoutes.get('/shared-sessions/source/:id', async c => {
   return c.json(row ? { id: row.id, title: row.title, createdAt: new Date(row.created_at).toISOString() } : null);
 });
 syncRoutes.delete('/shared-sessions/source/:id', async c => {
-  await sql`UPDATE shared_sessions SET revoked_at = now(), messages = '[]'::jsonb WHERE user_id = ${c.get('user').id} AND source_session_id = ${c.req.param('id')} AND revoked_at IS NULL`;
+  await sql`UPDATE shared_sessions SET revoked_at = now(), messages = '[]'::jsonb, title = '' WHERE user_id = ${c.get('user').id} AND source_session_id = ${c.req.param('id')} AND revoked_at IS NULL`;
   return c.json({ ok: true });
 });
 export async function getPublicShare(shareId: string) {

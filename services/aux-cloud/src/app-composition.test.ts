@@ -6,7 +6,7 @@ import {HTTPException} from 'hono/http-exception';
 import {SignJWT} from 'jose';
 import {app} from './app';
 import {requireInstallation,userDataTables,type AuthVariables} from './auth';
-import {publishShareForUser} from './sync';
+import {getPublicShare,publishShareForUser,syncRoutes} from './sync';
 import {withMigratedDatabase} from './test-database';
 
 // Tables keyed by user that the purge clears by other means, with the reason.
@@ -96,5 +96,21 @@ test('recovery denials and failures log one JSON line with the request id',async
       assert.equal(response.status,409);
       assert.deepEqual(logs,[{event:'aux.recovery.denied',requestId:'iad1::recovery',path:'/api/v1/sync/recovery/v2/challenge',code:'RECOVERY_SESSION_REQUIRED'}]);
     }finally{mock.restoreAll();}
+  });
+});
+
+test('unsharing clears the title and messages, and the owner can share that conversation again',async()=>{
+  await withMigratedDatabase(async query=>{
+    const user=randomUUID(),message=[{role:'user',content:'hello',timestamp:0}];
+    await query('INSERT INTO aux_users(id,clerk_id,email) VALUES($1,$2,$3)',[user,'fixture-unshare','fixture-unshare@example.invalid']);
+    const owner=new Hono<{Variables:AuthVariables}>();
+    owner.use('*',async(c,next)=>{c.set('user',{id:user,clerkId:'c',email:'e',sessionId:randomUUID()});await next();});
+    owner.route('/',syncRoutes);
+    const first=await publishShareForUser(user,{sourceSessionId:'s-1',title:'Private title',messages:message});
+    assert.equal((await owner.request('/shared-sessions/source/s-1',{method:'DELETE'})).status,200);
+    assert.deepEqual((await query("SELECT title,messages FROM shared_sessions WHERE source_session_id='s-1'"))[0],{title:'',messages:[]});
+    assert.equal(await getPublicShare(first.id),null);
+    const again=await publishShareForUser(user,{sourceSessionId:'s-1',title:'Back',messages:message});
+    assert.notEqual(again.id,first.id);assert.equal((await getPublicShare(again.id))?.title,'Back');
   });
 });
