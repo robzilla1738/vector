@@ -8,7 +8,7 @@ import { transformAuxExperimentalSettings } from '../../vendor/provided/aux-expe
 import { applyAuxUiStorageIdentity } from '../../vendor/provided/aux-ui-storage-identity.mjs';
 import { applyAuxUiDraftIdentity } from '../../vendor/provided/aux-ui-draft-identity.mjs';
 import { applyAuxUiDraftCapture } from '../../vendor/provided/aux-ui-draft-capture.mjs';
-import { materializeAuxRecoveryEnrollmentUI } from '../../docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs';
+import { materializeAuxRecoveryEnrollmentUI } from './integration/aux-sync-recovery-enrollment-ui/adapt.mjs';
 import { applyAuxBillingReturnFallback } from '../../vendor/provided/aux-billing-return-fallback.mjs';
 import { transformProviderFundedLaunch } from '../../vendor/provided/provider-funded-launch.mjs';
 import { applyOfficialChatGPTCallbackAsset } from '../../vendor/aside/patches/chatgpt.mjs';
@@ -21,7 +21,7 @@ import { loadAuxBrowserIconReplacement } from './aux-browser-icon.mjs';
 import { applyAuxRuntimeContractIdentity } from '../../vendor/provided/aux-runtime-contract-identity.mjs';
 import { applyAuxProviderIdentity } from '../../vendor/provided/aux-provider-identity.mjs';
 import { applyAuxProtocolIdentity, resolveProtocolIdentity, resolveStateIdentityVersion } from '../../vendor/provided/aux-protocol-identity.mjs';
-import { reviseAgentManifest } from '../../docs/integration/proposed/provided-agent-worker-revision/revision.mjs';
+import { reviseAgentManifest } from './integration/provided-agent-worker-revision/revision.mjs';
 import { readAuxMark, auxMarkReactChildren, auxMarkSvg } from './aux-mark.mjs';
 import { restoreProvidedWireNames } from './provided-wire.mjs';
 import { createHash } from 'node:crypto';
@@ -59,7 +59,7 @@ const extensionId = (key) =>
       String.fromCharCode(97 + Number.parseInt(digit, 16)),
     );
 
-const enrollmentGenerator = 'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs';
+const enrollmentGenerator = 'scripts/lib/integration/aux-sync-recovery-enrollment-ui/adapt.mjs';
 const enrollmentPaths = ['assets/aux-sync-recovery-enrollment-controller.js', 'assets/aux-sync-recovery-enrollment.js'];
 /** Two fixed source-pinned assets only; never alters original UI bytes. */
 export async function providedRecoveryEnrollmentUiResources(stateIdentityVersion = 1) {

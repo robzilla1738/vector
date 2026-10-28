@@ -1,7 +1,7 @@
-import { verifyRebuiltPtyPackageInput, replaceCopiedDaemonAndPty } from '../../docs/integration/proposed/aux-native-rebuilt-pty-package/source/package.mjs';
-import { verifyProviderNativePackageInput, replaceCopiedProviderDaemonAndPty } from '../../docs/integration/proposed/aux-native-provider-entry-package/source/package.mjs';
-import { addDormantCurrentNativeEntry } from '../../docs/integration/proposed/aux-native-current-entry-package/source/resources.mjs';
-import { verifyNativeMainPackageInput, replaceCopiedDaemonWithNativeMain } from '../../docs/integration/proposed/aux-native-main-package-integration/source/native-main-package.mjs';
+import { verifyRebuiltPtyPackageInput, replaceCopiedDaemonAndPty } from './integration/aux-native-rebuilt-pty-package/package.mjs';
+import { verifyProviderNativePackageInput, replaceCopiedProviderDaemonAndPty } from './integration/aux-native-provider-entry-package/package.mjs';
+import { addDormantCurrentNativeEntry } from './integration/aux-native-current-entry-package/resources.mjs';
+import { verifyNativeMainPackageInput, replaceCopiedDaemonWithNativeMain } from './integration/aux-native-main-package-integration/native-main-package.mjs';
 import { verifyAuxStateIdentityContract } from './aux-state-identity-contract.mjs';
 import { verifyAuxIdentityContract, assertAuxVisualAssets } from './aux-identity-contract.mjs';
 /** Assemble a copied native app and the supplied resources. Never install or launch. */
@@ -110,7 +110,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
   if (finalLocalNativeReceiptPath && (nativeMainReceiptPath || nativePtyReceiptPath || providerNativeReceiptPath || developmentDpLayout))
     throw Error('Final local native package requires its separate inactive native path');
   const finalLocalModule = finalLocalNativeReceiptPath
-    ? await import('../../docs/integration/proposed/aux-final-local-entry-package/source/package.mjs') : null;
+    ? await import('./integration/aux-final-local-entry-package/package.mjs') : null;
   const finalLocalEvidence = finalLocalModule ? await finalLocalModule.verifyFinalLocalNativePackageInput({
     repositoryRoot: repository, receiptPath: finalLocalNativeReceiptPath, compositionBytes: compositionRaw, stage: stageDeclaration,
   }) : null;

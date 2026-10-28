@@ -7,7 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { auxEventPollState, auxStopEventPolling, auxRunEventRefresh, auxCreateEventPollClientClass } from './aux-event-poll-client.mjs';
 import { transformAuxEventPolling } from './aux-event-poll-integration.mjs';
 import { transformAuxFinalRuntimeIdentity } from './aux-final-runtime-identity.mjs';
-import { upgradeCloudTransfers } from '../../docs/integration/proposed/completion-20261026/integration/transform.mjs';
+import { upgradeCloudTransfers } from '../../scripts/lib/integration/completion-integration/transform.mjs';
 
 function fixture() {
   const timers = [], stops = new Set(), requests = [];

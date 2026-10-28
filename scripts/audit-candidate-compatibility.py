@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-DECODER = REPO / 'docs/integration/proposed/aux-native-compatibility-metadata/inspect.py'
+DECODER = REPO / 'scripts/lib/integration/aux-native-compatibility-metadata/inspect.py'
 spec = importlib.util.spec_from_file_location('aux_macho_metadata', DECODER)
 metadata = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(metadata)
