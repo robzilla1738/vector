@@ -22,8 +22,6 @@ Real input, Tinted transparency: the merged navigation row, address field, secti
 
 ## Open
 
-- One pin left over from testing (made with Tab › Pin Tab) still draws its icon right of center and only responds on its right half. Pin tiles now never lay out wider than the grid, which removed one cause. A fresh pin could not be made under automation (the pin drag was not recognized), so the remaining cause is not traced.
-- The Transparent style lets bright windows behind show through strongly. Tinted, which matches Aside, is clearer; the default stays as supplied.
 - The first Pins tile layout with a third-width grid was tried and reverted: one pin stretches across, as before.
 
 ## Follow-up (seal `978b0f56`)
@@ -31,3 +29,11 @@ Real input, Tinted transparency: the merged navigation row, address field, secti
 - Back, forward and reload share the sidebar's top row. The extensions control and Ask Aux move to the end of the address row; in the sidebar Ask Aux is a round icon button with the same tooltip and accessible name.
 - Split view panes have an Arc-style header strip: favicon, domain and close, centered, on every pane, with the page below it rather than under a corner flap. The outline has no notch, and the strip takes the outline's rounded top corners.
 - Verified with real input: the merged row with forward visible, the address row, the split header on both panes.
+
+## Follow-up (seal `405cc9b2`)
+
+- **Off-center pin, resolved:** it was Chromium's own pinned tab (from Tab › Pin Tab) drawn over an Aux tile while the two were out of step. After unpinning, the Aux tile is centered; pinning from the Tab menu now gives even Aux tiles. Pins counts as empty only when no tile or folder row is present (spacing alone no longer keeps an empty header).
+- **Little Arc frame:** Peek and Quick window open as `aux-preview-popup` windows: full-size content with a transparent titlebar, so the bar (back, dismiss, address, "Open in Aux") shares the traffic-light row. The space beside the lights reports `HTCAPTION` to drag the window. A first build measured the toolbar before it existed and crashed opening Peek (`ToolbarView::CalculatePreferredSize` from `GetWindowFrameTitlebarHeight`); the titlebar now uses the laid-out toolbar height.
+- **Tinted by default:** with no saved choice, windows use Tinted (no vibrancy), as in Aside; Transparent applies once chosen in Appearance.
+- **No provider name:** the empty address field says "Search or type a URL" and the link menu says "Search the Web for …".
+- **Not verifiable here:** synthesized drags do not move any window on this Mac (a Finder window did not move either), so dragging Peek by its bar needs a manual check.

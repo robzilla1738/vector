@@ -21093,7 +21093,7 @@ index 5f49c6e87f2ea7ae5bf28b94edc4542d524ea1c4..ad8805fcb8351cebf8228c489757e281
    // Creates or loads the profile located at |profile_path|.
    // Should be called on the UI thread.
 diff --git a/chrome/browser/renderer_context_menu/render_view_context_menu.cc b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..c163f7b0a97c5dd155c645e3c62bfbb4c3e08b56 100644
+index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..b504b4afcac3ec1ce9c364205e03918801976db7 100644
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 @@ -3,6 +3,12 @@
@@ -21144,7 +21144,27 @@ index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..c163f7b0a97c5dd155c645e3c62bfbb4
    if (!params_.link_url.is_empty()) {
      const bool in_app = IsInProgressiveWebApp();
  
-@@ -3335,6 +3355,12 @@ void RenderViewContextMenu::AppendLiveCaptionItem() {
+@@ -2978,11 +2998,19 @@ void RenderViewContextMenu::AppendSearchProvider() {
+     if (!lens::features::
+             IsLensOverlayTextSelectionContextMenuEntrypointEnabled() ||
+         GetBrowser() || IsPrintPreviewContent(current_url_)) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++      // Aux names no search provider in its menus ("Search the Web for").
++      menu_model_.AddItem(
++          IDC_CONTENT_CONTEXT_SEARCHWEBFOR,
++          l10n_util::GetStringFUTF16(IDS_CONTENT_CONTEXT_SEARCHWEBFOR,
++                                     u"the Web", printable_selection_text));
++#else
+       menu_model_.AddItem(
+           IDC_CONTENT_CONTEXT_SEARCHWEBFOR,
+           l10n_util::GetStringFUTF16(IDS_CONTENT_CONTEXT_SEARCHWEBFOR,
+                                      default_provider->short_name(),
+                                      printable_selection_text));
++#endif
+       if (features::IsMenuSimplificationEnabled()) {
+         menu_model_.SetIconForCommandId(
+             IDC_CONTENT_CONTEXT_SEARCHWEBFOR,
+@@ -3335,6 +3363,12 @@ void RenderViewContextMenu::AppendLiveCaptionItem() {
  // Menu delegate functions -----------------------------------------------------
  
  bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
@@ -21157,7 +21177,7 @@ index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..c163f7b0a97c5dd155c645e3c62bfbb4
  #if BUILDFLAG(IS_CHROMEOS)
    // Disable context menu in locked fullscreen mode to prevent users from
    // exiting this mode (the menu is not really disabled as the user can still
-@@ -3772,6 +3798,13 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
+@@ -3772,6 +3806,13 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
      return;
    }
    command_executed_ = true;
@@ -41506,7 +41526,7 @@ index 8354a9179ef79627b05447f3810808ccd6a0e78a..9e66453f2f10c20c5ad77ea9ff9b8f01
                  : GetFrameColor(BrowserFrameActiveState::kUseCurrent)));
    }
 diff --git a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
-index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a579c4126b1 100644
+index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..4e8c9611e10f78230ac8fd3c3e0d6e34296b7249 100644
 --- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
 +++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
 @@ -25,6 +25,10 @@
@@ -41520,15 +41540,18 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a57
  #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
  #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
  #import "chrome/browser/ui/cocoa/browser_window_command_handler.h"
-@@ -39,6 +43,7 @@
+@@ -39,8 +43,10 @@
  #include "chrome/browser/ui/tabs/vertical_tab_strip_metrics.h"
  #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
  #include "chrome/browser/ui/ui_features.h"
 +#include "base/logging.h"
  #include "chrome/browser/ui/views/frame/browser_frame_view.h"
  #include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
  #include "chrome/browser/ui/views/frame/browser_widget.h"
-@@ -55,6 +60,7 @@
+ #include "chrome/browser/ui/views/frame/glass_frame_service.h"
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+@@ -55,6 +61,7 @@
  #include "components/lens/lens_features.h"
  #include "components/omnibox/browser/omnibox_prefs.h"
  #import "components/omnibox/common/omnibox_feature_configs.h"
@@ -41536,17 +41559,18 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a57
  #import "components/remote_cocoa/app_shim/native_widget_mac_nswindow.h"
  #import "components/remote_cocoa/app_shim/native_widget_ns_window_bridge.h"
  #import "components/remote_cocoa/app_shim/window_touch_bar_delegate.h"
-@@ -77,6 +83,17 @@
+@@ -77,6 +84,18 @@
  
  namespace {
  
 +#if BUILDFLAG(ENABLE_AUX_BROWSER)
-+enum class AuxPopupKind { kNone, kAccountPassword, kExtension };
++enum class AuxPopupKind { kNone, kAccountPassword, kExtension, kPreview };
 +AuxPopupKind GetAuxPopupKind(BrowserView* view) {
 +  if (!view || !view->browser()) return AuxPopupKind::kNone;
 +  const auto& name = BrowserInitState::From(view->browser())->create_params().app_name;
 +  if (name == "aux-account-password-popup") return AuxPopupKind::kAccountPassword;
 +  if (name == "aux-extension-popup") return AuxPopupKind::kExtension;
++  if (name == "aux-preview-popup") return AuxPopupKind::kPreview;
 +  return AuxPopupKind::kNone;
 +}
 +#endif
@@ -41554,12 +41578,22 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a57
  AppShimHost* GetHostForBrowser(BrowserView* browser_view) {
    auto* const shim_manager = apps::AppShimManager::Get();
    if (!browser_view || !shim_manager) {
-@@ -266,6 +283,16 @@ int32_t BrowserNativeWidgetMac::SheetOffsetY() {
+@@ -266,6 +285,26 @@ int32_t BrowserNativeWidgetMac::SheetOffsetY() {
  void BrowserNativeWidgetMac::GetWindowFrameTitlebarHeight(
      bool* override_titlebar_height,
      float* titlebar_height) {
 +#if BUILDFLAG(ENABLE_AUX_BROWSER)
 +  const auto popup = GetAuxPopupKind(browser_view_);
++  if (popup == AuxPopupKind::kPreview) {
++    // Peek / Quick window: the bar shares the traffic-light row, so center
++    // the lights on it.
++    // Queried again after layout; never measure a toolbar that is not built.
++    const int height =
++        browser_view_->toolbar() ? browser_view_->toolbar()->height() : 0;
++    *override_titlebar_height = height > 0;
++    *titlebar_height = height;
++    return;
++  }
 +  if (popup != AuxPopupKind::kNone) {
 +    // Original4550500: account bootstrap has a zero-height native titlebar;
 +    // the extension popup explicitly leaves titlebar height to AppKit.
@@ -41571,7 +41605,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a57
    if (browser_view_ && browser_view_->browser_widget() &&
        browser_view_->browser_widget()->GetFrameView()) {
      *override_titlebar_height = true;
-@@ -401,6 +428,16 @@ void BrowserNativeWidgetMac::ValidateUserInterfaceItem(
+@@ -401,6 +440,16 @@ void BrowserNativeWidgetMac::ValidateUserInterfaceItem(
      remote_cocoa::mojom::ValidateUserInterfaceItemResult* result) {
    BrowserWindowInterface* const browser =
        browser_view_ ? browser_view_->browser() : nullptr;
@@ -41588,7 +41622,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a57
    if (!browser || !chrome::SupportsCommand(browser, tag)) {
      result->enable = false;
      return;
-@@ -715,6 +752,18 @@ void BrowserNativeWidgetMac::PopulateCreateWindowParams(
+@@ -715,6 +764,22 @@ void BrowserNativeWidgetMac::PopulateCreateWindowParams(
                         NSWindowStyleMaskMiniaturizable |
                         NSWindowStyleMaskResizable;
    CHECK(browser_view_);
@@ -41598,6 +41632,10 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a57
 +    params->window_class = remote_cocoa::mojom::WindowClass::kBrowser;
 +    params->style_mask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
 +                         NSWindowStyleMaskFullSizeContentView;
++    if (GetAuxPopupKind(browser_view_) == AuxPopupKind::kPreview) {
++      params->style_mask |= NSWindowStyleMaskMiniaturizable |
++                            NSWindowStyleMaskResizable;
++    }
 +    params->titlebar_appears_transparent = true;
 +    params->window_title_hidden = true;
 +    params->animation_enabled = true;
@@ -41607,7 +41645,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a57
    if (browser_view_->GetIsPictureInPictureType()) {
      // Picture in Picture windows, even if they are part of a web app, draw
      // their own title bar and decorations.  Note that `GetIsWebAppType()` might
-@@ -745,6 +794,26 @@ NativeWidgetMacNSWindow* BrowserNativeWidgetMac::CreateNSWindow(
+@@ -745,6 +810,26 @@ NativeWidgetMacNSWindow* BrowserNativeWidgetMac::CreateNSWindow(
      const remote_cocoa::mojom::CreateWindowParams* params) {
    CHECK(browser_view_);
    NativeWidgetMacNSWindow* ns_window = NativeWidgetMac::CreateNSWindow(params);
@@ -41634,7 +41672,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a57
    touch_bar_delegate_ = [[BrowserWindowTouchBarViewsDelegate alloc]
        initWithBrowser:browser_view_->browser()
                 window:ns_window];
-@@ -782,6 +851,13 @@ void BrowserNativeWidgetMac::OnWidgetInitDone() {
+@@ -782,6 +867,13 @@ void BrowserNativeWidgetMac::OnWidgetInitDone() {
        GetWidget()->RegisterPaintAsActiveChangedCallback(
            base::BindRepeating(&BrowserNativeWidgetMac::UpdateBackgroundColor,
                                base::Unretained(this)));
@@ -41648,7 +41686,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a57
    // GlassFrameService is only available if glass frame is enabled.
    if (auto* const glass_frame_service = GlassFrameService::GetInstance()) {
      glass_frame_service_subscription_ =
-@@ -811,6 +887,10 @@ void BrowserNativeWidgetMac::OnWindowDestroying(
+@@ -811,6 +903,10 @@ void BrowserNativeWidgetMac::OnWindowDestroying(
  
  void BrowserNativeWidgetMac::OnWidgetActivationChanged(views::Widget* widget,
                                                         bool active) {
@@ -41660,7 +41698,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..ef5c27de425daeebf871c3d283c74a57
    UpdateBackgroundColor();
  }
 diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
-index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8fef23e384d65abd33a67a4d3705cf5f2647488a 100644
+index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..bab3da7382b8e76203e7cc4bae11e9eab109de51 100644
 --- a/chrome/browser/ui/views/frame/browser_view.cc
 +++ b/chrome/browser/ui/views/frame/browser_view.cc
 @@ -3,6 +3,27 @@
@@ -42121,7 +42159,25 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8fef23e384d65abd33a67a4d3705cf5f
    // You cannot close a frame for which there is an active originating drag
    // session.
    if (tab_strip_view() && !tab_strip_view()->IsTabStripCloseable()) {
-@@ -4863,6 +5075,9 @@ void BrowserView::Layout(PassKey) {
+@@ -4647,6 +4859,17 @@ int BrowserView::NonClientHitTest(const gfx::Point& point) {
+   views::View::ConvertPointToTarget(parent(), this,
+                                     &point_in_browser_view_coords);
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Peek / Quick window: the space beside the traffic lights in the bar drags
++  // the window (its toolbar replaces the titlebar).
++  if (toolbar_ && aux::preview::GetKind(browser())) {
++    const int component = views::GetHitTestComponent(toolbar_, point);
++    if (component != HTNOWHERE) {
++      return component;
++    }
++  }
++#endif
++
+   // Check if the point is in the web_app_frame_toolbar_. Because this toolbar
+   // can entirely be within the window controls overlay area, this check needs
+   // to be done before the window controls overlay area check below.
+@@ -4863,6 +5086,9 @@ void BrowserView::Layout(PassKey) {
    }
  
    LayoutSuperclass<views::View>(this);
@@ -42131,7 +42187,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8fef23e384d65abd33a67a4d3705cf5f
  
    // TODO(jamescook): Why was this in the middle of layout code?
    toolbar_->location_bar()->UpdateFocusBehavior(IsToolbarVisible());
-@@ -4966,6 +5181,7 @@ void BrowserView::AddedToWidget() {
+@@ -4966,6 +5192,7 @@ void BrowserView::AddedToWidget() {
    }
  
    views::ClientView::AddedToWidget();
@@ -42139,7 +42195,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8fef23e384d65abd33a67a4d3705cf5f
  
  #if BUILDFLAG(IS_WIN)
    // Register for screen capture exclusion updates. This is specific to
-@@ -5035,6 +5251,13 @@ void BrowserView::AddedToWidget() {
+@@ -5035,6 +5262,13 @@ void BrowserView::AddedToWidget() {
  
    LoadAccelerators();
  
@@ -42153,7 +42209,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8fef23e384d65abd33a67a4d3705cf5f
    // ImmersiveModeController may depend on the presence of a Widget, so it
    // is initialized here.
    auto* const immersive_mode_controller =
-@@ -5111,7 +5334,9 @@ void BrowserView::AddedToWidget() {
+@@ -5111,7 +5345,9 @@ void BrowserView::AddedToWidget() {
    // be constructed following the check above.
    autofill_bubble_handler_ =
        std::make_unique<autofill::AutofillBubbleHandlerImpl>(
@@ -42164,7 +42220,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8fef23e384d65abd33a67a4d3705cf5f
  
    auto* const frame_view = GetFrameView();
    frame_view->OnBrowserViewInitViewsComplete();
-@@ -5154,6 +5379,7 @@ void BrowserView::AddedToWidget() {
+@@ -5154,6 +5390,7 @@ void BrowserView::AddedToWidget() {
        kFallbackPopupAnchorElementId, *this);
  
    initialized_ = true;
@@ -42172,7 +42228,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8fef23e384d65abd33a67a4d3705cf5f
  }
  
  void BrowserView::RemovedFromWidget() {
-@@ -6025,6 +6251,7 @@ void BrowserView::OnWillChangeFocus(View* focused_before, View* focused_now) {
+@@ -6025,6 +6262,7 @@ void BrowserView::OnWillChangeFocus(View* focused_before, View* focused_now) {
  }
  void BrowserView::OnDidChangeFocus(View* focused_before, View* focused_now) {
    UpdateAccessibleNameForRootView();
@@ -42180,7 +42236,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8fef23e384d65abd33a67a4d3705cf5f
  }
  
  WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() {
-@@ -6036,6 +6263,7 @@ const WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() const {
+@@ -6036,6 +6274,7 @@ const WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() const {
  }
  
  void BrowserView::PaintAsActiveChanged() {
@@ -42188,7 +42244,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8fef23e384d65abd33a67a4d3705cf5f
    // Do not propagate Browser active state changes if the Browser has already
    // been scheduled for destruction.
    if (browser_->IsDeleteScheduled()) {
-@@ -6109,6 +6337,220 @@ void BrowserView::UpdateAccessibleURLForRootView(const GURL& url) {
+@@ -6109,6 +6348,220 @@ void BrowserView::UpdateAccessibleURLForRootView(const GURL& url) {
    }
  }
  
@@ -42409,7 +42465,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8fef23e384d65abd33a67a4d3705cf5f
  void BrowserView::UpdateFullscreenAllowedFromPolicy(
      bool allowed_without_policy) {
    auto* fullscreen_pref_path = prefs::kFullscreenAllowed;
-@@ -6121,6 +6563,8 @@ void BrowserView::UpdateFullscreenAllowedFromPolicy(
+@@ -6121,6 +6574,8 @@ void BrowserView::UpdateFullscreenAllowedFromPolicy(
  
  void BrowserView::OnFirstPresentation(
      const viz::FrameTimingDetails& frame_timing_details) {
@@ -49298,10 +49354,19 @@ index 6f7c11b41108ff7ff5f247af5f4965bd5a8c4ec9..8a0bca4b60b770001602a79a58c59c2c
    // A handler to handle unhandled keyboard messages coming back from the
    // renderer process.
 diff --git a/chrome/browser/ui/views/omnibox/omnibox_view_views.cc b/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
-index 58337c04cc5612fe0a2613789976d797d6126f2f..7d729e26f0fe374cd9e66fb1e313ca9447947f3f 100644
+index 58337c04cc5612fe0a2613789976d797d6126f2f..64dcf64d12b8b6b1d7546405039b3cd4fb7da895 100644
 --- a/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
 +++ b/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
-@@ -280,6 +280,30 @@ OmniboxViewViews::~OmniboxViewViews() {
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
+ 
++#include "chrome/browser/buildflags.h"
++
+ #include <algorithm>
+ #include <memory>
+ #include <set>
+@@ -280,6 +282,30 @@ OmniboxViewViews::~OmniboxViewViews() {
  #endif
  }
  
@@ -49332,7 +49397,19 @@ index 58337c04cc5612fe0a2613789976d797d6126f2f..7d729e26f0fe374cd9e66fb1e313ca94
  void OmniboxViewViews::Init() {
    set_controller(this);
    SetTextInputType(GetPreferredTextInputType());
-@@ -718,6 +742,12 @@ gfx::Size OmniboxViewViews::GetMinimumSize() const {
+@@ -437,6 +463,11 @@ void OmniboxViewViews::InstallPlaceholderText() {
+   std::optional<std::u16string> maybe_a11y_placeholder_text;
+   omnibox::ComputePlaceholderText(location_bar_view_, placeholder_text,
+                                   maybe_a11y_placeholder_text);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Aux names no search provider here, matching its new tab page.
++  placeholder_text = u"Search or type a URL";
++  maybe_a11y_placeholder_text.reset();
++#endif
+   SetPlaceholderText(placeholder_text);
+   const std::u16string a11y_text =
+       maybe_a11y_placeholder_text.value_or(placeholder_text);
+@@ -718,6 +749,12 @@ gfx::Size OmniboxViewViews::GetMinimumSize() const {
  }
  
  void OmniboxViewViews::OnPaint(gfx::Canvas* canvas) {
@@ -66242,7 +66319,7 @@ index 3029aa461ad69de7b570c5d4269f67da2b4979ea..ebdb8a70742125e06278043d24b6c561
  
    raw_ptr<NativeWidgetNSWindowBridge> parent_ =
 diff --git a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
-index 74e0a362059024d683e2db7b86d65947726cac14..b1ac6556bf3c66b7b56a29ae0d59bf2415680d3e 100644
+index 74e0a362059024d683e2db7b86d65947726cac14..0299d7742f0d68b9b18dbcb939a395c58e084ca5 100644
 --- a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
 +++ b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
 @@ -8,6 +8,7 @@
@@ -66253,7 +66330,7 @@ index 74e0a362059024d683e2db7b86d65947726cac14..b1ac6556bf3c66b7b56a29ae0d59bf24
  #import <objc/runtime.h>
  #include <stddef.h>
  #include <stdint.h>
-@@ -167,6 +168,162 @@ bool IsBackgroundEffectView(NSView* view) {
+@@ -167,6 +168,164 @@ bool IsBackgroundEffectView(NSView* view) {
  }
  @end
  
@@ -66269,7 +66346,9 @@ index 74e0a362059024d683e2db7b86d65947726cac14..b1ac6556bf3c66b7b56a29ae0d59bf24
 +  base::apple::ScopedCFTypeRef<CFPropertyListRef> value(
 +      CFPreferencesCopyAppValue(kWindowVibrancyDisabledKey,
 +                                kWindowEffectPreferenceDomain));
-+  return value && CFGetTypeID(value.get()) == CFBooleanGetTypeID() &&
++  // Tinted (no vibrancy) is the default, as in Aside: windows behind no longer
++  // show through the sidebar until Transparent is chosen in Appearance.
++  return !value || CFGetTypeID(value.get()) != CFBooleanGetTypeID() ||
 +         CFBooleanGetValue(static_cast<CFBooleanRef>(value.get()));
 +}
 +
@@ -66416,7 +66495,7 @@ index 74e0a362059024d683e2db7b86d65947726cac14..b1ac6556bf3c66b7b56a29ae0d59bf24
  // Self-owning animation delegate that starts a hide animation, then calls
  // -[NSWindow close] when the animation ends, releasing itself.
  @interface ViewsNSWindowCloseAnimator : NSObject <NSAnimationDelegate> {
-@@ -414,6 +571,8 @@ NativeWidgetMacNSWindow* NativeWidgetNSWindowBridge::CreateNSWindow(
+@@ -414,6 +573,8 @@ NativeWidgetMacNSWindow* NativeWidgetNSWindowBridge::CreateNSWindow(
        break;
    }
    ns_window.releasedWhenClosed = NO;
@@ -66425,7 +66504,7 @@ index 74e0a362059024d683e2db7b86d65947726cac14..b1ac6556bf3c66b7b56a29ae0d59bf24
  
    if (params->titlebar_appears_transparent) {
      ns_window.titlebarAppearsTransparent = YES;
-@@ -442,6 +601,13 @@ NativeWidgetNSWindowBridge::NativeWidgetNSWindowBridge(
+@@ -442,6 +603,13 @@ NativeWidgetNSWindowBridge::NativeWidgetNSWindowBridge(
  }
  
  NativeWidgetNSWindowBridge::~NativeWidgetNSWindowBridge() {
@@ -66439,7 +66518,7 @@ index 74e0a362059024d683e2db7b86d65947726cac14..b1ac6556bf3c66b7b56a29ae0d59bf24
    SetLocalEventMonitorEnabled(false);
    DCHECK(!local_event_monitor_);
    GetPendingWindowTitleMap().erase(window_);
-@@ -802,6 +968,80 @@ void NativeWidgetNSWindowBridge::DestroyContentView() {
+@@ -802,6 +970,80 @@ void NativeWidgetNSWindowBridge::DestroyContentView() {
    [window_ setContentView:nil];
  }
  
@@ -66520,7 +66599,7 @@ index 74e0a362059024d683e2db7b86d65947726cac14..b1ac6556bf3c66b7b56a29ae0d59bf24
  void NativeWidgetNSWindowBridge::CreateContentView(
      uint64_t ns_view_id,
      const gfx::Rect& bounds,
-@@ -822,6 +1062,15 @@ void NativeWidgetNSWindowBridge::CreateContentView(
+@@ -822,6 +1064,15 @@ void NativeWidgetNSWindowBridge::CreateContentView(
        ui::RemoteAccessibility::GetTokenForLocalElement(window_),
        ui::RemoteAccessibility::GetTokenForLocalElement(bridged_view_));
  
@@ -66536,7 +66615,7 @@ index 74e0a362059024d683e2db7b86d65947726cac14..b1ac6556bf3c66b7b56a29ae0d59bf24
    // Beware: This view was briefly removed (in favor of a bare CALayer) in
    // https://crrev.com/c/1236675. The ordering of unassociated layers relative
    // to NSView layers is undefined on macOS 10.12 and earlier, so the compositor
-@@ -835,15 +1084,29 @@ void NativeWidgetNSWindowBridge::CreateContentView(
+@@ -835,15 +1086,29 @@ void NativeWidgetNSWindowBridge::CreateContentView(
        std::make_unique<ui::DisplayCALayerTree>(background_layer);
    [compositor_view setLayer:background_layer];
    [compositor_view setWantsLayer:YES];
@@ -66567,7 +66646,7 @@ index 74e0a362059024d683e2db7b86d65947726cac14..b1ac6556bf3c66b7b56a29ae0d59bf24
  }
  
  void NativeWidgetNSWindowBridge::CloseWindow() {
-@@ -1585,13 +1848,24 @@ void NativeWidgetNSWindowBridge::InitCompositorView(
+@@ -1585,13 +1850,24 @@ void NativeWidgetNSWindowBridge::InitCompositorView(
    // for the composited NonClientFrameView, which should be the case since the
    // native shape is what's most appropriate for displaying sheets on Mac.
    if (is_translucent_window_ && !IsWindowModalSheet()) {
@@ -66595,7 +66674,7 @@ index 74e0a362059024d683e2db7b86d65947726cac14..b1ac6556bf3c66b7b56a29ae0d59bf24
  
      // Don't block waiting for the initial frame of completely transparent
      // windows. This allows us to avoid blocking on the UI thread e.g, while
-@@ -1718,6 +1992,16 @@ void NativeWidgetNSWindowBridge::FullscreenControllerTransitionComplete(
+@@ -1718,6 +1994,16 @@ void NativeWidgetNSWindowBridge::FullscreenControllerTransitionComplete(
    OrderChildren();
  
    host_->OnWindowFullscreenTransitionComplete(is_fullscreen);
