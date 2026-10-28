@@ -44,39 +44,28 @@ The service limits sign-in mail itself (`OTP_SEND_LIMITS` in `src/auth.ts`, fixe
 
 Checks stop at the first refusal (address, network, then recipient), so a client already over its own limit cannot use up a real person's recipient budget. Refusals return 429 `RATE_LIMITED` with `Retry-After` and log `aux.auth.rate_limited` with the limit's name (never the email or IP). There is no global send cap any more: the old 300-per-hour cap let a distributed attack block every sign-in. Every 1,000 sends in an hour logs `aux.auth.otp_volume_alert` at error level; alert on that event in the log drain or Vercel log alerts.
 
-Vercel BotID does not fit here: it needs its client script on the page that makes the request, and desktop sign-in calls the API from the Aux extension, not from a getaux.co page. Clients cannot solve a challenge either, so the Firewall action must be deny.
+Vercel BotID does not fit here: it needs its client script on the page that makes the request, and desktop sign-in calls the API from the Aux extension, not from a getaux.co page. Clients cannot solve a challenge either, so the Firewall answers 429, never a challenge.
 
 ### Vercel Firewall rules (owner)
 
-Project `aux-cloud`, team `robzilla1738s-projects`.
+Project `aux-cloud`, team `robzilla1738s-projects`. The API answers both the canonical path and the rewritten short path (`next.config.ts` rewrites `/auth/*` to `/api/v1/auth/*`), and the Firewall matches the incoming path, so each rule matches both. Published 2026-10-28, replacing the earlier rules that matched only the canonical path (5 per 600 s and 20 per 600 s):
 
-**Live now** (read back 2026-10-28: firewall on, config `waf_ATjdQU5ObuOF` version 1, no draft). Fixed window, keyed by IP, action rate limit:
-
-| Rule | Match (POST) | Limit |
-|---|---|---|
-| Email code rate limit | `/api/v1/auth/email/start` | 5 per 600 s |
-| Email verify-code rate limit | `/api/v1/auth/email/verify-code` | 20 per 600 s |
-
-**Gap:** `next.config.ts` rewrites `/auth/*` to `/api/v1/auth/*`, and the Firewall matches the incoming path, so `POST /auth/email/start` and `/auth/email/verify-code` reach the same handlers without either rule. The service's own per-email, per-network and per-address limits still apply on both spellings; only the edge flood shield is missing.
-
-**Intended** (not yet published; changing production needs the owner's yes). Each rule matches both spellings, deny (429) for 5 minutes when exceeded:
-
-| Rule | Match (method POST, path equals) | Window | Requests per IP | Then |
+| Rule | Match (method POST, path equals) | Window | Requests per IP | Over the limit |
 |---|---|---|---|---|
-| `Sign-in code send` | `/api/v1/auth/email/start` or `/auth/email/start` | 60 s | 10 | deny for 5 minutes |
-| `Sign-in code check` | `/api/v1/auth/email/verify-code` or `/auth/email/verify-code` | 60 s | 20 | deny for 5 minutes |
+| `Sign-in code send` | `/api/v1/auth/email/start` or `/auth/email/start` | 60 s fixed | 10 | 429 for the rest of the window |
+| `Sign-in code check` | `/api/v1/auth/email/verify-code` or `/auth/email/verify-code` | 60 s fixed | 20 | 429 for the rest of the window |
 
-The service limits stay the precise per-email and per-network control; these rules only stop floods before they reach a function. To publish, replace the two live rules with these (CLI, personal account), then `vercel firewall publish`, then check that a burst on each spelling returns 429:
+The response is the plain rate limit (429), not deny with a duration: a timed deny becomes a persistent action that blocks the IP from every path on the host (health, sync and the rest) for its duration, which would lock out everyone behind a shared address. The service limits stay the precise per-email and per-network control; these rules only stop floods before they reach a function. The same rules with the CLI (personal account), then `vercel firewall publish`:
 
 ```sh
 vercel firewall rules add "Sign-in code send" \
   --condition '{"type":"method","op":"eq","value":"POST"}' --condition '{"type":"path","op":"eq","value":"/api/v1/auth/email/start"}' --or \
   --condition '{"type":"method","op":"eq","value":"POST"}' --condition '{"type":"path","op":"eq","value":"/auth/email/start"}' \
-  --action rate_limit --rate-limit-algo fixed_window --rate-limit-window 60 --rate-limit-requests 10 --rate-limit-keys ip --rate-limit-action deny --duration 5m --yes
+  --action rate_limit --rate-limit-algo fixed_window --rate-limit-window 60 --rate-limit-requests 10 --rate-limit-keys ip --rate-limit-action rate_limit --yes
 vercel firewall rules add "Sign-in code check" \
   --condition '{"type":"method","op":"eq","value":"POST"}' --condition '{"type":"path","op":"eq","value":"/api/v1/auth/email/verify-code"}' --or \
   --condition '{"type":"method","op":"eq","value":"POST"}' --condition '{"type":"path","op":"eq","value":"/auth/email/verify-code"}' \
-  --action rate_limit --rate-limit-algo fixed_window --rate-limit-window 60 --rate-limit-requests 20 --rate-limit-keys ip --rate-limit-action deny --duration 5m --yes
+  --action rate_limit --rate-limit-algo fixed_window --rate-limit-window 60 --rate-limit-requests 20 --rate-limit-keys ip --rate-limit-action rate_limit --yes
 ```
 
 ## Monitoring and logs
