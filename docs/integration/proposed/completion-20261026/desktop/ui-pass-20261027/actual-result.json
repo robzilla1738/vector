@@ -11,11 +11,12 @@
   "help": "Help > Aux Help opens https://app.getaux.co/docs, which renders the live docs page",
   "newTabMenu": "profile menu shows only Sign in to resume sync and Settings (no Discord, no feedback)",
   "signIn": "local-only build offered a sign-in it could not complete (defect 3); seal 27d6d831 uses the production cloud (api/share.getaux.co, daemon CORS admits app./api.getaux.co, localhost refused)",
-  "auxOpen": "bundled CLI through a symlink: aux open https://example.com/ --profile \"Your Aux\" navigated the active tab (R28); aux list and resolve answered JSON"
+  "auxOpen": "bundled CLI through a symlink: aux open https://example.com/ --profile \"Your Aux\" navigated the active tab (R28); aux list and resolve answered JSON",
+  "productionSignIn": "Seal 27d6d831, test recipient A (robertcourson96@gmail.com): email code requested from Aux, entered by the owner, Aux continued to its post-sign-in onboarding (Import from your browser). Production logs: /auth/email/start, /auth/email/verify-code, /auth/devices, /auth/me, /billing/subscription (free plan), /events/poll and /users/settings all 200. /auth/token/derive returned 404 twice: it serves the supplied Vault password manager, which Aux excludes, and sign-in continued. The manifest entry the safety check blocked was not needed for this flow."
  },
  "notObserved": [
-  "full email/Google sign-in and J5 (needs an emailed code from the owner)",
   "the R01-R30 journey list beyond the items above",
-  "1Password pairing (needs the Developer ID copy)"
+  "1Password pairing (needs the Developer ID copy)",
+  "the rest of J5 (sync, attachments, shares, feedback, account deletion) on the signed-in account"
  ]
 }
