@@ -238,6 +238,8 @@ def main() -> int:
 
     # 2. Package edits.
     edits = apply_edits(app, json.loads((HERE / 'package-edits.json').read_text()))
+    # Component transforms written as modules (count-checked inside, see transforms.mjs).
+    transforms = json.loads(run(['node', str(HERE / 'transforms.mjs'), str(app)]).stdout or '[]')
     marker_path = app / AUX / 'bundle.json'
     marker = json.loads(marker_path.read_text())
     shutil.copy2(marker_path, out / 'stage-provenance-bundle.json')
@@ -288,7 +290,7 @@ def main() -> int:
         'format': 'aux.release-assembly.v1', 'version': args.version, 'build': args.build,
         'identity': args.identity, 'identitySha1': identity, 'native': str(args.native), 'components': str(args.components),
         'componentsBundleSha256': sha256(out / 'stage-provenance-bundle.json'),
-        'packageEdits': edits, 'nestedSignatures': kept, 'resignedNested': len(resigned),
+        'packageEdits': edits, 'transforms': transforms, 'nestedSignatures': kept, 'resignedNested': len(resigned),
         'repinnedRuntimeFiles': repinned, 'repinCascade': cascade, 'signed': signed, 'usageStrings': sorted(USAGE),
         'notarized': False, 'published': False,
     }
