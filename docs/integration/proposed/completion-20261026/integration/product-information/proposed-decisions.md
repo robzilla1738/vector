@@ -1,6 +1,6 @@
 # Proposed answers to the open legal decisions
 
-Prepared 2026-10-27 so the owner can confirm, edit or reject each item instead of starting from a blank list. These are drafting proposals, not legal advice. Nothing here is accepted or published until the owner (and counsel, if used) approves it. Items marked **Owner fact** cannot be proposed, because they depend on facts only the owner has.
+Prepared 2026-10-27. **Confirmed by the owner on 2026-10-27** as the basis of the published terms and privacy pages (`services/aux-cloud/app/policy/`, terms version `2026-10-27`). Not legal advice; counsel review remains the owner's choice. Items marked **Owner fact** cannot be proposed, because they depend on facts only the owner has.
 
 ## Facts established from the delivered package (seal `3b9f9b68`)
 
