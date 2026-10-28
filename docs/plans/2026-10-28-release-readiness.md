@@ -30,6 +30,7 @@ Robert answered the first six; for the rest he asked for whatever gives the best
 | 12 | Alerts and operations | Alert recipient `robertcourson96@gmail.com`. Uptime: a Better Stack monitor on readiness every 3 minutes, alerting after 2 failures. Sign-in abuse: Vercel BotID on the email-code route plus a Vercel Firewall rate rule. Preview builds: `check-environment` requires the readiness secret only in production (no production secrets copied to Preview) |
 | 13 | Repository identity | Fix `.git/config` so commits are `robzilla1738`. Don't rewrite history: receipts cite commit hashes, and a rewrite would break them. If code is ever published, publish a fresh export, not this history. Push `main` to the private `robzilla1738/vector` remote as the off-machine copy, once the owner confirms the remote is private |
 | 14 | Debug and test leftovers | The release build compiles out every test hook, the `/private/tmp` profile path, the candidate launcher's refusal, and the `LOG(ERROR)` traces below `WARNING` |
+| 15 | Customer-facing email | `hello@getaux.co` everywhere a user sees or replies to an address: support, feedback, share reports, the public pages, store and vendor listings, and the Sentry and Widevine contact. It is already the only address in the shipped app and the service. Sign-in code emails get `Reply-To: hello@getaux.co`, and `RESEND_FROM` must be an `@getaux.co` sender. `robertcourson96@gmail.com` gets internal alerts only and never appears to users |
 
 ## 2. Product blockers (agent, one native batch plus reseal)
 
@@ -102,6 +103,7 @@ Owner:
 Agent:
 - Vercel BotID on the email-code sign-in (decision 12). It shares a global cap of 300 sends an hour, so today a spread-out attack can block every real sign-in.
 - `check-environment` requires `AUX_READINESS_SECRET` only in production, so Preview builds work again.
+- Add `Reply-To: hello@getaux.co` to the sign-in code email, and have `check-environment` require an `@getaux.co` `RESEND_FROM` (decision 15).
 - An operator-blocked share state. Today the owner can republish a share the operator took down.
 - An end-to-end purge test. The current test only checks that every user table is listed.
 - Clear the share title on unshare.
