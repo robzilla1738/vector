@@ -56,8 +56,15 @@ def listening():
 def main(args):
     cmd = args[0] if args else 'check'
     if cmd == 'check':
-        for label, script in [('accessibility', 'tell application "System Events" to key code 63'),
-                              ('automation', f'tell application "{APP}" to count windows')]:
+        # An Apple Event to a stopped app launches it without the launcher's
+        # --use-mock-keychain, so automation is checked only against a running Aux.
+        aux_running = subprocess.run(['pgrep', '-f', f'{APP}/Contents/MacOS/Aux'], capture_output=True).returncode == 0
+        checks = [('accessibility', 'tell application "System Events" to key code 63')]
+        if aux_running:
+            checks.append(('automation', f'tell application "{APP}" to count windows'))
+        else:
+            print('automation not checked: start Aux with `launch` first')
+        for label, script in checks:
             try:
                 osa(script, timeout=8); print(label, 'ok')
             except (SystemExit, subprocess.TimeoutExpired) as error:
