@@ -1496,6 +1496,24 @@ index 44ffb6ee338caf10b3b1ea8d575af433f515d4bc..af6aea5bcedd97b3bdb4424ea422dbdf
    sources += [
      "containers/span_rust.h",
      "strings/string_view_rust.h",
+diff --git a/base/apple/mach_port_rendezvous_mac.cc b/base/apple/mach_port_rendezvous_mac.cc
+index 42c732389886b20251cdec629145a20f854b69d3..70d281455f9a5deb53f867ebf62ab65b52e92f0d 100644
+--- a/base/apple/mach_port_rendezvous_mac.cc
++++ b/base/apple/mach_port_rendezvous_mac.cc
+@@ -47,9 +47,11 @@ constexpr char kBootstrapNameFormat[] = "%s.MachPortRendezvousServer.%d";
+ 
+ // The size of the on-disk app-Info.plist with extra size added to account for
+ // size increases that occur during hydration. The extra size can safely be
+-// increased in the future.
++// increased in the future. Aux's release packaging adds usage descriptions and
++// Sparkle keys after the build (scripts/release/assemble.py), which outgrew
++// 1024 bytes and left children that validate the browser with no Info.plist.
+ constexpr size_t kMaxInfoPlistDataSize =
+-    BUILDFLAG(APP_INFO_PLIST_FILE_SIZE) + 1024;
++    BUILDFLAG(APP_INFO_PLIST_FILE_SIZE) + 8192;
+ 
+ // The state of the peer validation policy features is passed to child processes
+ // via this environment variable as Mach port rendezvous is performed before the
 diff --git a/base/files/file_posix.cc b/base/files/file_posix.cc
 index f6205d4f2361ce041f687533cb4935bdd0d02657..39596731c8b630e6ffe710a252c1f701431a520a 100644
 --- a/base/files/file_posix.cc
@@ -144339,7 +144357,7 @@ index 0a5e9cce40424b65d14d006a59c8d22b7f130e46..f8e4037832510b7d9a4cec65d321c95c
      controller_observation_.Observe(controller);
    }
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6edfadc54e1 100644
+index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76961610bf 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
 @@ -10,6 +10,7 @@
@@ -144515,7 +144533,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
  }
  
  // static
-@@ -766,6 +830,57 @@ void LocationBarView::Layout(PassKey) {
+@@ -766,6 +830,63 @@ void LocationBarView::Layout(PassKey) {
      return;
    }
  
@@ -144569,11 +144587,17 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
 +    bookmark->SetVisible(bookmark->GetDeclaredVisible() && !show_page_title &&
 +                         !(IsAuxSidebarNavigation() && !omnibox_view_->HasFocus()));
 +  }
++  if (auto* install =
++          page_action_container_->GetPageActionView(kActionInstallPwa)) {
++    // The sidebar field stays as quiet as Arc's: installing a site as an app
++    // remains in the menu, not as a chip beside the address.
++    install->SetVisible(install->GetDeclaredVisible() && !IsAuxSidebarNavigation());
++  }
 +
    selected_keyword_view_->SetVisible(false);
  
    // TODO(manukh): Move constants to layout_constants.cc.
-@@ -853,6 +968,36 @@ void LocationBarView::Layout(PassKey) {
+@@ -853,6 +974,36 @@ void LocationBarView::Layout(PassKey) {
      }
    }
  
@@ -144610,7 +144634,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
    if (ShouldShowKeywordBubble()) {
      location_icon_view_->SetVisible(false);
      leading_decorations.AddDecoration(
-@@ -883,6 +1028,11 @@ void LocationBarView::Layout(PassKey) {
+@@ -883,6 +1034,11 @@ void LocationBarView::Layout(PassKey) {
      }
    };
  
@@ -144622,7 +144646,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
    if (features::IsPageActionsElevatedToolbarEnabled()) {
      if (page_action_container_ && page_action_container_->GetVisible()) {
        const bool is_capsule_active = page_action_container_->IsCapsuleActive();
-@@ -912,6 +1062,10 @@ void LocationBarView::Layout(PassKey) {
+@@ -912,6 +1068,10 @@ void LocationBarView::Layout(PassKey) {
                                  ? kTrailingEdgePaddingForAim
                                  : trailing_decorations_edge_padding);
    }
@@ -144633,7 +144657,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
    add_trailing_decoration(ai_mode_hint_label_, /*intra_item_padding=*/0,
                            /*edge_padding=*/trailing_decorations_edge_padding);
    for (ContentSettingImageView* view :
-@@ -943,7 +1097,9 @@ void LocationBarView::Layout(PassKey) {
+@@ -943,7 +1103,9 @@ void LocationBarView::Layout(PassKey) {
    trailing_decorations.LayoutPass2(&entry_width);
  
    // Compute widths needed for location bar.
@@ -144644,7 +144668,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
  
    int available_width = entry_width - location_needed_width;
    // The bounds must be wide enough for all the decorations to fit, so if
-@@ -957,9 +1113,18 @@ void LocationBarView::Layout(PassKey) {
+@@ -957,9 +1119,18 @@ void LocationBarView::Layout(PassKey) {
    // |omnibox_view_| has an opaque background, so ensure it doesn't paint atop
    // the rounded ends.
    location_bounds.Intersect(GetLocalBoundsWithoutEndcaps());
@@ -144664,7 +144688,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
      // Short circuit the below logic when the additional views aren't visible.
      // This is necessary as resizing the omnibox can throw off it's scroll,
      // i.e., which chars are visible when its text overflows its width.
-@@ -1000,6 +1165,7 @@ void LocationBarView::Layout(PassKey) {
+@@ -1000,6 +1171,7 @@ void LocationBarView::Layout(PassKey) {
          reserve_label_width(ime_inline_autocomplete_view_);
      int omnibox_additional_text_width =
          reserve_label_width(omnibox_additional_text_view_);
@@ -144672,7 +144696,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
  
      // A helper to position `view` to the right of the previous positioned
      // `view`.
-@@ -1017,7 +1183,19 @@ void LocationBarView::Layout(PassKey) {
+@@ -1017,7 +1189,19 @@ void LocationBarView::Layout(PassKey) {
      position_view(omnibox_view_, omnibox_width);
      position_view(ime_inline_autocomplete_view_, ime_inline_autocomplete_width);
      position_view(omnibox_additional_text_view_, omnibox_additional_text_width);
@@ -144692,7 +144716,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
  
    LayoutSuperclass<View>(this);
  }
-@@ -1368,7 +1546,7 @@ int LocationBarView::GetMinimumTrailingWidth() const {
+@@ -1368,7 +1552,7 @@ int LocationBarView::GetMinimumTrailingWidth() const {
  }
  
  gfx::Rect LocationBarView::GetLocalBoundsWithoutEndcaps() const {
@@ -144701,7 +144725,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
    gfx::Rect bounds_without_endcaps(GetLocalBounds());
    bounds_without_endcaps.Inset(gfx::Insets::VH(0, border_radius));
    return bounds_without_endcaps;
-@@ -1388,8 +1566,30 @@ void LocationBarView::RefreshBackground() {
+@@ -1388,8 +1572,30 @@ void LocationBarView::RefreshBackground() {
    SkColor hovered =
        color_provider->GetColor(kColorLocationBarBackgroundHovered);
  
@@ -144733,7 +144757,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
      // Match the background color to the popup if the Omnibox is visibly
      // focused.
      background_color_ =
-@@ -1428,7 +1628,10 @@ void LocationBarView::RefreshBackground() {
+@@ -1428,7 +1634,10 @@ void LocationBarView::RefreshBackground() {
  
    // Keep the views::Textfield in sync. It needs an opaque background to
    // correctly enable subpixel AA.
@@ -144745,7 +144769,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
  
    // The divider between indicators and request chips should have the same color
    // as the omnibox.
-@@ -1620,6 +1823,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
+@@ -1620,6 +1829,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
    } else {
      omnibox_view_->SaveStateToTab(contents);
    }
@@ -144758,7 +144782,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
  }
  
  LocationBarTesting* LocationBarView::GetLocationBarForTesting() {
-@@ -2003,6 +2212,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
+@@ -2003,6 +2218,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
  }
  
  void LocationBarView::OnChanged() {
@@ -144770,7 +144794,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
    TRACE_EVENT("omnibox", "LocationBarView::OnChanged");
    // Ensure that background colors get updated on tab-switch.
    RefreshBackground();
-@@ -2033,6 +2247,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
+@@ -2033,6 +2253,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
  }
  
  void LocationBarView::OnOmniboxFocused() {
@@ -144783,7 +144807,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
    if (views::FocusRing::Get(this)) {
      views::FocusRing::Get(this)->Refresh();
    }
-@@ -2092,6 +2312,7 @@ void LocationBarView::OnTouchUiChanged() {
+@@ -2092,6 +2318,7 @@ void LocationBarView::OnTouchUiChanged() {
    omnibox_view_->SetFontList(font_list);
    ime_inline_autocomplete_view_->SetFontList(font_list);
    omnibox_additional_text_view_->SetFontList(font_list);
@@ -144791,7 +144815,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
    selected_keyword_view_->SetFontList(font_list);
    for (ContentSettingImageView* view : content_setting_views_) {
      view->SetFontList(font_list);
-@@ -2255,6 +2476,17 @@ SkColor LocationBarView::GetSecurityChipColor(
+@@ -2255,6 +2482,17 @@ SkColor LocationBarView::GetSecurityChipColor(
    return GetColorProvider()->GetColor(id);
  }
  
@@ -144809,7 +144833,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
  bool LocationBarView::ShowPageInfoDialog() {
    WebContents* contents = GetWebContents();
    if (!contents) {
-@@ -2304,6 +2536,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
+@@ -2304,6 +2542,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
      return GetOmniboxController()->edit_model()->GetAddContextIcon(dip_size);
    }
  
@@ -144852,7 +144876,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..4ed0fddb5850e83bc68be12dc403d6ed
    return omnibox_view_
               ? omnibox_view_->GetIcon(
                     dip_size, location_icon_view_->GetForegroundColor(),
-@@ -2421,3 +2689,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
+@@ -2421,3 +2695,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
  ADD_READONLY_PROPERTY_METADATA(gfx::Rect, LocalBoundsWithoutEndcaps)
  ADD_READONLY_PROPERTY_METADATA(bool, PopupMode)
  END_METADATA
@@ -155945,6 +155969,19 @@ index 6efff52ae1b67910b27010154889b2ffa279ec4d..2c82f06dfed2e162b3525f53f46c676c
  class BrowserWindowInterface;
  class PermissionDashboardController;
  class WebUIPermissionDashboard;
+diff --git a/chrome/browser/web_applications/os_integration/mac/apps_folder_support.mm b/chrome/browser/web_applications/os_integration/mac/apps_folder_support.mm
+index d8cb9f66ac3b1fb1f6a2ca68a03dfe4b49028491..b93279356fdf02e5753697ab4f2ea039326a3504 100644
+--- a/chrome/browser/web_applications/os_integration/mac/apps_folder_support.mm
++++ b/chrome/browser/web_applications/os_integration/mac/apps_folder_support.mm
+@@ -38,7 +38,7 @@ namespace {
+ std::atomic<bool> g_have_localized_app_dir_name{false};
+ 
+ base::FilePath GetLocalizableAppShortcutsSubdirName() {
+-  static const char kChromiumAppDirName[] = "Chromium Apps.localized";
++  static const char kChromiumAppDirName[] = "Aux Apps.localized";
+   static const char kChromeAppDirName[] = "Chrome Apps.localized";
+   static const char kChromeCanaryAppDirName[] = "Chrome Canary Apps.localized";
+ 
 diff --git a/chrome/browser/webauthn/BUILD.gn b/chrome/browser/webauthn/BUILD.gn
 index d339292a8c4d21e96fba85739e9b64e638d89cf8..b461029203b56fbd1d729c3a6c45aad0b2de6c07 100644
 --- a/chrome/browser/webauthn/BUILD.gn
