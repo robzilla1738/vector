@@ -10,12 +10,14 @@ import {requireInput} from '../lib/inputs.mjs';
 import {repoRoot} from '../lib/repo-root.mjs';
 import {RUNTIME_FILES} from '../../vendor/provided/provider-cli/integration.mjs';
 import {DAEMON_FILES as AGENT_FILES, EXTENSION_EDITS as AGENT_EDITS, UI_FILE as AGENT_UI} from '../../vendor/provided/agent/integration.mjs';
+import {CHUNK as COMMAND_BAR_CHUNK} from '../../vendor/provided/command-bar/integration.mjs';
 
 const candidate = requireInput('candidateApp');
 const daemon = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development';
 const dist = 'Contents/Resources/aux/apps/extension/dist';
 const agentChunks = Object.keys(AGENT_EDITS).map(chunk => `${dist}/${chunk}`);
-const touched = [`${daemon}/aux-native-entry.mjs`, `${dist}/assets/strip-markdown-DRcmtuJc.js`, `${dist}/assets/connect-dialog-CacgpFap.js`, ...agentChunks];
+const commandBar = `${dist}/${COMMAND_BAR_CHUNK}`;
+const touched = [`${daemon}/aux-native-entry.mjs`, `${dist}/assets/strip-markdown-DRcmtuJc.js`, `${dist}/assets/connect-dialog-CacgpFap.js`, ...agentChunks, commandBar];
 // The release applies package edits before the transforms; stage the touched files the same way.
 const packageEdits = JSON.parse(readFileSync(path.join(repoRoot, 'scripts/release/package-edits.json'), 'utf8')).edits;
 const scratch = mkdtempSync(path.join(tmpdir(), 'aux-release-transforms-'));
@@ -35,7 +37,7 @@ test('transforms.mjs adds the provider CLI and agent files and applies every tra
   assert.equal(result.status, 0, result.stderr);
   const applied = JSON.parse(result.stdout);
   assert.deepEqual(applied.filter(entry => entry.added).map(entry => path.basename(entry.path)), [...RUNTIME_FILES, ...AGENT_FILES, AGENT_UI]);
-  assert.deepEqual(applied.filter(entry => !entry.added).map(entry => entry.path), [...touched.slice(0, 3), touched[0], ...agentChunks]);
+  assert.deepEqual(applied.filter(entry => !entry.added).map(entry => entry.path), [...touched.slice(0, 3), touched[0], ...agentChunks, commandBar]);
   assert.deepEqual(readFileSync(path.join(app, dist, 'assets', AGENT_UI)), readFileSync(path.join(repoRoot, 'vendor/provided/agent', AGENT_UI)));
   for (const file of RUNTIME_FILES) {
     assert.deepEqual(readFileSync(path.join(app, daemon, 'provider-cli', file)), readFileSync(path.join(repoRoot, 'vendor/provided/provider-cli', file)), file);
