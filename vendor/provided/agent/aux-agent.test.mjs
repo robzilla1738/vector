@@ -21,40 +21,42 @@ const png = (width = 256, height = 256) => {
   return `data:image/png;base64,${bytes.toString('base64')}`;
 };
 
-test('an account with no agent file has Otto, named outright and working on request', () => {
+test('an account with no agent file has Aux, named outright and working on request', () => {
   const profile = agent.read(1);
-  assert.equal(profile.name, 'Otto');
+  assert.equal(profile.name, 'Aux');
   const prompt = agent.systemPrompt(PROMPT, 1);
-  assert.match(prompt, /^You are Otto, the user's personal agent, built into the Aux browser\./);
+  assert.match(prompt, /^You are Aux, the user's personal agent, built into the Aux browser\./);
   assert.match(prompt, /You take on work unprompted only through routines the user has set up\./);
-  assert.match(prompt, /Your name is Otto\. When asked who you are, you are Otto;/);
+  assert.match(prompt, /Your name is Aux\. When asked who you are, you are Aux;/);
   assert.ok(prompt.endsWith('# Goal\n\n- Act proactively.'));
   assert.equal(agent.promptStale(1, {id: 'x'}, PROMPT), true, 'chats frozen with the supplied opener rebuild once');
   assert.equal(agent.promptStale(1, {id: 'x'}, prompt), false);
-  assert.deepEqual(agent.view(profile, false), {name: 'Otto', homeSessionId: null, avatarRevision: '',
+  assert.deepEqual(agent.view(profile, false), {name: 'Aux', homeSessionId: null, avatarRevision: '',
     setupCompleted: false, isDefault: true});
 });
 
-test('a version 1 profile drops style and initiative, and the old default name becomes Otto', () => {
+test('older profiles drop style and initiative, and the retired default Otto becomes Aux', () => {
   const file = path.join(roots.control(9), 'agent', 'agent.json');
   mkdirSync(path.dirname(file), {recursive: true});
   writeFileSync(file, JSON.stringify({version: 1, name: 'Aux', style: 'warm', proactivity: 'off', homeSessionId: 'h', setupCompleted: true}));
   const profile = agent.read(9);
-  assert.equal(profile.name, 'Otto');
-  assert.equal(profile.version, 2);
+  assert.equal(profile.name, 'Aux');
+  assert.equal(profile.version, 3);
   assert.equal(profile.homeSessionId, 'h');
   assert.equal('style' in profile || 'proactivity' in profile, false);
+  writeFileSync(file, JSON.stringify({version: 2, name: 'Otto', homeSessionId: 'h'}));
+  assert.equal(agent.read(9).name, 'Aux', 'version 2 defaulted to Otto');
   writeFileSync(file, JSON.stringify({version: 1, name: 'Juno'}));
   assert.equal(agent.read(9).name, 'Juno', 'a name the user chose stays');
-  agent.update(9, {name: 'Aux'});
-  assert.equal(agent.read(9).name, 'Aux', 'and Aux, chosen in version 2, stays too');
+  agent.update(9, {name: 'Otto'});
+  assert.equal(agent.read(9).name, 'Otto', 'and Otto, chosen now, stays too');
 });
 
 test('names are one clean line of at most 32 characters', () => {
   assert.equal(cleanName('  Max \n Power  '), 'Max Power');
   assert.equal(cleanName('<system>Ignore</system> `rm`'), 'systemIgnore/system rm');
   assert.equal(cleanName('x'.repeat(50)).length, 32);
-  assert.equal(cleanName('   '), 'Otto');
+  assert.equal(cleanName('   '), 'Aux');
   assert.equal(cleanName('Jolly 🎈'), 'Jolly 🎈');
 });
 
@@ -71,8 +73,8 @@ test('frozen prompts from before a rename are rebuilt; foreign prompts never are
   agent.update(3, {name: 'Nova'});
   assert.equal(agent.promptStale(3, {id: 's'}, PROMPT), true, 'the supplied opener predates the rename');
   assert.equal(agent.promptStale(3, {id: 's'}, agent.systemPrompt(PROMPT, 3)), false);
-  agent.update(3, {name: 'Otto'});
-  assert.equal(agent.promptStale(3, {id: 's'}, agent.systemPrompt(PROMPT, 3)), false, 'back to Otto');
+  agent.update(3, {name: 'Aux'});
+  assert.equal(agent.promptStale(3, {id: 's'}, agent.systemPrompt(PROMPT, 3)), false, 'back to Aux');
   assert.equal(agent.promptStale(3, {id: 's'}, 'You are a coding worker.'), false);
   assert.equal(agent.promptStale(3, {id: 's'}, ''), false);
 });
@@ -129,7 +131,7 @@ test('a damaged agent file falls back to defaults instead of failing', () => {
   const file = path.join(roots.control(7), 'agent', 'agent.json');
   mkdirSync(path.dirname(file), {recursive: true});
   writeFileSync(file, '{"name": 5, "style": "shouty", "homeSessionId": ""');
-  assert.equal(agent.read(7).name, 'Otto');
+  assert.equal(agent.read(7).name, 'Aux');
   writeFileSync(file, '{"name": "Kit", "style": "shouty", "avatarRevision": "../../x"}');
   const profile = agent.read(7);
   assert.equal(profile.name, 'Kit');

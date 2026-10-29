@@ -6,11 +6,11 @@ import {createHash} from 'node:crypto';
 import {mkdirSync, readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 
-// The agent's own name, so it never shares one with the Aux browser (owner, 2026-10-28).
-export const DEFAULT_NAME = 'Otto';
-// The default name before profile version 2; a profile still on it moves to Otto.
-const LEGACY_DEFAULT_NAME = 'Aux';
-const PROFILE_VERSION = 2;
+// The agent carries the browser's name and mark by default (owner, 2026-10-28).
+export const DEFAULT_NAME = 'Aux';
+// Version 2 profiles defaulted to "Otto", a mascot name since retired; they move back to Aux.
+const RETIRED_DEFAULT_NAME = 'Otto';
+const PROFILE_VERSION = 3;
 export const ORIGINAL_OPENER = 'You are Aux, a helpful, proactive, and smart AI browser.';
 const AGENT_PHRASE = "the user's personal agent, built into the Aux browser";
 const MAX_AVATAR_BYTES = 768 * 1024;
@@ -31,18 +31,18 @@ const defaults = () => ({version: PROFILE_VERSION, name: DEFAULT_NAME, homeSessi
   setupCompleted: false, revision: 0, homePrompt: null});
 
 /** The stored profile in the current shape. Version 1 carried a style and an initiative
- * level, now dropped (the agent works on request; routines are its initiative), and
- * defaulted to the browser's own name. */
+ * level, now dropped (the agent works on request; routines are its initiative); version 2
+ * defaulted to Otto. */
 function normalize(raw) {
   const stored = raw && typeof raw === 'object' ? raw : {};
   const profile = {...defaults(), ...stored};
   delete profile.style;
   delete profile.proactivity;
-  const legacyName = !(stored.version >= PROFILE_VERSION) && profile.name === LEGACY_DEFAULT_NAME;
+  const retiredName = stored.version === 2 && profile.name === RETIRED_DEFAULT_NAME;
   return {
     ...profile,
     version: PROFILE_VERSION,
-    name: legacyName ? DEFAULT_NAME : cleanName(profile.name),
+    name: retiredName ? DEFAULT_NAME : cleanName(profile.name),
     homeSessionId: typeof profile.homeSessionId === 'string' && profile.homeSessionId ? profile.homeSessionId : null,
     avatarRevision: /^[0-9a-f]{16}$/.test(profile.avatarRevision) ? profile.avatarRevision : '',
     setupCompleted: profile.setupCompleted === true,

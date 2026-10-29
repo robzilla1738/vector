@@ -48,7 +48,7 @@ test('transforms.mjs adds the provider CLI and agent files and applies every tra
   const instance = staged.createAuxProviderCli({detect: async () => ({directories: [], providers: []})});
   assert.equal((await instance.status()).rows['claude-code'].state, 'not-installed');
   const agent = await import(new URL('./aux-agent/aux-agent.mjs', pathToFileURL(entry)).href);
-  assert.equal(agent.createAuxAgent({control: () => scratch, task: () => scratch}).read(1).name, 'Otto');
+  assert.equal(agent.createAuxAgent({control: () => scratch, task: () => scratch}).read(1).name, 'Aux');
 });
 
 test('a second run stops: the runtime files already exist', () => {

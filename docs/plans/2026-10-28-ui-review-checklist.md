@@ -49,7 +49,7 @@ Every UI request from the 2026-10-28 review, with its state. "Verified" means ch
 | 44 | One logo per surface (favicons and tab icons aside) | Verified (build 54): name-only panel header, swatches in pickers, one face per surface; the new tab page keeps its logo and the default-browser nudge loses its own |
 | 45 | Side panel bottom: effort must not overlap other items | Verified (build 51): gap between the model, effort and context ring |
 | 46 | No style or initiative options; name, picture and instructions; a few nice looks plus a custom picture | Verified (build 54): five looks plus "+"; Instructions (seed heading hidden), Memory and Routines |
-| 47 | Agent not named Aux and not the Aux logo: a mascot | Verified (build 53): Otto, a silver pebble with two pill eyes, in the button, greeting and Meet Otto; the old default name migrated |
+| 47 | Agent named Aux with the Aux logo, same agent experience (the Otto mascot of builds 53–54 dropped) | Verified (build 56): Aux mark in the button, greeting, Customize and Settings; Classic plus Ocean, Iris, Aurora and Sunset; the Otto profile moved to Aux |
 d; the allowance is raised. Installing was not repeated |
 
 Builds 41–43 are local Developer ID builds under `out/release/`. Build 42 was launched and checked on screen (items marked build 42). Build 43 adds the split fixes in 12.

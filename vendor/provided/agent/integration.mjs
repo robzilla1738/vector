@@ -135,7 +135,7 @@ export const EXTENSION_EDITS = Object.freeze({
   'assets/newtab-editor-u_GbForB.js': [
     edit('new tab hint names the agent',
       'R={ask:"Ask Aux a task, @ for context"',
-      'R={get ask(){let n="Otto";try{n=localStorage.getItem("aux.agent.name.v1")||n}catch{}return`Message ${n}, @ for context`}'),
+      'R={get ask(){let n="Aux";try{n=localStorage.getItem("aux.agent.name.v1")||n}catch{}return`Message ${n}, @ for context`}'),
   ],
   // Settings › Agents: the agent first; the per-tab chat option no longer applies.
   'assets/agents-urkO3LLg.js': [

@@ -15,7 +15,7 @@ const React = interop(requireReact(), 1);
 const j = requireJsx();
 const {useCallback, useEffect, useRef, useState, useSyncExternalStore} = React;
 
-const DEFAULT = Object.freeze({name: "Otto", homeSessionId: null, avatarRevision: "", setupCompleted: true, isDefault: true});
+const DEFAULT = Object.freeze({name: "Aux", homeSessionId: null, avatarRevision: "", setupCompleted: true, isDefault: true});
 const NAME_KEY = "aux.agent.name.v1";
 // ---------------------------------------------------------------------------------- store
 
@@ -115,68 +115,51 @@ export function auxAgentSideChats(rows) {
 
 // --------------------------------------------------------------------------------- avatar
 
-// Otto: a small rounded pebble with two pill eyes. One geometry in a 100-unit box, drawn as
-// SVG on screen and onto a canvas for the looks; the native sidebar button draws the same
-// shape in Silver (aux_agent_button.cc), so keep the three in step.
-const MASCOT = {body: {cx: 50, cy: 52, r: 44}, eyes: [34, 66], eye: {y: 40, w: 10, h: 18, r: 5}, shine: {cx: 50, cy: 27, rx: 21, ry: 8}};
+// The canonical arch mark (assets/brand/arch-mark.svg) in its 80-unit box. The native sidebar
+// button draws the same mark (kAuxNewTabMarkIcon), so the two stay one logo.
+const MARK = ["m40.02 10.25c-17.45 0-31.34 15.33-31.34 33.27v21c0 2.47 2.51 3.44 4.6 2.1 7.21-5.48 11.98-15.6 11.98-25.54v-0.81c0-8.41 6.94-14.73 14.73-14.73 7.8 0 14.7 6.69 14.7 14.73v0.81c0 10.31 4.89 20.08 11.99 25.53 2.07 1.38 4.56 0.39 4.56-2l-0.15-20.46c0-19.06-13.61-33.9-31.07-33.9z",
+  "m50.38 52.49-7.44-12.09c-0.62-1.08-1.79-1.67-2.99-1.67s-2.37 0.71-3.01 1.77l-7.35 12.02c-0.7 1.2-0.35 2.87 0.84 3.79 1.14 0.8 2.74 0.5 3.78-0.38 1.87-1.62 3.73-2.8 5.71-2.8 2.11 0 4.07 1.24 5.88 2.8 1.09 0.88 2.57 1.18 3.78 0.43 1.24-0.81 1.5-2.56 0.8-3.87z"];
+// Classic is the mark in the theme's text color (no picture: every surface draws it); the
+// others are the mark in a color, rendered to a transparent picture.
 const LOOKS = [
-  {id: "silver", label: "Silver", body: ["#ffffff", "#d3d7dd", "#9aa1ab"], eye: "#1b1d21"},
-  {id: "sky", label: "Sky", body: ["#d6ecff", "#80bbff", "#3b82f6"], eye: "#0b1b33"},
-  {id: "peach", label: "Peach", body: ["#ffe6cc", "#ffb38a", "#f472b6"], eye: "#3a1022"},
-  {id: "mint", label: "Mint", body: ["#dcfbe8", "#7fe0b0", "#10b981"], eye: "#06291c"},
-  {id: "midnight", label: "Midnight", body: ["#5b6472", "#2a303a", "#11151b"], eye: "#e8ecf2"},
+  {id: "classic", label: "Classic"},
+  {id: "ocean", label: "Ocean", fill: ["#60a5fa", "#2563eb"]},
+  {id: "iris", label: "Iris", fill: ["#a78bfa", "#7c3aed"]},
+  {id: "aurora", label: "Aurora", fill: ["#a78bfa", "#22d3ee"]},
+  {id: "sunset", label: "Sunset", fill: ["#fbbf24", "#f43f5e"]},
 ];
 const DEFAULT_LOOK = LOOKS[0];
 
-let mascotIds = 0;
-function Mascot({size, look = DEFAULT_LOOK}) {
-  const [id] = useState(() => `aux-otto-${++mascotIds}`);
-  const {body, eyes, eye, shine} = MASCOT;
-  return j.jsxs("svg", {viewBox: "0 0 100 100", width: size, height: size, "aria-hidden": true, focusable: "false", children: [
-    j.jsx("defs", {children: j.jsxs("linearGradient", {id, x1: 0, y1: 8, x2: 0, y2: 96, gradientUnits: "userSpaceOnUse", children: [
-      j.jsx("stop", {offset: 0, stopColor: look.body[0]}), j.jsx("stop", {offset: 0.55, stopColor: look.body[1]}),
-      j.jsx("stop", {offset: 1, stopColor: look.body[2]})]})}),
-    j.jsx("circle", {...body, fill: `url(#${id})`, stroke: "rgba(0,0,0,0.12)", strokeWidth: 1.5}),
-    j.jsx("ellipse", {...shine, fill: "rgba(255,255,255,0.35)"}),
-    ...eyes.map(x => j.jsx("rect", {x: x - eye.w / 2, y: eye.y, width: eye.w, height: eye.h, rx: eye.r, fill: look.eye}, x)),
-  ]});
-}
+const Mark = ({size}) => j.jsx("svg", {viewBox: "0 0 80 80", width: size, height: size, "aria-hidden": true, focusable: "false",
+  children: MARK.map(d => j.jsx("path", {d, fill: "currentColor"}, d))});
 
 const canvas = () => { const c = document.createElement("canvas"); c.width = c.height = 256; return [c, c.getContext("2d")]; };
 
 function renderLook(look) {
   const [c, g] = canvas();
-  const {body, eyes, eye, shine} = MASCOT;
-  g.scale(2.56, 2.56);
-  const fill = g.createLinearGradient(0, 8, 0, 96);
-  look.body.forEach((color, index) => fill.addColorStop([0, 0.55, 1][index], color));
-  g.beginPath();
-  g.arc(body.cx, body.cy, body.r, 0, Math.PI * 2);
+  // The mark's box in its viewBox is about 63 × 57, centered near (40, 39). Pictures are shown
+  // as circles, so the mark fills about three quarters of the width (the size Classic draws at)
+  // and its feet stay inside the circle.
+  const path = new Path2D(), matrix = new DOMMatrix().translate(128, 128).scale(3.05).translate(-40, -39);
+  for (const d of MARK) path.addPath(new Path2D(d), matrix);
+  const [from, to] = look.fill, fill = g.createLinearGradient(40, 216, 216, 40);
+  fill.addColorStop(0, from);
+  fill.addColorStop(1, to);
   g.fillStyle = fill;
-  g.fill();
-  g.lineWidth = 1.5;
-  g.strokeStyle = "rgba(0,0,0,0.12)";
-  g.stroke();
-  g.beginPath();
-  g.ellipse(shine.cx, shine.cy, shine.rx, shine.ry, 0, 0, Math.PI * 2);
-  g.fillStyle = "rgba(255,255,255,0.35)";
-  g.fill();
-  g.fillStyle = look.eye;
-  for (const x of eyes) { g.beginPath(); g.roundRect(x - eye.w / 2, eye.y, eye.w, eye.h, eye.r); g.fill(); }
+  g.fill(path);
   return c.toDataURL("image/png");
 }
 
-// Silver is the default face (no picture: every surface draws it); the others are pictures.
 let lookImages;
-const looks = () => (lookImages ??= LOOKS.map(look => ({...look, image: look === DEFAULT_LOOK ? null : renderLook(look)})));
+const looks = () => (lookImages ??= LOOKS.map(look => ({...look, image: look.fill ? renderLook(look) : null})));
 
-/** The agent's face: its picture, or Otto in Silver. */
+/** The agent's face: its picture, or the Aux mark in the theme's text color. */
 export function AuxAgentAvatar({size = 20, src, className}) {
   const agent = useAuxAgent();
   const url = src === undefined ? agent.avatarUrl : src;
   return url
     ? j.jsx("img", {src: url, alt: "", width: size, height: size, draggable: false, className: cx("shrink-0 rounded-full object-cover", className), style: {width: size, height: size}})
-    : j.jsx("span", {className: cx("flex shrink-0 items-center justify-center", className), style: {width: size, height: size}, children: j.jsx(Mascot, {size})});
+    : j.jsx("span", {className: cx("text-foreground flex shrink-0 items-center justify-center", className), style: {width: size, height: size}, children: j.jsx(Mark, {size: Math.round(size * 0.9)})});
 }
 
 function renderPhoto(file) {
@@ -204,7 +187,7 @@ function openPage(accountId, page) {
 
 const Label = ({children, htmlFor}) => j.jsx(htmlFor ? "label" : "span", {htmlFor, className: "text-muted-foreground text-xs font-medium", children});
 
-/** Name and look. Otto works on request, so there is no style or initiative to set: what it
+/** Name and look. The agent works on request, so there is no style or initiative to set: what it
  * does unasked comes from routines (see RoutinesHint). */
 function AgentFields({draft, setDraft, error, centered = false}) {
   const fileRef = useRef(null);
@@ -227,7 +210,7 @@ function AgentFields({draft, setDraft, error, centered = false}) {
       j.jsx(Label, {children: "Look"}),
       j.jsxs("div", {className: "flex flex-wrap gap-2.5", children: [
         ...looks().map(look => tile(look.id, draft.look === look.id, () => set({look: look.id, avatar: look.image}),
-          j.jsx("span", {className: "size-8 rounded-full", style: {background: `linear-gradient(180deg, ${look.body.join(", ")})`}}), look.label)),
+          j.jsx("span", {className: "size-8 rounded-full", style: {background: look.fill ? `linear-gradient(45deg, ${look.fill.join(", ")})` : "var(--foreground)"}}), look.label)),
         tile("custom", draft.look === "custom", () => fileRef.current?.click(),
           draft.look === "custom" && draft.avatar
             ? j.jsx("img", {src: draft.avatar, alt: "", className: "size-8 rounded-full object-cover", draggable: false})
@@ -245,7 +228,7 @@ function AgentFields({draft, setDraft, error, centered = false}) {
   ]});
 }
 
-/** The look a saved picture came from: one of Otto's looks, or the user's own picture. */
+/** The look a saved picture came from: one of the mark's colors, or the user's own picture. */
 const lookOf = avatarUrl => !avatarUrl ? DEFAULT_LOOK.id : looks().find(look => look.image === avatarUrl)?.id ?? "custom";
 
 const draftFrom = (agent, avatarUrl) => ({name: agent.name, look: lookOf(avatarUrl), avatar: avatarUrl, error: null});
@@ -300,7 +283,7 @@ const RoutinesHint = ({accountId, name}) => j.jsxs("p", {className: "text-muted-
   j.jsx("button", {type: "button", className: "text-foreground underline underline-offset-2", onClick: () => openPage(accountId, "settings/routines"), children: "set up a routine"}),
   "."]});
 
-/** Customize the agent, filling the side panel; with setup, the first-run "Meet Otto". */
+/** Customize the agent, filling the side panel; with setup, the first-run "Meet your agent". */
 export function AuxAgentSheet({open, onOpenChange, setup = false}) {
   const agent = useAuxAgent();
   const instructions = useInstructions(agent.accountId, open && !setup);
@@ -331,9 +314,9 @@ export function AuxAgentSheet({open, onOpenChange, setup = false}) {
     className: "bg-background text-foreground no-drag flex flex-col", style: {position: "fixed", inset: 0, zIndex: 60}, children: [
     j.jsxs("div", {className: "flex shrink-0 items-start justify-between gap-2 px-5 pt-5 pb-2", children: [
       j.jsxs("div", {className: "flex min-w-0 flex-col gap-1", children: [
-        j.jsx("h2", {id: "aux-agent-sheet-title", className: "font-display text-lg font-medium", children: setup ? `Meet ${agent.agent.name}` : `Customize ${agent.agent.name}`}),
+        j.jsx("h2", {id: "aux-agent-sheet-title", className: "font-display text-lg font-medium", children: setup ? "Meet your agent" : `Customize ${agent.agent.name}`}),
         j.jsx("p", {className: "text-muted-foreground text-sm", children: setup
-          ? "Your agent in Aux. It browses and gets things done when you ask, and remembers what matters. Give it a name and a look, or keep the defaults."
+          ? `${agent.agent.name} browses and gets things done when you ask, and remembers what matters. Make it yours, or keep the defaults.`
           : "Its name, its look, and anything it should always keep in mind."}),
       ]}),
       j.jsx(Button, {variant: "ghost", size: "icon-sm", shape: "pill", "aria-label": "Close", disabled: busy, onClick: () => finish(false),
