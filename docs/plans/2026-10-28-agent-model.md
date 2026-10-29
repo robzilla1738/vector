@@ -236,4 +236,17 @@ Not done or not verified:
 - **New tab:** prompts still open as a full-page side chat.
 - **Initiative:** shapes the agent's behavior, but routine results are not yet posted into the home thread.
 - **No per-message avatars:** the header names the agent instead.
-- **No provider connected in the review profile:** so no AI turn, home-thread claim on first send, prompt identity or tab-switch behavior was exercised live. Those paths are covered by unit tests only.
+- **Composer hint after a rename:** it still names the old agent until the side panel reopens.
+
+### Live check (2026-10-28, builds 48–50, Muse Spark 1.3 Contributor via AI Gateway)
+
+Receipt: `docs/integration/proposed/completion-20261026/runtime/agent-live-a1/actual-result.json`.
+
+- **Home thread:** the first message from an empty panel became the home thread.
+- **Browsing:** opening example.com from it worked, with the working ring showing in the sidebar.
+- **Tab switches:** switching tabs kept the panel on the home thread.
+- **Rename:** the sidebar and header update live.
+- **Two defects found and fixed:**
+  - The supplied opener let the model answer with its own name. Every prompt now names the agent outright.
+  - A long home thread ignored a rename. A rename now leaves a system note in the home thread.
+- **Cleanup:** the gateway was disconnected afterward.

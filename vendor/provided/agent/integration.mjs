@@ -12,7 +12,7 @@ const edit = (name, find, replace, count = 1) => Object.freeze({name, find, repl
 const literals = values => values.map(value => `\`${value}\``).join(',');
 
 const PROCEDURES = 'agentGet:accountProcedure.query(({ctx:Cn})=>auxAgentView(Cn.accountId)),'
-  + `agentUpdate:accountProcedure.input(object({name:string$3().max(200).optional(),style:_enum([${literals(STYLES)}]).optional(),proactivity:_enum([${literals(PROACTIVITY)}]).optional(),setupCompleted:boolean$1().optional()})).mutation(async({ctx:Cn,input:ei})=>(auxAgent.update(Cn.accountId,ei),await auxAgentApply(Cn.accountId),auxAgentView(Cn.accountId))),`
+  + `agentUpdate:accountProcedure.input(object({name:string$3().max(200).optional(),style:_enum([${literals(STYLES)}]).optional(),proactivity:_enum([${literals(PROACTIVITY)}]).optional(),setupCompleted:boolean$1().optional()})).mutation(async({ctx:Cn,input:ei})=>{let ti=auxAgent.read(Cn.accountId).name;auxAgent.update(Cn.accountId,ei);await auxAgentApply(Cn.accountId,ti);return auxAgentView(Cn.accountId)}),`
   + 'agentAvatar:accountProcedure.input(object({revision:string$3().max(64)})).query(({ctx:Cn})=>({dataUrl:auxAgent.avatarDataUrl(Cn.accountId)})),'
   + 'agentSetAvatar:accountProcedure.input(object({dataUrl:string$3().max(11e5)})).mutation(({ctx:Cn,input:ei})=>{try{auxAgent.setAvatar(Cn.accountId,ei.dataUrl)}catch(ti){throw new TRPCError({code:`BAD_REQUEST`,message:ti.message})}return auxAgentView(Cn.accountId)}),'
   + 'agentClearAvatar:accountProcedure.mutation(({ctx:Cn})=>(auxAgent.clearAvatar(Cn.accountId),auxAgentView(Cn.accountId))),'
@@ -23,7 +23,7 @@ const HELPERS = `
 function auxAgentUsable(Cn){return!!Cn&&!Cn.archivedAt&&!Cn.ephemeral&&!Cn.incognito}
 function auxAgentHome(Cn,ei){return auxAgentUsable(SessionStore.get(Cn,ei))?SessionStore.listPreviewItems(Cn,{sessionIds:[ei],parent:\`all\`})[0]:void 0}
 function auxAgentView(Cn){let ei=auxAgent.read(Cn);return auxAgent.view(ei,!!(ei.homeSessionId&&auxAgentHome(Cn,ei.homeSessionId)))}
-async function auxAgentApply(Cn){try{let ei=auxAgent.read(Cn),ti=ei.homeSessionId&&SessionStore.get(Cn,ei.homeSessionId);if(!auxAgentUsable(ti))return;ti.title!==ei.name&&SessionStore.update(Cn,ti.id,{title:ei.name});GlobalAgentSessionServer.getLoadedAgent(Cn,ti.id)&&!GlobalAgentSessionServer.isRunning(Cn,ti.id)&&await GlobalAgentSessionServer.reloadLoadedAgentSession(Cn,ti.id)}catch(ei){console.warn(\`[aux-agent] could not apply the agent profile: \${ei?.message??ei}\`)}}
+async function auxAgentApply(Cn,ni){try{let ei=auxAgent.read(Cn),ti=ei.homeSessionId&&SessionStore.get(Cn,ei.homeSessionId);if(!auxAgentUsable(ti))return;ti.title!==ei.name&&SessionStore.update(Cn,ti.id,{title:ei.name});GlobalAgentSessionServer.getLoadedAgent(Cn,ti.id)&&!GlobalAgentSessionServer.isRunning(Cn,ti.id)&&await GlobalAgentSessionServer.reloadLoadedAgentSession(Cn,ti.id);ni&&ni!==ei.name&&await GlobalAgentSessionServer.appendMessage(Cn,ti.id,auxAgent.renameNote(ei.name))}catch(ei){console.warn(\`[aux-agent] could not apply the agent profile: \${ei?.message??ei}\`)}}
 `;
 
 export const DAEMON_EDITS = Object.freeze([

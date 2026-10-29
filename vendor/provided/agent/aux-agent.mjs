@@ -52,12 +52,12 @@ function normalize(raw) {
   };
 }
 
-/** The opening of every system prompt this agent's sessions use. The default agent keeps the
- * supplied opener byte for byte, so nobody who never customizes sees a prompt change. */
+/** The opening of every system prompt the agent's sessions use. It names the agent outright,
+ * the default Aux included: with only the supplied opener, models answered "who are you"
+ * with their own model name (seen live with Muse Spark, 2026-10-28). */
 export function identityBlock(profile) {
-  const custom = profile.name !== DEFAULT_NAME || profile.style !== 'balanced' || profile.proactivity !== 'light';
-  if (!custom) return ORIGINAL_OPENER;
-  const lines = [`You are ${profile.name}, ${AGENT_PHRASE}. You are helpful, proactive, and smart.`];
+  const lines = [`You are ${profile.name}, ${AGENT_PHRASE}. You are helpful, proactive, and smart.`,
+    `Your name is ${profile.name}. When asked who you are, you are ${profile.name}; the AI model behind you is an implementation detail, not your name.`];
   const traits = [STYLE_TEXT[profile.style], PROACTIVITY_TEXT[profile.proactivity]].filter(Boolean);
   if (traits.length) lines.push('', '# Personality', '', ...traits.map(trait => `- ${trait}`));
   return lines.join('\n');
@@ -106,7 +106,7 @@ export function createAuxAgent(roots) {
   const view = (profile, home) => ({
     name: profile.name, style: profile.style, proactivity: profile.proactivity,
     homeSessionId: home ? profile.homeSessionId : null, avatarRevision: profile.avatarRevision,
-    setupCompleted: profile.setupCompleted, isDefault: identityBlock(profile) === ORIGINAL_OPENER && !profile.avatarRevision,
+    setupCompleted: profile.setupCompleted, isDefault: profile.name === DEFAULT_NAME && profile.style === 'balanced' && profile.proactivity === 'light' && !profile.avatarRevision,
   });
 
   const contextStamp = (account, profile) =>
@@ -153,13 +153,19 @@ export function createAuxAgent(roots) {
     promptStale(account, session, prompt) {
       if (!prompt || typeof prompt !== 'string') return false;
       if (!prompt.startsWith(ORIGINAL_OPENER) && !(prompt.startsWith('You are ') && prompt.includes(AGENT_PHRASE))) return false;
-      const profile = read(account);
-      if (!prompt.startsWith(identityBlock(profile))) return true;
-      if (session?.id !== profile.homeSessionId) return false;
+      const profile = read(account), home = session?.id === profile.homeSessionId;
+      const stale = !prompt.startsWith(identityBlock(profile));
+      if (!home) return stale;
       const stamp = contextStamp(account, profile), built = profile.homePrompt;
-      if (built?.stamp === stamp && Date.now() - built.at < HOME_PROMPT_MAX_AGE_MS) return false;
+      if (!stale && built?.stamp === stamp && Date.now() - built.at < HOME_PROMPT_MAX_AGE_MS) return false;
       save(account, {...profile, homePrompt: {stamp, at: Date.now()}});
       return true;
+    },
+    /** A note for the home thread after a rename: a long conversation otherwise keeps
+     * answering with the name in its own earlier replies (seen live, 2026-10-28). */
+    renameNote(name) {
+      return {role: 'system-message', kind: 'agent_identity', metadata: {}, timestamp: Date.now(),
+        content: `The user renamed you to ${name}. Your name is ${name} from now on; earlier replies that used another name are out of date.`};
     },
     /** The native Chats feed with the home thread taken out and the agent's state added. */
     chromeChats(account, {pinned, recents}, preview, homePreview) {

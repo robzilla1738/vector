@@ -1,0 +1,22 @@
+{
+  "format": "aux.acceptance.observation.v1",
+  "observedAt": "2026-10-28T20:23-05:00 to 20:40-05:00",
+  "builds": ["1.0.0-48", "1.0.0-49", "1.0.0-50"],
+  "launch": "out/release/<build>/Aux.app/Contents/MacOS/Aux --use-mock-keychain, the local review state",
+  "provider": "Vercel AI Gateway, key supplied by the owner in chat for this test (not recorded), entered once in Settings > Models; only meta/muse-spark-1.3-contributor enabled, so every task model used it",
+  "authority": "docs/integration/proposed/completion-20261026/integration/ordinary-chat/resume-spending-authority.json (same model and route); owner reply 2026-10-28",
+  "turns": 6,
+  "observations": [
+    {"check": "first message from an empty side panel becomes the home thread", "result": "accepted", "note": "agent.json homeSessionId set; header shows the agent and the Side chats menu; title is the agent name"},
+    {"check": "agent identity in replies (build 48, original opener)", "result": "defect", "note": "Muse Spark answered 'I'm Muse Spark' with the supplied opener and an empty SOUL.md; fixed in build 49 by naming the agent outright"},
+    {"check": "fresh side chat names itself (build 49)", "result": "accepted", "note": "'My name is Aux.'"},
+    {"check": "rename reaches the home thread prompt and UI", "result": "accepted", "note": "stored home prompt starts 'You are Nova'; sidebar row and panel header update live"},
+    {"check": "rename registers in a long home thread (build 49)", "result": "defect", "note": "the thread kept repeating its own earlier answers; fixed in build 50 with a system note on rename"},
+    {"check": "rename registers in the home thread (build 50)", "result": "accepted", "note": "after renaming Nova to Aux: 'My name is Aux.'"},
+    {"check": "browsing from the home thread", "result": "accepted", "note": "opened example.com and reported 'Example Domain'; the sidebar row showed the working ring during the run"},
+    {"check": "tab switch keeps the home thread", "result": "accepted", "note": "switching to the GitHub tab left the panel on the home thread"},
+    {"check": "composer hint after a rename", "result": "defect", "note": "still 'Message Aux' until the panel reopens; the editor reads its placeholder once"},
+    {"check": "cleanup", "result": "accepted", "note": "Vercel AI Gateway disconnected in Settings > Models; the agent is named Aux with the Classic look"}
+  ],
+  "spend": "not measured; six short turns on a $0.10/M-token model"
+}

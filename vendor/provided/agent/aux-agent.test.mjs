@@ -21,12 +21,16 @@ const png = (width = 256, height = 256) => {
   return `data:image/png;base64,${bytes.toString('base64')}`;
 };
 
-test('an account with no agent file is the default Aux agent and its prompt is unchanged', () => {
+test('an account with no agent file is the default Aux agent, named outright', () => {
   const profile = agent.read(1);
   assert.equal(profile.name, 'Aux');
-  assert.equal(identityBlock(profile), ORIGINAL_OPENER);
-  assert.equal(agent.systemPrompt(PROMPT, 1), PROMPT);
-  assert.equal(agent.promptStale(1, {id: 'x'}, PROMPT), false);
+  const prompt = agent.systemPrompt(PROMPT, 1);
+  assert.match(prompt, /^You are Aux, the user's personal agent, built into the Aux browser\./);
+  assert.match(prompt, /Your name is Aux\. When asked who you are, you are Aux;/);
+  assert.doesNotMatch(prompt, /# Personality/, 'balanced and light add no personality lines');
+  assert.ok(prompt.endsWith('# Goal\n\n- Act proactively.'));
+  assert.equal(agent.promptStale(1, {id: 'x'}, PROMPT), true, 'chats frozen with the supplied opener rebuild once');
+  assert.equal(agent.promptStale(1, {id: 'x'}, prompt), false);
   assert.deepEqual(agent.view(profile, false), {name: 'Aux', style: 'balanced', proactivity: 'light', homeSessionId: null,
     avatarRevision: '', setupCompleted: false, isDefault: true});
 });
@@ -54,22 +58,30 @@ test('frozen prompts from before a rename are rebuilt; foreign prompts never are
   assert.equal(agent.promptStale(3, {id: 's'}, PROMPT), true, 'the supplied opener predates the rename');
   assert.equal(agent.promptStale(3, {id: 's'}, agent.systemPrompt(PROMPT, 3)), false);
   agent.update(3, {name: 'Aux'});
-  assert.equal(agent.promptStale(3, {id: 's'}, PROMPT), false, 'back to the default opener');
+  assert.equal(agent.promptStale(3, {id: 's'}, agent.systemPrompt(PROMPT, 3)), false, 'back to Aux');
   assert.equal(agent.promptStale(3, {id: 's'}, 'You are a coding worker.'), false);
   assert.equal(agent.promptStale(3, {id: 's'}, ''), false);
 });
 
 test('the home thread rebuilds when SOUL.md changes, then keeps its prompt', () => {
   agent.setHome(4, 'home');
-  assert.equal(agent.promptStale(4, {id: 'home'}, PROMPT), true, 'first build stamps the context');
-  assert.equal(agent.promptStale(4, {id: 'home'}, PROMPT), false);
-  assert.equal(agent.promptStale(4, {id: 'side'}, PROMPT), false, 'side chats keep their frozen prompt');
+  const built = agent.systemPrompt(PROMPT, 4);
+  assert.equal(agent.promptStale(4, {id: 'home'}, built), true, 'first build stamps the context');
+  assert.equal(agent.promptStale(4, {id: 'home'}, built), false);
+  assert.equal(agent.promptStale(4, {id: 'side'}, built), false, 'side chats keep their frozen prompt');
   const task = roots.task(4);
   rmSync(task, {recursive: true, force: true});
   mkdirSync(task, {recursive: true});
   writeFileSync(path.join(task, 'SOUL.md'), '# Soul\nCurious.');
-  assert.equal(agent.promptStale(4, {id: 'home'}, PROMPT), true);
-  assert.equal(agent.promptStale(4, {id: 'home'}, PROMPT), false);
+  assert.equal(agent.promptStale(4, {id: 'home'}, built), true);
+  assert.equal(agent.promptStale(4, {id: 'home'}, built), false);
+});
+
+test('a rename leaves a note for the home thread with the new name', () => {
+  const note = agent.renameNote('Nova');
+  assert.equal(note.role, 'system-message');
+  assert.equal(note.kind, 'agent_identity');
+  assert.match(note.content, /^The user renamed you to Nova\. Your name is Nova from now on;/);
 });
 
 test('avatars are PNGs only, bounded, and versioned by content', () => {
