@@ -8,6 +8,7 @@ Start with [STATUS](STATUS.md): the candidate, what was observed on it, and what
 |---|---|
 | Candidate, observed work, open items | [STATUS.md](STATUS.md) |
 | Everything left before release | [plans/2026-10-28-release-readiness.md](plans/2026-10-28-release-readiness.md) |
+| The browser-experience plan (current work) | [plans/2026-10-29-browser-excellence.md](plans/2026-10-29-browser-excellence.md) |
 | UI requests and their state | [plans/2026-10-28-ui-review-checklist.md](plans/2026-10-28-ui-review-checklist.md) |
 | The agent (Aux) design | [plans/2026-10-28-agent-model.md](plans/2026-10-28-agent-model.md) |
 | Milestones and external gates | [ROADMAP-EXECUTION-GRAPH.md](ROADMAP-EXECUTION-GRAPH.md) |
@@ -28,6 +29,7 @@ The plans in [plans/](plans/) are dated decisions. Their requirements still appl
 - [Pre-release completion](plans/2026-10-27-pre-release-completion.md) (2026-10-27): the six-batch plan the owner approved
 - [Excellence audit](plans/2026-10-27-excellence-audit.md) (2026-10-27): whole-product review and decisions D1–D12
 - [Release readiness](plans/2026-10-28-release-readiness.md) (2026-10-28): the full checklist from the current seal to a public release
+- [Browser excellence](plans/2026-10-29-browser-excellence.md) (2026-10-29): review of the whole browser experience and the plan to make it excellent; Spaces replace profiles; Aux's own implementation of the Aside parts
 - [Owner plan](plans/2026-10-28-owner-plan.md) and [agent plan](plans/2026-10-28-agent-plan.md) (2026-10-28): the detailed steps for each side
 - [Agent model](plans/2026-10-28-agent-model.md) (2026-10-28): one personal agent per profile, its design and history
 - [Feature polish](plans/2026-10-29-feature-polish.md) (2026-10-29): every existing feature used and fixed, builds 57–63

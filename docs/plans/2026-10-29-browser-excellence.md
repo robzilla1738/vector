@@ -1,0 +1,592 @@
+# Browser excellence plan (2026-10-29)
+
+Robert asked for a thorough review of the browser experience — the agent, quality of life, Spaces, profiles, the gutter and window borders, how tabs work, dragging, pinning, renaming, creating a Space — and a plan to make all of it excellent, with Aside and Arc as the references. During the review he added: support for macOS versions before 27; Aux's own implementation of everything that came from Aside, behaving the same; every Settings item set up correctly for Aux; import from other browsers and a proper onboarding flow; **Spaces instead of profiles**; and no over-testing.
+
+**Out of scope:** release, notarization, distribution, updates and the hosted cloud service. Everything stays local.
+
+**Sources:** nine read-only code reviews of build 77 and the durable checkout, plus an on-screen look at build 77 beside the running Aside and the saved Arc references (`out/acceptance/20261027/ref/`). Findings marked *(check)* were inferred from code and need one look on screen before or while fixing. File paths are under the durable checkout's `src/` unless they start with `vendor/`, `scripts/` or `docs/`; `frame/` means `chrome/browser/ui/views/frame/`.
+
+## Decisions kept
+
+The plan refines these; it does not reverse them. Anything that would is a question for Robert.
+
+- **The agent:** one primary agent per user, named Aux by default, with a home thread, plus **side chats inside the agent panel** for one-off work (the Muse model). No Chats list in the sidebar. The agent button is a pinned-style tile beside the address field. Name, look and Instructions only; no style or initiative settings; routines are its initiative. One logo per surface. ([agent model](2026-10-28-agent-model.md))
+- **Sidebar (Arc header, Aside sections):** traffic lights, sidebar toggle and back/forward/reload on one row; the filled address field alone below it; then Pins, Bookmarks, Tabs. Pins hide when empty. AI Tidy removed. No Space switcher in the sidebar body; Spaces live in the footer. Archived tabs behind the Tabs-header button. Footer: Downloads popover, Search, "+". ([checklist](2026-10-28-ui-review-checklist.md) rows 1–5, 19, 36, 41, 50)
+- **Page frame:** the page is one rounded card with an even gutter, single or split; one rounding scale; split panes with a hover pill instead of a title bar; no Google-branded content anywhere; no blue focus ring on the address field.
+- **Tabs:** × on hover closes; rename in place (double-click, F2, menu); drag to reorder, onto a tab to split, to Bookmarks, to Pins, onto the page to split, with the frosted card and half-page preview. ([sidebar polish](2026-10-29-sidebar-polish.md))
+- **Spaces and themes:** a theme per Space, falling back to a default; an emoji per Space; Aux's own theme picker with Aux presets and terminal classics; one uniform shade across every surface, with ink-based borders and 7:1 text contrast; Create a Space with icon, name and color preview. ([Spaces and themes](2026-10-29-spaces-and-themes.md))
+- **Little Aux and Peek** exist and follow Little Arc's single quiet bar.
+- **Scope:** bring-your-own models (API keys or supported subscriptions); no payments, Pro or hosted credits; no built-in password manager (users bring 1Password and the like through extensions); routines run on this device only.
+- **Crash reports:** opt-in, off by default, asked once after the first crash (release decision 6).
+
+## New decisions (2026-10-29)
+
+1. **Spaces replace profiles.** There are no user-visible profiles. When you create a Space you choose whether it **shares** sign-ins, cookies and site data with another Space or is **isolated**. Design in [Batch 2](#batch-2--spaces-replace-profiles).
+2. **Aux's own implementation of every Aside-derived part, behaving the same.** The supplied implementation becomes the reference for behavior, not shipped code. Persisted formats and wire protocols stay compatible. Track in [Batch 10](#batch-10--auxs-own-implementation-of-the-aside-parts). This changes the standing rule in AGENTS.md; proposed wording is at the end, and AGENTS.md is not edited until Robert says so.
+3. **Lean verification.** See [How changes are checked](#how-changes-are-checked).
+
+## Questions for Robert
+
+My recommendation is listed first; the plan assumes it until you say otherwise.
+
+1. **Isolated Spaces and extensions.** An isolated Space has its own extensions, as in Arc, so 1Password would be installed there too. (Alternative: share extensions across groups. Chromium ties extensions to the profile, so that would mean installing them into each hidden profile automatically, which is doable but adds a sync job.)
+2. **What counts as "Aside-derived".** Recommend: the supplied bundles and binaries Aux can't build from its own source (agent extension, daemon JS, Computer Use, memory helper, runtime, skills, and the native addons reconstructed from disassembly). The native Chromium code in `chromium/tree` is already Aux source we maintain; parts ported from Aside's fork get rewritten as they are touched (Batch 3 rewrites the tab rows anyway), not as a separate project.
+3. **Clicking the address field.** Recommend it opens the centered command bar, as Cmd+T/Cmd+L already do and as Arc does, instead of a 220-pixel dropdown under the field.
+4. **Oldest macOS.** Recommend macOS 15 Sequoia (26 is nearly free; 15 is the practical floor; below that the memory model and screenshot code need older paths).
+5. **Subscriptions that don't work yet.** AGENTS.md promises Copilot, Kimi and Meta sign-in, but only ChatGPT/Codex, Claude, Grok and Cursor work through their CLIs. Recommend: build the Copilot CLI driver now, and list Kimi and Meta as API keys until each has a sign-in Aux can use legitimately; the scope line then says so.
+
+## What the review found
+
+The design direction is right and much of it is well built: row metrics are consistent, drag visuals are good, the Space theme model is sound, and most Settings rows are wired to real prefs. The gaps are of four kinds:
+
+1. **A few things are broken outright:**
+   - Cmd+Left/Right in a text field goes Back/Forward instead of moving the cursor, which can lose what you typed.
+   - The first start shows no window for 30–55 s, and a startup failure shows no browser at all.
+   - Any tab retitling cancels a drag in progress.
+   - The Tabs "Clear" button closes pinned tabs and tabs in other Spaces.
+   - Extensions have no visible place in sidebar mode.
+   - The find bar opens under the sidebar.
+   - Footer Space icons past about five can't be reached.
+   - New users who stay local never see onboarding.
+   - The agent's web search and the composer's dictation call hosted routes that don't exist, so both always fail.
+2. **Live state is missing from tab rows:** no audio or mute indicator, no loading, crashed or unloaded state, no focus ring, and no accessibility role.
+3. **The Arc signatures are missing:**
+   - swipe between Spaces
+   - reorder Spaces
+   - drag a tab onto a Space
+   - Ctrl+1–9 to jump to a Space
+   - a Spaces menu
+   - "back to pinned page"
+   - Arc import into real Spaces and Pins
+   - the sidebar staying put in fullscreen
+   - Little Aux with no window open
+4. **Leftovers point at removed or foreign things:**
+   - Settings rows for Tidy, Chats, Pro relays, billing, and CLI commands that don't ship
+   - chrome://settings full of Google services
+   - a Google Lens string on New Tab
+   - "Help improve Aux" that does nothing
+   - importers that save passwords and payment cards into Chromium's own stores
+
+## How the work is ordered
+
+Batches are in dependency order. Batch 1 makes everything safe to build on. Batch 2 changes the model that Spaces, import and onboarding sit on, so it lands before those. Batches 3–9 can run in parallel lanes once their files don't overlap: Batches 3 and 4 share `frame/aux_organization_*`, so run them in one lane or in sequence. Batch 10 is a long track alongside the rest. What gates each item is a native build plus a look on screen, unless noted (owner approval, a fixture, Apple).
+
+---
+
+## Batch 1 — Nothing broken
+
+| # | Problem | Fix | Where |
+|---|---|---|---|
+| 1.1 | Aux's keyboard bindings run before the focused field. Cmd+Left/Right navigate Back/Forward from inside text fields. Cmd+K, Cmd+E, Cmd+S, Cmd+Shift+C and Cmd+Shift+A never reach web apps (Slack, Notion, Docs, Figma). | Only reserved chords (Cmd+T/W/N/Q, Cmd+L) go before the responder; everything else goes through the normal path after it, the way upstream delays Back/Forward. Add an "always use for Aux" switch per shortcut for anyone who wants Aux to win. | `chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.mm:84-97`, `chrome/browser/ui/aux_keyboard_shortcuts.mm:50-70`, `global_keyboard_shortcuts_mac.mm:88` |
+| 1.2 | No window until the daemon is ready (nested RunLoop, 90 s deadline). On timeout `profile_ = nullptr; return;` and no window ever opens. Links from other apps wait behind it. | Keep the readiness gate, which is a recorded decision (STATUS, D12: no profile before the daemon is ready and authorized). Show what's happening instead: a small native "Starting Aux" window with the mark and progress from the first second. On failure, "Aux couldn't finish starting" with Try again and Quit. Links clicked meanwhile open once ready, never dropped. Opening the browser before the daemon is ready would be faster but reverses D12; it's Robert's call. | `chrome/browser/aux/browser_platform.cc:150-171`, `chrome/browser/ui/startup/startup_browser_creator_impl.cc:275` |
+| 1.3 | The tab list is rebuilt from scratch on every change. A title change or finished load cancels drags, loses hover (× vanishes), makes context-menu commands fail ("The profile or tab list changed"), flickers favicons, and costs roughly n³ per rebuild across two trees. | Keep rows alive and update them from the model's `Delta::changed_entries`. While a drag is active, defer refreshes the way rename does. Don't Notify when Reconcile changed nothing. Build one handle→index map per refresh. Context-menu commands check only their target entry's revision. | `frame/aux_organization_tree_view.cc:527-545, 813-816`, `frame/aux_organization_window_controller.cc:100, 492, 1569-1577, 1746` |
+| 1.4 | Tabs-header **Clear** closes every closable tab in the window, including pinned tabs and loaded tabs from other Spaces, but leaves unloaded tabs in the current Space. | Clear the active Space's unpinned, unkept entries in one archive batch, with Undo. | `frame/aux_tabs_actions.cc` `ClearAccepted` |
+| 1.5 | Extensions are unreachable in sidebar mode. Their container, the split button and pinned actions stay "visible" at an empty rect, so there are no icons, keyboard focus can land on zero-size buttons, and popups anchor to nothing. This is the same pattern as the build 38 crash. | Really hide them. Add an extensions button in the address row (puzzle icon, Arc-style) that opens a menu listing every extension, with pin-to-row for the few you want visible (1Password). Popups anchor to it. | `chrome/browser/ui/views/toolbar/toolbar_view.cc:1691-1704, 1861` |
+| 1.6 | The find bar opens under the sidebar address field (off the window's left edge), or in the gutter when the sidebar is collapsed. | In sidebar mode, position against the page card (the active pane in a split), inside the inset. | `toolbar_view.cc:2365` `GetFindBarBoundingBox` |
+| 1.7 | The download bubble and the "download started" animation aim at the hidden toolbar button *(check)*. | Route every download bubble and animation to the footer Downloads button in sidebar mode. | `download_toolbar_ui_controller.cc:1154, 1263` |
+| 1.8 | Footer Space icons have no overflow: about five fit, the rest are clipped and can't be clicked. | Scroll horizontally with the active Space kept in view, plus an overflow menu. Batch 2 removes the profile dots, which frees the row. | `frame/aux_space_dots.cc:132-135` |
+| 1.9 | Importers write passwords into Chromium's disabled password store (File menu → Firefox) and Safari payment cards into autofill. | Revert the Firefox password mask and `AddFirefoxPasswordForms`. Drop payment cards and autofill from Safari and from `supportedDataKinds`. Point File › Import at Aux's importer. | `chrome/browser/importer/importer_list.cc`, `profile_writer.cc`, `extensions/api/aux_browser_import/{safari_import,migrator,import_service}.cc`, `browser_command_controller.cc` |
+| 1.10 | The Chromium first-run screens and default-browser check are suppressed only in non-official builds; `flags.release.gn` is official. The `first_run_service.cc` edit is a no-op (`&& true`). | Suppress them under `ENABLE_AUX_BROWSER` regardless of build type. | `chrome/app/chrome_main_delegate.cc`, `chrome/browser/ui/startup/first_run_service.cc` |
+| 1.11 | Close can silently do nothing: `HandleClose` reports handled, then refuses on an identity or owner mismatch, e.g. after a redirect. | Fall back to a normal close, and show the one-line status if anything is refused. | `frame/aux_organization_window_controller.cc:1345-1369` |
+| 1.12 | Possible null dereference if a profile switch retires the sidebar body mid-drag. | Check `outside_` before use. | `frame/aux_organization_tree_view.cc:952`, `aux_sidebar_body.cc:197` |
+
+## Batch 2 — Spaces replace profiles
+
+**Model.**
+- A **data group** is one hidden Chromium profile: cookies, site data, history, extensions, autofill, permissions, downloads list. Every Space belongs to exactly one data group.
+- The first group is "Default". Creating a Space offers **Sign-ins and cookies:** "Shared with ‹Space›" (the default, listing one Space per group) or "Isolated". Isolated creates a new hidden profile for that Space.
+- Later Spaces can share with it, so Work and Work Projects can share one isolated group.
+- A Space's group is fixed after creation. Moving a Space to another group would mean moving cookies, which Chromium can't do safely; the Space menu offers "Duplicate into…" instead.
+
+**What the user sees.**
+- One row of Space icons in the footer; isolated Spaces show a small lock badge.
+- The profile picker, profile pager dots, profile menu, "Profile N" creation, profile swipe and the profile Theme item go away.
+- The default theme moves to Settings › Appearance › "Default theme" (the existing profile theme store).
+- Startup opens the last-used Space; there is no picker.
+
+**How it works.**
+- Switching to a Space in another data group swaps the window's profile with the existing same-window profile switch (`frame/aux_profile_switch_*`). Spaces in the same group switch as today.
+- The organization model moves from per-profile to browser-wide: the Spaces list and their order live in local state, and the entries stay in each group's profile. Alternatively, keep per-profile models and merge them in the footer. Recommend browser-wide, so that ordering, Ctrl+1–9 and the swipe treat all Spaces as one list.
+- Pins: global pins are global across all groups. A pin always opens in the Space you're in, which is the safe choice for isolation.
+- Link routing rules target Spaces instead of profiles (`chrome/browser/aux/routing/`). `aux open --profile` becomes `--space` (keep `--profile` as an alias).
+
+**The agent.**
+- One agent across all Spaces: one name, look, Instructions and home thread.
+- The daemon binds one account per profile today (`accounts.json` `profileAccountBindings`). Bind every hidden profile to the same local account and keep a per-Space browsing context, so the agent browses with the sign-ins of the Space it's acting in.
+- Memory stays one store.
+- *(Owner question 1 covers extensions.)*
+
+**Migration.** Each existing profile becomes a data group. Its Spaces keep their tabs, pins, themes and emoji. The first profile is "Default". This is a versioned migration with a legacy reader, per AGENTS.md; nothing is deleted.
+
+**Clean-ups this enables:** the two identical dot rows, the profile-create flow with no choices, and the swipe that moves between profiles.
+
+**Tests worth having (cheap, high value):** model tests for group assignment, migration and ordering. Wire `organization_model_unittest.cc` into a build target; it has never run.
+
+## Batch 3 — Sidebar and tabs
+
+**Row state and accessibility**
+- Audio and mute: a speaker beside × that mutes on click.
+- Loading: a throbber in place of the favicon.
+- Crashed: a sad-tab glyph.
+- Unloaded rows dimmed.
+- Favicons read live from `ContentFaviconDriver` instead of a history lookup per rebuild.
+- `kTree`/`kTreeItem` roles with selected, expanded and level.
+- A focus ring on rows, tiles, bookmark rows and the new-tab row.
+- The list is one Tab stop, with arrow-key roving and type-to-find.
+- (`frame/aux_organization_tree_view.cc:184-203`, `frame/aux_vertical_bookmark_row_view.cc`, `tabs/vertical/vertical_pinned_tab_entries_view.cc`)
+
+**Mouse and drag**
+- Middle-click closes a row.
+- Activate on press.
+- Clicking the active row keeps focus in the page.
+- Autoscroll in an edge band during any sidebar drag.
+- Split arms only after about 450 ms of hovering over a row (or with ⌥); otherwise the drop shows the reorder gap. Today the middle 40% of each row means split, so reorders turn into splits.
+- Dropping onto an expanded folder inserts at the top.
+- Drag pins and bookmarks back into Tabs (unpin into the active Space).
+- No write for a drop in place.
+- Archived rows aren't draggable.
+- Thresholds unified at 6 px.
+- (`:336-371, 934, 973-991, 1056`, `aux_cross_section_drag_coordinator.cc`)
+
+**Multi-select:** Cmd- and Shift-select already work; make drag, close, archive, move and "New folder with tabs" act on the whole selection.
+
+**Rename**
+- Commit compares against the text the field started with, so tabbing away doesn't freeze an automatic title.
+- An empty name, or "Reset name" in the menu, returns to the page title (`TitleMode::kAutomatic`).
+- Folder double-click renames without toggling first.
+- Remove the dead Shift+Return branch.
+- Drop the one-second focus steal.
+- Cap the length to the model's limit.
+- (`:91-105, 719-720, 893-897`, `aux/organization/organization_model.cc:451`)
+
+**One context menu, shared by rows and pin tiles:**
+- Copy link (⇧⌘C)
+- Duplicate
+- Open in split / Split with…
+- Reload
+- Mute
+- Pin / Unpin
+- Add to bookmarks
+- Move to Space ›
+- Add to folder › (with New folder)
+- Rename / Reset name
+- Keep in Space
+- Unload
+- Archive
+- Close tabs below
+- Close other tabs
+
+"Move to" lists only valid targets: never itself or its own descendants. It takes no hard-coded English and never aborts on a missing Space.
+
+**Folders:** "New folder" in the Tabs header and the menu, named inline like rename. A collapsed folder still shows its active tab. (`NewFolder()` has no callers today.)
+
+**Pins**
+- "Back to pinned page" when a pin has navigated away (`launch_url` is stored but unused). Show a small mark on the tile, plus a menu item, as Arc does.
+- Cmd+W on a pin unloads it rather than closing it.
+- Pins stay global (decision kept). Many pins or a big pinned folder must not squeeze Tabs *(check)*.
+
+**Archive**
+- Archived tabs sort by date with relative labels and a filter field.
+- Clicking one restores and opens it, then returns to Tabs.
+- Cmd+Shift+T reopens the last closed tab in its old place, not at the end with a "Recovery" row (`browser_command_controller.cc:932`).
+- Auto-archive keeps today's default (off), and gains 12-hour and 24-hour choices offered in onboarding (see question list; Arc's default is 12 h).
+
+**Keyboard**
+- Ctrl+Tab and Cmd+1–9 follow the active Space's visible list. Cmd+1–9 targets pins first, as Arc does.
+- Activation scrolls the row into view.
+- Escape cancels a drag without activating the tab, and isn't swallowed otherwise.
+- (`frame/aux_tab_switcher.cc:94-99`, `browser_command_controller.cc:908-919`)
+
+**Split tabs in the list:** a split shows as one row with both favicons (Arc), not two highlighted rows (seen on build 77).
+
+**Paint consistency**
+- One row painter and one close button for tab and bookmark rows; the light-mode bookmark selection is opaque white today.
+- Every sidebar ink goes through `aux_theme::SidebarForeground` (bookmark rows, headers, header actions, new-tab row, dots).
+- The cyan shared-update dot uses the theme accent and sits before the ×.
+- The status line is anchored under the Tabs header so it's visible in long lists.
+- The Ctrl+Tab panel uses the Aux theme and stops polling the Control key.
+
+**Section labels:** Arc shows no "Pins" label and Aside shows none either. Keep the order (decision kept), but drop the Pins header label and let the tiles speak for themselves *(Robert to glance at it on screen)*.
+
+## Batch 4 — Spaces flows
+
+**Getting around**
+- **Swipe** with two fingers between Spaces, with the sidebar sliding. Reuse the profile preview machinery (`aux_profile_preview_*`) driven by the Space list, then delete the dead `AuxSpacesSwitcher`.
+- Switching animates in the direction of travel.
+- Ctrl+1–9 jumps to Space N (remappable).
+- A **Spaces menu** in the menu bar: New Space, Next, Previous, then the list.
+- Space dots are 24×24 targets with a selected state.
+
+**Organizing**
+- Drag dots to reorder; `kMoveSpace` exists but is unused. Add Move left/right to the Space menu too.
+- Dots are drop targets for a dragged tab, and hovering about 500 ms switches to that Space so the tab can be placed.
+
+**Windows**
+- Cmd+N opens in the current Space (today it's always the first).
+- A window whose Space is deleted elsewhere falls back to the neighbour that received the tabs, and shows that Space's page.
+- Returning to a Space shows its last active tab.
+
+**Races**
+- Cancel and Escape are disabled while Create is saving. Today cancelling leaves a Space with no theme.
+- A new tab records its Space when it's inserted, not at reconcile, so it can't land in a Space you just switched to.
+- Delete commits before switching.
+- The Create panel closes if the Space's group changes.
+- Palette commands queue while a save is in flight instead of doing nothing.
+- (`frame/aux_space_create_view.cc:422-557`, `aux_organization_window_controller.cc:388-459`, `aux_space_menu.cc:165-172`, `aux_organization_ui_commands.cc:104`)
+
+**Create a Space**
+- Return on an empty name says so.
+- Name length is capped.
+- Fields lock while saving, with a small spinner.
+- Swatches never shrink below 24 px; wrap to two rows.
+- Adds the Batch 2 sign-ins choice.
+
+**Emoji:** typing searches the emoji set instead of committing the first character.
+
+**Theme picker**
+- Changing only the mode doesn't add a Graphite tint ("No color" state).
+- Choosing an Aux preset after a terminal preset resets intensity and mode.
+- The color plane reaches muted, neutral and dark colors, with a hex field.
+- Presets sit in two rows of five.
+- The picker fits a 13-inch screen (it's about 600 px tall).
+
+**Contrast**
+- Check text against the color actually drawn (#202124 today, not #0A0A0A).
+- `background` tokens follow the same rule.
+- (`chrome/browser/themes/aux_theme_editor.cc:129-147, 235`)
+
+**Clean-up**
+- Reset removes only Aux tokens, not Chromium's theme.
+- Deleting a Space anywhere removes its theme entry.
+- One preview per window, not per profile.
+
+**Performance**
+- Cache the themed backdrop by (Space, mode, revision) and bake the grain; today `GetBackdrop` re-validates prefs and redraws the grain on every paint.
+- Preview ticks refresh only this window's pages.
+- Inject the page tint at document start so New Tab and the side panel don't flash their own palette.
+- (`frame/themed_background.cc:117-146`, `aux_page_tint.cc:137-175`, `browser_view.cc:5436`)
+
+**One shade, everywhere** *(check)*
+- Extend the mixer to `kColorSysBase*`, `kColorSysSurface2–5` and omnibox results.
+- Stop the accent from regenerating Chromium's Material palette, so the find bar, hover cards, permission bubbles and chrome:// pages match the shade.
+
+**Sizes:** one radius and size scale across Create, the picker, menus and the sidebar (matches 5.1).
+
+## Batch 5 — Window frame, gutter and split
+
+**One geometry spec, used in every mode.**
+- Write it once (`aux_frame_metrics.h`), with:
+  - the gutter G
+  - the card radius R
+  - the pane gap
+  - the control radius 8
+  - the popover radius 12
+- R is derived from the real window corner (`_getCachedWindowCornerRadius`) minus G, so the card is concentric on macOS 15, 26 and 27.
+- Today:
+  - the window is hard-coded 16 while macOS 26+ draws 20
+  - the card is 10
+  - the inset is 6 on three sides and 0 beside the sidebar (8 from the sidebar's own margin)
+  - split outside card mode clips at 6 with an outline at 10
+- (`frame/layout/browser_view_tabbed_layout_impl.cc:80, 1360, 1369, 1906`, `frame/browser_frame_view_mac.mm:369`, `frame/contents_container_outline.h:26`, `multi_contents_view.h:67`)
+
+**Even gutter on all four sides.** The gap between the sidebar and the card equals the top, right and bottom gaps. On build 77 the card touches the sidebar's edge. Update STATUS, which says 8 where the code says 6.
+
+**The card in every mode:** horizontal tabs (checklist 6), fullscreen, minimal UI, Peek, Quick window and split; decide explicitly which mode is flush, if any. Drop the top separator on every scheme so chrome://, PDF and file pages don't draw a hairline and jump 1 px (`layout_impl.cc:310-326`).
+
+**Card edge.** On dark pages build 77 shows a light rim around the card. Use Arc's soft shadow with a faint ink edge, and the same treatment for single and split.
+
+**Split**
+- **Active pane:** a clear accent ring or slight dimming of inactive panes. Today it's 16% vs 10% ink.
+- **Divider:** the hit area widens to about 12 px while the visual gap stays.
+- **Pill:** fades in, and its 56-px reveal zone doesn't cover site controls.
+- **Narrow-pane controls:** icons, not "‹ ›" text.
+- **Dragging panes:** to rearrange.
+- **Sidebar:** one row per split (Batch 3).
+
+**Window dragging:** the gutter and the empty space under the last sidebar row drag the window, and double-click zooms per the macOS setting (`vertical_tab_strip_region_view.cc:435-480`) *(check)*.
+
+**Hidden sidebar**
+- Reveal in about 220–250 ms (today 450).
+- Works on inactive windows.
+- The hover zone matches the gutter.
+- Mouse-exit tracking instead of a 100 ms poll.
+- (`frame/aux_profile_preview_admission.cc`, `aux_profile_preview_retention.cc`)
+
+**Fullscreen** keeps navigation in the sidebar and reveals the whole sidebar on edge hover (`browser_view.cc:6416`).
+
+**A narrow sidebar never throws navigation to a top bar.** Clamp the minimum width or compact the field (`AuxNavigationPlacement::Update`).
+
+**Address field and command bar**
+- Clicking the field opens the command bar in Navigate mode (question 3).
+- The command bar clamps to the window, sits in the upper third, grows with its results, and animates opacity and transform instead of resizing the widget every frame.
+- (`frame/aux_tab_search_bubble.cc:95, 532-660`)
+
+**Peek**
+- An in-window sheet at about 90% of the card over a dimmed backdrop, with Expand to tab and Open in split.
+- Failures show as a toast, not a modal alert.
+- Option-click stays macOS's "download linked file"; Peek moves to a modifier that doesn't collide.
+- (`chrome/browser/ui/aux_preview/*`, `aux_preview_ingress.cc:95`)
+
+**Little Aux**
+- Opens with no window open.
+- Remembers its own place and size.
+- Gets a "Move to Space" picker.
+- Localized strings.
+- A Settings toggle (pref `aux.little_aux_links_enabled`).
+- (`app_controller_mac.mm:2741-2756`, `aux_preview_controls.cc`)
+
+**Infobars and side panels:** infobars sit inside the card. Every side panel (Reading list, Bookmarks, History, Agent) is a sibling card with the same gutter, instead of Chromium's shadow box *(check)*.
+
+**Housekeeping**
+- Frame behavior is keyed on the build flag, not `BaseBundleID()=="dev.aux.browser"`.
+- `UpdateAuxFramePresentation` posts only when its inputs change.
+- The 0.5 DIP divider is anti-aliased or snapped for 1x displays.
+- Traffic-light offsets come from AppKit's real button frames, not the hard-coded 76.
+- Fix the possible layout loop at the narrow-split threshold.
+
+## Batch 6 — Import and onboarding
+
+**Onboarding (every new user, local or signed in, one window with step dots)**
+0. **Starting** is the native window from 1.2. The first launch says "Setting up Aux — the first start takes up to a minute", and the flow begins as soon as the daemon is ready.
+1. **Welcome.** "A browser with an agent built in." No sign-in.
+2. **Bring your stuff** (skippable).
+   - Detected browsers with their profiles and last-used time, Arc first.
+   - Per source: Spaces and pins (Arc, Dia), Bookmarks, History, "Stay signed in to sites" (cookies), Extensions.
+   - The footnote "Passwords stay in your password manager."
+   - Each Arc or Chrome profile can become an isolated Space group or merge into Default.
+3. **Keychain explainer**, only if cookies were chosen. "macOS will ask to let Aux read Chrome Safe Storage. Choose Always Allow."
+4. **Your password manager** (skippable). Revive the supplied step that detects 1Password, Bitwarden, Dashlane and others and installs the extension. Today it's redirected away (`scripts/lib/provided-password-manager-scope.mjs`).
+5. **Meet your agent:** the existing name-and-look sheet, inline. It stays reachable from the panel for anyone who skipped.
+6. **Connect a model** (skippable): the supplied provider list (subscriptions and API keys).
+7. **Make it yours:** the default theme, with imported Arc Spaces previewed in their colors and emoji.
+8. **Finishing touches**
+   - Default browser: on.
+   - Add to Dock: off.
+   - Tab cleanup: Never / 12 h / 24 h / 7 days.
+   - Mini popup and CLI: optional.
+   - "Send crash reports": off.
+   - Then "Start browsing".
+
+Completion is stored locally per user. Today the guard only fires for cloud accounts (function `K` in `-types-*.js`, `/_public/onboarding` `beforeLoad`). Settings › General gets "Run setup again". The Done step stops calling the cloud `completeOnboarding` for local users and drops the hidden `keepTasksRunning`.
+
+**Import**
+- **Arc → real Spaces.** Arc Favorites become global Pins. Each Arc Space becomes an Aux Space (title, color into its theme, icon into its emoji), with its pinned container as Space entries and folders. Today's bookmark-folder mapping remains the fallback.
+  - Code: `aux_browser_import/migrator.cc` (parse favorites and the Space color and icon fields), `import_service.cc`, `chrome/browser/aux/organization/*` (batch create), `aux_theme_editor.cc`, `aux_browser_import.json`.
+  - Validate against a fixture of Arc's `StorableSidebar.json`, never Robert's real profile unasked (owner gate for any real sample).
+- **Partial success.** Cookies run last. If the Keychain prompt is denied, bookmarks and history still commit and the screen says "Imported everything except site sign-ins", with Try again. Raw errors are mapped to plain copy (`ReadChromiumMigrationSnapshot`).
+- **Sources:** add Edge (`com.microsoft.edgemac`, already a family but filtered out), then Vivaldi, Opera, Chromium, Zen (Firefox family) and Orion (HTML file).
+- **More data:** open tabs into the Space, the default search engine, and re-import with "merge" instead of being blocked once imported.
+- **The importer doesn't force on Chromium's horizontal bookmarks bar** in sidebar mode (`kShowBookmarkBar`) *(check)*.
+- **Dead path:** delete the standalone `chrome://aux-import-data` importer unless its profile clone is reused for "become an isolated group" (recommended: reuse it, then delete the rest).
+- **Copy:**
+  - "In Safari, choose File › Export Browsing Data to File…"
+  - Drop the "Safari passwords ZIP file" label and the dead "Importing your passwords…" / "…autofill data…" labels.
+  - The onboarding skill should stop promising logins.
+
+## Batch 7 — Settings and quality of life
+
+**Aux Settings, fix or remove**
+- **Help improve Aux:** becomes "Send crash reports", bound to the real crash consent (`aux_crash_reporting::SetConsent`). Today it toggles analytics that are compiled off, and nothing lets you change crash consent.
+- **Developers:** rewrite around what ships. Hide the MCP section (its config runs `aux mcp`, which doesn't exist) and the `exec`/`repl` FAQ until those commands return (Batch 10 restores them).
+- **Aux browser skill:** take `aux list`/`aux resolve` and the memory/history claim out of `AUX_BROWSER_SKILL`.
+- **Channels:** remove the pinned Grok Bot, dots and Muse rows. They need a cloud relay that doesn't exist and show "Upgrade to Pro".
+- **Send feedback:** point it at the support page. It posts to a route the hosted service doesn't have.
+- **Appearance**
+  - Remove "Customize Tidy Tabs" and "Recent chats in sidebar".
+  - "Customize sidebar" becomes a Bookmarks toggle with no Chats wording.
+  - Replace the old Theme editor dialog with a button that opens Aux's theme picker; Ctrl+Cmd+T opens the picker. Color scheme ends up in one place.
+- **General**
+  - "Check for updates" says "Aux 1.0.0 (77) · local build", not "Chromium 155…".
+  - Background service shows the Aux version, not 1.26.1016.1852.
+  - Tab cleanup gains 12 h and 24 h.
+  - A Little Aux toggle; "Run setup again".
+- **Models:** remove "Open billing".
+- **Agent**
+  - The runtime copy says it's bundled, and drops the update line while its release URL is `127.0.0.1:9`.
+  - Move "Clean up agent tabs" out from under Computer Use.
+- **Account:** hide Sync, Devices and Browser data recovery while sync is unavailable.
+- **Memory:** decide on Context Awareness (eap-only, "requires the Max plan" copy). Recommend hiding it until it's real.
+- **Search index:** rebuild it (stale: Ask Aux on tab switch, Statistics, Tidy; missing: Link routing, Tab cleanup, Peek, Minimal UI, Your agent and more).
+- **Dead code:** delete the Remote Control panel, Pro strings and billing routes (`/billing/`, `/payment-use/`, `/liquid-glass-playground/`, `/error-test/`, `/artifact-test/`).
+- **Copy:**
+  - Lasso: "Select text, then click the blue dot"
+  - "Loading.." → "Loading…"
+  - "Others " → "Others"
+  - "run a task"
+  - one spelling of "ad blocker"
+- **New settings:**
+  - ad blocking per site (below)
+  - ask before quitting with ⌘Q
+  - a Shortcuts section of its own (out of Appearance), global across Spaces
+
+**chrome://settings**
+- Hide People/You and Google/Sync, Privacy Sandbox ("Ads privacy" row removed from Aux Settings too), preload via Google servers, enhanced spell check, image descriptions, Google history and price tracking, and the leftover Google Password Manager entry. Turn their prefs off by default.
+- Keep the sections Aux links to (Site settings, Security, Downloads, On startup, Accessibility, System).
+- The About page shows Aux's version and no Chromium updater.
+- Safe Browsing: confirm the key is in the build; otherwise hide Enhanced.
+- (`chrome/browser/resources/settings/`, `settings_chromium_strings.grdp`, `account_consistency_mode_manager.cc:150`)
+
+**Menus**
+- A Spaces menu (Batch 4).
+- An Aux block in the Tab menu: Copy URL, Pin, Keep in Space, Split, Archive, Move to Space, Toggle sidebar, Little Aux. Labels show remapped keys.
+- Help › Keyboard Shortcuts (a cheat sheet from `kBindings`).
+- Remove or redirect Chromium's Pin Tab, Add Tab to Group, Switch to vertical tabs and Always Show Bookmarks Bar.
+- The sidebar ⋯ menu's hints follow remaps, and single-item submenus become rows.
+- (`chrome/browser/ui/cocoa/main_menu_builder.mm`, `frame/aux_sidebar_view.cc:1312-1386`)
+
+**Command bar**
+- Add the common commands: Settings sections, New window, Find, Print, Zoom, Bookmark, Mute, Duplicate, Move to new window, Switch Space, Import, Theme, and "Pause blocking on this site".
+- Simple local math and unit answers.
+- (`aux_keyboard_shortcuts.mm:87-127`)
+
+**Shortcuts**
+- Errors name the command or macOS shortcut that owns the chord and offer Replace; today they show raw numbers like "commands 34057 and 34132".
+- Merge the duplicate split commands into "Split side by side" and "Split stacked".
+- Make the Toggle Sidebar and Minimal UI copy clearly different.
+- Ask Aux moves off Cmd+E so Use Selection for Find keeps it.
+- Function keys can be bound.
+- Rename the agent extension's "Open Aux sidepanel" (Alt+Shift+B).
+
+**Ad blocking:** a per-site pause from the site-info bubble and the command bar (`aux_adblock.json` has no allowlist), plus a built-in cosmetic rule that hides the Chrome Web Store's "Switch to Chrome?" banner.
+
+**Smaller fixes**
+- Remove New Tab's "Drag an image to search with Google Lens" string.
+- Hide the content-filter debug page behind Developer mode.
+- Anchor the crash-restore bubble to the sidebar header *(check)*.
+- Quit hides windows at once while the daemon drains.
+
+## Batch 8 — The agent
+
+The design is kept: one agent, a home thread and side chats in the panel. The work is making every path through it real. Short paths: `pcli/` = `vendor/provided/provider-cli/`, `agent/` = `vendor/provided/agent/`.
+
+**Broken today**
+- **8.1 Web search always fails.** The daemon registers `websearch` for every model and exposes it to CLI providers over MCP, and it calls `api.getaux.co/search`. The hosted service has no such route (confirmed).
+  - Fix: use the provider's own search tool where the model has one (OpenAI and Anthropic do), else an optional search API key in Settings › Models. With neither, the tool is left out of the tool list and the prompt.
+- **8.2 Dictation always fails.** The composer mic posts to `/stt/transcribe`, which returns 404, and nothing reads the service's `enabled:false`.
+  - Fix: on-device speech through macOS's Speech framework (macOS 13+, no account). Until that lands, hide the mic.
+- **8.3 Promised subscriptions don't work.** Kimi and Meta are API-key only (sign-in throws). The Copilot row says "support is not verified" and its dialog loops on "Check again".
+  - Fix: build the Copilot CLI driver. Kimi and Meta stay API keys until each has a sign-in Aux can use legitimately (question 5).
+  - Either way, the provider list says plainly what each row supports.
+
+**Signed-in subscriptions (CLI providers) as good as API keys**
+- **8.4 Identity:** Cursor and OpenCode turns carry no system prompt, so the agent doesn't know it's Aux and ignores Instructions and memory. Pass it through each CLI's rules or instructions mechanism (`pcli/drivers.mjs:57-71`).
+- **8.5 Safety:** Codex runs with `sandbox:'read-only'` and `approvalPolicy:'never'`, so it can read any local file without Aux's approval, and Cursor has its own tools on. Turn off their built-in tools the way Claude's are (`--tools ''`, MCP only), so every action goes through Aux's permission modes (`drivers.mjs:62-63, 216`).
+- **8.6 Capability:** every CLI model is advertised with no reasoning, no vision, a 200k context and zero cost (`pcli/aux-daemon.mjs:33-45`). Map effort to each CLI, pass images where the CLI accepts them, and report real context sizes.
+- **8.7 Tool cards:** CLI tool activity shows as "Using repl" lines inside the thinking text (`aux-daemon.mjs:231`). Emit tool-call start/end events so the supplied tool cards render.
+- **8.8 Speed:**
+  - Each turn spawns a fresh CLI and re-sends the conversation flattened to its newest 60,000 characters (`aux-daemon.mjs:24, 63-73`). Keep one long-lived session per thread (the Codex app-server thread, `claude --resume`).
+  - Route titles, download names and other quick calls to a fast model.
+  - Start CLI detection when the daemon starts instead of on the first send, which can wait up to ~20 s (`aux-daemon.mjs:156`, `detect.mjs`).
+- **8.9 Processes:** CLI children are `detached:true`, so they can outlive a crashed daemon, and Grok's per-turn config holds a bearer token until its folder goes. Tie children to the daemon's lifetime (`pcli/process.mjs:35`).
+- **8.10 Models:** read the Codex model list from the app-server instead of the hard-coded three, and use real IDs for Claude's fast model.
+
+**The agent button and status**
+- **8.11** The button reflects only the home thread. Combine status across every session (approval beats question beats working), so a side chat or routine waiting on you shows the amber dot (`agent/aux-agent.mjs` chromeChats).
+- **8.12** Approvals from the button: the amber dot opens a small popover with Approve/Deny and the question. `AuxTaskReviewBubble` and `AuxNativeTaskFeed` already exist but are dead, because `AuxSidebarView` is never constructed. Reuse them under the button, or delete them.
+- **8.13** When working, the button's menu gets Stop. Rows of tabs the agent is driving get a small working mark, not only a grey group. Toolbar mode's "Ask ‹Name›" pill shows the same ring and dot.
+- **8.14** When the daemon is unreachable, the button stops spinning and says "Can't reach ‹Name›", with polling backed off. Combine the per-window 1 s chat poll and 2 s tab poll into one shared feed (`aux_chats_transport.cc:34, 149`, `aux_agent_session_tabs_*`).
+- **8.15** Clicking the button returns the panel to the home thread (an open item in the agent design).
+- **8.16** Accessibility: the status goes into the accessible name, only the focused window announces, and the bezel uses theme tokens.
+
+**Composer, panel and setup**
+- **8.17** "Ask" in the command bar sends the text to the panel's home thread. Today it opens `newtab.html?mode=ask&q=…` and never submits, which also puts the question in history (`aux_tab_search_bubble.cc:1286-1306`).
+- **8.18** Instructions: a failed read must not leave the box editable and empty, or a save overwrites AGENTS.md. Show "Couldn't load instructions — Retry" (`agent/aux-agent-ui.js:257-264`).
+- **8.19** Escape in Customize asks before discarding edits, and in Meet it doesn't count as Skip (`aux-agent-ui.js:305-309`).
+- **8.20** With no model connected, the empty panel says "Connect a model to start" with a button, instead of "Ask me anything…" (`:403-414`). Onboarding step 6 covers new users.
+- **8.21** Side chats: the panel's "Side chats" menu is always there, even before the first chat, and lists only real side chats. Routines, channels and New Tab chats get their own filters.
+- **8.22** Memory changes reach the home thread's prompt (memory is missing from `contextStamp`), and the stamp is set only after a successful rebuild.
+- **8.23** Download-name suggestions queue instead of failing on a second concurrent download, and use the fast model.
+
+**Errors**
+- **8.24** Auth errors name the right place ("Settings › Models") and, for CLI providers, the command (`codex login`, `claude auth login`), with an Open Models button. A CLI "not signed in" counts as auth, not generic.
+- **8.25** New error kinds for offline and network. "Out of credits" gets a retry and a settings action.
+
+**Mini popup:** never opens in incognito or guest. Escape returns focus to the previous app, the hotkey toggles, and losing focus hides it (`extensions/api/aux_mini_popup/aux_mini_popup_api.cc:474-485`).
+
+**Clean-up**
+- Strip or test-gate the remaining billing strings ("Upgrade to Pro", "Add credits", the Free plan limit, "Share a free week of Aux Pro").
+- Remove the dead `auxCredentials` API, the one-shot "Aux Ask validation" log and the `aside_*_popup` surface names.
+- Update `provider-funded-launch.md` and the agent plan to the CLI provider path.
+
+**Checking this batch**
+- One live session with the approved gateway test model: send a turn, use a browser tool, approve from the button, rename, and leave Instructions intact after a daemon restart. Remove the credential afterward.
+- CLI providers need Robert's own CLI logins, so those checks happen when he signs in. No other live passes.
+
+## Batch 9 — Older macOS
+
+**Today:** one line blocks everything below 27, `LSMinimumSystemVersion` 27.0.0 in `chrome/app/aux-product-Info.plist:7-8`. Chromium 155 itself targets macOS 13, and almost every binary declares 13.
+
+1. **macOS 26 Tahoe** (small)
+   - Set the floor to 26.0.
+   - Hide the REPL below 27 (Endpoint Security descendant clients are 27-only).
+   - Guard the private `variant` KVC call (`native_widget_ns_window_bridge.mm:281`).
+   - Check on the existing `aux-ci` Tart image (26.6.2).
+2. **macOS 15 Sequoia** (recommended floor)
+   - Rebuild the agent runtime's poppler, nss, glib and gpgme (34 files built for 26) with a 15.0 deployment target from pinned sources.
+   - Set the floor to 15.0.
+   - Make the frame right on 15: glass fallback, card radius from the real window corner (Batch 5), traffic-light offsets from AppKit.
+   - Soften the `_NSThemeWidget` `CHECK`s (`browser_native_widget_window_mac.mm:164,187`).
+   - Make the Endpoint Security startup custody conditional before it is ever enabled (`chrome_exe_main_mac.cc:150`).
+   - Confirm the daemon picks `p256_v1` below 26.
+   - Name the permissions pane per OS ("Accessibility" before 27).
+   - Check on a cirruslabs `macos-sequoia` Tart VM. The license allows two macOS guests at once, and the Tartelet pool uses one.
+3. **Below 15** only if wanted. The memory model uses the iOS 18 opset (re-export it for 14), and Computer Use screenshots need a pre-14 path for 13. Batch 10 makes both ours to change.
+
+## Batch 10 — Aux's own implementation of the Aside parts
+
+**Already Aux's own:**
+- the hosted service
+- the agent layer
+- the provider CLIs
+- the native CLI
+- the build and release tooling
+
+**Still supplied:**
+
+| Part | Form today | Order |
+|---|---|---|
+| Agent runtime (Node, Python, rg, poppler…) | third-party binaries, some carrying At Inc. signatures | 1. Rebuild from upstream with our own scripts, keeping the file layout and `version.txt` (also unblocks macOS 15) |
+| Built-in skills (35) | supplied Markdown | 2. Rewrite with the same names and front matter |
+| Computer Use helper | compiled Swift, byte-patched | 3. New Swift app, same bundle IDs, launch policy, TCC marker, permission screens; document the daemon↔helper protocol first (it is undocumented) |
+| CLI parity | native `aux-cli` has `open` only; Aside's had ~30 commands | 4. Build `list`, `resolve`, `exec`, `mcp`, `repl`… on the daemon's existing tRPC (decide which set is "parity") |
+| Memory helper | compiled Rust plus Core ML models | 5. Rewrite, keeping catalog format 2 and the index on disk byte-compatible; compare embeddings numerically on a fixed corpus |
+| Daemon JS (~395 tRPC procedures, ~30 tools, ~34 `Aux.*` CDP commands) | minified 12 MB bundle with count-checked edits | 6. Replace one router namespace at a time behind a dispatcher that falls back to the supplied bundle. Keep `/health`, the auth bytes, SQLite/JSONL schemas, Keychain item names and prompts verbatim |
+| Agent extension (New Tab, side panel, Settings, onboarding, popups) | minified 47 MB bundle, no source maps, 155 files edited | 7. CSS tokens, fonts and shared components first, then route by route. Keep the extension key and ID, storage keys and private-API calls |
+| Native addons and crypto authority | Aux source reconstructed from disassembly | 8. Re-author against their documented JSON contracts (question 2) |
+
+**Step 0: freeze the reference before replacing anything.** From the current build, record:
+- the tRPC procedure list with input and output shapes
+- prompts and tool schemas
+- storage, SQLite and JSON schemas from a disposable home
+- `Aux.*` command traces
+- one screenshot per extension route
+
+Then add a thin contract test layer that runs against either implementation.
+
+**Avoiding double work.** Small extension fixes in Batches 6–8 (copy, hiding rows) stay as count-checked edits. New extension features — the onboarding flow, Settings rewrites — are written as Aux-owned modules hooked in the way the agent layer was, so they become the first pieces of the Aux-owned extension.
+
+**Rules that change** (proposed; AGENTS.md and the contract are not edited until Robert approves):
+- AGENTS.md lines 3, 9 and 11 ("reuses the Aside implementation… not a clean-room rebuild", "Reuse the supplied source and packages directly…", "Change only what Aux needs…") become: *"Aux is its own implementation. The supplied Aside implementation is the behavioral reference: Aux's parts behave the same, keep its persisted formats and wire protocols compatible, and replace it part by part with tests that pass against both."*
+- Line 23 (authorized inputs) becomes reference-only.
+- `docs/design/aside-contract.md` changes title and lines 3, 7 and 8 to match.
+- `README.md:3`, the ARCHITECTURE table (already stale: the daemon is a native host, not an SEA; the CLI is native), `bundle.json` (`"implementation":"supplied"`) and `check-provided.mjs` follow as each part is replaced.
+
+## How changes are checked
+
+No over-testing.
+- **Each change:** `pnpm test`, plus one look at the changed thing in a real build.
+- **Automated tests only where a regression is likely and cheap to catch:**
+  - the organization model (Space groups, migration, ordering, Clear scope)
+  - persisted formats and wire protocols
+  - importer mapping against fixtures
+  - contract tests for replaced Aside parts
+- **Not included:** receipts per item, repeated full journey passes, or test matrices across every mode — unless the change is layout in those modes (Batch 5 gets one screenshot per mode once).
+- **Close-out:** STATUS and the checklist are updated per batch, not per item.
+
+## Owner gates
+
+- **Keychain:** cookie import from Chrome reads a real Safe Storage item (AGENTS.md: Keychain needs Robert's yes).
+- **Arc data:** a real Arc sample for import validation, if a fixture isn't enough.
+- **1Password:** the pairing check (R18).
+- **AI turn:** the live turn uses the recorded spending authority.
+- **Apple:** the REPL stays inactive until Apple answers `2H4D7KNGUP`.
