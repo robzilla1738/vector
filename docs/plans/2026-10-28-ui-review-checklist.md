@@ -55,6 +55,11 @@ Every UI request from the 2026-10-28 review, with its state. "Verified" means ch
 | 49 | Settings item "Agents" reads "Agent" | Verified (build 58): navigation, heading, breadcrumb, tab title and Settings search |
 | 50 | Archived tabs out of the tab list; an archive button on the Tabs header on hover | Verified (build 62): header reads "Archived tabs" while shown, New Tab hidden |
 | 51 | Plain error text instead of "The shared close could not be saved…" | Verified (build 59): closes queue; a short line clears itself |
+| 52 | Per-Space and profile colors, an emoji per Space, a theme editor (2026-10-29) | Verified (builds 65, 68, 80–81): Space theme, profile Theme item, emoji picker, live preview, Escape reverts; see [Spaces and themes](2026-10-29-spaces-and-themes.md) |
+| 53 | Create a Space that works well | Verified (build 64): icon, name, color with live preview; waits out in-flight saves; opens the new Space on a fresh tab |
+| 54 | Theme reaches both sidebars, the New Tab page and dropdowns | Verified (builds 68, 81): side panel, New Tab, command bar, bubbles and the picker share the shade |
+| 55 | Aux's own theme look, not Arc's; borders follow the theme; contrast handled | Verified (build 68, 80): own picker layout and presets; ink-based borders; 7:1 text rule |
+| 56 | One uniform shade everywhere; terminal-style default themes | Verified (builds 80–81): Dracula and Solarized Light across window, panel, pages and picker |
 
 Builds 41–43 are local Developer ID builds under `out/release/`. Build 42 was launched and checked on screen (items marked build 42). Build 43 adds the split fixes in 12.
 
