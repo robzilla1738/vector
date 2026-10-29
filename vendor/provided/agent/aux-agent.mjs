@@ -6,21 +6,13 @@ import {createHash} from 'node:crypto';
 import {mkdirSync, readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 
-export const DEFAULT_NAME = 'Aux';
+// The agent's own name, so it never shares one with the Aux browser (owner, 2026-10-28).
+export const DEFAULT_NAME = 'Otto';
+// The default name before profile version 2; a profile still on it moves to Otto.
+const LEGACY_DEFAULT_NAME = 'Aux';
+const PROFILE_VERSION = 2;
 export const ORIGINAL_OPENER = 'You are Aux, a helpful, proactive, and smart AI browser.';
 const AGENT_PHRASE = "the user's personal agent, built into the Aux browser";
-export const STYLES = Object.freeze(['balanced', 'concise', 'warm', 'playful', 'professional']);
-export const PROACTIVITY = Object.freeze(['off', 'light', 'normal']);
-const STYLE_TEXT = {
-  concise: 'Keep replies short and to the point. Lead with the answer and skip pleasantries.',
-  warm: 'Be warm and encouraging, like a thoughtful friend who is glad to help.',
-  playful: 'Be light and playful, with a little humor, while staying accurate and useful.',
-  professional: 'Be polished and professional: precise language, calm and measured tone.',
-};
-const PROACTIVITY_TEXT = {
-  off: 'Only do what the user asks. Do not start extra work, follow-ups or check-ins on your own; suggest them instead.',
-  normal: 'Take initiative: when you see a clear next step that helps the user, offer it, or do it when it is safe and reversible.',
-};
 const MAX_AVATAR_BYTES = 768 * 1024;
 const MAX_AVATAR_SIDE = 1024;
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -35,16 +27,22 @@ export function cleanName(value) {
   return [...name].slice(0, 32).join('').trim() || DEFAULT_NAME;
 }
 
-const defaults = () => ({version: 1, name: DEFAULT_NAME, style: 'balanced', proactivity: 'light',
-  homeSessionId: null, avatarRevision: '', setupCompleted: false, revision: 0, homePrompt: null});
+const defaults = () => ({version: PROFILE_VERSION, name: DEFAULT_NAME, homeSessionId: null, avatarRevision: '',
+  setupCompleted: false, revision: 0, homePrompt: null});
 
+/** The stored profile in the current shape. Version 1 carried a style and an initiative
+ * level, now dropped (the agent works on request; routines are its initiative), and
+ * defaulted to the browser's own name. */
 function normalize(raw) {
-  const profile = {...defaults(), ...(raw && typeof raw === 'object' ? raw : {})};
+  const stored = raw && typeof raw === 'object' ? raw : {};
+  const profile = {...defaults(), ...stored};
+  delete profile.style;
+  delete profile.proactivity;
+  const legacyName = !(stored.version >= PROFILE_VERSION) && profile.name === LEGACY_DEFAULT_NAME;
   return {
     ...profile,
-    name: cleanName(profile.name),
-    style: STYLES.includes(profile.style) ? profile.style : 'balanced',
-    proactivity: PROACTIVITY.includes(profile.proactivity) ? profile.proactivity : 'light',
+    version: PROFILE_VERSION,
+    name: legacyName ? DEFAULT_NAME : cleanName(profile.name),
     homeSessionId: typeof profile.homeSessionId === 'string' && profile.homeSessionId ? profile.homeSessionId : null,
     avatarRevision: /^[0-9a-f]{16}$/.test(profile.avatarRevision) ? profile.avatarRevision : '',
     setupCompleted: profile.setupCompleted === true,
@@ -52,15 +50,13 @@ function normalize(raw) {
   };
 }
 
-/** The opening of every system prompt the agent's sessions use. It names the agent outright,
- * the default Aux included: with only the supplied opener, models answered "who are you"
- * with their own model name (seen live with Muse Spark, 2026-10-28). */
+/** The opening of every system prompt the agent's sessions use. It names the agent outright:
+ * with only the supplied opener, models answered "who are you" with their own model name
+ * (seen live with Muse Spark, 2026-10-28). The agent works on request; anything it starts on
+ * its own comes from routines the user set up. */
 export function identityBlock(profile) {
-  const lines = [`You are ${profile.name}, ${AGENT_PHRASE}. You are helpful, proactive, and smart.`,
-    `Your name is ${profile.name}. When asked who you are, you are ${profile.name}; the AI model behind you is an implementation detail, not your name.`];
-  const traits = [STYLE_TEXT[profile.style], PROACTIVITY_TEXT[profile.proactivity]].filter(Boolean);
-  if (traits.length) lines.push('', '# Personality', '', ...traits.map(trait => `- ${trait}`));
-  return lines.join('\n');
+  return [`You are ${profile.name}, ${AGENT_PHRASE}. You are helpful and smart, and you work on what the user asks, thoroughly. You take on work unprompted only through routines the user has set up.`,
+    `Your name is ${profile.name}. When asked who you are, you are ${profile.name}; the AI model behind you is an implementation detail, not your name.`].join('\n');
 }
 
 const sha = data => createHash('sha256').update(data).digest('hex');
@@ -104,9 +100,8 @@ export function createAuxAgent(roots) {
 
   /** What the extension shows and edits. home: the home session if it is still usable. */
   const view = (profile, home) => ({
-    name: profile.name, style: profile.style, proactivity: profile.proactivity,
-    homeSessionId: home ? profile.homeSessionId : null, avatarRevision: profile.avatarRevision,
-    setupCompleted: profile.setupCompleted, isDefault: profile.name === DEFAULT_NAME && profile.style === 'balanced' && profile.proactivity === 'light' && !profile.avatarRevision,
+    name: profile.name, homeSessionId: home ? profile.homeSessionId : null, avatarRevision: profile.avatarRevision,
+    setupCompleted: profile.setupCompleted, isDefault: profile.name === DEFAULT_NAME && !profile.avatarRevision,
   });
 
   const contextStamp = (account, profile) =>
@@ -117,8 +112,6 @@ export function createAuxAgent(roots) {
     update(account, input) {
       const patch = {};
       if (input.name !== undefined) patch.name = cleanName(input.name);
-      if (input.style !== undefined) patch.style = input.style;
-      if (input.proactivity !== undefined) patch.proactivity = input.proactivity;
       if (input.setupCompleted !== undefined) patch.setupCompleted = input.setupCompleted === true;
       return bump(account, patch);
     },

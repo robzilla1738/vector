@@ -16,6 +16,8 @@ Aux ships the supplied Aside implementation on Aux Chromium, rebranded. Product 
 | `native/` | Empty. The supplied addon, its carrier and the historical Keychain interposer were unreachable and are removed (2026-10-27). |
 | `bundle.json`, `provenance/` | Stage manifest and the hashes of every input. |
 
+On top of these sits the agent layer, Otto ([design](plans/2026-10-28-agent-model.md)). It gives each profile one named agent with a home thread and side chats, plus a chrome button beside the sidebar address field. It is added at release time by `vendor/provided/agent/` and the native files in `chromium/tree`; browsing, models and permissions are the supplied ones.
+
 There is no Vault extension and no built-in password manager. Users bring a provider key or an eligible ChatGPT/Codex plan. Aux keeps its own home, app data, installation identity and ports (daemon 21520, bridge 21522, CDP 45203), separate from Aside.
 
 ## How a build is produced

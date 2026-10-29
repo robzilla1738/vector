@@ -120219,7 +120219,7 @@ index c37fff7744c06bb91f0dc1908f2e7a6f2056cb42..b95145e68ff085c107781d77317dca55
    virtual void SetCustomDefaultTheme(
        scoped_refptr<CustomThemeSupplier> theme_supplier);
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
-index 82f397571fefaff0096247d0e98c28c20db709bd..551e02294d1fbd88dcf770c7c14c4cea6584b8a2 100644
+index 82f397571fefaff0096247d0e98c28c20db709bd..9f68b3789916ee05cb356824a676edc7fb534747 100644
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
 @@ -39,6 +39,14 @@ generate_allowlist_from_histograms_file("webui_name_variants") {
@@ -120332,7 +120332,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..551e02294d1fbd88dcf770c7c14c4cea
      ":browser_element_identifiers",
      ":browser_otr_state",
      ":browser_ui_prefs",
-@@ -1088,6 +1125,253 @@ static_library("ui") {
+@@ -1088,6 +1125,251 @@ static_library("ui") {
      "//ui/webui",
    ]
  
@@ -120522,8 +120522,6 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..551e02294d1fbd88dcf770c7c14c4cea
 +      "views/frame/aux_chats_model.h",
 +      "views/frame/aux_agent_identity.cc",
 +      "views/frame/aux_agent_identity.h",
-+      "views/frame/aux_agent_row.cc",
-+      "views/frame/aux_agent_row.h",
 +      "views/location_bar/aux_agent_button.cc",
 +      "views/location_bar/aux_agent_button.h",
 +      "views/frame/aux_vertical_tab_bookmark_expansion.cc",
@@ -120586,7 +120584,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..551e02294d1fbd88dcf770c7c14c4cea
    allow_circular_includes_from = [
      # page_load_metrics's :impl includes headers from //chrome/browser/ui that
      # can't be split out yet.
-@@ -1510,6 +1794,7 @@ static_library("ui") {
+@@ -1510,6 +1792,7 @@ static_library("ui") {
      ]
    } else {
      # !is_android
@@ -120594,7 +120592,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..551e02294d1fbd88dcf770c7c14c4cea
      sources += [
        # This file physically lives in //chrome/browser but is compiled here so
        # that //chrome/browser:browser has no remaining sources. It registers
-@@ -2548,6 +2833,7 @@ static_library("ui") {
+@@ -2548,6 +2831,7 @@ static_library("ui") {
      sources += [
        "views/frame/browser_frame_view_factory_mac.mm",
        "views/frame/browser_frame_view_mac.h",
@@ -120602,7 +120600,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..551e02294d1fbd88dcf770c7c14c4cea
        "views/frame/browser_frame_view_mac.mm",
        "views/frame/browser_native_widget_mac.h",
        "views/frame/browser_native_widget_mac.mm",
-@@ -2592,11 +2878,17 @@ static_library("ui") {
+@@ -2592,11 +2876,17 @@ static_library("ui") {
        "//components/remote_cocoa/app_shim:features",
        "//components/remote_cocoa/browser",
      ]
@@ -120620,7 +120618,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..551e02294d1fbd88dcf770c7c14c4cea
    }
  
    if (is_win) {
-@@ -2711,6 +3003,8 @@ static_library("ui") {
+@@ -2711,6 +3001,8 @@ static_library("ui") {
  
    if (toolkit_views) {
      sources += [
@@ -120629,7 +120627,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..551e02294d1fbd88dcf770c7c14c4cea
        "views/browser_commands_views.cc",
        "views/browser_dialogs_views.cc",
        "views/frame/app_menu_button.cc",
-@@ -2748,6 +3042,37 @@ static_library("ui") {
+@@ -2748,6 +3040,37 @@ static_library("ui") {
        "views/frame/picture_in_picture_browser_frame_view.h",
        "views/frame/top_container_view.cc",
        "views/frame/top_container_view.h",
@@ -120667,7 +120665,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..551e02294d1fbd88dcf770c7c14c4cea
        "views/frame/vertical_tab_strip_region_view.cc",
        "views/frame/vertical_tab_strip_region_view.h",
        "views/tab_search_bubble_host.cc",
-@@ -2762,6 +3087,15 @@ static_library("ui") {
+@@ -2762,6 +3085,15 @@ static_library("ui") {
  
      sources += get_target_outputs(":webui_name_variants")
  
@@ -120683,7 +120681,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..551e02294d1fbd88dcf770c7c14c4cea
      public_deps += [ "//chrome/browser/ui/views/tabs/common:impl" ]
  
      deps += [
-@@ -4685,3 +5019,15 @@ if (is_mac) {
+@@ -4685,3 +5017,15 @@ if (is_mac) {
      ]
    }
  }
@@ -152710,7 +152708,7 @@ index aba398bb949c440739e2834f24ff204c58ed536c..0ddc75904d085400a3037671ea204289
    }
  
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_action_view.cc b/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
-index a9b7a01645abcd3dac7eac5a58d192045d69c684..37a31a3f6f40d6da9aea179fbf94ab762c658e1d 100644
+index a9b7a01645abcd3dac7eac5a58d192045d69c684..7c4af3c85c6e928b32216121a89f3259a145140f 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
 @@ -4,6 +4,20 @@
@@ -152819,7 +152817,7 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..37a31a3f6f40d6da9aea179fbf94ab76
 +    for (auto state : {views::Button::STATE_NORMAL, views::Button::STATE_HOVERED,
 +                       views::Button::STATE_PRESSED, views::Button::STATE_DISABLED}) {
 +      SetImageModel(state, compact || picture
-+                               ? aux::AgentIcon(agent, 16, kColorToolbarButtonIcon)
++                               ? aux::AgentIcon(agent, 16)
 +                               : ui::ImageModel());
 +    }
 +    if (const auto* colors = GetColorProvider()) {
@@ -153013,10 +153011,10 @@ index 04bd545acf62e2f1c9a7cee34befdd3a5c6b1cdc..7e55ac1b3f4df5a9252a10473e5ed6b8
              // If the element is not on the toolbar, either it's being handled
              // by WebUI, or the element was not added to the toolbar. We do not
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f15cbc18e 100644
+index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..277d42c1a94135bf15168f81bfa0bf5e0a20aab9 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-@@ -3,11 +3,23 @@
+@@ -3,11 +3,25 @@
  // found in the LICENSE file.
  
  #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
@@ -153024,7 +153022,9 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
 +#include "chrome/browser/buildflags.h"
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +#include "chrome/browser/ui/aux_preview/aux_preview_controls.h"
++#include "chrome/browser/aux/component_bootstrap.h"
 +#include "chrome/browser/ui/views/frame/aux_agent_identity.h"
++#include "chrome/browser/ui/views/location_bar/aux_agent_button.h"
 +#endif
 +
 +#include "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.h"
@@ -153040,7 +153040,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
  #include "base/command_line.h"
  #include "base/containers/fixed_flat_map.h"
  #include "base/feature_list.h"
-@@ -275,6 +287,11 @@ ToolbarView::ToolbarView(BrowserWindowInterface* browser,
+@@ -275,6 +289,11 @@ ToolbarView::ToolbarView(BrowserWindowInterface* browser,
      scoped_unowned_user_data_.emplace(browser_->GetUnownedUserDataHost(),
                                        *this);
    }
@@ -153052,7 +153052,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
  
    SetID(VIEW_ID_TOOLBAR);
    SetProperty(views::kElementIdentifierKey, kToolbarElementId);
-@@ -313,6 +330,202 @@ ToolbarView::~ToolbarView() {
+@@ -313,6 +332,202 @@ ToolbarView::~ToolbarView() {
  
  // Forwards the early teardown request to both the embedded and detached WebUI
  // toolbar web views to stop renderer script execution before IPC disconnection.
@@ -153255,7 +153255,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
  void ToolbarView::DestroyWebUIToolbarWebContents() {
    if (toolbar_webview_) {
      toolbar_webview_->DestroyWebContents();
-@@ -403,15 +616,12 @@ void ToolbarView::Init() {
+@@ -403,15 +618,12 @@ void ToolbarView::Init() {
    PrefService* const prefs = browser_->GetProfile()->GetPrefs();
  
    std::unique_ptr<ExtensionsToolbarDesktop> extensions_container;
@@ -153271,7 +153271,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
    }
  
    std::unique_ptr<MediaToolbarButtonView> media_button;
-@@ -423,6 +633,15 @@ void ToolbarView::Init() {
+@@ -423,6 +635,15 @@ void ToolbarView::Init() {
    }
  #endif
  
@@ -153287,7 +153287,22 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
    // Always add children in order from left to right, for accessibility.
    if (!features::IsWebUIBackForwardButtonEnabled()) {
      back_ = AddChildView(std::make_unique<BackForwardButton>(
-@@ -504,16 +723,6 @@ void ToolbarView::Init() {
+@@ -484,6 +705,14 @@ void ToolbarView::Init() {
+   } else {
+     location_bar_ = toolbar_webview_->GetLocationBar();
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // The Agent sits to the right of the sidebar address field; Layout places it.
++  if (aux_agent_identity_) {
++    aux_agent_button_ = AddChildView(std::make_unique<aux::AuxAgentButton>(*browser_));
++    aux_agent_button_->SetProperty(views::kViewIgnoredByLayoutKey, true);
++    aux_agent_button_->SetVisible(false);
++  }
++#endif
+ 
+   bool is_glic_left_of_profile =
+       features::kGlicToolbarButtonLocationParam.Get() ==
+@@ -504,16 +733,6 @@ void ToolbarView::Init() {
              0, GetLayoutConstant(LayoutConstant::kToolbarDividerSpacing)));
    }
  
@@ -153304,7 +153319,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
    if (!features::IsWebUIPinnedToolbarActionsEnabled()) {
      pinned_toolbar_actions_container_ = AddChildView(
          std::make_unique<PinnedToolbarActionsContainer>(browser_view_, this));
-@@ -528,7 +737,7 @@ void ToolbarView::Init() {
+@@ -528,7 +747,7 @@ void ToolbarView::Init() {
      const bool should_show_chrome_labs_ui =
          ShouldShowChromeLabsUI(browser_->GetProfile());
      if (should_show_chrome_labs_ui) {
@@ -153313,7 +153328,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
            chrome_labs_prefs::kBrowserLabsEnabledEnterprisePolicy, prefs,
            base::BindRepeating(&ToolbarView::OnChromeLabsPrefChanged,
                                base::Unretained(this)));
-@@ -538,7 +747,7 @@ void ToolbarView::Init() {
+@@ -538,7 +757,7 @@ void ToolbarView::Init() {
        // value. Only call OnChromeLabsPrefChanged if there is a change from
        // the initial value.
        pinned_toolbar_actions_container_->GetActionItemFor(kActionShowChromeLabs)
@@ -153322,7 +153337,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
                         should_show_chrome_labs_ui);
      }
    }
-@@ -562,6 +771,12 @@ void ToolbarView::Init() {
+@@ -562,6 +781,12 @@ void ToolbarView::Init() {
      media_button_ = AddChildView(std::move(media_button));
    }
  
@@ -153335,7 +153350,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
    if (glic::GlicEnabling::IsProfileEligible(browser_view_->GetProfile())) {
      if (base::FeatureList::IsEnabled(features::kAiOverlayDialog) &&
          ttc::AiOverlayDialogController::From(browser_)) {
-@@ -646,26 +861,31 @@ void ToolbarView::Init() {
+@@ -646,26 +871,31 @@ void ToolbarView::Init() {
    // the widget (widget found by way of app_menu_button_->GetWidget()).
    app_menu_icon_controller_.UpdateDelegate();
  
@@ -153371,7 +153386,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
    }
  
    auto* vertical_tab_strip_state_controller =
-@@ -1000,6 +1220,18 @@ bool ToolbarView::IsActorTaskListBubbleShowing() {
+@@ -1000,6 +1230,18 @@ bool ToolbarView::IsActorTaskListBubbleShowing() {
    return actor_task_list_bubble_ && actor_task_list_bubble_->IsShowing();
  }
  
@@ -153390,7 +153405,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
  void ToolbarView::FinalizeHideGlicActorTaskIcon() {
    if (!glic_button_ || !glic_actor_task_icon_ ||
        !glic_actor_button_container_) {
-@@ -1366,8 +1598,112 @@ bool ToolbarView::GetAcceleratorForCommandId(
+@@ -1366,8 +1608,112 @@ bool ToolbarView::GetAcceleratorForCommandId(
  ////////////////////////////////////////////////////////////////////////////////
  // ToolbarView, views::View overrides:
  
@@ -153503,7 +153518,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
    gfx::Size size;
    switch (display_mode_) {
      case DisplayMode::kCustomTab:
-@@ -1375,6 +1711,9 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+@@ -1375,6 +1721,9 @@ gfx::Size ToolbarView::CalculatePreferredSize(
        break;
      case DisplayMode::kLocation:
        size = location_bar_->PreferredSize();
@@ -153513,7 +153528,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
        break;
      case DisplayMode::kNormal:
        size = AccessiblePaneView::CalculatePreferredSize(available_size);
-@@ -1396,6 +1735,23 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+@@ -1396,6 +1745,23 @@ gfx::Size ToolbarView::CalculatePreferredSize(
  }
  
  gfx::Size ToolbarView::GetMinimumSize() const {
@@ -153537,7 +153552,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
    gfx::Size size;
    switch (display_mode_) {
      case DisplayMode::kCustomTab:
-@@ -1403,6 +1759,9 @@ gfx::Size ToolbarView::GetMinimumSize() const {
+@@ -1403,6 +1769,9 @@ gfx::Size ToolbarView::GetMinimumSize() const {
        break;
      case DisplayMode::kLocation:
        size = location_bar_->MinimumSize();
@@ -153547,7 +153562,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
        break;
      case DisplayMode::kNormal:
        size = AccessiblePaneView::GetMinimumSize();
-@@ -1469,9 +1828,30 @@ void ToolbarView::Layout(PassKey) {
+@@ -1469,9 +1838,44 @@ void ToolbarView::Layout(PassKey) {
      }
    }
  
@@ -153566,9 +153581,23 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
 +      extensions_container_->SetBoundsRect(gfx::Rect());
 +    if (split_tabs_)
 +      split_tabs_->SetBoundsRect(gfx::Rect());
-+    location_bar_view_->SetBounds(kSidebarEdge, row_y,
-+                                  std::max(0, width() - 2 * kSidebarEdge),
-+                                  location_height);
++    int location_width = std::max(0, width() - 2 * kSidebarEdge);
++    // The Agent: a square the field's height, a 6px gap after it, only while
++    // the Agent extension's action exists in this profile.
++    const bool agent = aux_agent_button_ && extensions_container_ &&
++                       extensions_container_->GetViewForId(aux::kAgentExtensionId);
++    if (aux_agent_button_) {
++      aux_agent_button_->SetVisible(agent);
++      if (agent) {
++        constexpr int kGap = 6;
++        location_width = std::max(0, location_width - location_height - kGap);
++        aux_agent_button_->SetBounds(kSidebarEdge + location_width + kGap, row_y,
++                                     location_height, location_height);
++      }
++    }
++    location_bar_view_->SetBounds(kSidebarEdge, row_y, location_width, location_height);
++  } else if (aux_agent_button_) {
++    aux_agent_button_->SetVisible(false);
 +  }
    LayoutSuperclass<AccessiblePaneView>(this);
 +  // In a previewed sidebar the toggle leads the row; navigation stays at the end.
@@ -153580,7 +153609,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
  }
  
  void ToolbarView::OnThemeChanged() {
-@@ -1504,7 +1884,8 @@ void ToolbarView::ChildPreferredSizeChanged(views::View* child) {
+@@ -1504,7 +1908,8 @@ void ToolbarView::ChildPreferredSizeChanged(views::View* child) {
  
  void ToolbarView::ChildVisibilityChanged(views::View* child) {
    if (child == home_) {
@@ -153590,7 +153619,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
        base::UmaHistogramBoolean("Toolbar.Overflow.HomeButton", true);
      }
    }
-@@ -1674,6 +2055,13 @@ void ToolbarView::LayoutCommon() {
+@@ -1674,6 +2079,13 @@ void ToolbarView::LayoutCommon() {
  
    gfx::Insets interior_margin =
        GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
@@ -153604,7 +153633,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
  
    const bool is_trailing_contextual_tasks_visible =
        IsTrailingContextualTasksButtonVisible();
-@@ -1742,7 +2130,20 @@ void ToolbarView::LayoutCommon() {
+@@ -1742,7 +2154,20 @@ void ToolbarView::LayoutCommon() {
        interior_margin.set_right(0);
      }
    }
@@ -153625,7 +153654,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
  
    // Extend buttons to the window edge if we're either in a maximized or
    // fullscreen window. This makes the buttons easier to hit, see Fitts' law.
-@@ -1752,7 +2153,8 @@ void ToolbarView::LayoutCommon() {
+@@ -1752,7 +2177,8 @@ void ToolbarView::LayoutCommon() {
    // `SetIsMaximizedOrFullscreen` remains reliably synchronized with window
    // bounds without requiring supplemental widget observation hooks.
    const bool is_maximized_or_fullscreen =
@@ -153635,7 +153664,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
                                  browser_->GetWindow()->IsFullscreen());
  
    const int margin = is_maximized_or_fullscreen ? leading_interior_margin : 0;
-@@ -2059,11 +2461,14 @@ views::View* ToolbarView::GetViewForDrop() {
+@@ -2059,11 +2485,14 @@ views::View* ToolbarView::GetViewForDrop() {
  }
  
  void ToolbarView::OnChromeLabsPrefChanged() {
@@ -153651,7 +153680,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
        ShouldShowChromeLabsUI(browser_->GetProfile()));
    GetViewAccessibility().AnnounceText(l10n_util::GetStringUTF16(
        chrome_labs_action->GetVisible()
-@@ -2080,13 +2485,19 @@ void ToolbarView::LoadImages() {
+@@ -2080,13 +2509,19 @@ void ToolbarView::LoadImages() {
  }
  
  void ToolbarView::OnShowForwardButtonChanged() {
@@ -153674,7 +153703,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f
  }
  
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.h b/chrome/browser/ui/views/toolbar/toolbar_view.h
-index 0520c2901223d569f0266421d2e6c6f7dbaff718..fbf4fa563e19384ed0c5be5d5d3b3fca2e8d15f3 100644
+index 0520c2901223d569f0266421d2e6c6f7dbaff718..de90d664fa3c90d584e609f6d247dde3cd935c6e 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.h
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
 @@ -13,6 +13,8 @@
@@ -153764,15 +153793,17 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..fbf4fa563e19384ed0c5be5d5d3b3fca
    FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
                             CircularButtonRetainsInteriorMarginsAndPosition);
    FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
-@@ -407,6 +452,7 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -407,6 +452,9 @@ class ToolbarView : public views::AccessiblePaneView,
    // |location_bar_| is guaranteed to exist. These pointers are owned by the
    // view hierarchy.
    raw_ptr<ToolbarButton> contextual_tasks_button_ = nullptr;
 +  raw_ptr<ToolbarChipButton> aux_retained_collapse_ = nullptr;
++  // The Agent beside the sidebar address field (aux_agent_button.h).
++  raw_ptr<views::Button> aux_agent_button_ = nullptr;
    raw_ptr<ToolbarButton> back_ = nullptr;
    raw_ptr<ToolbarButton> forward_ = nullptr;
    raw_ptr<ReloadButton> reload_ = nullptr;
-@@ -463,18 +509,39 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -463,18 +511,39 @@ class ToolbarView : public views::AccessiblePaneView,
    std::optional<ui::ScopedUnownedUserData<ToolbarButtonProvider>>
        scoped_unowned_user_data_;
  

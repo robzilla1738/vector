@@ -3,16 +3,14 @@
  * they load. scripts/release/transforms.mjs applies them after the provider CLI integration;
  * any drifted anchor stops the release. */
 import {applyExactEdits} from '../provider-cli/integration.mjs';
-import {PROACTIVITY, STYLES} from './aux-agent.mjs';
 
 /** Copied beside aux-native-entry.mjs, under aux-agent/. */
 export const DAEMON_FILES = Object.freeze(['aux-agent.mjs']);
 
 const edit = (name, find, replace, count = 1) => Object.freeze({name, find, replace, count});
-const literals = values => values.map(value => `\`${value}\``).join(',');
 
 const PROCEDURES = 'agentGet:accountProcedure.query(({ctx:Cn})=>auxAgentView(Cn.accountId)),'
-  + `agentUpdate:accountProcedure.input(object({name:string$3().max(200).optional(),style:_enum([${literals(STYLES)}]).optional(),proactivity:_enum([${literals(PROACTIVITY)}]).optional(),setupCompleted:boolean$1().optional()})).mutation(async({ctx:Cn,input:ei})=>{let ti=auxAgent.read(Cn.accountId).name;auxAgent.update(Cn.accountId,ei);await auxAgentApply(Cn.accountId,ti);return auxAgentView(Cn.accountId)}),`
+  + 'agentUpdate:accountProcedure.input(object({name:string$3().max(200).optional(),setupCompleted:boolean$1().optional()})).mutation(async({ctx:Cn,input:ei})=>{let ti=auxAgent.read(Cn.accountId).name;auxAgent.update(Cn.accountId,ei);await auxAgentApply(Cn.accountId,ti);return auxAgentView(Cn.accountId)}),'
   + 'agentAvatar:accountProcedure.input(object({revision:string$3().max(64)})).query(({ctx:Cn})=>({dataUrl:auxAgent.avatarDataUrl(Cn.accountId)})),'
   + 'agentSetAvatar:accountProcedure.input(object({dataUrl:string$3().max(11e5)})).mutation(({ctx:Cn,input:ei})=>{try{auxAgent.setAvatar(Cn.accountId,ei.dataUrl)}catch(ti){throw new TRPCError({code:`BAD_REQUEST`,message:ti.message})}return auxAgentView(Cn.accountId)}),'
   + 'agentClearAvatar:accountProcedure.mutation(({ctx:Cn})=>(auxAgent.clearAvatar(Cn.accountId),auxAgentView(Cn.accountId))),'
@@ -104,16 +102,19 @@ export const EXTENSION_EDITS = Object.freeze({
   'assets/session-composer-Dc0LRfZA.js': [
     edit('agent UI import',
       'import{A as Ns,C as Y,E as qo,T as Wo,u as Rs,w as Go,x as Qo}from"./browser-color-scheme-Df5VSuPV.js";',
-      `${ui(['auxAgentPlaceholder', 'AuxAgentEmptyState'])}import{A as Ns,C as Y,E as qo,T as Wo,u as Rs,w as Go,x as Qo}from"./browser-color-scheme-Df5VSuPV.js";`),
+      `${ui(['useAuxAgentPlaceholder', 'AuxAgentEmptyState'])}import{A as Ns,C as Y,E as qo,T as Wo,u as Rs,w as Go,x as Qo}from"./browser-color-scheme-Df5VSuPV.js";`),
     edit('composer hint names the agent',
       'placeholder:u??c??"Ask AI a task, @ for context"',
-      'placeholder:u??c??auxAgentPlaceholder()'),
+      'placeholder:useAuxAgentPlaceholder(u??c)'),
+    edit('composer footer groups keep a gap, so the effort chevron never touches the context ring',
+      'className:"flex min-w-0 items-center first:shrink-0 first:grow"',
+      'className:"flex min-w-0 items-center gap-1 first:shrink-0 first:grow"'),
     edit('an empty conversation is the agent greeting you',
       '(0,a.jsx)(Qd,{})',
       '(0,a.jsx)(AuxAgentEmptyState,{})'),
     edit('the side panel and full view composer hint names the agent',
       'placeholder:n??"Reply, @ for context"',
-      'placeholder:n??auxAgentPlaceholder()'),
+      'placeholder:useAuxAgentPlaceholder(n)'),
   ],
   'assets/minipopup-LkDLFvnq.js': [
     edit('agent UI import',
@@ -123,11 +124,18 @@ export const EXTENSION_EDITS = Object.freeze({
       'placeholder:"Ask Aux"',
       'placeholder:auxAgentAsk()'),
   ],
+  // One Aux mark per surface: the new tab page keeps its large logo, so the default-browser
+  // nudge under it goes without its own small one.
+  'assets/nudges-7TFAp4B-.js': [
+    edit('default-browser nudge without a second Aux mark',
+      '(0,e.jsx)(y,{className:"text-muted-foreground size-5 opacity-60"}),',
+      ''),
+  ],
   // The new tab stays light: it reads the name the agent store last saw, without the module.
   'assets/newtab-editor-u_GbForB.js': [
     edit('new tab hint names the agent',
       'R={ask:"Ask Aux a task, @ for context"',
-      'R={get ask(){let n="Aux";try{n=localStorage.getItem("aux.agent.name.v1")||n}catch{}return`Message ${n}, @ for context`}'),
+      'R={get ask(){let n="Otto";try{n=localStorage.getItem("aux.agent.name.v1")||n}catch{}return`Message ${n}, @ for context`}'),
   ],
   // Settings › Agents: the agent first; the per-tab chat option no longer applies.
   'assets/agents-urkO3LLg.js': [
