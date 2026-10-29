@@ -16,7 +16,7 @@ The plan refines these; it does not reverse them. Anything that would is a quest
 - **Tabs:** × on hover closes; rename in place (double-click, F2, menu); drag to reorder, onto a tab to split, to Bookmarks, to Pins, onto the page to split, with the frosted card and half-page preview. ([sidebar polish](2026-10-29-sidebar-polish.md))
 - **Spaces and themes:** a theme per Space, falling back to a default; an emoji per Space; Aux's own theme picker with Aux presets and terminal classics; one uniform shade across every surface, with ink-based borders and 7:1 text contrast; Create a Space with icon, name and color preview. ([Spaces and themes](2026-10-29-spaces-and-themes.md))
 - **Little Aux and Peek** exist and follow Little Arc's single quiet bar.
-- **Scope:** bring-your-own models (API keys or supported subscriptions); no payments, Pro or hosted credits; no built-in password manager (users bring 1Password and the like through extensions); routines run on this device only.
+- **Scope:** bring-your-own models (API keys, or the user's own local agent CLIs; see answer 5); no payments, Pro or hosted credits; no built-in password manager (users bring 1Password and the like through extensions); routines run on this device only.
 - **Crash reports:** opt-in, off by default, asked once after the first crash (release decision 6).
 
 ## New decisions (2026-10-29)
@@ -24,16 +24,16 @@ The plan refines these; it does not reverse them. Anything that would is a quest
 1. **Spaces replace profiles.** There are no user-visible profiles. When you create a Space you choose whether it **shares** sign-ins, cookies and site data with another Space or is **isolated**. Design in [Batch 2](#batch-2--spaces-replace-profiles).
 2. **Aux's own implementation of every Aside-derived part, behaving the same.** The supplied implementation becomes the reference for behavior, not shipped code. Persisted formats and wire protocols stay compatible. Track in [Batch 10](#batch-10--auxs-own-implementation-of-the-aside-parts). This changes the standing rule in AGENTS.md; proposed wording is at the end, and AGENTS.md is not edited until Robert says so.
 3. **Lean verification.** See [How changes are checked](#how-changes-are-checked).
+4. **Robert's answers below** (extensions per isolated Space, the rewrite boundary, the address field, macOS 15, local agent CLIs instead of sign-in, open before the daemon is ready).
 
-## Questions for Robert
+## Robert's answers (2026-10-29)
 
-My recommendation is listed first; the plan assumes it until you say otherwise.
-
-1. **Isolated Spaces and extensions.** An isolated Space has its own extensions, as in Arc, so 1Password would be installed there too. (Alternative: share extensions across groups. Chromium ties extensions to the profile, so that would mean installing them into each hidden profile automatically, which is doable but adds a sync job.)
-2. **What counts as "Aside-derived".** Recommend: the supplied bundles and binaries Aux can't build from its own source (agent extension, daemon JS, Computer Use, memory helper, runtime, skills, and the native addons reconstructed from disassembly). The native Chromium code in `chromium/tree` is already Aux source we maintain; parts ported from Aside's fork get rewritten as they are touched (Batch 3 rewrites the tab rows anyway), not as a separate project.
-3. **Clicking the address field.** Recommend it opens the centered command bar, as Cmd+T/Cmd+L already do and as Arc does, instead of a 220-pixel dropdown under the field.
-4. **Oldest macOS.** Recommend macOS 15 Sequoia (26 is nearly free; 15 is the practical floor; below that the memory model and screenshot code need older paths).
-5. **Subscriptions that don't work yet.** AGENTS.md promises Copilot, Kimi and Meta sign-in, but only ChatGPT/Codex, Claude, Grok and Cursor work through their CLIs. Recommend: build the Copilot CLI driver now, and list Kimi and Meta as API keys until each has a sign-in Aux can use legitimately; the scope line then says so.
+1. **Isolated Spaces have their own extensions**, as in Arc. Install 1Password in each isolated Space.
+2. **"Aside-derived" means the supplied parts Aux can't build from its own source:** the agent extension, daemon JS, Computer Use, memory helper, runtime, skills, and the native addons reconstructed from disassembly. The native Chromium code in `chromium/tree` is already Aux source; parts ported from Aside's fork are rewritten as they're touched, not as a separate project.
+3. **The address field stays as it is.** Clicking it edits in place with its dropdown; Cmd+T opens the centered command bar.
+4. **macOS 15 Sequoia is the floor.**
+5. **No "Sign in with…" provider flows for now.** Do what T3 Code does: Aux drives the agent CLIs the user already has installed and signed in to, so any local agent tool works. API keys stay. See Batch 8.
+6. **Open the browser before the daemon is ready.** Speed and quality of life win. This reverses the startup half of D12 ("no profile before the daemon is ready and authorized"). See 1.2.
 
 ## What the review found
 
@@ -78,7 +78,7 @@ Batches are in dependency order. Batch 1 makes everything safe to build on. Batc
 | # | Problem | Fix | Where |
 |---|---|---|---|
 | 1.1 | Aux's keyboard bindings run before the focused field. Cmd+Left/Right navigate Back/Forward from inside text fields. Cmd+K, Cmd+E, Cmd+S, Cmd+Shift+C and Cmd+Shift+A never reach web apps (Slack, Notion, Docs, Figma). | Only reserved chords (Cmd+T/W/N/Q, Cmd+L) go before the responder; everything else goes through the normal path after it, the way upstream delays Back/Forward. Add an "always use for Aux" switch per shortcut for anyone who wants Aux to win. | `chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.mm:84-97`, `chrome/browser/ui/aux_keyboard_shortcuts.mm:50-70`, `global_keyboard_shortcuts_mac.mm:88` |
-| 1.2 | No window until the daemon is ready (nested RunLoop, 90 s deadline). On timeout `profile_ = nullptr; return;` and no window ever opens. Links from other apps wait behind it. | Keep the readiness gate, which is a recorded decision (STATUS, D12: no profile before the daemon is ready and authorized). Show what's happening instead: a small native "Starting Aux" window with the mark and progress from the first second. On failure, "Aux couldn't finish starting" with Try again and Quit. Links clicked meanwhile open once ready, never dropped. Opening the browser before the daemon is ready would be faster but reverses D12; it's Robert's call. | `chrome/browser/aux/browser_platform.cc:150-171`, `chrome/browser/ui/startup/startup_browser_creator_impl.cc:275` |
+| 1.2 | No window until the daemon is ready (nested RunLoop, 90 s deadline). On timeout `profile_ = nullptr; return;` and no window ever opens. Links from other apps wait behind it. | **Open the browser at once (Robert, 2026-10-29: speed wins; reverses D12's startup gate).** Restore the session and open links immediately, and start the daemon in parallel. Find everything that assumes a ready, authorized daemon at profile creation (`profile_gate.cc`, `browser_platform.cc`, the organization and agent bridges) and make it wait lazily for readiness instead of blocking. Agent surfaces show a quiet "starting" state: the button, the panel, New Tab's agent banner and the daemon-backed Settings sections. If the daemon fails, browsing is unaffected and the agent button says "The agent couldn't start — Try again". The shutdown RunLoop stays. Update STATUS and the release checklist where they cite D12. | `chrome/browser/aux/browser_platform.cc:150-171`, `chrome/browser/ui/startup/startup_browser_creator_impl.cc:275` |
 | 1.3 | The tab list is rebuilt from scratch on every change. A title change or finished load cancels drags, loses hover (× vanishes), makes context-menu commands fail ("The profile or tab list changed"), flickers favicons, and costs roughly n³ per rebuild across two trees. | Keep rows alive and update them from the model's `Delta::changed_entries`. While a drag is active, defer refreshes the way rename does. Don't Notify when Reconcile changed nothing. Build one handle→index map per refresh. Context-menu commands check only their target entry's revision. | `frame/aux_organization_tree_view.cc:527-545, 813-816`, `frame/aux_organization_window_controller.cc:100, 492, 1569-1577, 1746` |
 | 1.4 | Tabs-header **Clear** closes every closable tab in the window, including pinned tabs and loaded tabs from other Spaces, but leaves unloaded tabs in the current Space. | Clear the active Space's unpinned, unkept entries in one archive batch, with Undo. | `frame/aux_tabs_actions.cc` `ClearAccepted` |
 | 1.5 | Extensions are unreachable in sidebar mode. Their container, the split button and pinned actions stay "visible" at an empty rect, so there are no icons, keyboard focus can land on zero-size buttons, and popups anchor to nothing. This is the same pattern as the build 38 crash. | Really hide them. Add an extensions button in the address row (puzzle icon, Arc-style) that opens a menu listing every extension, with pin-to-row for the few you want visible (1Password). Popups anchor to it. | `chrome/browser/ui/views/toolbar/toolbar_view.cc:1691-1704, 1861` |
@@ -106,7 +106,7 @@ Batches are in dependency order. Batch 1 makes everything safe to build on. Batc
 
 **How it works.**
 - Switching to a Space in another data group swaps the window's profile with the existing same-window profile switch (`frame/aux_profile_switch_*`). Spaces in the same group switch as today.
-- The organization model moves from per-profile to browser-wide: the Spaces list and their order live in local state, and the entries stay in each group's profile. Alternatively, keep per-profile models and merge them in the footer. Recommend browser-wide, so that ordering, Ctrl+1–9 and the swipe treat all Spaces as one list.
+- The organization model moves from per-profile to browser-wide: the Spaces list and their order live in local state, and the entries stay in each group's profile. It's browser-wide, not per-profile models merged in the footer, so that ordering, Ctrl+1–9 and the swipe treat all Spaces as one list.
 - Pins: global pins are global across all groups. A pin always opens in the Space you're in, which is the safe choice for isolation.
 - Link routing rules target Spaces instead of profiles (`chrome/browser/aux/routing/`). `aux open --profile` becomes `--space` (keep `--profile` as an alias).
 
@@ -114,7 +114,7 @@ Batches are in dependency order. Batch 1 makes everything safe to build on. Batc
 - One agent across all Spaces: one name, look, Instructions and home thread.
 - The daemon binds one account per profile today (`accounts.json` `profileAccountBindings`). Bind every hidden profile to the same local account and keep a per-Space browsing context, so the agent browses with the sign-ins of the Space it's acting in.
 - Memory stays one store.
-- *(Owner question 1 covers extensions.)*
+- **Extensions** belong to the data group (answer 1): an isolated Space starts with none. Its Create flow offers "Add your extensions", listing the Default group's extensions to install from the Web Store, so 1Password is one click.
 
 **Migration.** Each existing profile becomes a data group. Its Spaces keep their tabs, pins, themes and emoji. The first profile is "Default". This is a versioned migration with a legacy reader, per AGENTS.md; nothing is deleted.
 
@@ -189,7 +189,7 @@ Batches are in dependency order. Batch 1 makes everything safe to build on. Batc
 - Archived tabs sort by date with relative labels and a filter field.
 - Clicking one restores and opens it, then returns to Tabs.
 - Cmd+Shift+T reopens the last closed tab in its old place, not at the end with a "Recovery" row (`browser_command_controller.cc:932`).
-- Auto-archive keeps today's default (off), and gains 12-hour and 24-hour choices offered in onboarding (see question list; Arc's default is 12 h).
+- Auto-archive keeps today's default (off), and gains 12-hour and 24-hour choices offered in onboarding (Arc's default is 12 h).
 
 **Keyboard**
 - Ctrl+Tab and Cmd+1–9 follow the active Space's visible list. Cmd+1–9 targets pins first, as Arc does.
@@ -317,7 +317,7 @@ Batches are in dependency order. Batch 1 makes everything safe to build on. Batc
 **A narrow sidebar never throws navigation to a top bar.** Clamp the minimum width or compact the field (`AuxNavigationPlacement::Update`).
 
 **Address field and command bar**
-- Clicking the field opens the command bar in Navigate mode (question 3).
+- Clicking the field keeps editing in place with its dropdown, and Cmd+T keeps opening the centered command bar (answer 3). Only polish: the dropdown's corners match the field's.
 - The command bar clamps to the window, sits in the upper third, grows with its results, and animates opacity and transform instead of resizing the widget every frame.
 - (`frame/aux_tab_search_bubble.cc:95, 532-660`)
 
@@ -347,7 +347,7 @@ Batches are in dependency order. Batch 1 makes everything safe to build on. Batc
 ## Batch 6 — Import and onboarding
 
 **Onboarding (every new user, local or signed in, one window with step dots)**
-0. **Starting** is the native window from 1.2. The first launch says "Setting up Aux — the first start takes up to a minute", and the flow begins as soon as the daemon is ready.
+0. **No waiting screen.** The flow opens with the first window (1.2). Steps 1–4 and 7 don't need the daemon (import runs through the native `chrome.auxBrowserImport`). Steps 5 and 6 show "Getting your agent ready…" inline if the daemon isn't up yet, and continue on their own when it is.
 1. **Welcome.** "A browser with an agent built in." No sign-in.
 2. **Bring your stuff** (skippable).
    - Detected browsers with their profiles and last-used time, Arc first.
@@ -357,7 +357,7 @@ Batches are in dependency order. Batch 1 makes everything safe to build on. Batc
 3. **Keychain explainer**, only if cookies were chosen. "macOS will ask to let Aux read Chrome Safe Storage. Choose Always Allow."
 4. **Your password manager** (skippable). Revive the supplied step that detects 1Password, Bitwarden, Dashlane and others and installs the extension. Today it's redirected away (`scripts/lib/provided-password-manager-scope.mjs`).
 5. **Meet your agent:** the existing name-and-look sheet, inline. It stays reachable from the panel for anyone who skipped.
-6. **Connect a model** (skippable): the supplied provider list (subscriptions and API keys).
+6. **Connect a model** (skippable). Lists the agent CLIs found on this Mac, each with "Use" or the login command to run (Batch 8), then API keys. No "Sign in with…" rows.
 7. **Make it yours:** the default theme, with imported Arc Spaces previewed in their colors and emoji.
 8. **Finishing touches**
    - Default browser: on.
@@ -405,7 +405,7 @@ Completion is stored locally per user. Today the guard only fires for cloud acco
   - The runtime copy says it's bundled, and drops the update line while its release URL is `127.0.0.1:9`.
   - Move "Clean up agent tabs" out from under Computer Use.
 - **Account:** hide Sync, Devices and Browser data recovery while sync is unavailable.
-- **Memory:** decide on Context Awareness (eap-only, "requires the Max plan" copy). Recommend hiding it until it's real.
+- **Memory:** decide on Context Awareness (eap-only, "requires the Max plan" copy). Hide it until it's real.
 - **Search index:** rebuild it (stale: Ask Aux on tab switch, Statistics, Tidy; missing: Link routing, Tab cleanup, Peek, Minimal UI, Your agent and more).
 - **Dead code:** delete the Remote Control panel, Pro strings and billing routes (`/billing/`, `/payment-use/`, `/liquid-glass-playground/`, `/error-test/`, `/artifact-test/`).
 - **Copy:**
@@ -464,13 +464,28 @@ The design is kept: one agent, a home thread and side chats in the panel. The wo
   - Fix: use the provider's own search tool where the model has one (OpenAI and Anthropic do), else an optional search API key in Settings › Models. With neither, the tool is left out of the tool list and the prompt.
 - **8.2 Dictation always fails.** The composer mic posts to `/stt/transcribe`, which returns 404, and nothing reads the service's `enabled:false`.
   - Fix: on-device speech through macOS's Speech framework (macOS 13+, no account). Until that lands, hide the mic.
-- **8.3 Promised subscriptions don't work.** Kimi and Meta are API-key only (sign-in throws). The Copilot row says "support is not verified" and its dialog loops on "Check again".
-  - Fix: build the Copilot CLI driver. Kimi and Meta stay API keys until each has a sign-in Aux can use legitimately (question 5).
-  - Either way, the provider list says plainly what each row supports.
+- **8.3 "Sign in with…" goes away (answer 5).**
+  - Kimi and Meta sign-in throw today, and Copilot's dialog loops on "Check again".
+  - Remove the in-app subscription sign-in rows and their dead code paths (`pcli/borrowed-identity-removal.mjs`, `catalog.mjs`, the supplied `ai-*` sign-in flows).
+  - Settings › Models has two sections: **Local agents** (8.4) and **API keys**.
 
-**Signed-in subscriptions (CLI providers) as good as API keys**
-- **8.4 Identity:** Cursor and OpenCode turns carry no system prompt, so the agent doesn't know it's Aux and ignores Instructions and memory. Pass it through each CLI's rules or instructions mechanism (`pcli/drivers.mjs:57-71`).
-- **8.5 Safety:** Codex runs with `sandbox:'read-only'` and `approvalPolicy:'never'`, so it can read any local file without Aux's approval, and Cursor has its own tools on. Turn off their built-in tools the way Claude's are (`--tools ''`, MCP only), so every action goes through Aux's permission modes (`drivers.mjs:62-63, 216`).
+**Local agents, the T3 Code model**
+
+Aux drives the agent CLIs the user already has installed and signed in to, and never signs in on their behalf. `pcli/` already does this for T3 Code's set: Codex (`codex-app-server`), Claude Code, Cursor, Grok Build and OpenCode. The work is to make it general and as good as an API key.
+- **8.4 Any local agent.**
+  - Detect installed CLIs at daemon start. Each row shows Ready / Not signed in (with its login command and "Open Terminal") / Not installed (with the install link). Detection already exists: `detect.mjs`, `catalog.mjs`.
+  - Finish Copilot (`driver: null` today).
+  - Add a generic **ACP driver**: the Agent Client Protocol, which Gemini CLI and other agents speak. Any ACP agent on PATH then works without its own driver.
+  - A "Add a local agent…" row takes a command for anything else that speaks ACP.
+  - Refresh on window focus, so running `claude auth login` in Terminal flips the row to Ready.
+- **8.5 Their own tools, under Aux's permissions.** "Use any local tools the user has" means the agent may use the CLI's own shell and file tools as well as Aux's browser tools. The fix is to route every one of those actions through Aux's permission modes (`guard`, approvals, final confirm), not to turn them off.
+  - Today Codex runs `sandbox:'read-only'` with `approvalPolicy:'never'`, so it can read any file with no Aux approval.
+  - Cursor runs its own tools with `--trust`, and Claude runs MCP-only (`--tools ''`).
+  - Instead: Codex runs `approvalPolicy:'on-request'`, with its approval requests relayed to Aux's approval card. Claude uses its permission-prompt tool pointed at Aux's MCP. Cursor and OpenCode use their ask modes.
+  - Each turn's working folder is an Aux run folder, plus whatever folders the user has granted in Settings › Agent › File permissions.
+  - A prompt-injected page can no longer read or run anything without an approval the user sees (`drivers.mjs:57-71, 216`).
+  - A turn waiting on an approval must not time out: suspend Aux's 180 s idle kill and the CLI's MCP tool timeout while a card is open *(check: the card has never been seen on a CLI turn)*.
+- **8.5a Identity.** Cursor and OpenCode turns carry no system prompt, so the agent doesn't know it's Aux and ignores Instructions and memory. Pass it through each CLI's rules or instructions mechanism, and the ACP session's system prompt.
 - **8.6 Capability:** every CLI model is advertised with no reasoning, no vision, a 200k context and zero cost (`pcli/aux-daemon.mjs:33-45`). Map effort to each CLI, pass images where the CLI accepts them, and report real context sizes.
 - **8.7 Tool cards:** CLI tool activity shows as "Using repl" lines inside the thinking text (`aux-daemon.mjs:231`). Emit tool-call start/end events so the supplied tool cards render.
 - **8.8 Speed:**
@@ -521,7 +536,7 @@ The design is kept: one agent, a home thread and side chats in the panel. The wo
    - Hide the REPL below 27 (Endpoint Security descendant clients are 27-only).
    - Guard the private `variant` KVC call (`native_widget_ns_window_bridge.mm:281`).
    - Check on the existing `aux-ci` Tart image (26.6.2).
-2. **macOS 15 Sequoia** (recommended floor)
+2. **macOS 15 Sequoia** (the floor, answer 4)
    - Rebuild the agent runtime's poppler, nss, glib and gpgme (34 files built for 26) with a 15.0 deployment target from pinned sources.
    - Set the floor to 15.0.
    - Make the frame right on 15: glass fallback, card radius from the real window corner (Batch 5), traffic-light offsets from AppKit.
@@ -530,7 +545,7 @@ The design is kept: one agent, a home thread and side chats in the panel. The wo
    - Confirm the daemon picks `p256_v1` below 26.
    - Name the permissions pane per OS ("Accessibility" before 27).
    - Check on a cirruslabs `macos-sequoia` Tart VM. The license allows two macOS guests at once, and the Tartelet pool uses one.
-3. **Below 15** only if wanted. The memory model uses the iOS 18 opset (re-export it for 14), and Computer Use screenshots need a pre-14 path for 13. Batch 10 makes both ours to change.
+3. **Below 15** is out of scope. The memory model uses the iOS 18 opset (re-export it for 14), and Computer Use screenshots need a pre-14 path for 13. Batch 10 makes both ours to change.
 
 ## Batch 10 — Aux's own implementation of the Aside parts
 
@@ -552,7 +567,7 @@ The design is kept: one agent, a home thread and side chats in the panel. The wo
 | Memory helper | compiled Rust plus Core ML models | 5. Rewrite, keeping catalog format 2 and the index on disk byte-compatible; compare embeddings numerically on a fixed corpus |
 | Daemon JS (~395 tRPC procedures, ~30 tools, ~34 `Aux.*` CDP commands) | minified 12 MB bundle with count-checked edits | 6. Replace one router namespace at a time behind a dispatcher that falls back to the supplied bundle. Keep `/health`, the auth bytes, SQLite/JSONL schemas, Keychain item names and prompts verbatim |
 | Agent extension (New Tab, side panel, Settings, onboarding, popups) | minified 47 MB bundle, no source maps, 155 files edited | 7. CSS tokens, fonts and shared components first, then route by route. Keep the extension key and ID, storage keys and private-API calls |
-| Native addons and crypto authority | Aux source reconstructed from disassembly | 8. Re-author against their documented JSON contracts (question 2) |
+| Native addons and crypto authority | Aux source reconstructed from disassembly | 8. Re-author against their documented JSON contracts (answer 2) |
 
 **Step 0: freeze the reference before replacing anything.** From the current build, record:
 - the tRPC procedure list with input and output shapes
@@ -569,6 +584,8 @@ Then add a thin contract test layer that runs against either implementation.
 - AGENTS.md lines 3, 9 and 11 ("reuses the Aside implementation… not a clean-room rebuild", "Reuse the supplied source and packages directly…", "Change only what Aux needs…") become: *"Aux is its own implementation. The supplied Aside implementation is the behavioral reference: Aux's parts behave the same, keep its persisted formats and wire protocols compatible, and replace it part by part with tests that pass against both."*
 - Line 23 (authorized inputs) becomes reference-only.
 - `docs/design/aside-contract.md` changes title and lines 3, 7 and 8 to match.
+- AGENTS.md's Scope line ("users bring provider API keys (BYOK) or sign in with a supported subscription (ChatGPT/Codex, Claude Pro/Max, GitHub Copilot, Kimi, Meta, Grok…)") becomes: *"Users bring provider API keys, or Aux drives agent CLIs they have installed and signed in to (Codex, Claude Code, Cursor, Grok Build, OpenCode, Copilot, any ACP agent). Aux never signs in to a provider on the user's behalf."* The contract's Inference line follows.
+- STATUS's D12 line ("The nested startup and shutdown RunLoops stay…") becomes: the startup gate is gone (answer 6); the shutdown RunLoop stays.
 - `README.md:3`, the ARCHITECTURE table (already stale: the daemon is a native host, not an SEA; the CLI is native), `bundle.json` (`"implementation":"supplied"`) and `check-provided.mjs` follow as each part is replaced.
 
 ## How changes are checked
