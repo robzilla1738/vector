@@ -215,8 +215,25 @@ Phases 1 and 3 (native) can run in parallel worktrees once the `/agent/for-chrom
 
 ## Progress (2026-10-28)
 
-- Daemon and extension: built and tested (`vendor/provided/agent/`, wired through `scripts/release/transforms.mjs`). They cover the agent store and avatar, the home thread, the identity and personality in prompts with live refresh, the native feed (`agent` on `/session/for-chrome/chats`, `/agent/for-chrome/avatar`), the side panel title, greeting, setup and customize sheet, "+" for a side chat, the pop-out to the full view, Settings › Agents › Your agent (with SOUL.md and AGENTS.md), and the composer, quick popup and new tab hints. 11 agent tests and the release transforms test pass.
-- Native button (avatar, states, "Ask ‹Name›", Side chats heading): being built in the durable checkout; not yet exported to `chromium/tree`.
-- Deviations: new-tab prompts still open as a full-page side chat, and Initiative changes the agent's behavior but does not yet post routine results into the home thread. Messages carry no per-message avatars (the header names the agent).
-- Not yet seen in a real build.
+Built and checked on screen in Developer ID build 48 (`out/release/1.0.0-48`, local):
 
+- **Sidebar:** an Agent row leads the sidebar, under the address field. It shows the agent's face (picture or Aux mark, a spinning ring while it works, amber or accent dots when it waits or has replied) and its name on a soft card, and opens the side panel. It replaces the Chats list and the old button inside the address field (Robert's review, build 44). The Chats controller still runs: it feeds the agent identity and the projection of chat-owned tabs.
+- **Side panel:** this is the agent's quick view.
+  - The header shows the face and name, which open Customize.
+  - "+" opens a side chat, with a back control to the agent.
+  - The pop-out opens the full view.
+  - An empty conversation shows the agent greeting in place of the supplied faint logo.
+  - The composer reads "Message ‹Name›, @ for context".
+- **Meet your agent / Customize:** a full-panel view, not a dialog, so nothing spills out of a narrow panel. It covers:
+  - Name.
+  - Look: the Aux mark as Classic, Ocean, Iris, Rose, Ember, Aurora, Sunset, Neon or Halo, or "+" for your own image.
+  - Style and Initiative as wrapping chips.
+- **Settings › Agents › Your agent:** the same fields, plus Personality (SOUL.md) and Instructions (AGENTS.md).
+- **Checked on screen:** first-run sheet, choosing Aurora, then Classic, with the sidebar row and panel updating live, the greeting, "+" side chat and back.
+- **Tests:** 11 agent tests and the release transforms test.
+
+Not done or not verified:
+- **New tab:** prompts still open as a full-page side chat.
+- **Initiative:** shapes the agent's behavior, but routine results are not yet posted into the home thread.
+- **No per-message avatars:** the header names the agent instead.
+- **No provider connected in the review profile:** so no AI turn, home-thread claim on first send, prompt identity or tab-switch behavior was exercised live. Those paths are covered by unit tests only.

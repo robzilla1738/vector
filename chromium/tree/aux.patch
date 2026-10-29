@@ -12330,10 +12330,10 @@ index ba008b2bf77313137a887212b8ae680156fb4f3a..e4767593d0d138a55d5b7de7fa917657
  </translationbundle>
 \ No newline at end of file
 diff --git a/chrome/app/resources/generated_resources_de.xtb b/chrome/app/resources/generated_resources_de.xtb
-index 60eab4fa78e8ad6389fe9a37b60dfd5099d89c1a..726150517c4330ffd1a25f949656b55295476160 100644
+index 60eab4fa78e8ad6389fe9a37b60dfd5099d89c1a..b3b6f4101a01a382cae075f2a55e5c1ece95880f 100644
 --- a/chrome/app/resources/generated_resources_de.xtb
 +++ b/chrome/app/resources/generated_resources_de.xtb
-@@ -10801,4 +10801,375 @@ Informationen dazu, welche Daten von Google erhoben werden und warum, findest du
+@@ -10801,4 +10801,382 @@ Informationen dazu, welche Daten von Google erhoben werden und warum, findest du
  <translation id="998347228911661591">Tabgruppen synchronisieren</translation>
  <translation id="998747458861718449">Untersuchen</translation>
  <translation id="998852291477823323">Die Aktion wurde aufgrund der konfigurierten Richtlinien nicht zugelassen.</translation>
@@ -12708,13 +12708,20 @@ index 60eab4fa78e8ad6389fe9a37b60dfd5099d89c1a..726150517c4330ffd1a25f949656b552
 +<translation id="5850061001104525522">Trenne deine Tabs für Privates, Arbeit, Projekte und mehr.</translation>
 +<translation id="6024533406745972802">Name des Bereichs…</translation>
 +<translation id="5861530391536781162">Bereich erstellen</translation>
++<translation id="5295171147427816217">Nebenchats</translation>
++<translation id="1246808174487309223">Nebenchats, getrennt vom Hauptgespräch deines Agenten</translation>
++<translation id="6797426433639627644"><ph name="AGENT_NAME" /> fragen</translation>
++<translation id="15167241745518103"><ph name="AGENT_NAME" /> arbeitet</translation>
++<translation id="8941769292525173072"><ph name="AGENT_NAME" /> braucht deine Genehmigung</translation>
++<translation id="5716926948378239248"><ph name="AGENT_NAME" /> hat eine Frage</translation>
++<translation id="5186608774929039706"><ph name="AGENT_NAME" /> hat geantwortet</translation>
  </translationbundle>
 \ No newline at end of file
 diff --git a/chrome/app/resources/generated_resources_es.xtb b/chrome/app/resources/generated_resources_es.xtb
-index cfac9fa5147b89116f5b09de7fdd654432f2969e..87bb4df209d735a1181a8684c2a564f0dcb0db80 100644
+index cfac9fa5147b89116f5b09de7fdd654432f2969e..95bba85003951381ff3dcc8227e7b547331045ec 100644
 --- a/chrome/app/resources/generated_resources_es.xtb
 +++ b/chrome/app/resources/generated_resources_es.xtb
-@@ -10806,4 +10806,375 @@ Puede tratarse de información sobre el software instalado, los archivos, el nav
+@@ -10806,4 +10806,382 @@ Puede tratarse de información sobre el software instalado, los archivos, el nav
  <translation id="998347228911661591">Sincroniza tus grupos de pestañas</translation>
  <translation id="998747458861718449">I&amp;nspeccionar</translation>
  <translation id="998852291477823323">Las políticas configuradas no permiten realizar esta acción.</translation>
@@ -13089,13 +13096,20 @@ index cfac9fa5147b89116f5b09de7fdd654432f2969e..87bb4df209d735a1181a8684c2a564f0
 +<translation id="5850061001104525522">Separa tus pestañas para la vida, el trabajo, los proyectos y más.</translation>
 +<translation id="6024533406745972802">Nombre del Espacio…</translation>
 +<translation id="5861530391536781162">Crear Espacio</translation>
++<translation id="5295171147427816217">Chats laterales</translation>
++<translation id="1246808174487309223">Chats laterales, aparte de la conversación principal de tu agente</translation>
++<translation id="6797426433639627644">Preguntar a <ph name="AGENT_NAME" /></translation>
++<translation id="15167241745518103"><ph name="AGENT_NAME" /> está trabajando</translation>
++<translation id="8941769292525173072"><ph name="AGENT_NAME" /> necesita tu aprobación</translation>
++<translation id="5716926948378239248"><ph name="AGENT_NAME" /> tiene una pregunta</translation>
++<translation id="5186608774929039706"><ph name="AGENT_NAME" /> respondió</translation>
  </translationbundle>
 \ No newline at end of file
 diff --git a/chrome/app/resources/generated_resources_fr.xtb b/chrome/app/resources/generated_resources_fr.xtb
-index f801b198569672d4e2b7d7e4c3cdae01050ff452..fc21a40d22a83a815c6b2ba4c83e863a9aa700e7 100644
+index f801b198569672d4e2b7d7e4c3cdae01050ff452..f0c43b0d83802031a7bf1b2bdd6a738c8d364790 100644
 --- a/chrome/app/resources/generated_resources_fr.xtb
 +++ b/chrome/app/resources/generated_resources_fr.xtb
-@@ -10807,4 +10807,375 @@ Cela peut inclure des informations sur les logiciels installés, les fichiers, v
+@@ -10807,4 +10807,382 @@ Cela peut inclure des informations sur les logiciels installés, les fichiers, v
  <translation id="998347228911661591">Synchronisez vos groupes d'onglets</translation>
  <translation id="998747458861718449">I&amp;nspecter</translation>
  <translation id="998852291477823323">L'action n'a pas été autorisée en raison des règles configurées.</translation>
@@ -13470,13 +13484,20 @@ index f801b198569672d4e2b7d7e4c3cdae01050ff452..fc21a40d22a83a815c6b2ba4c83e863a
 +<translation id="5850061001104525522">Séparez vos onglets pour la vie perso, le travail, les projets et plus encore.</translation>
 +<translation id="6024533406745972802">Nom de l'Espace…</translation>
 +<translation id="5861530391536781162">Créer l'Espace</translation>
++<translation id="5295171147427816217">Discussions annexes</translation>
++<translation id="1246808174487309223">Discussions annexes, en dehors de la conversation principale de votre agent</translation>
++<translation id="6797426433639627644">Demander à <ph name="AGENT_NAME" /></translation>
++<translation id="15167241745518103"><ph name="AGENT_NAME" /> travaille</translation>
++<translation id="8941769292525173072"><ph name="AGENT_NAME" /> a besoin de votre approbation</translation>
++<translation id="5716926948378239248"><ph name="AGENT_NAME" /> a une question</translation>
++<translation id="5186608774929039706"><ph name="AGENT_NAME" /> a répondu</translation>
  </translationbundle>
 \ No newline at end of file
 diff --git a/chrome/app/resources/generated_resources_it.xtb b/chrome/app/resources/generated_resources_it.xtb
-index 7363d39ce564114f179d86b2667f39bb27cc641e..06764120f0351cb15707da4809d041a7233e992d 100644
+index 7363d39ce564114f179d86b2667f39bb27cc641e..f9f22711c0d5b9d2ea4818ab83d73cdd754ddcfd 100644
 --- a/chrome/app/resources/generated_resources_it.xtb
 +++ b/chrome/app/resources/generated_resources_it.xtb
-@@ -10803,4 +10803,375 @@ Potrebbero essere incluse informazioni su software installati, file, browser, si
+@@ -10803,4 +10803,382 @@ Potrebbero essere incluse informazioni su software installati, file, browser, si
  <translation id="998347228911661591">Sincronizza i gruppi di schede</translation>
  <translation id="998747458861718449">I&amp;speziona</translation>
  <translation id="998852291477823323">L'azione non è stata consentita dalle policy configurate.</translation>
@@ -13851,13 +13872,20 @@ index 7363d39ce564114f179d86b2667f39bb27cc641e..06764120f0351cb15707da4809d041a7
 +<translation id="5850061001104525522">Separa le tue schede per la vita privata, il lavoro, i progetti e altro.</translation>
 +<translation id="6024533406745972802">Nome dello Spazio…</translation>
 +<translation id="5861530391536781162">Crea Spazio</translation>
++<translation id="5295171147427816217">Chat secondarie</translation>
++<translation id="1246808174487309223">Chat secondarie, separate dalla conversazione principale del tuo agente</translation>
++<translation id="6797426433639627644">Chiedi a <ph name="AGENT_NAME" /></translation>
++<translation id="15167241745518103"><ph name="AGENT_NAME" /> sta lavorando</translation>
++<translation id="8941769292525173072"><ph name="AGENT_NAME" /> ha bisogno della tua approvazione</translation>
++<translation id="5716926948378239248"><ph name="AGENT_NAME" /> ha una domanda</translation>
++<translation id="5186608774929039706"><ph name="AGENT_NAME" /> ha risposto</translation>
  </translationbundle>
 \ No newline at end of file
 diff --git a/chrome/app/resources/generated_resources_ja.xtb b/chrome/app/resources/generated_resources_ja.xtb
-index db8a39711b91e2149a122a09c894dc503e1a57f1..47ff85a31e38831379e30e367fb19c65eb304d1a 100644
+index db8a39711b91e2149a122a09c894dc503e1a57f1..c4a0ee8f853af60917e3bf0f666bbb09a034d567 100644
 --- a/chrome/app/resources/generated_resources_ja.xtb
 +++ b/chrome/app/resources/generated_resources_ja.xtb
-@@ -10800,4 +10800,375 @@
+@@ -10800,4 +10800,382 @@
  <translation id="998347228911661591">タブグループを同期</translation>
  <translation id="998747458861718449">検証(&amp;I)</translation>
  <translation id="998852291477823323">設定されたポリシーにより、処理が許可されませんでした。</translation>
@@ -14232,13 +14260,20 @@ index db8a39711b91e2149a122a09c894dc503e1a57f1..47ff85a31e38831379e30e367fb19c65
 +<translation id="5850061001104525522">プライベート、仕事、プロジェクトなどに合わせてタブを分けましょう。</translation>
 +<translation id="6024533406745972802">スペース名…</translation>
 +<translation id="5861530391536781162">スペースを作成</translation>
++<translation id="5295171147427816217">サイドチャット</translation>
++<translation id="1246808174487309223">エージェントのメインの会話とは別のサイドチャット</translation>
++<translation id="6797426433639627644"><ph name="AGENT_NAME" /> に質問</translation>
++<translation id="15167241745518103"><ph name="AGENT_NAME" /> が作業中です</translation>
++<translation id="8941769292525173072"><ph name="AGENT_NAME" /> が承認を求めています</translation>
++<translation id="5716926948378239248"><ph name="AGENT_NAME" /> から質問があります</translation>
++<translation id="5186608774929039706"><ph name="AGENT_NAME" /> が返信しました</translation>
  </translationbundle>
 \ No newline at end of file
 diff --git a/chrome/app/resources/generated_resources_ko.xtb b/chrome/app/resources/generated_resources_ko.xtb
-index 9df00a876b15bcbb3949e47f1acf6067ebbcd587..2b92844fa395b923353a1d7a2b127b685f30e0da 100644
+index 9df00a876b15bcbb3949e47f1acf6067ebbcd587..e6b73a76a373640e4f6c081f7ab7a077dc0c8bbc 100644
 --- a/chrome/app/resources/generated_resources_ko.xtb
 +++ b/chrome/app/resources/generated_resources_ko.xtb
-@@ -10819,4 +10819,383 @@
+@@ -10819,4 +10819,390 @@
  <translation id="998347228911661591">탭 그룹 동기화</translation>
  <translation id="998747458861718449">검사(&amp;N)</translation>
  <translation id="998852291477823323">구성된 정책에 따라 작업이 거부되었습니다.</translation>
@@ -14621,13 +14656,20 @@ index 9df00a876b15bcbb3949e47f1acf6067ebbcd587..2b92844fa395b923353a1d7a2b127b68
 +<translation id="5850061001104525522">생활, 업무, 프로젝트 등에 맞게 탭을 분리하세요.</translation>
 +<translation id="6024533406745972802">스페이스 이름…</translation>
 +<translation id="5861530391536781162">스페이스 만들기</translation>
++<translation id="5295171147427816217">사이드 채팅</translation>
++<translation id="1246808174487309223">에이전트의 기본 대화와 별도인 사이드 채팅</translation>
++<translation id="6797426433639627644"><ph name="AGENT_NAME" />에게 묻기</translation>
++<translation id="15167241745518103"><ph name="AGENT_NAME" /> 작업 중입니다</translation>
++<translation id="8941769292525173072"><ph name="AGENT_NAME" />에서 승인이 필요합니다</translation>
++<translation id="5716926948378239248"><ph name="AGENT_NAME" />에서 질문이 있습니다</translation>
++<translation id="5186608774929039706"><ph name="AGENT_NAME" />에서 답장을 보냈습니다</translation>
  </translationbundle>
 \ No newline at end of file
 diff --git a/chrome/app/resources/generated_resources_pt-BR.xtb b/chrome/app/resources/generated_resources_pt-BR.xtb
-index ddf91a7cb93103cb99322b0e63dde9934c7dfc38..68293a0f6513b4ecdafe846b99c509fea7df7b01 100644
+index ddf91a7cb93103cb99322b0e63dde9934c7dfc38..c894c0e852e4e3e61e29ec104b09810cc4410db5 100644
 --- a/chrome/app/resources/generated_resources_pt-BR.xtb
 +++ b/chrome/app/resources/generated_resources_pt-BR.xtb
-@@ -10824,4 +10824,383 @@ Isso pode incluir informações sobre softwares instalados, arquivos, seu navega
+@@ -10824,4 +10824,390 @@ Isso pode incluir informações sobre softwares instalados, arquivos, seu navega
  <translation id="998347228911661591">Sincronizar seus grupos de guias</translation>
  <translation id="998747458861718449">I&amp;nspecionar</translation>
  <translation id="998852291477823323">As políticas configuradas não permitem esta ação.</translation>
@@ -15010,13 +15052,20 @@ index ddf91a7cb93103cb99322b0e63dde9934c7dfc38..68293a0f6513b4ecdafe846b99c509fe
 +<translation id="5850061001104525522">Separe suas guias para a vida, o trabalho, os projetos e muito mais.</translation>
 +<translation id="6024533406745972802">Nome do Espaço…</translation>
 +<translation id="5861530391536781162">Criar Espaço</translation>
++<translation id="5295171147427816217">Conversas paralelas</translation>
++<translation id="1246808174487309223">Conversas paralelas, separadas da conversa principal do seu agente</translation>
++<translation id="6797426433639627644">Perguntar a <ph name="AGENT_NAME" /></translation>
++<translation id="15167241745518103"><ph name="AGENT_NAME" /> está trabalhando</translation>
++<translation id="8941769292525173072"><ph name="AGENT_NAME" /> precisa da sua aprovação</translation>
++<translation id="5716926948378239248"><ph name="AGENT_NAME" /> tem uma pergunta</translation>
++<translation id="5186608774929039706"><ph name="AGENT_NAME" /> respondeu</translation>
  </translationbundle>
 \ No newline at end of file
 diff --git a/chrome/app/resources/generated_resources_zh-CN.xtb b/chrome/app/resources/generated_resources_zh-CN.xtb
-index 95ba8508c3700f693da24ca8b554931e206c3222..050da2bb76eae1aad07fa9d69bc7fe57194d1b24 100644
+index 95ba8508c3700f693da24ca8b554931e206c3222..34dd895c58b14448a084de16ca89aeac4a603931 100644
 --- a/chrome/app/resources/generated_resources_zh-CN.xtb
 +++ b/chrome/app/resources/generated_resources_zh-CN.xtb
-@@ -10800,4 +10800,375 @@
+@@ -10800,4 +10800,382 @@
  <translation id="998347228911661591">同步标签页分组</translation>
  <translation id="998747458861718449">检查(&amp;N)</translation>
  <translation id="998852291477823323">配置的政策不允许执行此操作。</translation>
@@ -15391,13 +15440,20 @@ index 95ba8508c3700f693da24ca8b554931e206c3222..050da2bb76eae1aad07fa9d69bc7fe57
 +<translation id="5850061001104525522">按生活、工作、项目等分开管理你的标签页。</translation>
 +<translation id="6024533406745972802">空间名称…</translation>
 +<translation id="5861530391536781162">创建空间</translation>
++<translation id="5295171147427816217">侧边对话</translation>
++<translation id="1246808174487309223">侧边对话，与智能体的主对话分开</translation>
++<translation id="6797426433639627644">询问 <ph name="AGENT_NAME" /></translation>
++<translation id="15167241745518103"><ph name="AGENT_NAME" /> 正在处理</translation>
++<translation id="8941769292525173072"><ph name="AGENT_NAME" /> 需要你的批准</translation>
++<translation id="5716926948378239248"><ph name="AGENT_NAME" /> 有一个问题</translation>
++<translation id="5186608774929039706"><ph name="AGENT_NAME" /> 已回复</translation>
  </translationbundle>
 \ No newline at end of file
 diff --git a/chrome/app/resources/generated_resources_zh-TW.xtb b/chrome/app/resources/generated_resources_zh-TW.xtb
-index 0645313e13b8d9eb4ef4709f556a976522ca404a..554050444020d39c6e016f966a3c68274d2b699e 100644
+index 0645313e13b8d9eb4ef4709f556a976522ca404a..6db65906c39241511c5b0fa05ae2582f5695f7c7 100644
 --- a/chrome/app/resources/generated_resources_zh-TW.xtb
 +++ b/chrome/app/resources/generated_resources_zh-TW.xtb
-@@ -10795,4 +10795,372 @@
+@@ -10795,4 +10795,379 @@
  <translation id="998347228911661591">同步處理分頁群組</translation>
  <translation id="998747458861718449">檢查(&amp;N)</translation>
  <translation id="998852291477823323">已設定的政策禁止執行這項動作。</translation>
@@ -15769,6 +15825,13 @@ index 0645313e13b8d9eb4ef4709f556a976522ca404a..554050444020d39c6e016f966a3c6827
 +<translation id="5850061001104525522">依生活、工作、專案等分開管理你的分頁。</translation>
 +<translation id="6024533406745972802">空間名稱…</translation>
 +<translation id="5861530391536781162">建立空間</translation>
++<translation id="5295171147427816217">側邊對話</translation>
++<translation id="1246808174487309223">側邊對話，與代理程式的主要對話分開</translation>
++<translation id="6797426433639627644">詢問 <ph name="AGENT_NAME" /></translation>
++<translation id="15167241745518103"><ph name="AGENT_NAME" /> 正在處理</translation>
++<translation id="8941769292525173072"><ph name="AGENT_NAME" /> 需要你的核准</translation>
++<translation id="5716926948378239248"><ph name="AGENT_NAME" /> 有一個問題</translation>
++<translation id="5186608774929039706"><ph name="AGENT_NAME" /> 已回覆</translation>
  </translationbundle>
 \ No newline at end of file
 diff --git a/chrome/app/settings_chromium_strings.grdp b/chrome/app/settings_chromium_strings.grdp
@@ -120156,7 +120219,7 @@ index c37fff7744c06bb91f0dc1908f2e7a6f2056cb42..b95145e68ff085c107781d77317dca55
    virtual void SetCustomDefaultTheme(
        scoped_refptr<CustomThemeSupplier> theme_supplier);
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
-index 82f397571fefaff0096247d0e98c28c20db709bd..f75a687f56ef045be10e929e5e2eb8465a95047b 100644
+index 82f397571fefaff0096247d0e98c28c20db709bd..551e02294d1fbd88dcf770c7c14c4cea6584b8a2 100644
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
 @@ -39,6 +39,14 @@ generate_allowlist_from_histograms_file("webui_name_variants") {
@@ -120269,7 +120332,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..f75a687f56ef045be10e929e5e2eb846
      ":browser_element_identifiers",
      ":browser_otr_state",
      ":browser_ui_prefs",
-@@ -1088,6 +1125,246 @@ static_library("ui") {
+@@ -1088,6 +1125,253 @@ static_library("ui") {
      "//ui/webui",
    ]
  
@@ -120298,6 +120361,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..f75a687f56ef045be10e929e5e2eb846
 +      "//crypto",
 +      "//chrome/browser/aux:ui_storage_migration",
 +      "//extensions/browser/api/storage",
++      "//services/data_decoder/public/cpp",
 +      "//ui/snapshot",
 +    ]
 +    sources += [
@@ -120456,6 +120520,12 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..f75a687f56ef045be10e929e5e2eb846
 +      "views/frame/aux_vertical_bookmark_row_icons.inc",
 +      "views/frame/aux_chats_model.cc",
 +      "views/frame/aux_chats_model.h",
++      "views/frame/aux_agent_identity.cc",
++      "views/frame/aux_agent_identity.h",
++      "views/frame/aux_agent_row.cc",
++      "views/frame/aux_agent_row.h",
++      "views/location_bar/aux_agent_button.cc",
++      "views/location_bar/aux_agent_button.h",
 +      "views/frame/aux_vertical_tab_bookmark_expansion.cc",
 +      "views/frame/aux_vertical_tab_bookmark_expansion.h",
 +      "views/frame/aux_profile_switch_request.cc",
@@ -120516,7 +120586,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..f75a687f56ef045be10e929e5e2eb846
    allow_circular_includes_from = [
      # page_load_metrics's :impl includes headers from //chrome/browser/ui that
      # can't be split out yet.
-@@ -1510,6 +1787,7 @@ static_library("ui") {
+@@ -1510,6 +1794,7 @@ static_library("ui") {
      ]
    } else {
      # !is_android
@@ -120524,7 +120594,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..f75a687f56ef045be10e929e5e2eb846
      sources += [
        # This file physically lives in //chrome/browser but is compiled here so
        # that //chrome/browser:browser has no remaining sources. It registers
-@@ -2548,6 +2826,7 @@ static_library("ui") {
+@@ -2548,6 +2833,7 @@ static_library("ui") {
      sources += [
        "views/frame/browser_frame_view_factory_mac.mm",
        "views/frame/browser_frame_view_mac.h",
@@ -120532,7 +120602,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..f75a687f56ef045be10e929e5e2eb846
        "views/frame/browser_frame_view_mac.mm",
        "views/frame/browser_native_widget_mac.h",
        "views/frame/browser_native_widget_mac.mm",
-@@ -2592,11 +2871,17 @@ static_library("ui") {
+@@ -2592,11 +2878,17 @@ static_library("ui") {
        "//components/remote_cocoa/app_shim:features",
        "//components/remote_cocoa/browser",
      ]
@@ -120550,7 +120620,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..f75a687f56ef045be10e929e5e2eb846
    }
  
    if (is_win) {
-@@ -2711,6 +2996,8 @@ static_library("ui") {
+@@ -2711,6 +3003,8 @@ static_library("ui") {
  
    if (toolkit_views) {
      sources += [
@@ -120559,7 +120629,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..f75a687f56ef045be10e929e5e2eb846
        "views/browser_commands_views.cc",
        "views/browser_dialogs_views.cc",
        "views/frame/app_menu_button.cc",
-@@ -2748,6 +3035,37 @@ static_library("ui") {
+@@ -2748,6 +3042,37 @@ static_library("ui") {
        "views/frame/picture_in_picture_browser_frame_view.h",
        "views/frame/top_container_view.cc",
        "views/frame/top_container_view.h",
@@ -120597,7 +120667,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..f75a687f56ef045be10e929e5e2eb846
        "views/frame/vertical_tab_strip_region_view.cc",
        "views/frame/vertical_tab_strip_region_view.h",
        "views/tab_search_bubble_host.cc",
-@@ -2762,6 +3080,15 @@ static_library("ui") {
+@@ -2762,6 +3087,15 @@ static_library("ui") {
  
      sources += get_target_outputs(":webui_name_variants")
  
@@ -120613,7 +120683,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..f75a687f56ef045be10e929e5e2eb846
      public_deps += [ "//chrome/browser/ui/views/tabs/common:impl" ]
  
      deps += [
-@@ -4685,3 +5012,15 @@ if (is_mac) {
+@@ -4685,3 +5019,15 @@ if (is_mac) {
      ]
    }
  }
@@ -144357,7 +144427,7 @@ index 0a5e9cce40424b65d14d006a59c8d22b7f130e46..f8e4037832510b7d9a4cec65d321c95c
      controller_observation_.Observe(controller);
    }
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76961610bf 100644
+index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..80858537c597af95dd035bbdf8be883e99b8aefe 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
 @@ -10,6 +10,7 @@
@@ -144477,7 +144547,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
      } else if (omnibox::IsWebUIOmniboxInBrowserViewEnabled()) {
        omnibox_popup_view_ =
            std::make_unique<OmniboxPopupViewBrowserView>(this, browser_);
-@@ -453,6 +477,40 @@ void LocationBarView::Init() {
+@@ -453,6 +477,30 @@ void LocationBarView::Init() {
        AddChildView(std::move(omnibox_additional_text_view));
    omnibox_additional_text_view_->SetEnabledColor(kColorOmniboxResultsUrl);
  
@@ -144505,20 +144575,10 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
 +  aux_page_title_view_->SetCanProcessEventsWithinSubtree(false);
 +  aux_page_title_view_->SetVisible(false);
 +
-+  aux_agent_button_ = AddChildView(views::CreateVectorImageButtonWithNativeTheme(
-+      base::BindRepeating([](LocationBarView* owner) {
-+        if (auto* action = owner->AuxAgentAction())
-+          action->view_model()->ExecuteUserAction(
-+              ToolbarActionViewModel::InvocationSource::kToolbarButton);
-+      }, base::Unretained(this)),
-+      kAuxNewTabMarkIcon, 14, kColorOmniboxTextDimmed));
-+  aux_agent_button_->SetTooltipText(l10n_util::GetStringUTF16(IDS_AUX_ASK_AUX));
-+  aux_agent_button_->SetVisible(false);
-+
    selected_keyword_view_ = AddChildView(std::make_unique<SelectedKeywordView>(
        this, profile_, omnibox_controller_.get(), font_list));
  
-@@ -524,8 +582,14 @@ int LocationBarView::GetBorderRadius() const {
+@@ -524,8 +572,14 @@ int LocationBarView::GetBorderRadius() const {
  
  // static
  int LocationBarView::ComputeBorderRadius(gfx::Size size) {
@@ -144533,7 +144593,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
  }
  
  // static
-@@ -766,6 +830,63 @@ void LocationBarView::Layout(PassKey) {
+@@ -766,6 +820,63 @@ void LocationBarView::Layout(PassKey) {
      return;
    }
  
@@ -144597,7 +144657,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
    selected_keyword_view_->SetVisible(false);
  
    // TODO(manukh): Move constants to layout_constants.cc.
-@@ -853,6 +974,36 @@ void LocationBarView::Layout(PassKey) {
+@@ -853,6 +964,36 @@ void LocationBarView::Layout(PassKey) {
      }
    }
  
@@ -144634,19 +144694,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
    if (ShouldShowKeywordBubble()) {
      location_icon_view_->SetVisible(false);
      leading_decorations.AddDecoration(
-@@ -883,6 +1034,11 @@ void LocationBarView::Layout(PassKey) {
-     }
-   };
- 
-+  // The agent button ends the sidebar address field.
-+  aux_agent_button_->SetVisible(IsAuxSidebarNavigation() && AuxAgentAction());
-+  add_trailing_decoration(aux_agent_button_, /*intra_item_padding=*/0,
-+                          /*edge_padding=*/trailing_decorations_edge_padding);
-+
-   if (features::IsPageActionsElevatedToolbarEnabled()) {
-     if (page_action_container_ && page_action_container_->GetVisible()) {
-       const bool is_capsule_active = page_action_container_->IsCapsuleActive();
-@@ -912,6 +1068,10 @@ void LocationBarView::Layout(PassKey) {
+@@ -912,6 +1053,10 @@ void LocationBarView::Layout(PassKey) {
                                  ? kTrailingEdgePaddingForAim
                                  : trailing_decorations_edge_padding);
    }
@@ -144657,7 +144705,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
    add_trailing_decoration(ai_mode_hint_label_, /*intra_item_padding=*/0,
                            /*edge_padding=*/trailing_decorations_edge_padding);
    for (ContentSettingImageView* view :
-@@ -943,7 +1103,9 @@ void LocationBarView::Layout(PassKey) {
+@@ -943,7 +1088,9 @@ void LocationBarView::Layout(PassKey) {
    trailing_decorations.LayoutPass2(&entry_width);
  
    // Compute widths needed for location bar.
@@ -144668,7 +144716,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
  
    int available_width = entry_width - location_needed_width;
    // The bounds must be wide enough for all the decorations to fit, so if
-@@ -957,9 +1119,18 @@ void LocationBarView::Layout(PassKey) {
+@@ -957,9 +1104,18 @@ void LocationBarView::Layout(PassKey) {
    // |omnibox_view_| has an opaque background, so ensure it doesn't paint atop
    // the rounded ends.
    location_bounds.Intersect(GetLocalBoundsWithoutEndcaps());
@@ -144688,7 +144736,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
      // Short circuit the below logic when the additional views aren't visible.
      // This is necessary as resizing the omnibox can throw off it's scroll,
      // i.e., which chars are visible when its text overflows its width.
-@@ -1000,6 +1171,7 @@ void LocationBarView::Layout(PassKey) {
+@@ -1000,6 +1156,7 @@ void LocationBarView::Layout(PassKey) {
          reserve_label_width(ime_inline_autocomplete_view_);
      int omnibox_additional_text_width =
          reserve_label_width(omnibox_additional_text_view_);
@@ -144696,7 +144744,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
  
      // A helper to position `view` to the right of the previous positioned
      // `view`.
-@@ -1017,7 +1189,19 @@ void LocationBarView::Layout(PassKey) {
+@@ -1017,7 +1174,19 @@ void LocationBarView::Layout(PassKey) {
      position_view(omnibox_view_, omnibox_width);
      position_view(ime_inline_autocomplete_view_, ime_inline_autocomplete_width);
      position_view(omnibox_additional_text_view_, omnibox_additional_text_width);
@@ -144716,7 +144764,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
  
    LayoutSuperclass<View>(this);
  }
-@@ -1368,7 +1552,7 @@ int LocationBarView::GetMinimumTrailingWidth() const {
+@@ -1368,7 +1537,7 @@ int LocationBarView::GetMinimumTrailingWidth() const {
  }
  
  gfx::Rect LocationBarView::GetLocalBoundsWithoutEndcaps() const {
@@ -144725,7 +144773,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
    gfx::Rect bounds_without_endcaps(GetLocalBounds());
    bounds_without_endcaps.Inset(gfx::Insets::VH(0, border_radius));
    return bounds_without_endcaps;
-@@ -1388,8 +1572,30 @@ void LocationBarView::RefreshBackground() {
+@@ -1388,8 +1557,30 @@ void LocationBarView::RefreshBackground() {
    SkColor hovered =
        color_provider->GetColor(kColorLocationBarBackgroundHovered);
  
@@ -144757,7 +144805,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
      // Match the background color to the popup if the Omnibox is visibly
      // focused.
      background_color_ =
-@@ -1428,7 +1634,10 @@ void LocationBarView::RefreshBackground() {
+@@ -1428,7 +1619,10 @@ void LocationBarView::RefreshBackground() {
  
    // Keep the views::Textfield in sync. It needs an opaque background to
    // correctly enable subpixel AA.
@@ -144769,7 +144817,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
  
    // The divider between indicators and request chips should have the same color
    // as the omnibox.
-@@ -1620,6 +1829,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
+@@ -1620,6 +1814,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
    } else {
      omnibox_view_->SaveStateToTab(contents);
    }
@@ -144782,7 +144830,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
  }
  
  LocationBarTesting* LocationBarView::GetLocationBarForTesting() {
-@@ -2003,6 +2218,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
+@@ -2003,6 +2203,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
  }
  
  void LocationBarView::OnChanged() {
@@ -144794,7 +144842,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
    TRACE_EVENT("omnibox", "LocationBarView::OnChanged");
    // Ensure that background colors get updated on tab-switch.
    RefreshBackground();
-@@ -2033,6 +2253,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
+@@ -2033,6 +2238,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
  }
  
  void LocationBarView::OnOmniboxFocused() {
@@ -144807,7 +144855,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
    if (views::FocusRing::Get(this)) {
      views::FocusRing::Get(this)->Refresh();
    }
-@@ -2092,6 +2318,7 @@ void LocationBarView::OnTouchUiChanged() {
+@@ -2092,6 +2303,7 @@ void LocationBarView::OnTouchUiChanged() {
    omnibox_view_->SetFontList(font_list);
    ime_inline_autocomplete_view_->SetFontList(font_list);
    omnibox_additional_text_view_->SetFontList(font_list);
@@ -144815,16 +144863,10 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
    selected_keyword_view_->SetFontList(font_list);
    for (ContentSettingImageView* view : content_setting_views_) {
      view->SetFontList(font_list);
-@@ -2255,6 +2482,17 @@ SkColor LocationBarView::GetSecurityChipColor(
+@@ -2255,6 +2467,11 @@ SkColor LocationBarView::GetSecurityChipColor(
    return GetColorProvider()->GetColor(id);
  }
  
-+ToolbarActionView* LocationBarView::AuxAgentAction() const {
-+  const auto* toolbar = views::AsViewClass<ToolbarView>(parent());
-+  auto* extensions = toolbar ? toolbar->extensions_container() : nullptr;
-+  return extensions ? extensions->GetViewForId(aux::kAgentExtensionId) : nullptr;
-+}
-+
 +bool LocationBarView::IsAuxSidebarNavigation() const {
 +  const auto* toolbar = views::AsViewClass<ToolbarView>(parent());
 +  return toolbar && toolbar->IsAuxSidebarNavigationLayout();
@@ -144833,7 +144875,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
  bool LocationBarView::ShowPageInfoDialog() {
    WebContents* contents = GetWebContents();
    if (!contents) {
-@@ -2304,6 +2542,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
+@@ -2304,6 +2521,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
      return GetOmniboxController()->edit_model()->GetAddContextIcon(dip_size);
    }
  
@@ -144876,7 +144918,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
    return omnibox_view_
               ? omnibox_view_->GetIcon(
                     dip_size, location_icon_view_->GetForegroundColor(),
-@@ -2421,3 +2695,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
+@@ -2421,3 +2674,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
  ADD_READONLY_PROPERTY_METADATA(gfx::Rect, LocalBoundsWithoutEndcaps)
  ADD_READONLY_PROPERTY_METADATA(bool, PopupMode)
  END_METADATA
@@ -145076,7 +145118,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..fb2ef2eded9fa200e358d30ad1a49c76
 +}
 +#endif
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.h b/chrome/browser/ui/views/location_bar/location_bar_view.h
-index dc2ea8c236d03c89dfce8b21095906540370434f..056b3e6a6154cea8b4b771817895a75b97a24bb3 100644
+index dc2ea8c236d03c89dfce8b21095906540370434f..dd7d63327b1a13c58b1e8c1ddf0e4c4b06a14361 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.h
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.h
 @@ -8,6 +8,7 @@
@@ -145132,16 +145174,15 @@ index dc2ea8c236d03c89dfce8b21095906540370434f..056b3e6a6154cea8b4b771817895a75b
    // Returns the location bar border radius in DIPs.
    int GetBorderRadius() const;
    static int ComputeBorderRadius(gfx::Size size);
-@@ -309,6 +322,8 @@ class LocationBarView
+@@ -309,6 +322,7 @@ class LocationBarView
    void OnLocationIconPressed(const ui::MouseEvent& event) override;
    void OnLocationIconDragged(const ui::MouseEvent& event) override;
    bool ShowPageInfoDialog() override;
 +  bool IsAuxSidebarNavigation() const override;
-+  ToolbarActionView* AuxAgentAction() const;
    SkColor GetSecurityChipColor(
        security_state::SecurityLevel security_level) const override;
    ui::ImageModel GetLocationIcon(
-@@ -527,7 +542,21 @@ class LocationBarView
+@@ -527,7 +541,21 @@ class LocationBarView
    const raw_ptr<BrowserWindowInterface> browser_;
  
    // May be nullptr in tests.
@@ -145164,16 +145205,13 @@ index dc2ea8c236d03c89dfce8b21095906540370434f..056b3e6a6154cea8b4b771817895a75b
  
    // The omnibox controller.
    std::unique_ptr<OmniboxController> omnibox_controller_;
-@@ -575,6 +604,13 @@ class LocationBarView
+@@ -575,6 +603,10 @@ class LocationBarView
    // feature flag is disabled.
    raw_ptr<views::Label> omnibox_additional_text_view_ = nullptr;
  
 +  // Noneditable page title shown beside the real URL only while at rest.
 +  raw_ptr<views::Label> aux_page_title_view_ = nullptr;
 +  raw_ptr<views::LabelButton> aux_resting_origin_view_ = nullptr;
-+  // Opens the Aux agent panel from the sidebar address field, where the
-+  // toolbar's own Ask Aux button is not shown.
-+  raw_ptr<views::ImageButton> aux_agent_button_ = nullptr;
 +
    // The following views are used to provide hints and remind the user as to
    // what is going in the edit. They are all added a children of the
@@ -152672,10 +152710,10 @@ index aba398bb949c440739e2834f24ff204c58ed536c..0ddc75904d085400a3037671ea204289
    }
  
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_action_view.cc b/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
-index a9b7a01645abcd3dac7eac5a58d192045d69c684..8d0f9f43f7e37b979780c25e3dcbcef991616d49 100644
+index a9b7a01645abcd3dac7eac5a58d192045d69c684..37a31a3f6f40d6da9aea179fbf94ab762c658e1d 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
-@@ -4,6 +4,18 @@
+@@ -4,6 +4,20 @@
  
  #include "chrome/browser/ui/views/toolbar/toolbar_action_view.h"
  
@@ -152684,6 +152722,8 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..8d0f9f43f7e37b979780c25e3dcbcef9
 +#include "chrome/browser/buildflags.h"
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/ui/views/frame/aux_agent_identity.h"
++#include "ui/views/accessibility/view_accessibility.h"
 +#include "chrome/browser/ui/color/chrome_color_id.h"
 +#include "ui/color/color_provider.h"
 +#include "ui/gfx/color_utils.h"
@@ -152694,7 +152734,7 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..8d0f9f43f7e37b979780c25e3dcbcef9
  #include <string>
  
  #include "base/feature_list.h"
-@@ -22,12 +34,15 @@
+@@ -22,12 +36,15 @@
  #include "chrome/browser/ui/views/toolbar/toolbar_button.h"
  #include "chrome/browser/ui/views/toolbar/toolbar_icon_container_view.h"
  #include "chrome/browser/ui/views/toolbar/toolbar_ink_drop_util.h"
@@ -152710,7 +152750,7 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..8d0f9f43f7e37b979780c25e3dcbcef9
  #include "ui/base/models/image_model_utils.h"
  #include "ui/base/mojom/menu_source_type.mojom.h"
  #include "ui/base/resource/resource_bundle.h"
-@@ -99,6 +114,16 @@ ToolbarActionView::ToolbarActionView(ToolbarActionViewModel* view_model,
+@@ -99,6 +116,16 @@ ToolbarActionView::ToolbarActionView(ToolbarActionViewModel* view_model,
        extensions::ExtensionContextMenuModel::ContextMenuSource::kToolbarAction);
    set_context_menu_controller(context_menu_controller_.get());
  
@@ -152727,7 +152767,7 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..8d0f9f43f7e37b979780c25e3dcbcef9
    UpdateState();
  }
  
-@@ -120,6 +145,12 @@ std::unique_ptr<LabelButtonBorder> ToolbarActionView::CreateDefaultBorder()
+@@ -120,6 +147,12 @@ std::unique_ptr<LabelButtonBorder> ToolbarActionView::CreateDefaultBorder()
    // Toolbar action buttons have no insets because the badges are drawn right at
    // the edge of the view's area. Other padding (such as centering the icon) is
    // handled directly by the Image.
@@ -152740,13 +152780,12 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..8d0f9f43f7e37b979780c25e3dcbcef9
    border->set_insets(gfx::Insets());
    return border;
  }
-@@ -193,13 +224,59 @@ void ToolbarActionView::MaybeUpdateHoverCardStatus(
+@@ -193,13 +226,62 @@ void ToolbarActionView::MaybeUpdateHoverCardStatus(
    delegate_->UpdateHoverCard(this, ToolbarActionHoverCardUpdateType::kHover);
  }
  
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +namespace {
-+#include "chrome/browser/ui/tabs/aux_new_tab_mark.inc"
 +// In the sidebar address row "Ask Aux" is an icon button, so the address
 +// field keeps its width.
 +bool InAuxSidebarToolbar(const views::View* view) {
@@ -152763,21 +152802,25 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..8d0f9f43f7e37b979780c25e3dcbcef9
    content::WebContents* web_contents = delegate_->GetCurrentWebContents();
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +  const bool supplied_agent = view_model_->GetId() == aux::kAgentExtensionId;
++  const auto* agent = supplied_agent ? aux::AuxAgentIdentity::FromView(this) : nullptr;
 +  GetViewAccessibility().SetName(supplied_agent
-+      ? l10n_util::GetStringUTF16(IDS_AUX_ASK_AUX) : view_model_->GetAccessibleName(web_contents));
++      ? aux::AskAgentText(agent) : view_model_->GetAccessibleName(web_contents));
 +  if (supplied_agent) {
 +    const bool compact = InAuxSidebarToolbar(this);
-+    SetTooltipText(l10n_util::GetStringUTF16(IDS_AUX_ASK_AUX));
-+    SetText(compact ? std::u16string() : l10n_util::GetStringUTF16(IDS_AUX_ASK_AUX));
++    // The pill shows the Agent's picture beside its name, and only the
++    // picture (or the Aux mark) when compact.
++    const bool picture = agent && !agent->avatar().isNull();
++    SetTooltipText(aux::AskAgentText(agent));
++    SetText(compact ? std::u16string() : aux::AskAgentText(agent));
 +    SetTextColor(views::Button::STATE_NORMAL, kColorToolbarButtonIcon);
 +    SetTextColor(views::Button::STATE_HOVERED, kColorToolbarButtonIconHovered);
 +    SetTextColor(views::Button::STATE_PRESSED, kColorToolbarButtonIconPressed);
 +    SetTextColor(views::Button::STATE_DISABLED, kColorToolbarButtonIconInactive);
 +    for (auto state : {views::Button::STATE_NORMAL, views::Button::STATE_HOVERED,
 +                       views::Button::STATE_PRESSED, views::Button::STATE_DISABLED}) {
-+      SetImageModel(state, compact ? ui::ImageModel::FromVectorIcon(
-+                                         kAuxNewTabMarkIcon, kColorToolbarButtonIcon, 16)
-+                                   : ui::ImageModel());
++      SetImageModel(state, compact || picture
++                               ? aux::AgentIcon(agent, 16, kColorToolbarButtonIcon)
++                               : ui::ImageModel());
 +    }
 +    if (const auto* colors = GetColorProvider()) {
 +      // Supplied normal-state pill: blend toolbar icon into toolbar at 26/255.
@@ -152800,7 +152843,7 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..8d0f9f43f7e37b979780c25e3dcbcef9
    ui::ImageModel icon = view_model_->GetIcon(web_contents, GetPreferredSize());
    if (!icon.IsEmpty()) {
      SetImageModel(views::Button::STATE_NORMAL, icon);
-@@ -207,9 +284,16 @@ void ToolbarActionView::UpdateState() {
+@@ -207,9 +289,16 @@ void ToolbarActionView::UpdateState() {
                    ui::GetDefaultDisabledIconFromImageModel(icon));
    }
  
@@ -152818,7 +152861,7 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..8d0f9f43f7e37b979780c25e3dcbcef9
    }
  
    SchedulePaint();
-@@ -225,9 +309,23 @@ int ToolbarActionView::GetDragOperationsForTest(const gfx::Point& point) {
+@@ -225,9 +314,23 @@ int ToolbarActionView::GetDragOperationsForTest(const gfx::Point& point) {
  
  gfx::Size ToolbarActionView::CalculatePreferredSize(
      const views::SizeBounds& available_size) const {
@@ -152842,11 +152885,64 @@ index a9b7a01645abcd3dac7eac5a58d192045d69c684..8d0f9f43f7e37b979780c25e3dcbcef9
  bool ToolbarActionView::OnMousePressed(const ui::MouseEvent& event) {
    delegate_->UpdateHoverCard(nullptr, ToolbarActionHoverCardUpdateType::kEvent);
    if (event.IsOnlyLeftMouseButton()) {
+@@ -290,16 +393,43 @@ void ToolbarActionView::AddedToWidget() {
+   // This cannot happen until there's a focus controller, which lives on the
+   // widget.
+   view_model_->RegisterCommand();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (view_model_->GetId() != aux::kAgentExtensionId) return;
++  if (auto* identity = aux::AuxAgentIdentity::FromView(this)) {
++    aux_agent_identity_subscription_ = identity->RegisterChanged(base::BindRepeating(
++        &ToolbarActionView::AuxAgentIdentityChanged, base::Unretained(this)));
++    aux_announced_status_ = static_cast<int>(identity->identity().status);
++  }
++  UpdateState();
++#endif
+ }
+ 
+ void ToolbarActionView::RemovedFromWidget() {
+   // This must happen before the focus controller, which lives on the widget,
+   // becomes unreachable.
+   view_model_->UnregisterCommand();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  aux_agent_identity_subscription_ = {};
++#endif
+ 
+   MenuButton::RemovedFromWidget();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void ToolbarActionView::AuxAgentIdentityChanged() {
++  const auto* identity = aux::AuxAgentIdentity::FromView(this);
++  if (!identity) return;
++  // In the sidebar the address field's agent button speaks for the Agent.
++  if (IsDrawn() && !InAuxSidebarToolbar(this)) {
++    const auto text = aux::AgentStatusAnnouncement(
++        static_cast<aux::ChatStatus>(aux_announced_status_), identity->identity());
++    if (!text.empty()) GetViewAccessibility().AnnounceText(text);
++  }
++  aux_announced_status_ = static_cast<int>(identity->identity().status);
++  UpdateState();
++}
++#endif
++
+ void ToolbarActionView::OnContextMenuShown() {
+   delegate_->OnContextMenuShown(view_model_->GetId());
+ }
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_action_view.h b/chrome/browser/ui/views/toolbar/toolbar_action_view.h
-index 564ea6dd95ef2fa401063b4306760ff5f63c1b32..a03e313683dd8237d522c66832767ea48f443a85 100644
+index 564ea6dd95ef2fa401063b4306760ff5f63c1b32..941cc9a8fafe5e04a9dc27610df72f0b1024c8db 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_action_view.h
 +++ b/chrome/browser/ui/views/toolbar/toolbar_action_view.h
-@@ -128,6 +128,7 @@ class ToolbarActionView : public views::MenuButton {
+@@ -7,6 +7,8 @@
+ 
+ #include "base/callback_list.h"
+ #include "base/memory/raw_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_action_hover_card_controller.h"
+ #include "extensions/common/extension_id.h"
+ #include "ui/base/metadata/metadata_header_macros.h"
+@@ -128,6 +130,7 @@ class ToolbarActionView : public views::MenuButton {
    void OnDragDone() override;
    void AddedToWidget() override;
    void RemovedFromWidget() override;
@@ -152854,6 +152950,20 @@ index 564ea6dd95ef2fa401063b4306760ff5f63c1b32..a03e313683dd8237d522c66832767ea4
  
    void OnContextMenuShown();
    void OnContextMenuClosed();
+@@ -160,6 +163,13 @@ class ToolbarActionView : public views::MenuButton {
+   // The subscription to model updates.
+   base::CallbackListSubscription model_subscription_;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // The Agent's name, picture and state, for the supplied agent's pill.
++  void AuxAgentIdentityChanged();
++  base::CallbackListSubscription aux_agent_identity_subscription_;
++  int aux_announced_status_ = 0;
++#endif
++
+   base::WeakPtrFactory<ToolbarActionView> weak_factory_{this};
+ };
+ 
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_controller.cc b/chrome/browser/ui/views/toolbar/toolbar_controller.cc
 index 04bd545acf62e2f1c9a7cee34befdd3a5c6b1cdc..7e55ac1b3f4df5a9252a10473e5ed6b8c321d41d 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_controller.cc
@@ -152903,10 +153013,10 @@ index 04bd545acf62e2f1c9a7cee34befdd3a5c6b1cdc..7e55ac1b3f4df5a9252a10473e5ed6b8
              // If the element is not on the toolbar, either it's being handled
              // by WebUI, or the element was not added to the toolbar. We do not
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc30ca8be1 100644
+index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..7aa936fad205e5c14ba4e8199143932f15cbc18e 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-@@ -3,11 +3,22 @@
+@@ -3,11 +3,23 @@
  // found in the LICENSE file.
  
  #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
@@ -152914,6 +153024,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
 +#include "chrome/browser/buildflags.h"
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +#include "chrome/browser/ui/aux_preview/aux_preview_controls.h"
++#include "chrome/browser/ui/views/frame/aux_agent_identity.h"
 +#endif
 +
 +#include "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.h"
@@ -152929,7 +153040,19 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
  #include "base/command_line.h"
  #include "base/containers/fixed_flat_map.h"
  #include "base/feature_list.h"
-@@ -313,6 +324,202 @@ ToolbarView::~ToolbarView() {
+@@ -275,6 +287,11 @@ ToolbarView::ToolbarView(BrowserWindowInterface* browser,
+     scoped_unowned_user_data_.emplace(browser_->GetUnownedUserDataHost(),
+                                       *this);
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (display_mode_ == DisplayMode::kNormal) {
++    aux_agent_identity_ = std::make_unique<aux::AuxAgentIdentity>(*browser);
++  }
++#endif
+ 
+   SetID(VIEW_ID_TOOLBAR);
+   SetProperty(views::kElementIdentifierKey, kToolbarElementId);
+@@ -313,6 +330,202 @@ ToolbarView::~ToolbarView() {
  
  // Forwards the early teardown request to both the embedded and detached WebUI
  // toolbar web views to stop renderer script execution before IPC disconnection.
@@ -153132,7 +153255,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
  void ToolbarView::DestroyWebUIToolbarWebContents() {
    if (toolbar_webview_) {
      toolbar_webview_->DestroyWebContents();
-@@ -403,15 +610,12 @@ void ToolbarView::Init() {
+@@ -403,15 +616,12 @@ void ToolbarView::Init() {
    PrefService* const prefs = browser_->GetProfile()->GetPrefs();
  
    std::unique_ptr<ExtensionsToolbarDesktop> extensions_container;
@@ -153148,7 +153271,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
    }
  
    std::unique_ptr<MediaToolbarButtonView> media_button;
-@@ -423,6 +627,15 @@ void ToolbarView::Init() {
+@@ -423,6 +633,15 @@ void ToolbarView::Init() {
    }
  #endif
  
@@ -153164,7 +153287,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
    // Always add children in order from left to right, for accessibility.
    if (!features::IsWebUIBackForwardButtonEnabled()) {
      back_ = AddChildView(std::make_unique<BackForwardButton>(
-@@ -504,16 +717,6 @@ void ToolbarView::Init() {
+@@ -504,16 +723,6 @@ void ToolbarView::Init() {
              0, GetLayoutConstant(LayoutConstant::kToolbarDividerSpacing)));
    }
  
@@ -153181,7 +153304,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
    if (!features::IsWebUIPinnedToolbarActionsEnabled()) {
      pinned_toolbar_actions_container_ = AddChildView(
          std::make_unique<PinnedToolbarActionsContainer>(browser_view_, this));
-@@ -528,7 +731,7 @@ void ToolbarView::Init() {
+@@ -528,7 +737,7 @@ void ToolbarView::Init() {
      const bool should_show_chrome_labs_ui =
          ShouldShowChromeLabsUI(browser_->GetProfile());
      if (should_show_chrome_labs_ui) {
@@ -153190,7 +153313,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
            chrome_labs_prefs::kBrowserLabsEnabledEnterprisePolicy, prefs,
            base::BindRepeating(&ToolbarView::OnChromeLabsPrefChanged,
                                base::Unretained(this)));
-@@ -538,7 +741,7 @@ void ToolbarView::Init() {
+@@ -538,7 +747,7 @@ void ToolbarView::Init() {
        // value. Only call OnChromeLabsPrefChanged if there is a change from
        // the initial value.
        pinned_toolbar_actions_container_->GetActionItemFor(kActionShowChromeLabs)
@@ -153199,7 +153322,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
                         should_show_chrome_labs_ui);
      }
    }
-@@ -562,6 +765,12 @@ void ToolbarView::Init() {
+@@ -562,6 +771,12 @@ void ToolbarView::Init() {
      media_button_ = AddChildView(std::move(media_button));
    }
  
@@ -153212,7 +153335,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
    if (glic::GlicEnabling::IsProfileEligible(browser_view_->GetProfile())) {
      if (base::FeatureList::IsEnabled(features::kAiOverlayDialog) &&
          ttc::AiOverlayDialogController::From(browser_)) {
-@@ -646,26 +855,31 @@ void ToolbarView::Init() {
+@@ -646,26 +861,31 @@ void ToolbarView::Init() {
    // the widget (widget found by way of app_menu_button_->GetWidget()).
    app_menu_icon_controller_.UpdateDelegate();
  
@@ -153248,7 +153371,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
    }
  
    auto* vertical_tab_strip_state_controller =
-@@ -1000,6 +1214,18 @@ bool ToolbarView::IsActorTaskListBubbleShowing() {
+@@ -1000,6 +1220,18 @@ bool ToolbarView::IsActorTaskListBubbleShowing() {
    return actor_task_list_bubble_ && actor_task_list_bubble_->IsShowing();
  }
  
@@ -153267,7 +153390,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
  void ToolbarView::FinalizeHideGlicActorTaskIcon() {
    if (!glic_button_ || !glic_actor_task_icon_ ||
        !glic_actor_button_container_) {
-@@ -1366,8 +1592,112 @@ bool ToolbarView::GetAcceleratorForCommandId(
+@@ -1366,8 +1598,112 @@ bool ToolbarView::GetAcceleratorForCommandId(
  ////////////////////////////////////////////////////////////////////////////////
  // ToolbarView, views::View overrides:
  
@@ -153380,7 +153503,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
    gfx::Size size;
    switch (display_mode_) {
      case DisplayMode::kCustomTab:
-@@ -1375,6 +1705,9 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+@@ -1375,6 +1711,9 @@ gfx::Size ToolbarView::CalculatePreferredSize(
        break;
      case DisplayMode::kLocation:
        size = location_bar_->PreferredSize();
@@ -153390,7 +153513,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
        break;
      case DisplayMode::kNormal:
        size = AccessiblePaneView::CalculatePreferredSize(available_size);
-@@ -1396,6 +1729,23 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+@@ -1396,6 +1735,23 @@ gfx::Size ToolbarView::CalculatePreferredSize(
  }
  
  gfx::Size ToolbarView::GetMinimumSize() const {
@@ -153414,7 +153537,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
    gfx::Size size;
    switch (display_mode_) {
      case DisplayMode::kCustomTab:
-@@ -1403,6 +1753,9 @@ gfx::Size ToolbarView::GetMinimumSize() const {
+@@ -1403,6 +1759,9 @@ gfx::Size ToolbarView::GetMinimumSize() const {
        break;
      case DisplayMode::kLocation:
        size = location_bar_->MinimumSize();
@@ -153424,7 +153547,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
        break;
      case DisplayMode::kNormal:
        size = AccessiblePaneView::GetMinimumSize();
-@@ -1469,9 +1822,30 @@ void ToolbarView::Layout(PassKey) {
+@@ -1469,9 +1828,30 @@ void ToolbarView::Layout(PassKey) {
      }
    }
  
@@ -153457,7 +153580,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
  }
  
  void ToolbarView::OnThemeChanged() {
-@@ -1504,7 +1878,8 @@ void ToolbarView::ChildPreferredSizeChanged(views::View* child) {
+@@ -1504,7 +1884,8 @@ void ToolbarView::ChildPreferredSizeChanged(views::View* child) {
  
  void ToolbarView::ChildVisibilityChanged(views::View* child) {
    if (child == home_) {
@@ -153467,7 +153590,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
        base::UmaHistogramBoolean("Toolbar.Overflow.HomeButton", true);
      }
    }
-@@ -1674,6 +2049,13 @@ void ToolbarView::LayoutCommon() {
+@@ -1674,6 +2055,13 @@ void ToolbarView::LayoutCommon() {
  
    gfx::Insets interior_margin =
        GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
@@ -153481,7 +153604,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
  
    const bool is_trailing_contextual_tasks_visible =
        IsTrailingContextualTasksButtonVisible();
-@@ -1742,7 +2124,20 @@ void ToolbarView::LayoutCommon() {
+@@ -1742,7 +2130,20 @@ void ToolbarView::LayoutCommon() {
        interior_margin.set_right(0);
      }
    }
@@ -153502,7 +153625,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
  
    // Extend buttons to the window edge if we're either in a maximized or
    // fullscreen window. This makes the buttons easier to hit, see Fitts' law.
-@@ -1752,7 +2147,8 @@ void ToolbarView::LayoutCommon() {
+@@ -1752,7 +2153,8 @@ void ToolbarView::LayoutCommon() {
    // `SetIsMaximizedOrFullscreen` remains reliably synchronized with window
    // bounds without requiring supplemental widget observation hooks.
    const bool is_maximized_or_fullscreen =
@@ -153512,7 +153635,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
                                  browser_->GetWindow()->IsFullscreen());
  
    const int margin = is_maximized_or_fullscreen ? leading_interior_margin : 0;
-@@ -2059,11 +2455,14 @@ views::View* ToolbarView::GetViewForDrop() {
+@@ -2059,11 +2461,14 @@ views::View* ToolbarView::GetViewForDrop() {
  }
  
  void ToolbarView::OnChromeLabsPrefChanged() {
@@ -153528,7 +153651,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
        ShouldShowChromeLabsUI(browser_->GetProfile()));
    GetViewAccessibility().AnnounceText(l10n_util::GetStringUTF16(
        chrome_labs_action->GetVisible()
-@@ -2080,13 +2479,19 @@ void ToolbarView::LoadImages() {
+@@ -2080,13 +2485,19 @@ void ToolbarView::LoadImages() {
  }
  
  void ToolbarView::OnShowForwardButtonChanged() {
@@ -153551,7 +153674,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..c0c704c1a1f2592f467437167b177edc
  }
  
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.h b/chrome/browser/ui/views/toolbar/toolbar_view.h
-index 0520c2901223d569f0266421d2e6c6f7dbaff718..4a7eb2a1c1206b5355e8b4aca98ce1e5fe23a49c 100644
+index 0520c2901223d569f0266421d2e6c6f7dbaff718..fbf4fa563e19384ed0c5be5d5d3b3fca2e8d15f3 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.h
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
 @@ -13,6 +13,8 @@
@@ -153563,15 +153686,18 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..4a7eb2a1c1206b5355e8b4aca98ce1e5
  #include "chrome/browser/command_observer.h"
  #include "chrome/browser/glic/browser_ui/glic_split_button_delegate.h"
  #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
-@@ -47,6 +49,7 @@
+@@ -47,6 +49,10 @@
  #endif  // BUILDFLAG(IS_CHROMEOS)
  
  class ActorTaskListBubble;
++namespace aux {
++class AuxAgentIdentity;
++}  // namespace aux
 +class Profile;
  class AvatarToolbarButton;
  class AvatarToolbarButtonInterface;
  class BatterySaverButton;
-@@ -61,6 +64,7 @@ class ReloadButton;
+@@ -61,6 +67,7 @@ class ReloadButton;
  class WebUIToolbarWebView;
  class PinnedToolbarActionsContainer;
  class ToolbarButton;
@@ -153579,7 +153705,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..4a7eb2a1c1206b5355e8b4aca98ce1e5
  class AvatarToolbarButtonBrowserTest;
  class ToolbarController;
  class ToolbarDivider;
-@@ -120,6 +124,35 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -120,6 +127,38 @@ class ToolbarView : public views::AccessiblePaneView,
    // Create the contents of the Browser Toolbar.
    void Init();
  
@@ -153591,6 +153717,9 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..4a7eb2a1c1206b5355e8b4aca98ce1e5
 +  void RebindOwnedActionsForAuxProfileSwitch(Profile* target_profile);
 +  // Only before identity commits, after the real source tabs are restored.
 +  void AbortOwnedActionsForAuxProfileSwitch(Profile* source_profile);
++  // The account Agent shown by the agent button and the "Ask" pill; null in
++  // app and popup windows.
++  aux::AuxAgentIdentity* aux_agent_identity() { return aux_agent_identity_.get(); }
 +#endif
 +
 +  // Two-row native layout for an Aux sidebar host. The genuine location bar,
@@ -153615,7 +153744,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..4a7eb2a1c1206b5355e8b4aca98ce1e5
    // Forces the toolbar (and transitively the location bar) to update its
    // current state.  If |tab| is non-NULL, we're switching (back?) to this tab
    // and should restore any previous location bar state (such as user editing)
-@@ -270,6 +303,8 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -270,6 +309,8 @@ class ToolbarView : public views::AccessiblePaneView,
    void ShowActorTaskListBubble() override;
    void CloseActorTaskListBubble() override;
    bool IsActorTaskListBubbleShowing() override;
@@ -153624,7 +153753,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..4a7eb2a1c1206b5355e8b4aca98ce1e5
  
    // Updates glic button parenting after hiding glic actor task icon.
    void FinalizeHideGlicActorTaskIcon();
-@@ -281,6 +316,10 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -281,6 +322,10 @@ class ToolbarView : public views::AccessiblePaneView,
    void SetToolbarVisibility(bool visible);
  
   private:
@@ -153635,7 +153764,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..4a7eb2a1c1206b5355e8b4aca98ce1e5
    FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
                             CircularButtonRetainsInteriorMarginsAndPosition);
    FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
-@@ -407,6 +446,7 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -407,6 +452,7 @@ class ToolbarView : public views::AccessiblePaneView,
    // |location_bar_| is guaranteed to exist. These pointers are owned by the
    // view hierarchy.
    raw_ptr<ToolbarButton> contextual_tasks_button_ = nullptr;
@@ -153643,7 +153772,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..4a7eb2a1c1206b5355e8b4aca98ce1e5
    raw_ptr<ToolbarButton> back_ = nullptr;
    raw_ptr<ToolbarButton> forward_ = nullptr;
    raw_ptr<ReloadButton> reload_ = nullptr;
-@@ -463,18 +503,38 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -463,18 +509,39 @@ class ToolbarView : public views::AccessiblePaneView,
    std::optional<ui::ScopedUnownedUserData<ToolbarButtonProvider>>
        scoped_unowned_user_data_;
  
@@ -153677,6 +153806,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..4a7eb2a1c1206b5355e8b4aca98ce1e5
 +      std::make_unique<BooleanPrefMember>();
 +
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  std::unique_ptr<aux::AuxAgentIdentity> aux_agent_identity_;
 +  raw_ptr<Profile> aux_switch_source_profile_ = nullptr;
 +  bool aux_owned_actions_prepared_ = false;
 +  bool aux_overflow_button_was_enabled_ = false;

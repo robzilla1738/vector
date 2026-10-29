@@ -56,7 +56,7 @@ test('the UI module imports only chunks the candidate ships, by names they expor
   const source = readFileSync(new URL(`./${UI_FILE}`, import.meta.url), 'utf8');
   checkModule(UI_FILE, source);
   const imports = [...source.matchAll(/import \{([^}]+)\} from "\.\/([^"]+)"/g)];
-  assert.equal(imports.length, 8, 'every import is checked');
+  assert.equal(imports.length, 7, 'every import is checked');
   for (const [, names, chunk] of imports) {
     const text = readFileSync(path.join(dist, 'assets', chunk), 'utf8');
     const exported = new Set([...text.matchAll(/export\{([^}]*)\}/g)].at(-1)[1].split(',').map(item => item.trim().split(' as ').at(-1)));
