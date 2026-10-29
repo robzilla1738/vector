@@ -137,7 +137,7 @@ export const EXTENSION_EDITS = Object.freeze({
       'R={ask:"Ask Aux a task, @ for context"',
       'R={get ask(){let n="Aux";try{n=localStorage.getItem("aux.agent.name.v1")||n}catch{}return`Message ${n}, @ for context`}'),
   ],
-  // Settings › Agents: the agent first; the per-tab chat option no longer applies.
+  // Settings › Agent: the agent first; the per-tab chat option no longer applies.
   'assets/agents-urkO3LLg.js': [
     edit('agent UI import',
       'import{n as Ge}from"./document-title-DXu4CzFj.js";',
@@ -148,6 +148,17 @@ export const EXTENSION_EDITS = Object.freeze({
     edit('no per-tab chat option',
       '(0,e.jsx)(is,{}),(0,e.jsx)(ps,{})',
       '(0,e.jsx)(is,{})'),
+    edit('the page is named for the one agent: breadcrumb',
+      'segments:["Settings","Agents"]', 'segments:["Settings","Agent"]'),
+    edit('the page is named for the one agent: heading',
+      '"h1",{children:"Agents"}', '"h1",{children:"Agent"}'),
+  ],
+  // Settings navigation and its search index: one agent, so "Agent".
+  'assets/route-TQyeTEXE.js': [
+    edit('Settings navigation item',
+      '{label:"Agents",icon:$2,activeIcon:B2,', '{label:"Agent",icon:$2,activeIcon:B2,'),
+    edit('Settings search title',
+      'path:"/u/$userId/settings/agents",title:"Agents",', 'path:"/u/$userId/settings/agents",title:"Agent",'),
   ],
 });
 

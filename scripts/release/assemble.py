@@ -202,6 +202,23 @@ def replace_files(app: Path) -> list:
     return done
 
 
+# The CLI launcher is built with the browser (target native_cli_open) and replaces the
+# sealed component's copy, so the terminal commands match this browser's sources.
+CLI_EXECUTABLE = 'apps/cli/Aux CLI.app/Contents/MacOS/aux-cli'
+CLI_SEALED_SHA256 = '6f022a2fff6656648905aaa1f1340c3ccbd98c3be91684f08a2114128c4bbf4d'
+
+
+def replace_cli(app: Path, native: Path) -> list:
+    path, source = app / AUX / CLI_EXECUTABLE, native.parent / 'native_cli_open'
+    if sha256(path) != CLI_SEALED_SHA256:
+        raise SystemExit(f'{CLI_EXECUTABLE}: unexpected contents; review the replacement')
+    if not source.is_file():
+        raise SystemExit(f'{source}: build the native_cli_open target first')
+    shutil.copyfile(source, path)
+    path.chmod(0o755)
+    return [{'path': f'{AUX}/{CLI_EXECUTABLE}', 'why': 'CLI launcher built with this browser', 'sha256': sha256(path)}]
+
+
 def main_executable(app: Path, target: str) -> Path:
     """The file a target's signature covers as code: a loose file itself, a bundle's executable."""
     path = app / target
@@ -347,6 +364,7 @@ def main() -> int:
     # 2. Package edits.
     edits = apply_edits(app, json.loads((HERE / 'package-edits.json').read_text()))
     edits += replace_files(app)
+    edits += replace_cli(app, args.native)
     # Component transforms written as modules (count-checked inside, see transforms.mjs).
     transforms = json.loads(run(['node', str(HERE / 'transforms.mjs'), str(app)]).stdout or '[]')
     marker_path = app / AUX / 'bundle.json'

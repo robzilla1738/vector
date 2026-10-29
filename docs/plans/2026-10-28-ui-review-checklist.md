@@ -46,11 +46,13 @@ Every UI request from the 2026-10-28 review, with its state. "Verified" means ch
 | 40 | Installing a site as an app works and files it under "Aux Apps", not "Chromium Apps" | Built (build 42): release packaging had grown Info.plist past Chromium's allowance, so the shortcut helper aborted; the allowance is raised. Installing was not repeated |
 | 41 | No Side chats list in the sidebar | Verified (build 47): Chats list hidden |
 | 42 | Agent setup clean: no clipped content or off borders | Verified (build 47): full-panel view, nothing clipped |
-| 43 | Agent as a smaller button to the right of the URL field, tasteful liquid-chrome finish | Verified (build 51): chrome bezel beside the field; corner matched to the field (build 52) |
+| 43 | Agent as a smaller button to the right of the URL field | Verified (build 51); 2026-10-29 the chrome bezel became a pinned-tab tile (row 48) |
 | 44 | One logo per surface (favicons and tab icons aside) | Verified (build 54): name-only panel header, swatches in pickers, one face per surface; the new tab page keeps its logo and the default-browser nudge loses its own |
 | 45 | Side panel bottom: effort must not overlap other items | Verified (build 51): gap between the model, effort and context ring |
 | 46 | No style or initiative options; name, picture and instructions; a few nice looks plus a custom picture | Verified (build 54): five looks plus "+"; Instructions (seed heading hidden), Memory and Routines |
 | 47 | Agent named Aux with the Aux logo, same agent experience (the Otto mascot of builds 53–54 dropped) | Verified (build 56): Aux mark in the button, greeting, Customize and Settings; Classic plus Ocean, Iris, Aurora and Sunset; the Otto profile moved to Aux |
+| 48 | Agent button matches the pinned tiles, no liquid glass | Built (build 58) |
+| 49 | Settings item "Agents" reads "Agent" | Built (build 58): navigation, heading, breadcrumb, tab title and Settings search |
 
 Builds 41–43 are local Developer ID builds under `out/release/`. Build 42 was launched and checked on screen (items marked build 42). Build 43 adds the split fixes in 12.
 

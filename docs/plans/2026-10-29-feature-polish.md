@@ -1,49 +1,62 @@
 # Feature polish pass (in progress, paused 2026-10-29)
 
-Robert: "for the ones that do exist make sure they are excellent." This pass drives each existing feature on build 56 and fixes what isn't up to the bar. Screenshots are in `out/acceptance/20261029/` (local only).
+Robert: "for the ones that do exist make sure they are excellent." This pass drives each existing feature on the latest local Developer ID build and fixes what isn't up to the bar. Screenshots are in `out/acceptance/20261029/` (local only). Builds 57–59 are in `out/release/`. Build 59 is the latest assembled build; build 60 is not assembled yet.
 
-## Checked on build 56
+## Checked on screen
 
 | Feature | Result |
 |---|---|
-| Cmd+T / K / L bar | Works; defects P1–P5 below |
-| Sidebar collapse (Cmd+S) and hover reveal | Good |
-| Minimal UI | Defect M1 |
-| Pins (pin to all Spaces, open, back to a tab) | Works; defects PN1, PN2 |
-| Same tab list in a second window | Works (each window keeps its own active tab) |
-| Peek (link menu "Open Link in Peek", Escape) | Good |
-| Picture in picture | In the video's context menu; Cmd+K hides it until the video plays (not yet tried further) |
+| Sidebar rows and pins switching back and forth | Fixed in build 57 (ID1 below) |
+| Cmd+L | Fixed in build 57: the address arrives selected, and the current tab isn't offered as a result |
+| Minimal UI (Ctrl+Cmd+S) | Fixed in build 57: the sidebar hides and the page fills the window; the same key brings it back |
+| Shortcuts | Fixed in build 57: every Aux command has a default (Ctrl+Cmd keys, plus Alt+Cmd+N for Quick window and Cmd+Shift+2 for screenshot). All show in Settings › Appearance with change and reset |
+| Tab row tooltips | Fixed in build 57: title and address for web pages, title only for Aux pages |
+| Gap under the pins | Gone in build 57 |
+| Agent button | Build 58: a flat tile like the pinned tabs (no liquid chrome) |
+| Settings › Agent | Build 58: the item, heading, breadcrumb, tab title and Settings search say "Agent" |
+| Closing tabs quickly | Build 59: closes queue instead of failing. The error now reads "Couldn't close that tab. Try again." and clears itself |
+| `aux open <url>` and `--profile` | Work. External links open in Little Aux |
+| Peek, picture-in-picture, second window with the same tabs | Work (checked on build 56) |
+| Link routing and Tab cleanup dialogs | Work. With only one profile, routing between profiles can't be tested |
+| Downloads | Work, and a name clash gets a safe name ("notes (2).txt") |
 
-Not reached yet: splits (verified in build 42), Quick window, downloads and AI rename, site routing, tab cleanup, shortcut settings, CLI `aux open`, extensions, profiles, @tab mentions.
+## Built but not yet seen on screen (build 60)
 
-## Defects found
+- **Archived tabs:** the in-list row is gone. Hovering the Tabs header shows an archive button, which lists archived tabs and stays lit until you go back. An empty list says "No archived tabs".
+- **Sidebar button row:** it keeps only back, forward and reload. Before, the battery-saver leaf and a "»" overflow holding downloads showed up there; downloads have the footer button.
+- **CLI:**
+  - `aux` and `aux --help` print usage instead of an internal identity error.
+  - `aux open` prints "Sent to Aux."
+  - Unknown commands say so.
+  - Assembly now installs the CLI built with the browser (`native_cli_open`; `scripts/release/assemble.py`, guarded by the sealed file's hash).
+- **Bad `--profile` alert:** "Couldn't open the link. The profile or Space it was sent to isn't available…"
+- **Settings copy** (`vendor/provided/polish/`):
+  - plain Link routing and Tab cleanup intros
+  - Minimal UI says what it does
+  - each shortcut has its own description instead of "Assign a shortcut to this browser command."
+- **Tab menu labels:** "Unload tab", "Archive tab", "Undo" (in builds 57+).
 
-- **ID1, sidebar rows that won't open (serious).** Clicking a loaded web page's row, or picking it in Cmd+K, does nothing. Cause: Aux's user-data keys were all `const char kKey = 0`. The build uses `-fmerge-all-constants`, so the keys share one address. Saving a pin's URL overwrote the tab's sidebar identity, and the same clash hits the bookmark-tab, retained-group, capture and file keys. Eleven keys are affected.
-- **P1, Cmd+L.** The address isn't selected, so typing adds to it.
-- **P2, Cmd+T with plain words.** "gith" is labeled "Open in new tab" instead of a search.
-- **P3, Recently Closed.** The same page is listed many times.
-- **P4, spellcheck.** The bar's field shows a spellcheck underline.
-- **P5, the current tab.** It is offered as a "Switch" result.
-- **K1, shortcuts.** 20 Aux commands have no default shortcut (minimal UI, Spaces, panes, split, Quick window, screenshot, PiP and others).
-- **M1, minimal UI.** It changes nothing visible in sidebar layout.
-- **T1, tooltips.** Tab rows show raw `chrome-extension://` and `chrome://` addresses.
-- **CM1, tab menu.** Labels are jargon: "Close this view (unload)", "Close tab everywhere (archive)", "Undo organization change".
-- **PN1, first pin.** It didn't show until a second pin was made.
-- **PN2, pin gap.** There is a row-high gap under the pin tiles. It may be ID1, since a duplicated entry leaves an empty slot, so recheck it after that fix.
-- **W1, empty tabs.** Untouched "New Tab" rows from closed windows stay in the shared list.
+## Open
 
-## Done so far (not yet seen on screen)
-
-- **Command bar, P1–P5.** Release edits are in `vendor/provided/command-bar/integration.mjs`, wired into `scripts/release/transforms.mjs`. Host tests pass.
-- **Native, in the durable checkout only.** Not yet built or exported to `chromium/tree`.
-  - ID1: every key is a distinct string.
-  - K1: Ctrl+Command defaults for the Aux commands, plus Alt+Command+N for Quick window and Command+Shift+2 for screenshot.
-  - M1: minimal mode lays out the page flush and hides the sidebar.
-  - T1: web rows show title and address; Aux pages show only the title.
-  - CM1: the labels are now "Unload tab", "Archive tab" and "Undo".
+- **`aux list` and `aux resolve`:** they fail with exit 78 on release builds. The handshake with the browser fails on the CLI side. Signatures, the Developer ID certificate and the running browser's dynamic signature all check out. Recheck with the rebuilt CLI in build 60; if it still fails, add a diagnostic to `ForwardTerminal`.
+- **Needs a provider or a second profile:**
+  - AI download-name suggestions and @tab mentions need a model connected. I didn't enter any live key.
+  - Routing between profiles needs a second profile.
+- **Not reached:** Quick window by shortcut, extensions install (1Password stays with you), screenshot capture.
+- **Empty tabs:** untouched "New Tab" rows from closed windows stay in the shared list.
 
 ## Resume here
 
-1. Fix the one compile error: `aux_feature_commands.cc:164`, where `VerticalTabStripStateController::SetCollapsed` is private. Use the controller's public toggle or collapse path, then rebuild with `scripts/native-build.py third_party/ninja/ninja -C out/AuxFast chrome`.
-2. Assemble build 57 and recheck ID1, P1–P5, K1, M1, T1, CM1, PN1 and PN2 on screen.
-3. Continue the feature list above, fix W1, then export `chromium/tree`, pin it, and run `verify-candidate.py`.
+1. Rebuild native for build 60:
+   ```
+   scripts/native-build.py third_party/ninja/ninja -C out/AuxFast chrome native_cli_open
+   ```
+   A build started before the toolbar change, so run it again.
+2. Assemble build 60 with the usual command, launch it, and check on screen:
+   - the Tabs header archive button
+   - the nav row after a download
+   - the Settings copy
+   - `aux --help`, `aux list` and `aux resolve`
+3. Export `chromium/tree`, pin it in `current-source-selection.json`, run `scripts/verify-candidate.py` and `pnpm test`, update STATUS, and commit.
+
+Native edits for builds 57–60 are in the durable checkout and are not yet exported to `chromium/tree`.

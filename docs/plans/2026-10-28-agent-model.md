@@ -32,7 +32,7 @@ The agent is a layer of identity and threading over the existing engine:
 ### Where it lives
 
 - **Sidebar:** a compact button to the right of the address field.
-  - A liquid-chrome bezel matches the field's height and 10 pt corners: a soft sheen, and a rim that catches light at its top and bottom edges.
+  - The same tile as a pinned tab: a faint fill, a hairline edge and a lighter fill on hover, at the field's height and 10 pt corners. (Builds 51–57 used a liquid-chrome bezel; Robert dropped it on 2026-10-29: "make the aux one match the pinned one".)
   - The face sits inside the bezel. A thin ring spins while the agent works. An amber dot means it needs approval or has a question; an accent dot means it replied while you were away.
   - The tooltip and screen-reader name are "Ask ‹Name›", and status changes are announced.
   - There is no Chats list in the sidebar any more.
@@ -49,7 +49,7 @@ The agent is a layer of identity and threading over the existing engine:
 
 - **Meet your agent:** first run, once per profile. Name and look; Skip or Done.
 - **Customize** (from the panel header): name, look and Instructions, plus a line pointing to Routines.
-- **Settings › Agents › Your agent:**
+- **Settings › Agent › Your agent:** (the page and its navigation item are "Agent": there is one)
   - name and look
   - Instructions
   - links to Memory and Routines
@@ -90,7 +90,7 @@ Tests: `vendor/provided/agent/*.test.mjs` (unit, and integration against the can
 2. The agent is Aux, with the Aux mark as its face. A mascot (Otto, a pebble with two eyes) was tried in builds 53–54 and dropped: "go back to it being the Aux logo and being Aux".
 3. No style or initiative options: the agent works on request, and routines are where initiative lives. Name, picture and instructions are the settings.
 4. A few nice looks plus a custom picture.
-5. In the sidebar, a small button to the right of the address field with a tasteful liquid-chrome finish, not a row and not a Chats list.
+5. In the sidebar, a small button to the right of the address field, styled like a pinned-tab tile, not a row and not a Chats list (the liquid-chrome finish was dropped on 2026-10-29).
 6. At most one logo per surface (favicons and tab icons aside).
 
 ## History
@@ -103,3 +103,4 @@ Tests: `vendor/provided/agent/*.test.mjs` (unit, and integration against the can
 - Build 54: Instructions hide the seeded heading, and the new tab page keeps one Aux mark. Checked on screen: Meet Otto, the button, the panel greeting, Customize (all looks), Settings › Agents, the full view and the new tab page. The test threads from the live check are archived in the review profile; they can be restored from Archived chats.
 - Build 55: back to Aux. The default name is Aux again and the face is the Aux mark, in Classic plus four colors; Otto profiles move to Aux. The agent experience (home thread, side chats, chrome button, Instructions, no style or initiative) is unchanged.
 - Build 56: colored looks render the mark larger so it matches Classic inside the sidebar button. Checked on screen: the button (Classic and Sunset), the panel greeting, Customize with every look, Settings › Agents and the full view.
+- Build 58: the button is a pinned-tab tile instead of liquid chrome, and Settings says "Agent" instead of "Agents".
