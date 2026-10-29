@@ -31,6 +31,8 @@ The plans in [plans/](plans/) are dated decisions. Their requirements still appl
 - [Owner plan](plans/2026-10-28-owner-plan.md) and [agent plan](plans/2026-10-28-agent-plan.md) (2026-10-28): the detailed steps for each side
 - [Agent model](plans/2026-10-28-agent-model.md) (2026-10-28): one personal agent per profile, its design and history
 - [Feature polish](plans/2026-10-29-feature-polish.md) (2026-10-29): every existing feature used and fixed, builds 57–63
+- [Spaces and themes](plans/2026-10-29-spaces-and-themes.md) (2026-10-29): per-Space colors and emoji, Aux's theme picker, one shade everywhere, builds 64–69 and 80–81
+- [Sidebar polish](plans/2026-10-29-sidebar-polish.md) (2026-10-29): dragging tabs to Bookmarks, Pins and a split, in-place rename, spacing and favicon contrast, builds 71–77
 
 ## Evidence
 

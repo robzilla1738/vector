@@ -60,6 +60,10 @@ Every UI request from the 2026-10-28 review, with its state. "Verified" means ch
 | 54 | Theme reaches both sidebars, the New Tab page and dropdowns | Verified (builds 68, 81): side panel, New Tab, command bar, bubbles and the picker share the shade |
 | 55 | Aux's own theme look, not Arc's; borders follow the theme; contrast handled | Verified (build 68, 80): own picker layout and presets; ink-based borders; 7:1 text rule |
 | 56 | One uniform shade everywhere; terminal-style default themes | Verified (builds 80–81): Dracula and Solarized Light across window, panel, pages and picker |
+| 57 | Dragging tabs in the sidebar, and what shows during it | Verified (builds 71–72): frosted card, neighbors slide aside; over a tab it rests faded while the target shows the split icon; see [sidebar polish](2026-10-29-sidebar-polish.md) |
+| 58 | Drag a tab to Bookmarks or Pins; drag it out to split | Verified (builds 71–72): card slides into the bookmark gap or becomes a tile; on the page a half preview in the Space's color, and the drop opens the split |
+| 59 | Closing and renaming tabs | Verified (builds 71–77): × on hover closes; rename in place by double-click, F2 or the menu |
+| 60 | Icons the same size; sidebar well spaced | Verified (builds 72–77): no empty row under Pins, footer "+" matches Downloads and Search, one-tone favicons readable on light themes |
 
 Builds 41–43 are local Developer ID builds under `out/release/`. Build 42 was launched and checked on screen (items marked build 42). Build 43 adds the split fixes in 12.
 
