@@ -8,6 +8,8 @@ Start with [STATUS](STATUS.md): the candidate, what was observed on it, and what
 |---|---|
 | Candidate, observed work, open items | [STATUS.md](STATUS.md) |
 | Everything left before release | [plans/2026-10-28-release-readiness.md](plans/2026-10-28-release-readiness.md) |
+| UI requests and their state | [plans/2026-10-28-ui-review-checklist.md](plans/2026-10-28-ui-review-checklist.md) |
+| The agent (Aux) design | [plans/2026-10-28-agent-model.md](plans/2026-10-28-agent-model.md) |
 | Milestones and external gates | [ROADMAP-EXECUTION-GRAPH.md](ROADMAP-EXECUTION-GRAPH.md) |
 | Product rules, identity targets, isolation | [design/aside-contract.md](design/aside-contract.md) |
 | How the shipping product fits together | [ARCHITECTURE.md](ARCHITECTURE.md) |
@@ -27,6 +29,8 @@ The plans in [plans/](plans/) are dated decisions. Their requirements still appl
 - [Excellence audit](plans/2026-10-27-excellence-audit.md) (2026-10-27): whole-product review and decisions D1–D12
 - [Release readiness](plans/2026-10-28-release-readiness.md) (2026-10-28): the full checklist from the current seal to a public release
 - [Owner plan](plans/2026-10-28-owner-plan.md) and [agent plan](plans/2026-10-28-agent-plan.md) (2026-10-28): the detailed steps for each side
+- [Agent model](plans/2026-10-28-agent-model.md) (2026-10-28): one personal agent per profile, its design and history
+- [Feature polish](plans/2026-10-29-feature-polish.md) (2026-10-29): every existing feature used and fixed, builds 57–63
 
 ## Evidence
 
