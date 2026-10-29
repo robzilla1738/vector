@@ -1,62 +1,45 @@
-# Feature polish pass (in progress, paused 2026-10-29)
+# Feature polish pass (2026-10-29, builds 57–63)
 
-Robert: "for the ones that do exist make sure they are excellent." This pass drives each existing feature on the latest local Developer ID build and fixes what isn't up to the bar. Screenshots are in `out/acceptance/20261029/` (local only). Builds 57–59 are in `out/release/`. Build 59 is the latest assembled build; build 60 is not assembled yet.
+Robert: "for the ones that do exist make sure they are excellent." Each existing feature was used on a local Developer ID build and fixed where it fell short. Screenshots are in `out/acceptance/20261029/` (local only). Build 63 (`out/release/1.0.0-63`) holds everything below.
 
-## Checked on screen
+## Fixed and checked on screen
 
-| Feature | Result |
-|---|---|
-| Sidebar rows and pins switching back and forth | Fixed in build 57 (ID1 below) |
-| Cmd+L | Fixed in build 57: the address arrives selected, and the current tab isn't offered as a result |
-| Minimal UI (Ctrl+Cmd+S) | Fixed in build 57: the sidebar hides and the page fills the window; the same key brings it back |
-| Shortcuts | Fixed in build 57: every Aux command has a default (Ctrl+Cmd keys, plus Alt+Cmd+N for Quick window and Cmd+Shift+2 for screenshot). All show in Settings › Appearance with change and reset |
-| Tab row tooltips | Fixed in build 57: title and address for web pages, title only for Aux pages |
-| Gap under the pins | Gone in build 57 |
-| Agent button | Build 58: a flat tile like the pinned tabs (no liquid chrome) |
-| Settings › Agent | Build 58: the item, heading, breadcrumb, tab title and Settings search say "Agent" |
-| Closing tabs quickly | Build 59: closes queue instead of failing. The error now reads "Couldn't close that tab. Try again." and clears itself |
-| `aux open <url>` and `--profile` | Work. External links open in Little Aux |
-| Peek, picture-in-picture, second window with the same tabs | Work (checked on build 56) |
-| Link routing and Tab cleanup dialogs | Work. With only one profile, routing between profiles can't be tested |
-| Downloads | Work, and a name clash gets a safe name ("notes (2).txt") |
+| Feature | What changed | Build |
+|---|---|---|
+| Sidebar rows and pins | Rows for web pages wouldn't open after a pin was used. Aux's user-data keys were all `const char kKey = 0`, and `-fmerge-all-constants` gave them one address, so saving a pin's URL overwrote the tab's identity. All 11 keys are now distinct strings. | 57 |
+| Cmd+L | The address arrives selected; typing replaces it | 57 |
+| Cmd+T/K bar | Plain words say "Search the web"; the tab you're on isn't offered; a page closed several times is listed once; no spellcheck; every tab result reads "Switch" | 57 |
+| Shortcuts | Every Aux command has a default (Ctrl+Cmd keys, Alt+Cmd+N for Quick window, Cmd+Shift+2 for screenshot) and its own description in Settings › Appearance | 57, 62 |
+| Minimal UI (Ctrl+Cmd+S) | Hides the sidebar and lets the page fill the window; the same key restores it. The Settings text says so | 57, 62 |
+| Tab rows | Tooltips show title and address (title only for Aux pages); the menu says "Unload tab", "Archive tab", "Undo" | 57 |
+| Pins | No gap under the tiles | 57 |
+| Agent button | A flat tile like the pinned tabs, no liquid chrome | 58 |
+| Settings › Agent | One agent, so "Agent": item, heading, breadcrumb, tab title, Settings search | 58 |
+| Closing tabs quickly | Closes queue instead of failing; any error is one short line that clears itself | 59 |
+| Archived tabs | Not in the list any more. Hovering the Tabs header shows an archive button; it lists archived tabs under "Archived tabs" (New Tab hidden) and stays lit until you go back | 61–62 |
+| Sidebar button row | Only back, forward and reload. The battery-saver leaf and the "»" overflow that held downloads are gone; downloads have the footer button | 60 |
+| Quick window (Alt+Cmd+N) | Opens with an empty field reading "Search or type a URL", not "about:blank"; the placeholder stays while the field is focused | 62 |
+| Empty New Tab rows | A New Tab row whose page is open in no window is archived instead of piling up after windows close (build 63 checks real tabs; build 62 wrongly archived one that was still open) | 63 |
+| CLI | `aux --help` prints usage, `aux open` prints "Sent to Aux." and unknown commands say so. A bad `--profile` gives a plain alert. Assembly installs the CLI built with this browser. | 60–61 |
+| Link routing and Tab cleanup | Plain intro text; the dialogs work | 62 |
 
-## Built but not yet seen on screen (build 60)
+## Working as they were
 
-- **Archived tabs:** the in-list row is gone. Hovering the Tabs header shows an archive button, which lists archived tabs and stays lit until you go back. An empty list says "No archived tabs".
-- **Sidebar button row:** it keeps only back, forward and reload. Before, the battery-saver leaf and a "»" overflow holding downloads showed up there; downloads have the footer button.
-- **CLI:**
-  - `aux` and `aux --help` print usage instead of an internal identity error.
-  - `aux open` prints "Sent to Aux."
-  - Unknown commands say so.
-  - Assembly now installs the CLI built with the browser (`native_cli_open`; `scripts/release/assemble.py`, guarded by the sealed file's hash).
-- **Bad `--profile` alert:** "Couldn't open the link. The profile or Space it was sent to isn't available…"
-- **Settings copy** (`vendor/provided/polish/`):
-  - plain Link routing and Tab cleanup intros
-  - Minimal UI says what it does
-  - each shortcut has its own description instead of "Assign a shortcut to this browser command."
-- **Tab menu labels:** "Unload tab", "Archive tab", "Undo" (in builds 57+).
+- Peek: "Open Link in Peek" in the link menu, then Escape.
+- Picture in picture: the video menu has it, and Auto PiP is on in Settings.
+- Second window: it shares the tab list and keeps its own active tab.
+- Downloads: a name clash gets a safe name ("notes (2).txt").
+- Screenshot: Cmd+Shift+2 opens a capture bar (screen, full page, selection), then a preview card with copy and save.
+- Extensions page: Developer mode works for your own extensions.
+- Chrome Web Store: it offers "Add to Chrome".
+- `aux open <url> --profile …`.
 
-## Open
+## Open, and why
 
-- **`aux list` and `aux resolve`:** they fail with exit 78 on release builds. The handshake with the browser fails on the CLI side. Signatures, the Developer ID certificate and the running browser's dynamic signature all check out. Recheck with the rebuilt CLI in build 60; if it still fails, add a diagnostic to `ForwardTerminal`.
-- **Needs a provider or a second profile:**
-  - AI download-name suggestions and @tab mentions need a model connected. I didn't enter any live key.
+- **`aux list` and `aux resolve`:** they need the browser's native CLI service, which starts only in builds with `AUX_SEALED_NATIVE_COLD_ENTRY`; the shipped configuration doesn't define it. `aux open` uses a different path and works. The CLI now says plainly that `list`/`resolve` aren't available, and help lists only `open`. Turning that service on changes startup security and is a separate decision.
+- **Chrome Web Store nag:** the store shows "Switch to Chrome?" because Aux doesn't present itself as Google Chrome. Not changed, since that would mean disguising the browser.
+- **Needs Robert:**
+  - AI download-name suggestions and @tab mentions need a model connected. No live key was entered.
   - Routing between profiles needs a second profile.
-- **Not reached:** Quick window by shortcut, extensions install (1Password stays with you), screenshot capture.
-- **Empty tabs:** untouched "New Tab" rows from closed windows stay in the shared list.
-
-## Resume here
-
-1. Rebuild native for build 60:
-   ```
-   scripts/native-build.py third_party/ninja/ninja -C out/AuxFast chrome native_cli_open
-   ```
-   A build started before the toolbar change, so run it again.
-2. Assemble build 60 with the usual command, launch it, and check on screen:
-   - the Tabs header archive button
-   - the nav row after a download
-   - the Settings copy
-   - `aux --help`, `aux list` and `aux resolve`
-3. Export `chromium/tree`, pin it in `current-source-selection.json`, run `scripts/verify-candidate.py` and `pnpm test`, update STATUS, and commit.
-
-Native edits for builds 57–60 are in the durable checkout and are not yet exported to `chromium/tree`.
+  - Extension installs and the 1Password pairing are his to do.
+- **Review profile:** it has one "Recovery — chrome://newtab" row from build 62; close it with ×.

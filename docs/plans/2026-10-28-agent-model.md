@@ -49,7 +49,7 @@ The agent is a layer of identity and threading over the existing engine:
 
 - **Meet your agent:** first run, once per profile. Name and look; Skip or Done.
 - **Customize** (from the panel header): name, look and Instructions, plus a line pointing to Routines.
-- **Settings › Agent › Your agent:** (the page and its navigation item are "Agent": there is one)
+- **Settings › Agent › Your agent:** (the page and its navigation item say "Agent", since there is one)
   - name and look
   - Instructions
   - links to Memory and Routines
@@ -103,4 +103,4 @@ Tests: `vendor/provided/agent/*.test.mjs` (unit, and integration against the can
 - Build 54: Instructions hide the seeded heading, and the new tab page keeps one Aux mark. Checked on screen: Meet Otto, the button, the panel greeting, Customize (all looks), Settings › Agents, the full view and the new tab page. The test threads from the live check are archived in the review profile; they can be restored from Archived chats.
 - Build 55: back to Aux. The default name is Aux again and the face is the Aux mark, in Classic plus four colors; Otto profiles move to Aux. The agent experience (home thread, side chats, chrome button, Instructions, no style or initiative) is unchanged.
 - Build 56: colored looks render the mark larger so it matches Classic inside the sidebar button. Checked on screen: the button (Classic and Sunset), the panel greeting, Customize with every look, Settings › Agents and the full view.
-- Build 58: the button is a pinned-tab tile instead of liquid chrome, and Settings says "Agent" instead of "Agents".
+- Build 58: the button is a pinned-tab tile instead of liquid chrome, and Settings says "Agent" instead of "Agents". Checked on screen.
