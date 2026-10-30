@@ -36,7 +36,7 @@ Build 102 (`out/release/1.0.0-102`) carries everything below. It is assembled fr
   - Emoji search; swipe between Spaces (the sidebar slides in its own group, with a live preview across groups); the dead `AuxSpacesSwitcher` is removed.
 - **Batch 5:**
   - One frame metric set; the card corner is the window's own corner less the gutter, which is 16 points on macOS 26+ (measured on 27) and 10 on 15.
-  - A soft card shadow.
+  - No card shadow: the sidebar covered it on the leading edge, so the edges read unevenly. Every edge is now the same clean line, as Arc draws its dark card.
   - **Arc-style sidebar top** *(seen)*: window controls, toggle, extensions, back, forward and reload on one row, and the address field the full width under it. The Agent button leads the footer, and the footer sits lower.
   - **One window surface** *(seen)*: the sidebar, the gutter around the page and the Agent card's surround all paint the Space theme and backdrop, or nothing so the window material shows. There is no outline at the sidebar edge and no page-colored toolbar.
   - The Agent panel is a card with the same gutter and corner.
