@@ -1,6 +1,7 @@
 import hashlib
 import importlib.util
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -83,14 +84,22 @@ class PdfRuntime(unittest.TestCase):
         (self.built / 'native/bin').mkdir(parents=True)
         (self.built / 'native/bin/pdfinfo').write_bytes(b'rebuilt')
         self.manifest = self.built / 'manifest.json'
-        self.manifest.write_text(json.dumps({'files': {'native/bin/pdfinfo': {
+        self.linked = self.target.with_name('rg')
+        self.linked.write_bytes(b'links a rebuilt library')
+        self.manifest.write_text(json.dumps({'relinked': ['native/bin/rg'], 'files': {'native/bin/pdfinfo': {
             'originalSha256': hashlib.sha256(b'supplied').hexdigest(),
             'sha256': hashlib.sha256(b'rebuilt').hexdigest(), 'rpaths': []}}}))
 
     def test_replaces_and_reports_the_old_digest(self):
-        (path, (old, size)), = assemble.substitute_pdf_runtime(self.app, self.built, self.manifest)
+        (path, (old, size)), _ = assemble.substitute_pdf_runtime(self.app, self.built, self.manifest)
         self.assertEqual((path.read_bytes(), old, size), (b'rebuilt', hashlib.sha256(b'supplied').hexdigest(), 8))
         self.assertEqual(path.stat().st_mode & 0o777, 0o755)
+
+    def test_relinked_files_stay_byte_identical_but_are_signed_and_pinned_too(self):
+        _, (path, (old, size)) = assemble.substitute_pdf_runtime(self.app, self.built, self.manifest)
+        self.assertEqual(path, self.linked)
+        self.assertEqual(path.read_bytes(), b'links a rebuilt library')
+        self.assertEqual((old, size), (hashlib.sha256(path.read_bytes()).hexdigest(), 23))
 
     def test_refuses_a_file_the_manifest_does_not_record(self):
         (self.built / 'native/bin/pdfinfo').write_bytes(b'other')
@@ -102,6 +111,25 @@ class PdfRuntime(unittest.TestCase):
         files = json.loads(assemble.PDF_RUNTIME_MANIFEST.read_text())['files']
         self.assertEqual(len(files), 34)
         self.assertTrue(all(len(entry['originalSha256']) == 64 for entry in files.values()))
+
+
+class MinimumMacos(unittest.TestCase):
+    def setUp(self):
+        self.app = Path(tempfile.mkdtemp())
+        self.runtime = self.app / assemble.AUX / 'agent-runtime'
+        self.runtime.mkdir(parents=True)
+        (self.runtime / 'env.sh').write_text('export A=1\n')
+
+    def binary(self, name, minimum):
+        subprocess.run(['clang', '-x', 'c', '-', '-o', self.runtime / name, f'-mmacosx-version-min={minimum}'],
+                       input=b'int main(void) { return 0; }', check=True)
+
+    def test_accepts_the_floor_and_lists_only_files_above_it(self):
+        self.binary('at-floor', '15.0')
+        self.binary('older', '11.0')
+        self.assertEqual(assemble.above_minimum_macos(self.app), [])
+        self.binary('newer', '15.1')
+        self.assertEqual(assemble.above_minimum_macos(self.app), ['newer'])
 
 
 class CrashUpload(unittest.TestCase):

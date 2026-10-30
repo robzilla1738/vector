@@ -340,5 +340,8 @@
    ],
    "sha256": "e8ea80604f360ce1312d6fd95b59da48a1806ced396dfcea4c56c081404c6128"
   }
- }
+ },
+ "relinked": [
+  "native/bin/rg"
+ ]
 }

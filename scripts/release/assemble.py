@@ -33,6 +33,7 @@ NATIVE = f'{DAEMON_APP}/Contents/Resources/native'
 FRAMEWORK = 'Contents/Frameworks/Aux Framework.framework'
 VERSIONED = f'{FRAMEWORK}/Versions/155.0.8059.85'
 MACHO_MAGIC = {b'\xcf\xfa\xed\xfe', b'\xca\xfe\xba\xbe', b'\xfe\xed\xfa\xcf', b'\xbe\xba\xfe\xca'}
+MINIMUM_MACOS = (15, 0)
 
 # Bundle code objects in signing order (inside out), with their identifier and entitlements.
 TARGETS = [
@@ -287,8 +288,10 @@ PDF_RUNTIME_MANIFEST = HERE.parent / 'runtime/pdf-runtime-macos15.json'
 
 def substitute_pdf_runtime(app: Path, built: Path, manifest: Path = PDF_RUNTIME_MANIFEST) -> list:
     """Swap the supplied files for the rebuilt ones. Both sides must match the manifest exactly.
-    Returns (path, (old sha256, old size)) for each replaced file, to be signed and re-pinned."""
-    files = json.loads(manifest.read_text())['files']
+    Returns (path, (old sha256, old size)) for each file to sign and re-pin: the replaced ones and
+    the `relinked` supplied files that load them, since hardened runtime needs one team on both sides."""
+    spec = json.loads(manifest.read_text())
+    files = spec['files']
     runtime = app / AUX / 'agent-runtime'
     for rel, entry in files.items():
         if sha256(runtime / rel) != entry['originalSha256']:
@@ -303,7 +306,19 @@ def substitute_pdf_runtime(app: Path, built: Path, manifest: Path = PDF_RUNTIME_
         shutil.copyfile(built / rel, target)
         target.chmod(mode)
         replaced.append((target, before))
+    for rel in spec['relinked']:
+        target = runtime / rel
+        replaced.append((target, (sha256(target), target.stat().st_size)))
     return replaced
+
+
+def above_minimum_macos(app: Path) -> list:
+    """Runtime Mach-O files that declare a minimum macOS newer than the product's floor."""
+    runtime = app / AUX / 'agent-runtime'
+    declared = {path: run(['vtool', '-show-build', str(path)]).stdout for path in runtime.rglob('*') if macho(path)}
+    return sorted(str(path.relative_to(runtime)) for path, build in declared.items()
+                  if any((int(major), int(minor)) > MINIMUM_MACOS
+                         for major, minor in re.findall(r'minos (\d+)\.(\d+)', build)))
 
 
 def main_executable(app: Path, target: str) -> Path:
@@ -431,6 +446,8 @@ def main() -> int:
     parser.add_argument('--daemon-executable', type=Path, help='relinked aux-daemon (scripts/candidate/relink_daemon.py)')
     parser.add_argument('--pdf-runtime', type=Path, nargs='?', const=HERE.parents[1] / 'out/runtime/pdf-macos15',
                         help='replace the runtime PDF tools with the macOS 15 rebuild (default out/runtime/pdf-macos15)')
+    parser.add_argument('--runtime-macos15', action='store_true',
+                        help='refuse a runtime with a Mach-O that declares a minimum macOS above 15.0')
     parser.add_argument('--computer-use-helper', type=Path,
                         help="unsigned Aux Computer Use.app from apps/computer-use-helper/build.sh; replaces the supplied helper")
     parser.add_argument('--memory-helper', type=Path,
@@ -504,6 +521,9 @@ def main() -> int:
     resigned, kept = [], {}
     # Rebuilt PDF tools are signed with Aux's identity in both modes, keeping their identifiers.
     pdf_runtime = substitute_pdf_runtime(app, args.pdf_runtime.resolve()) if args.pdf_runtime else []
+    above = above_minimum_macos(app) if args.runtime_macos15 else []
+    if above:
+        raise SystemExit(f'{len(above)} runtime files need macOS above 15.0: {above[:5]}')
     for path, _ in pdf_runtime:
         run(['codesign', '--force', '--sign', identity, '--options', 'runtime',
              '--timestamp' if release else '--timestamp=none', '--identifier', path.stem, str(path)])
