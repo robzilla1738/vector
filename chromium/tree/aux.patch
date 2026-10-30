@@ -143637,7 +143637,7 @@ index 66b5ec2944471b2cd6058f2b0e02099ac29c83d4..99301f4a705f0b244828de8921d4a67c
    explicit ThemedBackground(BrowserView* browser_view,
                              ThemeChoice theme_choice = kToolbarTheme);
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a15ce8a56 100644
+index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..7c830f2864ad12198cb75ebd5e239f7e627d2392 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -3,18 +3,51 @@
@@ -143977,7 +143977,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
    if (IsHitInView(top_button_container_, point)) {
      gfx::Point point_in_child = point;
      views::View::ConvertPointToTarget(this, top_button_container_,
-@@ -295,23 +519,162 @@ bool VerticalTabStripRegionView::IsPositionInWindowCaption(
+@@ -295,23 +519,163 @@ bool VerticalTabStripRegionView::IsPositionInWindowCaption(
      return bottom_button_container_->IsPositionInWindowCaption(point_in_child);
    }
  
@@ -144076,8 +144076,9 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
 +    // This row paints its own surface: stay inside the popped-out card's outline.
 +    const int edge = aux_profile_preview_admission_ && aux_profile_preview_admission_->retained()
 +        ? views::Separator::kThickness : 0;
-+    aux_address_row_->SetBounds(edge, y, width() - 2 * edge, spacer->height());
-+    status_y = y + spacer->height();
++    const int row_height = GetAuxAddressFieldHeight() + 8;
++    aux_address_row_->SetBounds(edge, y, width() - 2 * edge, row_height);
++    status_y = y + row_height;
 +  }
 +  if (auto* status = aux_sidebar_->status_line()) {
 +    const int line_width = std::max(0, width() - 2 * aux::frame_metrics::kGutter);
@@ -144151,7 +144152,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
  void VerticalTabStripRegionView::SetToolbarHeightForLayout(int toolbar_height) {
    top_button_container_->SetToolbarHeightForLayout(toolbar_height);
  }
-@@ -353,6 +716,11 @@ bool VerticalTabStripRegionView::WillWrapDueToOverflow(
+@@ -353,6 +717,11 @@ bool VerticalTabStripRegionView::WillWrapDueToOverflow(
  
  void VerticalTabStripRegionView::AddedToWidget() {
    BaseTabStripRegionView::AddedToWidget();
@@ -144163,7 +144164,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
    paint_as_active_subscription_ =
        GetWidget()->RegisterPaintAsActiveChangedCallback(base::BindRepeating(
            [](VerticalTabStripRegionView* view) {
-@@ -366,6 +734,12 @@ void VerticalTabStripRegionView::AddedToWidget() {
+@@ -366,6 +735,12 @@ void VerticalTabStripRegionView::AddedToWidget() {
  }
  
  void VerticalTabStripRegionView::RemovedFromWidget() {
@@ -144176,7 +144177,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
    if (GetFocusManager()) {
      GetFocusManager()->RemoveFocusChangeListener(&focus_listener_);
    }
-@@ -373,7 +747,49 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
+@@ -373,7 +748,49 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
  }
  
  void VerticalTabStripRegionView::Layout(PassKey) {
@@ -144226,7 +144227,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
  
    // Manually position the resize area as it overlaps views handled by the flex
    // layout.
-@@ -381,6 +797,10 @@ void VerticalTabStripRegionView::Layout(PassKey) {
+@@ -381,6 +798,10 @@ void VerticalTabStripRegionView::Layout(PassKey) {
                                          0, resize_area_width_,
                                          bounds().height()));
    shadow_frame_->SetBoundsRect(GetLocalBounds());
@@ -144237,7 +144238,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
  
    // Ensure that we update the drop arrow position so that it does not render in
    // the collapsed state when expand on hover is active.
-@@ -401,14 +821,36 @@ views::View* VerticalTabStripRegionView::GetDefaultFocusableChild() {
+@@ -401,14 +822,36 @@ views::View* VerticalTabStripRegionView::GetDefaultFocusableChild() {
  gfx::Size VerticalTabStripRegionView::GetMinimumSize() const {
    auto min_size = BaseTabStripRegionView::GetMinimumSize();
    min_size.set_width((state_controller_->IsCollapsed() || IsAnimatingSize())
@@ -144276,7 +144277,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
    const auto* controller =
        BrowserAnimationController::From(browser_view()->browser());
    const auto motion =
-@@ -510,7 +952,18 @@ void VerticalTabStripRegionView::HandleDragUpdate(
+@@ -510,7 +953,18 @@ void VerticalTabStripRegionView::HandleDragUpdate(
    }
  }
  
@@ -144295,7 +144296,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
    SetLinkDropArrow(std::nullopt);
    link_drag_lock_.reset();
    UpdateExpandOnHoverState(false);
-@@ -604,7 +1057,8 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
+@@ -604,7 +1058,8 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
    new_state.uncollapsed_width = target_collapse_state_.uncollapsed_width;
    if (!new_state.collapsed) {
      new_state.uncollapsed_width =
@@ -144305,7 +144306,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
      if (std::abs(new_state.uncollapsed_width -
                   tabs::kVerticalTabStripDefaultUncollapsedWidth) <
          kSnapDistance) {
-@@ -637,6 +1091,9 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
+@@ -637,6 +1092,9 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
    }
  
    target_collapse_state_ = new_state;
@@ -144315,7 +144316,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
  
    if (previously_collapsed != target_collapse_state_.collapsed) {
      state_controller_->RequestCollapse(target_collapse_state_.collapsed);
-@@ -653,6 +1110,8 @@ void VerticalTabStripRegionView::SetCollapsedStateUpdatedCallback(
+@@ -653,6 +1111,8 @@ void VerticalTabStripRegionView::SetCollapsedStateUpdatedCallback(
  }
  
  bool VerticalTabStripRegionView::IsCollapsing() {
@@ -144324,7 +144325,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
    return BrowserAnimationController::From(browser_view()->browser())
               ->GetCurrentMotion(TabStripAnimations::kVerticalTabStrip) ==
           TabStripAnimations::kCollapse;
-@@ -674,6 +1133,11 @@ void VerticalTabStripRegionView::RequestCollapse(bool collapse) {
+@@ -674,6 +1134,11 @@ void VerticalTabStripRegionView::RequestCollapse(bool collapse) {
    if (!tab_strip_view()) {
      return;
    }
@@ -144336,7 +144337,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
    const auto motion =
        collapse ? TabStripAnimations::kCollapse : TabStripAnimations::kExpand;
    BrowserAnimationController::From(browser_view()->browser())
-@@ -709,17 +1173,177 @@ void VerticalTabStripRegionView::ClickEventHandler::OnMouseEvent(
+@@ -709,17 +1174,177 @@ void VerticalTabStripRegionView::ClickEventHandler::OnMouseEvent(
    }
  }
  
@@ -144524,7 +144525,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
  
    // Pre-set the animation values to the appropriate state.
    auto* const animation_controller =
-@@ -740,14 +1364,20 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
+@@ -740,14 +1365,20 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
                &VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged,
                base::Unretained(this)));
  
@@ -144548,7 +144549,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
    on_animation_update_subscription_.reset();
    expand_on_hover_enabled_changed_subscription_.reset();
    omnibox_tab_helper_observation_.Reset();
-@@ -758,6 +1388,10 @@ void VerticalTabStripRegionView::OnTabStripViewWillClear() {
+@@ -758,6 +1389,10 @@ void VerticalTabStripRegionView::OnTabStripViewWillClear() {
  
  void VerticalTabStripRegionView::OnCollapseStateChanged(
      tabs::VerticalTabStripCollapseState state) {
@@ -144559,7 +144560,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
    // Apply padding immediately at the start of the animation by including
    // the collapsing state.
    bool collapsed = state != tabs::VerticalTabStripCollapseState::kExpanded;
-@@ -767,6 +1401,9 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
+@@ -767,6 +1402,9 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
                             resize_area_->is_resizing());
  
    resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
@@ -144569,7 +144570,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
  
    if (tab_strip_view()) {
      tab_strip_view()->SetCollapsedState(collapsed);
-@@ -816,16 +1453,17 @@ bool VerticalTabStripRegionView::IsCollapseButtonHovered() const {
+@@ -816,16 +1454,17 @@ bool VerticalTabStripRegionView::IsCollapseButtonHovered() const {
  }
  
  gfx::Rect VerticalTabStripRegionView::GetTabStripDraggableBounds() const {
@@ -144597,7 +144598,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
  }
  
  void VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged(bool enabled) {
-@@ -834,6 +1472,32 @@ void VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged(bool enabled) {
+@@ -834,6 +1473,32 @@ void VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged(bool enabled) {
    UpdateExpandOnHoverState();
  }
  
@@ -144630,7 +144631,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
  void VerticalTabStripRegionView::UpdateExpandOnHoverState(
      std::optional<bool> hovered) {
    // If not collapsed, then we shouldn't be in or entering the expand on hover
-@@ -842,6 +1506,8 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -842,6 +1507,8 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
        !state_controller_->IsCollapsed()) {
      ResetExpandOnHoverTimers();
      is_expanded_on_hover_ = false;
@@ -144639,7 +144640,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
      return;
    }
  
-@@ -851,6 +1517,10 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -851,6 +1518,10 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
  
    // If the force collapse lock is held, collapse the tab strip.
    if (force_collapse_lock_count_ > 0) {
@@ -144650,7 +144651,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
      if (is_expanded_on_hover_) {
        AnimateExpandOnHover(/*expand=*/false);
      }
-@@ -864,7 +1534,7 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -864,7 +1535,7 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
    }
  
    // If the keep expanded lock is held, expand the tab strip.
@@ -144659,7 +144660,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
      if (!is_expanded_on_hover_) {
        AnimateExpandOnHover(/*expand=*/true);
      }
-@@ -882,13 +1552,37 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -882,13 +1553,37 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
      return;
    }
  
@@ -144701,7 +144702,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
      if (is_expanded_on_hover_ && keep_current_state_lock_count_ == 0) {
        AnimateExpandOnHover(/*expand=*/false);
      } else {
-@@ -907,6 +1601,13 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -907,6 +1602,13 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
          hover_card_controller()->GetHoverCardHideLock();
    }
  
@@ -144715,7 +144716,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
    if (tabs::kVerticalTabsExpandOnHoverUseVelocityHeuristic.Get()) {
      CalculateMouseVelocityForExpandOnHover();
    } else if (expand_on_hover_timer_.IsRunning()) {
-@@ -1024,7 +1725,41 @@ void VerticalTabStripRegionView::ResetExpandOnHoverTimers() {
+@@ -1024,7 +1726,41 @@ void VerticalTabStripRegionView::ResetExpandOnHoverTimers() {
    }
  }
  
@@ -144757,7 +144758,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
    is_expanded_on_hover_ = expand;
    ResetExpandOnHoverTimers();
  
-@@ -1105,8 +1840,12 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
+@@ -1105,8 +1841,12 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
  void VerticalTabStripRegionView::OnOmniboxPopupVisibilityChanged(bool is_open) {
    if (is_open) {
      if (!omnibox_open_lock_) {
@@ -144772,7 +144773,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..6cdf88728bb5a88c46dbfd2b0d74331a
        UpdateExpandOnHoverState();
      }
    } else {
-@@ -1128,5 +1867,349 @@ void VerticalTabStripRegionView::OnActiveTabChanged(
+@@ -1128,5 +1868,349 @@ void VerticalTabStripRegionView::OnActiveTabChanged(
    }
  }
  
@@ -145808,7 +145809,7 @@ index 0a5e9cce40424b65d14d006a59c8d22b7f130e46..f8e4037832510b7d9a4cec65d321c95c
      controller_observation_.Observe(controller);
    }
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388f1438f59 100644
+index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..6f121c2c22de5c808024d6a43a5c35f4884a0a23 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
 @@ -10,6 +10,7 @@
@@ -145947,14 +145948,20 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
      } else if (omnibox::IsWebUIOmniboxInBrowserViewEnabled()) {
        omnibox_popup_view_ =
            std::make_unique<OmniboxPopupViewBrowserView>(this, browser_);
-@@ -453,6 +483,51 @@ void LocationBarView::Init() {
+@@ -453,6 +483,57 @@ void LocationBarView::Init() {
        AddChildView(std::move(omnibox_additional_text_view));
    omnibox_additional_text_view_->SetEnabledColor(kColorOmniboxResultsUrl);
  
 +  aux_resting_origin_view_ = AddChildView(std::make_unique<views::LabelButton>(
 +      base::BindRepeating([](LocationBarView* owner) {
-+        // Observed supplied domain button opens the actual native site panel.
-+        owner->ShowPageInfoDialog();
++        // Clicking the address edits it; in the sidebar, site info has its own
++        // button. Elsewhere the domain opens the native site panel.
++        if (owner->IsAuxSidebarNavigation()) {
++          owner->FocusLocation(/*is_user_initiated=*/true,
++                               /*clear_focus_if_failed=*/false);
++        } else {
++          owner->ShowPageInfoDialog();
++        }
 +      }, base::Unretained(this)), std::u16string(), CONTEXT_OMNIBOX_PRIMARY));
 +  aux_resting_origin_view_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
 +  aux_resting_origin_view_->SetBorder(views::CreateEmptyBorder(gfx::Insets()));
@@ -145999,7 +146006,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
    selected_keyword_view_ = AddChildView(std::make_unique<SelectedKeywordView>(
        this, profile_, omnibox_controller_.get(), font_list));
  
-@@ -524,8 +599,14 @@ int LocationBarView::GetBorderRadius() const {
+@@ -524,8 +605,14 @@ int LocationBarView::GetBorderRadius() const {
  
  // static
  int LocationBarView::ComputeBorderRadius(gfx::Size size) {
@@ -146014,7 +146021,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
  }
  
  // static
-@@ -766,6 +847,63 @@ void LocationBarView::Layout(PassKey) {
+@@ -766,6 +853,63 @@ void LocationBarView::Layout(PassKey) {
      return;
    }
  
@@ -146078,7 +146085,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
    selected_keyword_view_->SetVisible(false);
  
    // TODO(manukh): Move constants to layout_constants.cc.
-@@ -853,6 +991,36 @@ void LocationBarView::Layout(PassKey) {
+@@ -853,6 +997,36 @@ void LocationBarView::Layout(PassKey) {
      }
    }
  
@@ -146115,7 +146122,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
    if (ShouldShowKeywordBubble()) {
      location_icon_view_->SetVisible(false);
      leading_decorations.AddDecoration(
-@@ -883,6 +1051,19 @@ void LocationBarView::Layout(PassKey) {
+@@ -883,6 +1057,19 @@ void LocationBarView::Layout(PassKey) {
      }
    };
  
@@ -146135,7 +146142,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
    if (features::IsPageActionsElevatedToolbarEnabled()) {
      if (page_action_container_ && page_action_container_->GetVisible()) {
        const bool is_capsule_active = page_action_container_->IsCapsuleActive();
-@@ -912,6 +1093,10 @@ void LocationBarView::Layout(PassKey) {
+@@ -912,6 +1099,10 @@ void LocationBarView::Layout(PassKey) {
                                  ? kTrailingEdgePaddingForAim
                                  : trailing_decorations_edge_padding);
    }
@@ -146146,7 +146153,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
    add_trailing_decoration(ai_mode_hint_label_, /*intra_item_padding=*/0,
                            /*edge_padding=*/trailing_decorations_edge_padding);
    for (ContentSettingImageView* view :
-@@ -943,7 +1128,9 @@ void LocationBarView::Layout(PassKey) {
+@@ -943,7 +1134,9 @@ void LocationBarView::Layout(PassKey) {
    trailing_decorations.LayoutPass2(&entry_width);
  
    // Compute widths needed for location bar.
@@ -146157,7 +146164,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
  
    int available_width = entry_width - location_needed_width;
    // The bounds must be wide enough for all the decorations to fit, so if
-@@ -957,9 +1144,18 @@ void LocationBarView::Layout(PassKey) {
+@@ -957,9 +1150,18 @@ void LocationBarView::Layout(PassKey) {
    // |omnibox_view_| has an opaque background, so ensure it doesn't paint atop
    // the rounded ends.
    location_bounds.Intersect(GetLocalBoundsWithoutEndcaps());
@@ -146177,7 +146184,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
      // Short circuit the below logic when the additional views aren't visible.
      // This is necessary as resizing the omnibox can throw off it's scroll,
      // i.e., which chars are visible when its text overflows its width.
-@@ -1000,6 +1196,7 @@ void LocationBarView::Layout(PassKey) {
+@@ -1000,6 +1202,7 @@ void LocationBarView::Layout(PassKey) {
          reserve_label_width(ime_inline_autocomplete_view_);
      int omnibox_additional_text_width =
          reserve_label_width(omnibox_additional_text_view_);
@@ -146185,13 +146192,13 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
  
      // A helper to position `view` to the right of the previous positioned
      // `view`.
-@@ -1017,7 +1214,19 @@ void LocationBarView::Layout(PassKey) {
+@@ -1017,8 +1220,20 @@ void LocationBarView::Layout(PassKey) {
      position_view(omnibox_view_, omnibox_width);
      position_view(ime_inline_autocomplete_view_, ime_inline_autocomplete_width);
      position_view(omnibox_additional_text_view_, omnibox_additional_text_width);
 +    position_view(aux_page_title_view_, page_title_width);
-+  }
-+
+   }
+ 
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +  // The security chip sits inside the rounded field, so its corners follow
 +  // the field's, less its inset, instead of a full pill.
@@ -146200,12 +146207,13 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
 +        3, GetBorderRadius() - std::max(0, location_icon_view_->y()));
 +    if (location_icon_view_->GetCornerRadii() != gfx::RoundedCornersF(radius))
 +      location_icon_view_->SetCornerRadii(gfx::RoundedCornersF(radius));
-   }
++  }
 +#endif
- 
++
    LayoutSuperclass<View>(this);
  }
-@@ -1036,6 +1245,12 @@ void LocationBarView::OnThemeChanged() {
+ 
+@@ -1036,6 +1251,12 @@ void LocationBarView::OnThemeChanged() {
      image_view->SetIconColor(icon_color);
    }
  
@@ -146218,7 +146226,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
    RefreshBackground();
    RefreshClearAllButtonIcon();
  }
-@@ -1368,7 +1583,7 @@ int LocationBarView::GetMinimumTrailingWidth() const {
+@@ -1368,7 +1589,7 @@ int LocationBarView::GetMinimumTrailingWidth() const {
  }
  
  gfx::Rect LocationBarView::GetLocalBoundsWithoutEndcaps() const {
@@ -146227,7 +146235,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
    gfx::Rect bounds_without_endcaps(GetLocalBounds());
    bounds_without_endcaps.Inset(gfx::Insets::VH(0, border_radius));
    return bounds_without_endcaps;
-@@ -1388,8 +1603,30 @@ void LocationBarView::RefreshBackground() {
+@@ -1388,8 +1609,30 @@ void LocationBarView::RefreshBackground() {
    SkColor hovered =
        color_provider->GetColor(kColorLocationBarBackgroundHovered);
  
@@ -146259,7 +146267,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
      // Match the background color to the popup if the Omnibox is visibly
      // focused.
      background_color_ =
-@@ -1428,7 +1665,10 @@ void LocationBarView::RefreshBackground() {
+@@ -1428,7 +1671,10 @@ void LocationBarView::RefreshBackground() {
  
    // Keep the views::Textfield in sync. It needs an opaque background to
    // correctly enable subpixel AA.
@@ -146271,7 +146279,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
  
    // The divider between indicators and request chips should have the same color
    // as the omnibox.
-@@ -1620,6 +1860,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
+@@ -1620,6 +1866,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
    } else {
      omnibox_view_->SaveStateToTab(contents);
    }
@@ -146284,7 +146292,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
  }
  
  LocationBarTesting* LocationBarView::GetLocationBarForTesting() {
-@@ -2003,6 +2249,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
+@@ -2003,6 +2255,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
  }
  
  void LocationBarView::OnChanged() {
@@ -146296,7 +146304,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
    TRACE_EVENT("omnibox", "LocationBarView::OnChanged");
    // Ensure that background colors get updated on tab-switch.
    RefreshBackground();
-@@ -2033,6 +2284,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
+@@ -2033,6 +2290,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
  }
  
  void LocationBarView::OnOmniboxFocused() {
@@ -146309,7 +146317,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
    if (views::FocusRing::Get(this)) {
      views::FocusRing::Get(this)->Refresh();
    }
-@@ -2092,6 +2349,7 @@ void LocationBarView::OnTouchUiChanged() {
+@@ -2092,6 +2355,7 @@ void LocationBarView::OnTouchUiChanged() {
    omnibox_view_->SetFontList(font_list);
    ime_inline_autocomplete_view_->SetFontList(font_list);
    omnibox_additional_text_view_->SetFontList(font_list);
@@ -146317,7 +146325,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
    selected_keyword_view_->SetFontList(font_list);
    for (ContentSettingImageView* view : content_setting_views_) {
      view->SetFontList(font_list);
-@@ -2255,6 +2513,38 @@ SkColor LocationBarView::GetSecurityChipColor(
+@@ -2255,6 +2519,38 @@ SkColor LocationBarView::GetSecurityChipColor(
    return GetColorProvider()->GetColor(id);
  }
  
@@ -146356,7 +146364,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
  bool LocationBarView::ShowPageInfoDialog() {
    WebContents* contents = GetWebContents();
    if (!contents) {
-@@ -2304,6 +2594,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
+@@ -2304,6 +2600,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
      return GetOmniboxController()->edit_model()->GetAddContextIcon(dip_size);
    }
  
@@ -146399,7 +146407,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388
    return omnibox_view_
               ? omnibox_view_->GetIcon(
                     dip_size, location_icon_view_->GetForegroundColor(),
-@@ -2421,3 +2747,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
+@@ -2421,3 +2753,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
  ADD_READONLY_PROPERTY_METADATA(gfx::Rect, LocalBoundsWithoutEndcaps)
  ADD_READONLY_PROPERTY_METADATA(bool, PopupMode)
  END_METADATA
