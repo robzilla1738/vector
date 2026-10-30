@@ -13,14 +13,14 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 | 3 | Footer sits lower on the sidebar | seen |
 | 4 | Right sidebar layout, width and edges correct | seen |
 | 5 | No doubled collapse icons | seen |
-| 6 | New Tab page and popups match theme settings and layout | built |
+| 6 | New Tab page and popups match theme settings and layout | seen |
 | 7 | Rounded corners perfectly uniform | seen |
 | 8 | Bezels and border gaps like Arc around the center and both sidebars | seen |
 | 9 | Rounded border clean where it meets the left sidebar | seen |
 | 10 | Same gaps in split view and other layouts; right sidebar follows them | seen |
-| 11 | Theme changes repaint everything; layout stays put when customizing a theme | built |
-| 12 | URL area follows the theme | built |
-| 13 | Search/Ask follows the theme | built |
+| 11 | Theme changes repaint everything; layout stays put when customizing a theme | seen |
+| 12 | URL area follows the theme | seen |
+| 13 | Search/Ask follows the theme | seen |
 
 ## Sidebar and tabs
 
@@ -32,8 +32,8 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 | 17 | Hover a tab shows a preview | seen |
 | 18 | A split is one tab showing both, never the tabs individually as well | built; a drag split seen, other routes not reproduced |
 | 19 | Collapsed: no traffic lights over the page, as in Arc | seen |
-| 20 | Hover pop-out is full height with the traffic lights in it, so it doesn't go away | open |
-| 21 | Hover pop-out outline correct in every theme | open |
+| 20 | Hover pop-out is full height with the traffic lights in it, so it doesn't go away | seen |
+| 21 | Hover pop-out outline correct in every theme | seen (navy; other themes still to check) |
 | 22 | Pins separate per Space | built |
 | 23 | Bookmarks separate per Space, regardless of cookies | built |
 | 24 | Agent thread follows cookie sharing; can be separate across Spaces | built |
@@ -43,11 +43,11 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 | # | Request | Status |
 |---|---|---|
 | 25 | New Tab stays centered; the Chats view doesn't come back | seen |
-| 26 | Site panel and extensions like Arc: simple buttons, a layout that expands | open |
+| 26 | Site panel and extensions like Arc: simple buttons, a layout that expands | seen (polish fixes in build 116) |
 | 27 | Hide Send feedback | built |
 | 28 | Clean up the Max plan | built |
 | 29 | Clean up UltraBrowse | built |
-| 30 | Onboarding brings over passwords if possible | open |
+| 30 | Onboarding brings over passwords if possible | built (Chromium family and Safari; Firefox and Zen not possible; real import is his) |
 
 ## Runtime and build
 
