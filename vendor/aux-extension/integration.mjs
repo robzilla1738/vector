@@ -246,13 +246,6 @@ export const ROUTES = Object.freeze({
     'bs:a},p=o=>Object.hasOwn(r,o)?r[o]:null;', 'c3acd78313c1c58c9f43450bea8b0d27d5490d746ce3ff8e31a6a183b82c67f5', 79)],
   'assets/ask-omnibox-panel-DkxXbN8c.js': [block('New Tab Ask panel', 'ask-omnibox-panel.js', 'var c=k(w(),1),e=E(),J=u=>{const{account',
     '!1),children:(0,e.jsx)(J,{...u})})})})};', '757d017e1beac8bc03acebb134c66120723d0ac9d552cc3fe64fce808b87829f', 3660)],
-  // Channels, in two passes; the bot images at its start belong to vendor/provided/aux-channel-bot-assets.mjs.
-  'assets/channels-CJn5l9_T.js': [
-    block('Channels: schemas and connecting a messenger', 'channels-setup.js', 'var S=ds(ps(),1),ts=L(["slack","telegram',
-      'ending:a}},_e="channel-credentials-form"', '34152cdea24b9632b50a9f3080e4f5ef30786b7398858152b7ea7fb019fa4838', 12689),
-    block('Channels: connection settings, remote messengers and the page', 'channels-connections.js', 'ut=({accountId:s,connection:t,projects:n',
-      'an",{children:E[n].label})]},n)})})]})};', '3094f8351b365b10b91aacd9436c1717626511d47d77ead0309c10c0337d4688', 21781),
-  ],
   // The composer, one area per pass; the rest of the chunk stays supplied until its pass.
   'assets/session-composer-Dc0LRfZA.js': [
     block('Composer: icons, tool summaries, prompt history, the editor, the + menu, Send and dictation', 'composer-head.js',
@@ -323,9 +316,6 @@ export const TOKEN_CHANGES = Object.freeze([
   ['routines-settings.js', 'group-hover/routine:bg-neutral-100', 'group-hover/routine:bg-muted'],
   // The New Tab confirmation card took the 16px step; the task cards beside it use the 12px one.
   ['new-tab-tasks.js', 'rounded-2xl', 'rounded-xl'],
-  // The channel settings dialog overrode the dialog corner with the 16px step; the required mark was a fixed orange.
-  ['channels-connections.js', 'rounded-2xl', 'rounded-xl'],
-  ['channels-setup.js', 'text-orange-500', 'text-destructive'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');
