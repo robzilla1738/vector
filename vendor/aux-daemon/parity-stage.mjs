@@ -8,7 +8,7 @@ import {requireInput} from '../../scripts/lib/inputs.mjs';
 import {repoRoot} from '../../scripts/lib/repo-root.mjs';
 import {RUNTIME_FILES as PROVIDER_FILES, integrateDaemon as integrateProviderDaemon} from '../provided/provider-cli/integration.mjs';
 import {DAEMON_FILES as AGENT_FILES, integrateDaemon as integrateAgentDaemon} from '../provided/agent/integration.mjs';
-import {ROOT_NAMESPACES, RUNTIME_FILES, integrateDaemon} from './integration.mjs';
+import {ROOT_NAMESPACES, RUNTIME_FILES, integrateDaemon, withoutStoreEdits} from './integration.mjs';
 
 const resources = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources';
 const START = 'Promise.resolve().then(()=>(init_src(),src_exports)).then(({startDaemon:Cn})=>Cn())';
@@ -35,7 +35,8 @@ function harnessEntry(candidate, roots, extra) {
 /** Root namespaces of `sessions.tabs`-style paths. */
 export const rootsOf = namespaces => [...new Set(namespaces.map(namespace => namespace.split('.')[0]))];
 
-/** Writes the staged daemon under `scratch` and returns the entry path. */
+/** Writes the staged daemon under `scratch` and returns two entries: `aux`, as the release composes
+ * it, and `supplied`, the same with the bundle's own stores in place of Aux's. */
 export function stageParityEntry(scratch, namespaces, extra = []) {
   const candidate = path.join(requireInput('candidateApp'), resources);
   const app = path.join(scratch, 'Aux Daemon.app/Contents/Resources');
@@ -57,7 +58,9 @@ export function stageParityEntry(scratch, namespaces, extra = []) {
     '{get:(target,name)=>typeof name!=="string"||name==="__esModule"||name==="then"?undefined:target[name]??none(name)});',
   ].join('\n'));
   writeFileSync(path.join(app, 'native/aux-owned-native.cjs'), 'module.exports=Object.freeze({run(){throw Error("parity harness: no native commands")},withAccountRegistryLock:work=>work()});\n');
-  const entry = path.join(app, 'node-development/parity-entry.mjs');
-  writeFileSync(entry, harnessEntry(candidate, rootsOf(namespaces), extra));
-  return entry;
+  const text = harnessEntry(candidate, rootsOf(namespaces), extra);
+  const entries = {aux: path.join(app, 'node-development/parity-entry.mjs'), supplied: path.join(app, 'node-development/parity-entry-supplied.mjs')};
+  writeFileSync(entries.aux, text);
+  writeFileSync(entries.supplied, withoutStoreEdits(text));
+  return entries;
 }

@@ -10,13 +10,14 @@ import path from 'node:path';
 import test from 'node:test';
 import {stageParityEntry} from './parity-stage.mjs';
 import {EXTRA_EXPORTS, SCENARIOS} from './parity-scenarios.mjs';
-import {NAMESPACES} from './registry.mjs';
+import {NAMESPACES, STORES} from './registry.mjs';
 
 // The real path: /var/folders is a symlink, and the session file checks compare resolved paths.
 const scratch = mkdtempSync(path.join(realpathSync(tmpdir()), 'aux-daemon-parity-'));
 test.after(() => rmSync(scratch, {recursive: true, force: true}));
 
-function run(entry, mode) {
+function run(entries, mode) {
+  const entry = entries[mode];
   const home = mkdtempSync(path.join(scratch, `${mode}-home-`)), out = path.join(scratch, `${mode}.json`);
   const result = spawnSync(process.execPath, [path.join(import.meta.dirname, 'parity-harness.mjs'), entry, mode, out],
     {encoding: 'utf8', env: {PATH: process.env.PATH, HOME: home, TMPDIR: home}, timeout: 180_000});
@@ -27,8 +28,8 @@ function run(entry, mode) {
 /** What legitimately differs between two runs: the home directory, random 16-character ids
  * (any `…id`/`…Id`/`…_id` value, and UUIDs, numbered by first appearance and replaced everywhere, paths
  * included), SQLite's own unixepoch() defaults and file times (the real clock, not the harness one). */
-function comparable({home, outputs, snapshots, state, files}) {
-  let text = JSON.stringify({outputs, snapshots, state, files}).replaceAll(home, '<home>');
+function comparable({home, outputs, snapshots, agentFileChanges, state, files, jsonFiles}) {
+  let text = JSON.stringify({outputs, snapshots, agentFileChanges, state, files, jsonFiles}).replaceAll(home, '<home>');
   const ids = new Set();
   JSON.parse(text, (key, value) => {
     if (typeof value !== 'string') return value;
@@ -50,15 +51,17 @@ function comparable({home, outputs, snapshots, state, files}) {
   return result;
 }
 
-const entry = stageParityEntry(scratch, Object.keys(NAMESPACES), EXTRA_EXPORTS);
-const supplied = comparable(run(entry, 'supplied'));
-const auxRun = run(entry, 'aux'), aux = comparable(auxRun);
+const entries = stageParityEntry(scratch, Object.keys(NAMESPACES), EXTRA_EXPORTS);
+const suppliedRun = run(entries, 'supplied'), supplied = comparable(suppliedRun);
+const auxRun = run(entries, 'aux'), aux = comparable(auxRun);
 
 test('every registered namespace has a scenario, and the daemon root router serves Aux procedures for exactly those', t => {
   assert.deepEqual(Object.keys(SCENARIOS).sort(), Object.keys(NAMESPACES).sort());
   for (const namespace of Object.keys(NAMESPACES)) assert.ok(auxRun.owned[namespace]?.length, namespace);
   const owned = Object.entries(auxRun.owned).flatMap(([namespace, names]) => names.map(name => `${namespace}.${name}`)).sort();
   assert.deepEqual(auxRun.wired.aux, owned);
+  assert.deepEqual(auxRun.storesInUse, Object.keys(STORES).sort(), 'the bundle reaches every Aux store');
+  assert.deepEqual(suppliedRun.storesInUse, [], 'the reference run uses only the bundle\'s own stores');
   assert.deepEqual(auxRun.wired.schemaMismatches, [], 'each Aux procedure has the kind, route meta and input and output schemas of the one it replaces');
   t.diagnostic(`Aux serves ${owned.length} of ${auxRun.wired.total} tRPC procedures`);
 });
@@ -74,4 +77,7 @@ test('the same state.db and account files', () => {
   for (const [table, rows] of Object.entries(supplied.state.rows)) assert.deepEqual(aux.state.rows[table], rows, table);
   assert.deepEqual(aux.state, supplied.state);
   assert.deepEqual(aux.files, supplied.files);
+  for (const [file, content] of Object.entries(supplied.jsonFiles)) assert.equal(aux.jsonFiles[file], content, file);
+  assert.ok(supplied.agentFileChanges.length, 'the scenarios send agent file change notifications');
+  assert.deepEqual(aux.agentFileChanges, supplied.agentFileChanges);
 });

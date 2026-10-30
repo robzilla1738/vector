@@ -2,7 +2,7 @@
  * to the supplied routers. A namespace is a root router (`inbox`) or one nested in it
  * (`sessions.tabs`). The composed daemon entry loads this module before any router exists and
  * calls `compose` where it builds `auxRouter` (integration.mjs). */
-import {NAMESPACES} from './registry.mjs';
+import {NAMESPACES, STORES} from './registry.mjs';
 
 /** A router's procedures and nested routers; nested routers are plain records already. */
 const recordOf = value => value?._def?.record ?? (value && !value._def ? value : undefined);
@@ -28,11 +28,19 @@ function replaceProcedures(namespace, record, owned) {
 const leafNames = (procedures, prefix = '') => Object.entries(procedures)
   .flatMap(([name, procedure]) => procedure._def ? [prefix + name] : leafNames(procedure, `${prefix}${name}.`));
 
-export async function createAuxOwnedDaemon(namespaces = NAMESPACES) {
-  const modules = Object.fromEntries(await Promise.all(Object.entries(namespaces)
-    .map(async ([namespace, file]) => [namespace, await import(new URL(file, import.meta.url))])));
-  const owned = {};
+const load = async files => Object.fromEntries(await Promise.all(Object.entries(files).map(async ([name, file]) => [name, await import(new URL(file, import.meta.url))])));
+
+export async function createAuxOwnedDaemon(namespaces = NAMESPACES, storeFiles = STORES) {
+  const modules = await load(namespaces), storeModules = await load(storeFiles);
+  const owned = {}, stores = {};
   return {
+    /** A store Aux implements, created on first use; `bindings` returns the bundle's bindings. */
+    store(name, bindings) {
+      if (!storeModules[name]) throw Error(`Aux daemon: no ${name} store`);
+      return stores[name] ??= storeModules[name].create(bindings());
+    },
+    /** The stores the bundle has reached so far. */
+    storesInUse: () => Object.keys(stores).sort(),
     /** The root router record with every registered namespace's procedures replaced by Aux's. */
     compose(supplied, bindings) {
       const records = {};

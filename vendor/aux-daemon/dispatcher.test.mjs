@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import test from 'node:test';
 import {createAuxOwnedDaemon} from './dispatcher.mjs';
-import {BINDINGS_FUNCTION, DAEMON_EDITS, RUNTIME_FILES, integrateDaemon} from './integration.mjs';
+import {BINDINGS_FUNCTION, DAEMON_EDITS, RUNTIME_FILES, STORE_EDITS, integrateDaemon, withoutStoreEdits} from './integration.mjs';
 
 const router = record => ({_def: {record}});
 const procedure = (type, by, meta) => ({_def: {type, meta}, by});
@@ -55,10 +55,21 @@ test('an Aux procedure keeps the HTTP route meta of the one it replaces', async 
   assert.throws(() => daemon.compose(supplied(), bindings), /sessions.get must keep the supplied HTTP route meta/);
 });
 
+test('a store is created once, from the bindings, when the bundle first reaches it', async () => {
+  let created = 0;
+  const daemon = await createAuxOwnedDaemon({}, {settings: port('export const create = ({tag}) => ({tag});')});
+  const bindings = () => (created++, {tag: 'bound'});
+  assert.deepEqual(daemon.storesInUse(), []);
+  assert.equal(daemon.store('settings', bindings), daemon.store('settings', bindings));
+  assert.deepEqual([daemon.store('settings', bindings).tag, created, daemon.storesInUse()], ['bound', 1, ['settings']]);
+  assert.throws(() => daemon.store('sessions', bindings), /no sessions store/);
+});
+
 test('the daemon edits apply once to their anchors and ship only runtime files', () => {
-  const entry = DAEMON_EDITS.map(rule => rule.find).join(';');
+  const entry = [...DAEMON_EDITS, ...STORE_EDITS].map(rule => rule.find).join(';');
   const composed = integrateDaemon(entry);
-  for (const rule of DAEMON_EDITS) assert.ok(composed.includes(rule.replace), rule.name);
+  for (const rule of [...DAEMON_EDITS, ...STORE_EDITS]) assert.ok(composed.includes(rule.replace), rule.name);
+  assert.equal(withoutStoreEdits(composed).includes('auxOwnedDaemon.store('), false, 'the reference keeps the bundle\'s own stores');
   assert.throws(() => integrateDaemon(composed), /already/);
   assert.throws(() => integrateDaemon(entry.replace('inbox:inboxRouter,', '')), /expected 1, got 0/);
   assert.deepEqual(RUNTIME_FILES.slice(0, 2), ['dispatcher.mjs', 'registry.mjs']);

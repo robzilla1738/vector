@@ -41,6 +41,18 @@ const inbox = {calls: [
   ['overview', {accountId: 0, messageLimit: 'ten'}],
   ['listNotificationGrants', {accountId: 7}],
   ['listNotificationGrants', {accountId: -1}],
+  // The store functions the bundle's channel, push and browser code call directly.
+  ({daemon}) => {
+    const message = extra => ({source: 'slack', externalEventId: 'evt-1', title: 'Thread', content: 'Hello', metadata: {connectionId: 'c1'}, ...extra});
+    return [daemon.ingestInboxMessage(0, message({externalConversationId: 'conv-1'})).inserted, daemon.ingestInboxMessage(0, message({externalConversationId: 'conv-1'})).inserted,
+      daemon.ingestInboxMessage(0, message({externalConversationId: 'conv-2'})).inserted, daemon.ingestInboxMessage(0, message({})).inserted,
+      daemon.listInboxMessages(0, {limit: 2, offset: 1}).map(row => row.title), daemon.listInboxMessages(0).length, daemon.listInboxMessages(0, null).length,
+      daemon.upsertNotificationGrant({accountId: 0, origin: 'https://tool.example', grantedAt: null}),
+      daemon.upsertNotificationGrant({accountId: 0, origin: 'https://tool.example', grantedBySessionId: null, preserveAttribution: true}),
+      daemon.recordObservedNotificationGrant({accountId: 0, origin: 'https://new.example/path'}), daemon.recordObservedNotificationGrant({accountId: 0, origin: 'nope'}),
+      daemon.getWebPushNotificationOrigin({source: 'web-push-notification', metadata: {}, from: {id: 'https://id.example'}}),
+      daemon.normalizeNotificationGrantOrigin('data:text/plain,x'), daemon.getNotificationPermissionEventTime('2026-02-01')];
+  },
 ]};
 
 const surfaces = ({daemon}) => [...daemon.attentionByAccountId].map(([accountId, entries]) => [accountId, [...entries]]);
@@ -178,6 +190,13 @@ const settings = {calls: [
   ['getCompletionSound', a], ['setCompletionSound', {accountId: 0, fileName: 'ding.mp3', mimeType: 'audio/mpeg', data: 'SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA'}],
   ['getCompletionSound', a], ['setCompletionSound', {accountId: 0, fileName: 'x.exe', mimeType: 'application/x-msdownload', data: 'AAAA'}],
   ['resetCompletionSound', a], ['getCompletionSound', a],
+  // A value handed out is a copy: changing it changes nothing stored.
+  ({daemon}) => {
+    const store = daemon.settings(0), models = store.get('customModels');
+    models.push({provider: 'ollama', id: 'leaked'});
+    return {customModels: store.get('customModels'), all: Object.keys(store.getAll())};
+  },
+  ['set', {accountId: 0, key: 'experimental', value: {sync: false}}],
 ]};
 
 const developers = {calls: [
@@ -292,10 +311,133 @@ const loopback = (headers = {}) => ({req: loopbackRequest(), honoCtx: {env: {inc
 const createdTask = outputs => outputs.find(output => output.procedure === 'create' && output.value)?.value.id ?? 'missing';
 const task = extra => outputs => ({accountId: 0, sessionId: createdTask(outputs), ...extra});
 const queuedMessage = {role: 'user', content: [{type: 'text', text: 'later'}], timestamp: 1};
+
+/** A step that runs `work` on the task store and returns what it gives back (errors as messages). */
+const onStore = work => async ({daemon, advance}) => {
+  try {
+    return {value: await work(daemon.SessionStore, {daemon, advance})};
+  } catch (error) {
+    return {error: error.message};
+  }
+};
+const usage = {input: 12, output: 3, cacheRead: 0, cacheWrite: 0, totalTokens: 15, cost: {input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0}};
+const say = (role, text, extra = {}) => ({role, content: [{type: 'text', text}], timestamp: Date.now(), ...role === 'assistant' ? {usage, api: 'openai-completions', provider: 'openrouter', model: 'openrouter/auto'} : {}, ...extra});
+const storeTask = {}, model = {provider: 'openrouter', modelId: 'openrouter/auto'};
+const storeCalls = [
+  onStore(store => {
+    storeTask.id = store.insert(0, {title: 'Store walk', model}).id;
+    storeTask.child = store.insert(0, {title: 'Child', model, parentId: storeTask.id, trigger: {type: 'agent', toolCallId: 'call-7'}}).id;
+    storeTask.channel = store.insert(0, {title: 'Channel', model, channelRouteKey: 'slack:C1'}).id;
+    return [store.get(0, storeTask.id), store.getByChannelRouteKey(0, 'slack:C1'), store.get(0, storeTask.child), store.listByParentId(0, storeTask.id).length,
+      store.listByTriggeredBy(0, storeTask.id, 'call-7').length, store.listCoders(0).length];
+  }),
+  onStore(store => {
+    const parent = store.insert(0, {id: 'ephemeralParent1', title: 'Ephemeral parent', model, ephemeral: true});
+    return store.insert(0, {id: 'ephemeralChild01', title: 'Ephemeral child', model, parentId: parent.id}).ephemeral;
+  }),
+  onStore(store => store.insert(0, {parentId: 'missing', model})), onStore(store => store.insert(0, {id: 'noModelTask00001', title: 'No model'})),
+  onStore(store => store.insert(0, {title: 'Wrong project', parentId: storeTask.id, projectId: 'notes'})),
+  onStore(async (store, {advance}) => {
+    await store.startLatestTurn(0, storeTask.id);
+    store.appendMessage(0, storeTask.id, say('user', 'Plan my garden.'));
+    advance(1000);
+    store.appendMessage(0, storeTask.id, say('assistant', 'Plant tomatoes.', {stopReason: 'stop'}));
+    store.finalizeLatestTurn(0, storeTask.id, new Date(), ['garden.md']);
+    await store.startLatestTurn(0, storeTask.id);
+    store.appendMessage(0, storeTask.id, {role: 'user-message-metadata', timestamp: Date.now(), attachments: []});
+    store.appendMessage(0, storeTask.id, say('user', 'And herbs?'));
+    store.appendMessage(0, storeTask.id, say('assistant', 'Basil.', {stopReason: 'aborted'}));
+    await store.startLatestTurn(0, storeTask.id, new Date(), {resume: true});
+    return [store.getLatestTurn(0, storeTask.id), store.listTurnsForFeedback(0, storeTask.id).length, await store.listMessagesForAgentContext(0, storeTask.id)];
+  }),
+  onStore(async store => {
+    const overview = store.listTurnOverviews(0, storeTask.id), first = overview.turns[0];
+    return [overview, await store.listTurnMessages(0, storeTask.id, first.id, overview.transcriptRevision, 0, 2), await store.listMessageRows(0, storeTask.id, [first.id]),
+      await store.listMessageRows(0, storeTask.id), store.listRuns(0, storeTask.id), store.recordTurnResumeAttempt(0, storeTask.id), store.recordTurnResumeAttempt(0, storeTask.id)];
+  }),
+  onStore(async store => {
+    const overview = store.listTurnOverviews(0, storeTask.id);
+    return store.listTurnMessages(0, storeTask.id, overview.turns[0].id, overview.transcriptRevision + 1);
+  }),
+  onStore(async store => store.listTurnMessages(0, storeTask.id, 'missing-turn', store.listTurnOverviews(0, storeTask.id).transcriptRevision)),
+  onStore(store => [store.listTurnOverviews(0, storeTask.id, undefined, 1), store.listTurnOverviews(0, storeTask.id, 2, 1)]),
+  onStore(store => store.listTurnOverviews(0, 'missing')),
+  onStore(async store => {
+    const rows = await store.listAllMessageRows(0, storeTask.id), assistant = rows.find(row => row.msg.role === 'assistant');
+    const copy = await store.branch(0, {sessionId: storeTask.id, messageId: assistant.id});
+    return [copy.title, copy.branchedFrom === storeTask.id, await store.listAllMessages(0, copy.id), store.listTurnOverviews(0, copy.id).turns.length];
+  }),
+  onStore(async store => store.branch(0, {sessionId: storeTask.id, messageId: (await store.listAllMessageRows(0, storeTask.id)).find(row => row.msg.role === 'user').id})),
+  onStore(async store => {
+    const rows = await store.listAllMessageRows(0, storeTask.id), second = rows.filter(row => row.msg.role === 'user')[1];
+    const edited = await store.editUserMessage(0, {sessionId: storeTask.id, messageId: second.id, content: [{type: 'text', text: 'And flowers?'}]});
+    return [edited.transcriptRevision, await store.listAllMessages(0, storeTask.id), store.listTurnOverviews(0, storeTask.id)];
+  }),
+  onStore(async store => store.editUserMessage(0, {sessionId: storeTask.id, messageId: '0', content: 'x'})),
+  onStore(store => [store.search(0, 'walk'), store.search(0, '100%_'), store.search(0, '%'), store.search(0, '  ')]),
+  onStore((store, {advance}) => {
+    advance(500);
+    store.update(0, storeTask.id, {status: 'running'});
+    return [store.abortRunningSession(0, storeTask.id, {kind: 'error', error: 'boom'}), store.abortRunningSession(0, storeTask.id), store.get(0, storeTask.id).status,
+      store.getLatestTurn(0, storeTask.id)];
+  }),
+  onStore(store => {
+    store.update(0, storeTask.child, {status: 'running'});
+    return [store.abortRunningSessions(0), store.get(0, storeTask.child).status];
+  }),
+  onStore(store => [store.markAllRead(0, {parent: 'all'}), store.markAllRead(0, {parent: 'all'})]),
+  onStore(store => store.archiveAll(0, {projectId: null, parent: 'all'}).map(session => session.title)),
+  onStore((store, {advance}) => {
+    storeTask.ephemeral = store.insert(0, {title: 'Ephemeral', model, ephemeral: true, status: 'idle'}).id;
+    const early = store.claimEphemeralForPurge(0, storeTask.ephemeral);
+    advance(16 * 60_000);
+    const claimed = store.claimEphemeralForPurge(0, storeTask.ephemeral, new Date());
+    let refused;
+    try {
+      store.unarchive(0, storeTask.ephemeral);
+    } catch (error) {
+      refused = error.message;
+    }
+    return [early, claimed?.archivedAt, refused, store.releaseEphemeralPurge(0, storeTask.ephemeral)?.archivedAt];
+  }),
+  onStore(store => {
+    const source = store.get(0, storeTask.id);
+    const restored = store.restore(0, {...source, id: 'restoredTask00001', title: 'Restored', channelRouteKey: undefined});
+    const again = store.restore(0, {...source, id: 'restoredTask00001', title: 'Restored twice', channelRouteKey: undefined});
+    const turns = store.listTurnsForFeedback(0, storeTask.id).map(({id, sessionId, ...turn}) => turn);
+    store.adoptMirrorState(0, 'restoredTask00001', {readAt: new Date(5000), archivedAt: new Date(6000)});
+    return [restored.title, again.title, store.restoreTurns(0, 'restoredTask00001', turns), store.restoreTurns(0, 'restoredTask00001', turns),
+      store.restoreTurns(0, 'restoredTask00001', []), store.get(0, 'restoredTask00001')];
+  }),
+  onStore(store => [store.messagesForAgentContext([{id: '0', msg: say('user', 'x')}, {id: '9', msg: {role: 'turn-lifecycle'}}]),
+    store.messagesForAgentContext([{id: '0', msg: say('user', 'x')}], {role: 'compaction', firstKeptEntryId: 'nope'})]),
+  onStore(async store => {
+    const cleared = await store.clearMessages(0, storeTask.id);
+    return [cleared.contextWindow, await store.listAllMessages(0, storeTask.id), store.listRuns(0, storeTask.id)];
+  }),
+  ({daemon}) => {
+    const recent = daemon.RecentSessionsStore, before = recent.list(0).map(item => item.title);
+    recent.loadCache(0);
+    const chats = recent.listChats(0);
+    return [before, chats.pinned.map(item => item.title), chats.recents.map(item => item.title)];
+  },
+  onStore(store => {
+    store.remove(0, storeTask.channel);
+    return [store.get(0, storeTask.channel), store.list(0, {parent: 'all', archived: 'include', ephemeral: 'include', routines: 'include'}).length,
+      store.listPreviewItems(0, {q: 'store', archived: 'include', parent: 'all'}).map(item => item.title)];
+  }),
+];
+
 const sessions = {
   context: () => loopback(),
   calls: [
-    ['create', {accountId: 0, title: 'Garden notes'}], ['create', {accountId: 0, trigger: {type: 'agent'}}], ['create', {accountId: 0, harnessId: 'coder'}],
+    ['create', {accountId: 0, title: 'Garden notes'}], ['create', {accountId: 0, title: 'In a Project', projectId: 'notes'}],
+    ({daemon}) => daemon.ProjectStore.list(0).map(project => ({id: project.id, lastActiveAt: project.lastActiveAt})),
+    // A stored time older than the Project's newest task: the task's time wins.
+    ({daemon}) => {
+      daemon.ProjectStore.touchLastActive(0, 'notes', new Date(0));
+      return {stored: daemon.ProjectStore.get(0, 'notes').lastActiveAt, listed: daemon.ProjectStore.list(0).find(project => project.id === 'notes').lastActiveAt};
+    }, ['create', {accountId: 0, trigger: {type: 'agent'}}], ['create', {accountId: 0, harnessId: 'coder'}],
     ['list', a], ['listPreviewItems', a], ['list', {accountId: 0, archived: 'include'}],
     ['get', task()], ['get', {accountId: 0, sessionId: 'missing'}], ['markRead', task()], ['markUnread', task()], ['listRuns', task()],
     ['update', task({title: 'Kitchen notes', pinned: true})], ['update', task({runtimeConfig: {workingDirs: []}})], ['update', task({incognito: true})],
@@ -329,6 +471,8 @@ const sessions = {
     ['steer', task({prompt: 'faster'})], ['queue', task({prompt: 'then this'})], ['steer', task({prompt: '  '})],
     () => new Promise(resolve => setTimeout(resolve, 100)),
     ['delete', task()], ['get', task()], ['list', a],
+    // The task store itself, method by method, on a transcript with real turns.
+    ...storeCalls,
   ],
 };
 
@@ -396,4 +540,7 @@ export const SCENARIOS = {inbox, uiAttention, fullDiskAccess, agentRuntime, capt
   // Last: it adds and removes accounts.
   accounts};
 /** Bundle names the scenarios read beyond the routers. */
-export const EXTRA_EXPORTS = ['attentionByAccountId', 'hasForegroundAgentManagerSessionAttention', 'hasFocusedAgentManagerSurface', 'settings', 'createRoutine', 'allowedExtensionOrigins'];
+export const EXTRA_EXPORTS = ['attentionByAccountId', 'hasForegroundAgentManagerSessionAttention', 'hasFocusedAgentManagerSurface', 'settings', 'createRoutine', 'allowedExtensionOrigins', 'ProjectStore',
+  'listeners$1 as agentFileListeners', 'SessionStore', 'RecentSessionsStore',
+  'ingestInboxMessage', 'listInboxMessages', 'upsertNotificationGrant', 'recordObservedNotificationGrant', 'getWebPushNotificationOrigin', 'normalizeNotificationGrantOrigin',
+  'getNotificationPermissionEventTime'];

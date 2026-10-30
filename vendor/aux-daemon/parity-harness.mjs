@@ -5,7 +5,7 @@
 // refused, so nothing reaches the Keychain, the network or the user's state.
 //
 //   node parity-harness.mjs <staged entry> <supplied|aux> <out.json> [scenarios module]
-import {mkdirSync, readdirSync, writeFileSync} from 'node:fs';
+import {mkdirSync, readFileSync, readdirSync, writeFileSync} from 'node:fs';
 import {registerHooks} from 'node:module';
 import path from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
@@ -64,6 +64,9 @@ const supplied = Object.fromEntries(roots.map(root => [root, daemon[`supplied_${
 const bindings = daemon.auxOwnedDaemonBindings();
 const routers = mode === 'aux' ? daemon.auxOwnedDaemon.compose(supplied, bindings) : supplied;
 const harness = {daemon, home, advance: ms => { clock += ms; }};
+// Agent file change notifications (settings and Project writes send them), in order.
+const agentFileChanges = [];
+daemon.agentFileListeners.add((accountId, kind) => agentFileChanges.push([accountId, kind]));
 
 const outputs = {}, snapshots = {};
 for (const [namespace, scenario] of Object.entries(SCENARIOS)) {
@@ -125,7 +128,10 @@ const state = {
 database.close();
 // Logs are the daemon's own diagnostics, not effects of the namespaces.
 const files = readdirSync(home, {recursive: true}).filter(file => !file.split(path.sep).includes('logs')).sort();
+// The JSON and JSONL files the account keeps (settings.json, accounts.json, task transcripts and
+// the like), byte for byte.
+const jsonFiles = Object.fromEntries(files.filter(file => /\.jsonl?$/.test(file)).map(file => [file, readFileSync(path.join(home, file), 'utf8')]));
 
 mkdirSync(path.dirname(out), {recursive: true});
-writeFileSync(out, JSON.stringify({owned: mode === 'aux' ? daemon.auxOwnedDaemon.owned() : {}, wired, outputs, snapshots, state, files}));
+writeFileSync(out, JSON.stringify({owned: mode === 'aux' ? daemon.auxOwnedDaemon.owned() : {}, storesInUse: daemon.auxOwnedDaemon.storesInUse(), wired, outputs, snapshots, agentFileChanges, state, files, jsonFiles}));
 process.exit(0);

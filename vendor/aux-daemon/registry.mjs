@@ -28,3 +28,15 @@ export const NAMESPACES = Object.freeze({
   sync: './namespaces/sync.mjs',
   lasso: './namespaces/lasso.mjs',
 });
+
+/** Supplied stores Aux implements itself, each a module beside this file whose `create(bindings)`
+ * returns the store; a count-checked edit (integration.mjs) makes the bundle's own store reach it,
+ * so every supplied caller uses Aux's store too. */
+export const STORES = Object.freeze({
+  settings: './stores/settings.mjs',
+  projects: './stores/projects.mjs',
+  transcripts: './stores/transcripts.mjs',
+  sessions: './stores/sessions.mjs',
+  inbox: './stores/inbox.mjs',
+  recentSessions: './stores/recentSessions.mjs',
+});
