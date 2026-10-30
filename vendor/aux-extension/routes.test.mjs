@@ -1145,3 +1145,79 @@ test('the Tasks page renders like the supplied one with chats, filters and pagin
     props: [{session: items[0], userId: '7', style: {height: 40}, children: 'list', projectId: 'p1', projectIdLocked: true}, {session: items[1], userId: '7'}]});
 });
 
+// Onboarding: the New Tab helper folded, expanded and by task count, in Ask and Search mode; the
+// layout parts and the field group with their props; Continue pressing on Enter.
+test('the onboarding helper, layout parts and field group render like the supplied ones', async () => {
+  const scene = (world, {fold = null, mode = 'ask', key = 'Enter', target = {}} = {}) => ({event: {key, target, currentTarget: {scrollIntoView: world.stub('spy:scroll')},
+    preventDefault: world.stub('spy:preventDefault')}, imports: {
+    'window.localStorage.getItem': () => fold, './newtab-CnOLQ0yu.js#o': {omniboxMode: mode}, './newtab-CnOLQ0yu.js#s': {accountId: 7},
+    './strip-markdown-DRcmtuJc.js#N': {broadcast: world.stub('spy:broadcast')}, './extension-page-url-BH3pfT7h.js#a': world.stub('spy:openPage'),
+    './strip-markdown-DRcmtuJc.js#dn': () => false}});
+  const blocksByChunk = Object.fromEntries(['assets/onboarding-helper-BVYyPOep.js', 'assets/onboarding-layout-MxuCwWDr.js', 'assets/onboarding-field-group-BpfduoJC.js']
+    .map(chunk => [chunk, ROUTES[chunk]]));
+  await assertParity({blocksByChunk, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 30, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world), world => scene(world, {fold: 'folded', mode: 'search'}), world => scene(world, {fold: 'expanded'}),
+      world => scene(world, {key: 'Escape'}), world => ({...scene(world), state: [false]})],
+    props: [{taskCount: 0, children: 'Step', className: 'probe', variant: 'default', size: 'lg', id: 'x'}, {taskCount: 4, children: ['a', 'b'], variant: 'outline'}, {}]});
+});
+
+test('the onboarding helpers read the fold and spot controls like the supplied ones', async () => {
+  const world = createWorld();
+  const pair = async chunk => evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const helper = await pair('assets/onboarding-helper-BVYyPOep.js');
+  for (const fold of ['folded', 'expanded', 'other', null]) {
+    world.enter({imports: {'window.localStorage.getItem': () => fold}});
+    assert.equal(helper.ours.__pair_readFold(), helper.supplied.__pair_readFold(), String(fold));
+  }
+  assert.equal(JSON.stringify(helper.ours.__pair_SUGGESTIONS), JSON.stringify(helper.supplied.__pair_SUGGESTIONS));
+  for (const name of ['__pair_FOLD_KEY', '__pair_SUGGESTIONS_SHOWN', '__pair_ILLUSTRATIONS']) assert.equal(JSON.stringify(helper.ours[name]), JSON.stringify(helper.supplied[name]), name);
+  const layout = await pair('assets/onboarding-layout-MxuCwWDr.js');
+  const field = await pair('assets/onboarding-field-group-BpfduoJC.js');
+  assert.equal(field.ours.__pair_FIELD_GROUP, field.supplied.__pair_FIELD_GROUP);
+  assert.equal(layout.ours.__pair_isControl({}), layout.supplied.__pair_isControl({}));
+});
+
+// The omnibox engine: the mode preference against local storage, the scope lookup, and the Ask panel
+// in Ask and Search mode, connected and not, with an editor and a pending submit.
+test('the omnibox mode, scopes and Ask panel behave like the supplied ones', async () => {
+  const world = createWorld();
+  const pair = async chunk => evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const mode = await pair('assets/omnibox-mode-preference-CWzOtieV.js');
+  const run = side => {
+    const store = new Map([['aux.new-tab.omnibox-mode.v2', 'ask']]);
+    const calls = [];
+    world.enter({imports: {'window.localStorage.getItem': key => store.get(key) ?? null, 'window.localStorage.setItem': (key, value) => (calls.push([key, value]), store.set(key, value))}});
+    const out = [side.o('ask'), side.o('search'), side.o('other'), side.t(), side.d('search'), side.d(undefined)];
+    side.n('search');
+    out.push(side.t(), side.d('bogus'));
+    store.set('aux.new-tab.omnibox-mode.v2', 'weird');
+    out.push(side.t());
+    return JSON.stringify([out, calls]);
+  };
+  // The chunk exports o as n, t as t, n as i, d as r.
+  const exports = side => ({o: side.n, t: side.t, n: side.i, d: side.r});
+  assert.equal(run(exports(mode.ours)), run(exports(mode.supplied)));
+  const scope = await pair('assets/omnibox-scope-DGFEg60F.js');
+  for (const id of ['bookmark', 'gemini', 'history', 'tabs', 'toString', 'other'])
+    assert.equal(String(scope.ours.t(id)), String(scope.supplied.t(id)), id);
+  const chunk = 'assets/ask-omnibox-panel-DkxXbN8c.js';
+  const editor = world => ({mode: 'ask', draftWriter: {getDraft: () => ({text: 'draft'}), write: world.stub('spy:write'), flush: world.stub('spy:flush')},
+    getSnapshot: () => ({plainText: 'Plan my week'}), takePendingAsk: () => null});
+  const scene = (world, {accountId = 7, omniboxMode = 'ask', browserMode = 'default', hasEditor = true, creating = false} = {}) => ({imports: {
+    './newtab-CnOLQ0yu.js#o': {accountId, browserMode, omniboxMode}, // A fresh editor per read: the panel's effects mark the editor, which must not leak between renders.
+    './search-navigation-TWhZq3-H.js#u': () => (hasEditor ? editor(world) : null),
+    './search-navigation-TWhZq3-H.js#a': text => Boolean(text?.trim()), './permission-approval-D-GTf91U.js#y': {isCreatingSession: creating, sendMessage: world.stub('spy:send')},
+    './permission-approval-D-GTf91U.js#f': {disabled: false}, './permission-approval-D-GTf91U.js#p': {handleFiles: world.stub('spy:files'), submitForm: world.stub('spy:submit')},
+    './extension-page-url-BH3pfT7h.js#t': path => `ext:${path}`, './utils-Cl9zfMcr.js#r': text => ({plainText: text})}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 20, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world), world => scene(world, {omniboxMode: 'search', browserMode: 'incognito', creating: true}),
+      world => scene(world, {accountId: null}), world => scene(world, {hasEditor: false}), world => ({...scene(world), state: [false]})],
+    props: [world => ({hasSubmitPending: () => true, pendingSubmitInput: 'Plan my week', pendingSubmitSnapshot: null, onInputChange: world.stub('spy:onInput'),
+      onAttachFilesReady: world.stub('spy:onAttach'), onPendingSubmitHandled: world.stub('spy:onHandled'), onSearchMode: world.stub('spy:onSearch'),
+      onSubmitInFlightChange: world.stub('spy:onInFlight'), onSubmitStart: () => true, onSubmitReady: world.stub('spy:onReady'), forcedMode: null}),
+      world => ({hasSubmitPending: () => false, pendingSubmitInput: null, onSubmitStart: () => false, onAttachFilesReady: world.stub('spy:onAttach'),
+        onSubmitReady: world.stub('spy:onReady'), onSubmitInFlightChange: world.stub('spy:onInFlight'), onPendingSubmitHandled: world.stub('spy:onHandled')})]});
+});
+

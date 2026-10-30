@@ -234,6 +234,18 @@ export const ROUTES = Object.freeze({
     '})]}),s?.({taskCount:o?.length??0})]})};', '5b1fb9b6e811dfa6e504e30bada75f1b3ba843d77d4c77fd2e4b33db20b175aa', 7913)],
   'assets/tasks-D7OPjR17.js': [block('Tasks page', 'tasks-page.js', 'var e=F(),Ke=({size:s=24,ariaHidden:a=!0',
     'iew==="card"&&(0,e.jsx)(ss,{})]})]})]})}', 'e7f1eebeab6c8377b75b01b92e354a2301da199dd5bf9ff6f8ee2e29b4c9abad', 15327)],
+  'assets/onboarding-helper-BVYyPOep.js': [block('New Tab onboarding helper', 'onboarding-helper.js', 'var e=w(),_=({size:t=24,ariaHidden:o=!0,',
+    '2 h-7 px-2 text-xs",...o,children:t})});', 'b0a41f0b7b496f3269bdd78d943fae94e657c6fb6246896fdd2ec14ef96e749e', 7884)],
+  'assets/onboarding-layout-MxuCwWDr.js': [block('Onboarding layout parts', 'onboarding-layout.js', 'var t=x(),k=({children:e,className:r,...',
+    'x]:not([tabindex="-1"])\'].join(",")):!1;', 'fd27736486dfb40973cdce6cc74c738d6b77cb3205445961724557ab4f5e0313', 2222)],
+  'assets/onboarding-field-group-BpfduoJC.js': [block('Onboarding field group', 'onboarding-field-group.js', 'var e=s(),d="overflow-hidden rounded-2xl',
+    ',{...a,className:o("block gap-0",d,r)});', '7300e4ecf74271bdacfb6bf2c7d7bacbd59f92f659dc01520973324a1fa9dfda', 373)],
+  'assets/omnibox-mode-preference-CWzOtieV.js': [block('New Tab omnibox mode preference', 'omnibox-mode-preference.js', 'var a="aux.new-tab.omnibox-mode.v2",r="s',
+    'ge.setItem(a,e)}catch{}},d=e=>o(e)??t();', '2ef7d94f41f3b594f1707c1d420807c829ed2fe8ebde0ea7c477a97de438d524', 313)],
+  'assets/omnibox-scope-DGFEg60F.js': [block('Omnibox scopes', 'omnibox-scope.js', 'var r={bookmark:t,gemini:s,history:m,tab',
+    'bs:a},p=o=>Object.hasOwn(r,o)?r[o]:null;', 'c3acd78313c1c58c9f43450bea8b0d27d5490d746ce3ff8e31a6a183b82c67f5', 79)],
+  'assets/ask-omnibox-panel-DkxXbN8c.js': [block('New Tab Ask panel', 'ask-omnibox-panel.js', 'var c=k(w(),1),e=E(),J=u=>{const{account',
+    '!1),children:(0,e.jsx)(J,{...u})})})})};', '757d017e1beac8bc03acebb134c66120723d0ac9d552cc3fe64fce808b87829f', 3660)],
   // The composer, one area per pass; the rest of the chunk stays supplied until its pass.
   'assets/session-composer-Dc0LRfZA.js': [
     block('Composer: icons, tool summaries, prompt history, the editor, the + menu, Send and dictation', 'composer-head.js',
