@@ -138,6 +138,8 @@ export function createWorld() {
     if (label(value)) return `stub:${label(value)}`;
     if (Array.isArray(value)) return value.map(item => describe(item, depth + 1));
     if (value.$element) return renderElement(value, depth + 1);
+    // An async function rendered as a component: its outcome is not part of the render.
+    if (typeof value.then === 'function' && value.constructor?.name === 'Promise') return value.catch(() => {}), 'promise';
     if (value.$context) return 'context';
     if (forwardRefs.has(value)) return `forwardRef:${hash(String(value.$forwardRef))}`;
     if (lazies.has(value)) { let named; try { named = describe(value.$lazy(), depth + 1); } catch (error) { named = `threw:${thrown(error)}`; } return {lazy: named}; }

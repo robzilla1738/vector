@@ -137,7 +137,7 @@ const sidePanel = (world, side) => ({openSideChat: world.stub('spy:openSideChat'
   setPanelRef: world.stub('setPanelRef'), syncCollapsed: world.stub('spy:syncCollapsed'), previewFilesByPath: new Map([['out/a.md', {kind: 'text'}]]),
   selectedSubagentId: null, isMaximized: false, mode: 'open', tabs: sideTabs, activeTabId: 't3', ...side});
 const composerImports = (world, {session = {}, options = {}, settings = {}, mode = 'default', store = fastNotices, pending,
-  side = {}, account = {mode: 'cloud', authStatus: 'active'}, bill = billing, notice = limit, disconnected = false, dismissed = false, stream = 'streaming', panel = true} = {}) => ({
+  side = {}, streaming = false, account = {mode: 'cloud', authStatus: 'active'}, bill = billing, notice = limit, disconnected = false, dismissed = false, stream = 'streaming', panel = true} = {}) => ({
   './strip-markdown-DRcmtuJc.js#nr': options => (String(options).includes('billing') ? bill : String(options).includes('projects') ? {data: projects} : {data: account}),
   './provider-Cw0zhujt.js#X': sidePanel(world, side),
   './provider-Cw0zhujt.js#M': subagentItems,
@@ -172,7 +172,8 @@ const composerImports = (world, {session = {}, options = {}, settings = {}, mode
   '*.safeParse': details => ({data: details}),
   './permission-approval-D-GTf91U.js#b': {mode},
   './permission-approval-D-GTf91U.js#x': {notice, steer: world.stub('spy:steer'), continueConversation: world.stub('spy:continue'), sendMessage: world.stub('spy:send')},
-  './permission-approval-D-GTf91U.js#f': {isStreaming: false, submitForm: world.stub('spy:submitForm')},
+  './permission-approval-D-GTf91U.js#f': {isStreaming: streaming, submitForm: world.stub('spy:submitForm'), stop: world.stub('spy:stop'), canSend: !streaming, uploadQueue: [],
+    disabled: false},
   './permission-approval-D-GTf91U.js#p': {hasPreservedDraft: true, getText: () => ' edited ', insertText: world.stub('spy:insertText')},
   './permission-approval-D-GTf91U.js#l': {disabled: false, handleDirectories: world.stub('spy:dirs'), handleFiles: world.stub('spy:files'), attachments: selections,
     addAttachment: world.stub('spy:addAttachment'), updateAttachment: world.stub('spy:updateAttachment')},
@@ -229,6 +230,8 @@ const composerScenes = [
   world => ({imports: composerImports(world, {side: {activeTabId: 't5', selectedSubagentId: 'a2'}}), context: layer(world)}),
   world => ({imports: composerImports(world, {side: {activeTabId: 't4', tabs: sideTabs.slice(3)}}), context: layer(world)}),
   world => ({imports: composerImports(world, {side: {activeTabId: null}}), context: layer(world)}),
+  // While the agent works: Stop in place of Send.
+  world => ({imports: composerImports(world, {streaming: true}), context: layer(world)}),
   world => ({imports: composerImports(world, {settings: {modelsByProvider: {}, availableModels: [], isLoading: true}}), context: layer(world),
     state: [selection, {id: 'sel-1', range}, badges, undefined, {top: 4, left: 8}],
     event: {key: 'Enter', metaKey: true, nativeEvent: {isComposing: false}, target: {value: 'typed'}, preventDefault: world.stub('spy:preventDefault'),
@@ -737,5 +740,139 @@ test('the message list scroll controller follows and lets go like the supplied o
     return JSON.stringify([...trail, controller.getDebugEvents()]);
   };
   for (const geometry of ['top-down', 'bottom-up']) assert.equal(drive(ours, geometry), drive(supplied, geometry), geometry);
+});
+
+// The composer head's tool summaries, step groups, tab targets and sent prompts, with real steps.
+test('the composer head summarizes tools, groups steps and lists prompts like the supplied one', async () => {
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: COMPOSER, text: textOf(COMPOSER), blocks: ROUTES[COMPOSER], integrate: integrateRoutes,
+    read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const kinds = {read: 'read', edit: 'edit', webfetch: 'search', websearch: 'search', memory_search: 'search', browsing_history_search: 'search', skill: 'skill',
+    history_search: 'search', history_read: 'read'};
+  world.enter({imports: {
+    './tool-definition-registry-Cc6FCFb2.js#t': name => ({summaryKind: kinds[name] ?? 'tool', hide: name === 'hidden' ? () => true : undefined, standalone: name === 'todo'}),
+    './tool-definition-registry-Cc6FCFb2.js#m': result => result?.content ?? [],
+    './tool-definition-registry-Cc6FCFb2.js#d': call => ({name: `skill-${call.id}`}),
+    './tool-definition-registry-Cc6FCFb2.js#u': args => ({target: args.target, action: args.action}),
+    './tool-definition-registry-Cc6FCFb2.js#l': ({call}) => ({action: call.id.endsWith('2') ? 'Read' : 'Searched'}),
+    './strip-markdown-DRcmtuJc.js#Nt': (message, index) => `${message.id ?? message.timestamp}:${index}`,
+    './strip-markdown-DRcmtuJc.js#m': message => (typeof message.content === 'string' ? message.content : ''),
+  }});
+  const json = value => JSON.stringify(value, (_, item) => (Object.prototype.toString.call(item) === '[object Map]' ? [...item] : item));
+  const same = (name, ...args) => assert.equal(json(ours[name](...args)), json(supplied[name](...args)), `${name}(${json(args).slice(0, 80)})`);
+  const tool = (id, name, args = {}, result = {content: [{type: 'text', text: 'ok'}]}, details) => ({call: {id, name}, args, result, details});
+  const steps = [tool('c1', 'read', {path: 'src\\a.ts'}), tool('c2', 'read', {file_path: 'src/a.ts'}), tool('c3', 'edit', {path: 'b.md'}), tool('c4', 'websearch'),
+    tool('c5', 'webfetch', {url: 'https://x.example'}), tool('c6', 'memory_search', {}, undefined, {skipped: 'indexing'}), tool('c7', 'memory_search'),
+    tool('c8', 'browsing_history_search'), tool('c9', 'skill', {path: 'skills/deploy'}), tool('c10', 'repl', {target: 'code', action: 'run'}),
+    tool('c11', 'repl', {target: 'notes', action: 'search'}), tool('c12', 'repl', {target: 'mail', action: 'send'}), tool('c13', 'history_search'),
+    tool('c22', 'history_read'), tool('c14', 'bash', {}, {isError: true}), tool('c15', 'bash', {}, undefined), tool('c16', 'bash', {}, {content: []}),
+    tool('c17', 'todo'), tool('c18', 'hidden')];
+  same('__kept_hu', steps);
+  same('__kept_hu', steps.slice(0, 1));
+  same('__kept_hu', []);
+  for (const step of steps) { same('__pair_summaryKind', step); same('__kept_Kn', step); }
+  const labels = [{label: 'Searched', priority: 2, stepIndex: 3}, {label: 'Read from', priority: 1, stepIndex: 5}, {label: 'Ran actions', priority: 1, stepIndex: 1},
+    {label: 'Edited', priority: 4, stepIndex: 0}, {label: 'Sent via', priority: 3, stepIndex: 2}];
+  for (const list of [labels, labels.slice(0, 3), labels.slice(0, 1), []]) same('__pair_toolActivityLabel', list);
+  const numbers = Array.from({length: 450}, (_, index) => index);
+  for (const keep of [index => index % 5 !== 0, () => true, () => false]) same('__kept_lu', numbers.slice(0, 30), keep);
+  same('__kept_lu', numbers, () => true);
+  same('__kept_pu', [{id: 't1', targetId: 'g1', url: 'https://a.example', data: {title: ' A ', iconUrl: 'i.png', viewport: {w: 1}}, createdAt: 1, updatedAt: 2, ownership: 'agent'},
+    {id: 't2', targetId: 'g2', url: 'about:blank', data: {}}, {id: 't3', url: 'https://b.example', data: {}}, {id: 't4', targetId: 'g4', url: 'https://c.example', data: {title: '  '}},
+    {id: 't5', targetId: 'g5', url: ':', data: {}}], 'g1');
+  same('__pair_tabMentionsOf', [{type: 'tab', faviconUrl: 'f.png', url: 'https://a'}, {type: 'file', name: 'x'}]);
+  const turns = [{input: [{role: 'user-message-metadata', attachments: [{type: 'tab', url: 'https://a', faviconUrl: 'f'}]}, {role: 'user', id: 'u1', content: 'First', timestamp: 1}],
+    steeringMessages: [{role: 'steering', id: 's1', content: 'Steer', timestamp: 2, attachments: [{type: 'tab', url: 'https://b'}]}]}];
+  const messagesByKey = {m1: {role: 'user', id: 'u2', content: 'Second', timestamp: 3}, m2: {role: 'user', id: 'u3', content: 'Recalled', timestamp: 4, metadata: {contextRecall: true}},
+    m3: {role: 'user', id: 'u4', content: 'Steered', timestamp: 5, metadata: {steeringMessageId: 's1'}}, m4: {role: 'assistant', content: 'no'}};
+  same('__pair_sentPrompts', {turns, messageOrder: ['m1', 'm2', 'm3', 'm4', 'gone'], messagesByKey});
+});
+
+// Pasted files in messages and the queue list, with real messages.
+test('pasted files and queued items are handled like the supplied ones', async () => {
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: COMPOSER, text: textOf(COMPOSER), blocks: ROUTES[COMPOSER], integrate: integrateRoutes,
+    read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  const meta = attachments => ({role: 'user-message-metadata', attachments});
+  const messages = [
+    [meta([{type: 'file', name: 'a.png', data: 'AA', path: 'a.png', pastedText: {characterCount: 3}}, {type: 'file', name: 'b', data: 'BB'}, {type: 'tab', url: 'u'}]),
+      {role: 'user', content: 'hi'}],
+    [meta([{type: 'file', name: 'c', path: 'c.txt'}]), {role: 'user', content: 'x'}],
+    meta([{type: 'file', name: 'd', data: 'DD'}]), meta([{type: 'file', name: 'e', data: 'EE', path: 'e.txt'}, {type: 'tab', url: 'u'}]),
+    {role: 'user', content: 'plain'}, [],
+  ];
+  for (const metadata of [{kind: 'binary'}, {kind: 'directory'}, {kind: 'text'}, undefined]) same('__pair_openModeOf', metadata);
+  for (const message of messages) { same('__kept_Oh', message); same('__kept_Hh', message); }
+  const upload = async attachment => ({id: `up-${attachment.name}`, path: `uploads/${attachment.name}`});
+  for (const message of messages) assert.equal(JSON.stringify(await ours.__kept_oo(message, upload)), JSON.stringify(await supplied.__kept_oo(message, upload)));
+  const queue = [meta([{type: 'tab', url: 'u'}]), {role: 'user', content: 'one', timestamp: 1}, {role: 'assistant'}, {role: 'user', content: 'two', timestamp: 2}];
+  for (const session of [{queuedMessages: queue, steeringMessages: queue.slice(1, 2)}, {}, {queuedMessages: []}]) same('__kept_io', session);
+  same('__pair_userMessagesOf', queue);
+  same('__pair_userMessagesOf', undefined);
+});
+
+// The Security & Privacy page's ad blocker filters, update reporting and browsing-data work, run with
+// a recording ad-blocker API and browser APIs on both sides.
+test('the privacy settings manage filters and browsing data like the supplied page', async () => {
+  const chunk = 'assets/privacy-BeEEt9Qu.js';
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const json = value => JSON.stringify(value, (_, item) => (typeof item === 'function' ? `fn` : item));
+  const same = (name, ...args) => assert.equal(json(ours[name](...args)), json(supplied[name](...args)), `${name}(${json(args).slice(0, 80)})`);
+  const rules = '! Title: Social\n||social.example^\n||share.example^\n\n! Title:   \n##.banner\n\n';
+  for (const text of [rules, '||plain.example^', '   ', '! Title: One\n']) same('__pair_parseCustomRules', text);
+  same('__pair_formatCustomRules', supplied.__pair_parseCustomRules(rules));
+  for (const editing of [{type: 'url', subscription: {name: 'EasyList', url: 'https://e.example/list.txt'}}, {type: 'url', subscription: {url: 'https://x'}},
+    {type: 'text', index: 1}, {type: 'text', index: 9}, undefined]) same('__pair_filterDefaults', editing, rules);
+  for (const [query, ...fields] of [['', 'a'], ['soc', 'Social', 'x'], ['zz', 'Social']]) same('__pair_matches', query, ...fields);
+  for (const text of ['abc', 'é漢']) same('__pair_byteLength', text);
+  for (const count of [0, 1, 7]) same('__pair_filterCount', count);
+  const state = {available: true, stateLoaded: true, compiling: false, activeUpdateJobIds: [], enabled: true};
+  for (const [current, lists] of [[undefined], [{available: false}], [{...state, stateLoaded: false}], [{...state, compiling: true}],
+    [{...state, activeUpdateJobIds: ['j']}], [{...state, enabled: false}], [state, []], [state, [{lastSuccessfulCheckMs: 0}]], [state, [{lastSuccessfulCheckMs: 5}, {lastSuccessfulCheckMs: 9}]]])
+    same('__pair_adblockStatus', current, lists);
+  for (const period of ['all', '15', '10080']) same('__pair_periodStart', period);
+  // The filter changes, against an API that records what it is asked.
+  const run = async (side, work) => {
+    const calls = [];
+    const api = new Proxy({}, {get: (_, method) => async (...args) => {
+      calls.push([method, ...args]);
+      if (method === 'getCustomRules') return {rules};
+      if (method === 'getSubscriptionUpdateProgress') return {status: calls.filter(([name]) => name === method).length < 3 ? 'running' : 'partiallyFailed'};
+      if (method === 'addSubscription') return {updateJobId: 'job-1'};
+    }});
+    const toasts = name => (...args) => calls.push([name, ...args]);
+    world.enter({imports: {'./dist-LyKrHgST.js#n.success': toasts('success'), './dist-LyKrHgST.js#n.error': toasts('error'),
+      'chrome.history.search': async () => [{url: 'https://www.a.example/x'}, {url: 'https://b.example'}, {url: 'not a url'}, {}],
+      'chrome.cookies.getAll': async () => [{domain: '.a.example'}, {domain: 'www.a.example'}, {domain: 'c.example'}],
+      'chrome.downloads.search': async query => (calls.push(['downloads', query]), [{}]),
+      'chrome.browsingData.remove': async (...args) => calls.push(['remove', ...args])}});
+    let outcome;
+    try { outcome = await work(side, api); } catch (error) { outcome = `threw ${error.message}`; }
+    return json([outcome, calls]);
+  };
+  const works = [
+    (side, api) => side.__pair_saveFilter(api, {mode: 'url', url: 'https://n.example', name: 'New'}),
+    (side, api) => side.__pair_saveFilter(api, {mode: 'url', url: 'https://n.example', name: 'Renamed'}, {type: 'url', subscription: {id: 's1', url: 'https://n.example', name: 'Old'}}),
+    (side, api) => side.__pair_saveFilter(api, {mode: 'url', url: 'https://m.example', name: 'Moved'}, {type: 'url', subscription: {id: 's1', url: 'https://n.example'}}),
+    (side, api) => side.__pair_saveFilter(api, {mode: 'url', url: 'https://n.example', name: ''}, {type: 'url', subscription: {id: 's1', url: 'https://n.example'}}),
+    (side, api) => side.__pair_saveFilter(api, {mode: 'text', name: 'Mine', rules: '##.ad'}),
+    (side, api) => side.__pair_saveFilter(api, {mode: 'text', name: 'Edited', rules: '##.x'}, {type: 'text', index: 0}),
+    (side, api) => side.__pair_removeFilter(api, {type: 'text', index: 1}),
+    (side, api) => side.__pair_removeFilter(api, {type: 'url', subscription: {id: 's9'}}),
+    (side, api) => side.__pair_removeFilter(api, undefined),
+    (side, api) => side.__pair_editCustomRules(api, list => list.push({name: 'Huge', rules: 'x'.repeat(4194304)})),
+    (side, api) => side.__pair_waitForUpdate(api, 'job-1'),
+    (side, api) => side.__pair_announceUpdate(api, 'job-1', 'toast-1'),
+    side => side.__pair_browsingDataDetails('15'),
+    side => side.__pair_historyDetail(5),
+    side => side.__pair_cookiesDetail(),
+    side => side.__pair_downloadsDetail(undefined),
+    side => side.__pair_deleteBrowsingData({period: '30', items: ['browsing-history', 'site-data', 'form-data']}),
+    side => side.__pair_deleteBrowsingData({period: 'all', items: ['cookies']}),
+  ];
+  for (const [index, work] of works.entries()) assert.equal(await run(ours, work), await run(supplied, work), `work ${index}`);
 });
 

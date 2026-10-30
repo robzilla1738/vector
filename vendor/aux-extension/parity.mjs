@@ -23,7 +23,7 @@ export function expectedText(text, blocks, changes, label) {
 
 /** Module-scope names an Aux source binds: `var`/`function` at the margin and `var`-list entries. */
 export const moduleNames = source => [...source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
-  .matchAll(/^(?:(?:var|function)\s+([A-Za-z_$][\w$]*)|(?: {2})?([A-Za-z_$][\w$]*)\s*=(?![=>]))/gm)].map(match => match[1] ?? match[2]);
+  .matchAll(/^(?:(?:var|(?:async\s+)?function)\s+([A-Za-z_$][\w$]*)|(?: {2})?([A-Za-z_$][\w$]*)\s*=(?![=>]))/gm)].map(match => match[1] ?? match[2]);
 
 /** Names an Aux block keeps from the supplied block it replaces (so both chunks bind them). */
 function keptNames(text, blocks, read, label) {
