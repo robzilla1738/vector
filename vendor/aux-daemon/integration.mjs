@@ -159,6 +159,20 @@ export const BINDINGS = Object.freeze({
       readAtAfterLatestUpdatedAt: 'readAtAfterLatestUpdatedAt', buildMessageKey: 'buildMessageKey', getCitationSources: 'getCitationSources',
       resolveCompactionFirstKeptEntryId: 'resolveCompactionFirstKeptEntryId', updateOpenSessionTurnForNewMessage: 'updateOpenSessionTurnForNewMessage',
       defaultContextWindow: 'DEFAULT_SESSION_CONTEXT_WINDOW'},
+    memoryFiles: {memoryDir: 'memoryDir', lockFor: 'lockFor', atomicWrite: 'atomicWrite', diffMemorySnapshots: 'diffMemorySnapshots',
+      appendMemoryHistoryEntry: 'appendMemoryHistoryEntry', createMemoryHistoryEntry: 'createMemoryHistoryEntry', readHistoryLinesReverse: 'readHistoryLinesReverse',
+      parseMemoryHistorySummary: 'parseMemoryHistorySummary', historyPath: 'historyPath', isContextAwarenessMemoryPath: 'isContextAwarenessMemoryPath'},
+    channels: {tables: {ChannelConnectionTable: 'ChannelConnectionTable', ChannelPrincipalTable: 'ChannelPrincipalTable',
+      ChannelPairingRequestTable: 'ChannelPairingRequestTable', ChannelPolicyTable: 'ChannelPolicyTable', ChannelConversationTable: 'ChannelConversationTable'},
+      operators: {eq: 'eq', and: 'and', isNotNull: 'isNotNull', desc: 'desc'}, policySchema: 'channelPolicySchema', defaultPolicy: 'DEFAULT_CHANNEL_POLICY',
+      connectionConfigSchema: 'channelConnectionConfigSchema'},
+    routines: {tables: {RoutineTable: 'RoutineTable', SessionTable: 'SessionTable'},
+      operators: {eq: 'eq', and: 'and', isNull: 'isNull', desc: 'desc', inArray: 'inArray', lte: 'lte$1'},
+      settings: 'settings', routineSchema: 'routineSchema', EventBus: 'EventBus', launchPolicy: 'AUX_LAUNCH_POLICY', AccountRegistry: 'AccountRegistry',
+      SessionStore: 'SessionStore', GlobalAgentSessionServer: 'GlobalAgentSessionServer', isSyncEnabled: 'isSyncEnabled', syncRoutines: 'syncRoutines',
+      normalizeRRule: 'normalizeRRule', getNextRunAt: 'getNextRunAt', nanoid: 'nanoid', createSession: 'createSession$1', ensureRoutineMemory: 'ensureRoutineMemory',
+      notifyAgentFileChange: 'notifyAgentFileChange', updateServerRoutine: 'updateServerRoutine', runRoutine: 'runRoutine', auxManagedEvent: 'auxManagedEvent',
+      auxManagedInterval: 'auxManagedInterval', logger: 'logger'},
     recentSessions: {settings: 'settings', SessionStore: 'SessionStore', shouldSurfaceCliEphemeral: 'shouldSurfaceCliEphemeral',
       compareSessionListOrder: 'compareSessionListOrder', cache: 'cache', chatsCache: 'chatsCache'},
     transcripts: {resolveSessionMessageDir: 'resolveSessionMessageDir', sessionMessagesJsonlPath: 'sessionMessagesJsonlPath', auxBrokerBoundary: 'auxBrokerBoundary',
@@ -191,6 +205,18 @@ const INBOX_FUNCTIONS = ['ingestInboxMessage', 'listInboxMessages', 'recordObser
   'recordObservedNotificationGrant', 'getNotificationGrantRecord', 'getNotificationGrant', 'listNotificationGrants', 'revokeNotificationGrant',
   'syncNotificationGrantFromPermission', 'getNotificationPermissionEventTime', 'upsertNotificationGrant'];
 
+const ROUTINE_FUNCTIONS = ['listRoutines', 'getRoutine', 'getRoutineDetail', 'getRoutineSummary', 'listDueRoutines', 'assertCapacity', 'startRoutineScheduler'];
+const CHANNEL_FUNCTIONS = ['listConnections', 'getConnection', 'insertConnection', 'updateConnection', 'deleteConnection', 'listPrincipals', 'getPrincipal',
+  'upsertPrincipal', 'deletePrincipal', 'setPrincipalPairingApproval', 'getConnectionPolicy', 'setConnectionPolicy', 'listPairingRequests', 'getPairingRequest',
+  'deletePairingRequest', 'getConnectionLastUsedAt', 'toPublicConnection'];
+const MEMORY_FILE_FUNCTIONS = ['writeMemoryPage', 'listMarkdownFiles', 'listMemoryHistory', 'getMemoryHistoryEntry'];
+const ASYNC_ROUTINE_FUNCTIONS = ['createRoutine', 'updateRoutine', 'deleteRoutine', 'runDueRoutine', 'stopRoutineRuns'];
+
+/** A store kept as top-level functions: each now hands its call to Aux's store. The supplied body
+ * stays under another name, unreachable, so the edit stays a single anchor. */
+const delegate = (store, name, kind = '') => edit(`the ${store} store's ${name} is Aux's`, `${kind}function ${name}(`,
+  `${kind}function ${name}(...auxArgs){return auxOwnedDaemon.store(\`${store}\`,auxOwnedDaemonBindings).${name}(...auxArgs)}${kind}function auxSupplied_${name}(`);
+
 /** The bundle's own stores, reaching Aux's. Kept apart so the parity harness can stage the bundle
  * without them, as the supplied reference. */
 export const STORE_EDITS = Object.freeze([
@@ -209,10 +235,11 @@ export const STORE_EDITS = Object.freeze([
   edit('the recent tasks store is Aux\'s',
     "(function(Cn){function ei(Cn){let ei=recentChatLimit(Cn),ti={parent:`root`,archived:`exclude`,ephemeral:`exclude`,routines:`exclude`,coders:`exclude`,order:`desc`},ni=SessionStore.listPreviewItems(Cn,{...ti,pinned:`only`}),ri=SessionStore.listPreviewItems(Cn,{...ti,pinned:`exclude`,limit:ei}),ii=SessionStore.listPreviewItems(Cn,{...ti,ephemeral:`only`,statuses:[`running`,`suspended`,`idle`]}).filter(shouldSurfaceCliEphemeral),ai=Cn=>{let ei=/* @__PURE__ */ new Map;for(let ti of[...ii,...Cn])ei.set(ti.id,ti);return[...ei.values()].sort(compareSessionListOrder)};chatsCache.set(Cn,{pinned:ni,recents:ai(ri)}),cache.set(Cn,ai(ri))}Cn.loadCache=ei;function ti(Cn){return cache.has(Cn)||ei(Cn),[...cache.get(Cn)??[]]}Cn.list=ti;function ni(Cn){chatsCache.has(Cn)||ei(Cn);let{pinned:ti=[],recents:ni=[]}=chatsCache.get(Cn)??{};return{pinned:[...ti],recents:[...ni]}}Cn.listChats=ni})(RecentSessionsStore||={})",
     'Object.assign(RecentSessionsStore||={},auxOwnedDaemon.store(`recentSessions`,auxOwnedDaemonBindings))'),
-  // The inbox functions: each now hands its call to Aux's store; the supplied body stays under
-  // another name, unreachable, so the edit stays a single anchor.
-  ...INBOX_FUNCTIONS.map(name => edit(`the inbox store's ${name} is Aux's`, `function ${name}(`,
-    `function ${name}(...auxArgs){return auxOwnedDaemon.store(\`inbox\`,auxOwnedDaemonBindings).${name}(...auxArgs)}function auxSupplied_${name}(`)),
+  ...INBOX_FUNCTIONS.map(name => delegate('inbox', name)),
+  ...ROUTINE_FUNCTIONS.map(name => delegate('routines', name)),
+  ...ASYNC_ROUTINE_FUNCTIONS.map(name => delegate('routines', name, 'async ')),
+  ...CHANNEL_FUNCTIONS.map(name => delegate('channels', name)),
+  ...MEMORY_FILE_FUNCTIONS.map(name => delegate('memoryFiles', name, 'async ')),
 ]);
 
 /** The bundle as supplied for the stores: `text` with every store edit undone. */

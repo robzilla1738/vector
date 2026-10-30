@@ -104,6 +104,69 @@ const capture = {calls: [
 ]};
 
 const routine = {name: 'Morning brief', prompt: 'Summarize my tabs.', rrule: 'FREQ=DAILY;BYHOUR=8'};
+
+/** One scheduler pass, as the 30-second check runs it. */
+const schedulerPass = async daemon => {
+  const now = new Date(), due = daemon.listDueRoutines(0, now);
+  for (const routine of due) await daemon.runDueRoutine(0, routine, now).catch(error => error.message);
+  return due.map(routine => routine.name);
+};
+const routineState = (daemon, ids) => ids.map(id => {
+  const routine = daemon.getRoutineSummary(0, id) ?? daemon.listRoutines(0, {includeDeleted: true}).find(candidate => candidate.id === id);
+  return routine && {name: routine.name, status: routine.status, nextRunAt: routine.nextRunAt, pausedAt: routine.pausedAt, rrule: routine.rrule, lastRunAt: routine.lastRunAt};
+});
+const scheduled = {};
+const schedulerSteps = [
+  async ({daemon, advance}) => {
+    const hourly = await daemon.createRoutine(0, {name: 'Hourly check', prompt: 'Check the garden.', rrule: 'FREQ=HOURLY'});
+    advance(1000);
+    const once = await daemon.createRoutine(0, {name: 'Once', prompt: 'Water once.', rrule: 'FREQ=HOURLY;COUNT=1'});
+    advance(1000);
+    const paused = await daemon.createRoutine(0, {name: 'Paused', prompt: 'Later.', rrule: 'FREQ=DAILY', status: 'paused'});
+    advance(1000);
+    const child = await daemon.createRoutine(0, {name: 'Child', prompt: 'Report.', rrule: 'FREQ=HOURLY', type: 'child', parentSessionId: hourly.parentSessionId});
+    Object.assign(scheduled, {hourly: hourly.id, once: once.id, paused: paused.id, child: child.id, parent: hourly.parentSessionId});
+    return [routineState(daemon, Object.values(scheduled).slice(0, 4)), await schedulerPass(daemon)];
+  },
+  async ({daemon, advance}) => {
+    advance(61 * 60_000);
+    return [await schedulerPass(daemon), routineState(daemon, [scheduled.hourly, scheduled.once, scheduled.paused, scheduled.child]), await schedulerPass(daemon)];
+  },
+  async ({daemon, advance}) => {
+    const results = [];
+    for (const change of [{status: 'active'}, {rrule: 'FREQ=DAILY;BYHOUR=9'}, {status: 'paused'}, {name: 'Renamed hourly'}, {sessionConfig: {permissionMode: 'read-only'}}]) {
+      advance(1000);
+      results.push(await daemon.updateRoutine(0, scheduled.hourly, change).then(routine => [routine.status, routine.nextRunAt, routine.name, routine.sessionConfig],
+        error => error.message));
+    }
+    results.push(daemon.getRoutineSummary(0, scheduled.hourly).pausedAt, daemon.listRoutines(0).map(routine => routine.name));
+    results.push(await daemon.updateRoutine(0, scheduled.once, {rrule: 'FREQ=WEEKLY'}).then(routine => [routine.status, routine.nextRunAt]));
+    results.push(await daemon.updateRoutine(0, 'missing', {name: 'x'}).catch(error => error.message));
+    return [results, daemon.SessionStore.get(0, scheduled.parent)?.title];
+  },
+  async ({daemon, advance}) => {
+    daemon.settings(0).set('routineDeviceId', () => 'device-b');
+    advance(2 * 3600_000);
+    const elsewhere = await schedulerPass(daemon);
+    daemon.settings(0).set('routineDeviceId', () => 'device-a');
+    daemon.SessionStore.archive(0, scheduled.parent);
+    const archivedParent = await schedulerPass(daemon);
+    return [elsewhere, archivedParent, routineState(daemon, [scheduled.child, scheduled.once])];
+  },
+  async ({daemon}) => {
+    daemon.startRoutineScheduler();
+    daemon.startRoutineScheduler();
+    daemon.SessionStore.remove(0, scheduled.parent);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    return [routineState(daemon, [scheduled.hourly, scheduled.child]), daemon.listRoutines(0, {type: 'child', includeDeleted: true}).map(routine => routine.status)];
+  },
+  async ({daemon}) => [await daemon.deleteRoutine(0, scheduled.once), await daemon.deleteRoutine(0, 'missing').catch(error => error.message),
+    await daemon.createRoutine(0, {name: ' ', prompt: 'x', rrule: 'FREQ=DAILY'}).catch(error => error.message),
+    await daemon.createRoutine(0, {name: 'Cloud', prompt: 'x', rrule: 'FREQ=DAILY', environment: 'cloud'}).catch(error => error.message),
+    await daemon.createRoutine(0, {name: 'Orphan', prompt: 'x', rrule: 'FREQ=DAILY', type: 'child'}).catch(error => error.message),
+    daemon.assertCapacity(0), daemon.getRoutineDetail(0, scheduled.hourly)?.runs.length],
+];
+
 const routines = {calls: [
   ['create', {accountId: 0, ...routine}],
   ({daemon}) => daemon.settings(0).set('routineDeviceId', () => 'device-a'),
@@ -128,6 +191,8 @@ const routines = {calls: [
   ['delete', outputs => ({accountId: 0, routineId: created(outputs).id, revision: 1})],
   ['delete', outputs => ({accountId: 0, routineId: created(outputs).id})],
   ['list', {accountId: 0, includeDeleted: true}],
+  // The scheduler, on the harness clock: due routines run once and move to their next time.
+  ...schedulerSteps,
 ]};
 
 const projects = {calls: [
@@ -240,12 +305,53 @@ const mcp = {calls: [
 ]};
 
 const connection = {accountId: 0, connectionId: '6f1c2b8e-3a0d-4c5e-9b7a-2d4e6f8a0b1c'};
+const fixture = {connection: '2a7d1c4e-8b3f-4e6a-9c1d-5f0b7e2a3c4d', openRequest: '3b8e2d5f-9c4a-4f7b-8d2e-6a1c8f3b4d5e', expiredRequest: '4c9f3e6a-ad5b-4a8c-9e3f-7b2d9a4c5e6f'};
 const channels = {calls: [
   ['connections.list', a], ['pairing.list', connection], ['principals.list', connection], ['policies.get', connection],
   ['connections.remove', connection], ['connections.restart', connection], ['pairing.reject', {accountId: 0, requestId: connection.connectionId}],
   ['pairing.approve', {accountId: 0, requestId: connection.connectionId}], ['principals.remove', {...connection, senderId: 'U1'}],
   ['principals.update', {...connection, senderId: 'U1', canApprovePairing: true}], ['policies.update', {...connection, policy: {}}],
   ['connections.create', {accountId: 0, platform: 'slack'}], ['connections.update', {accountId: 0, connectionId: 'not-a-uuid'}], ['pairing.list', {accountId: 0, connectionId: 'x'}],
+  // Fixture rows: a connection with two paired senders, an open and an expired pairing request,
+  // and a conversation that used it. The rows go in through the store, the request and
+  // conversation (which the transports write) as SQL.
+  ({daemon}) => {
+    const id = fixture.connection, now = Date.now(), sql = daemon.stateDb(0).$client;
+    const created = daemon.insertConnection(0, {id, platform: 'slack', displayName: 'Garden club', configJson: {platform: 'slack', projectId: 'notes'}, botUserId: 'B1', botName: 'aux'});
+    daemon.upsertPrincipal(0, {connectionId: id, senderId: 'U1', displayName: 'Ada'});
+    daemon.upsertPrincipal(0, {connectionId: id, senderId: 'U2'});
+    daemon.upsertPrincipal(0, {connectionId: id, senderId: 'U2', displayName: 'Grace'});
+    const request = sql.prepare('insert into channel_pairing_requests (id, connection_id, sender_id, sender_name, transport_thread_id, created_at, last_seen_at, expires_at) values (?, ?, ?, ?, ?, ?, ?, ?)');
+    request.run(fixture.openRequest, id, 'U3', 'Lin', 'T1', now, now, now + 3600_000);
+    request.run(fixture.expiredRequest, id, 'U4', null, 'T2', now - 7200_000, now - 7200_000, now - 3600_000);
+    sql.prepare('insert into channel_conversations (id, connection_id, platform, transport_thread_id, transport_channel_id, kind, scope_key, route_key, last_inbound_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run('conv-1', id, 'slack', 'T1', 'C1', 'dm', 'U1', 'slack:conv-1', Math.floor(now / 1000) - 60);
+    daemon.updateConnection(0, id, {status: 'connected', statusMessage: 'Ready'});
+    return [created, daemon.getConnection(0, id), daemon.getPrincipal(0, id, 'U2'), daemon.getConnectionLastUsedAt(0, id), daemon.getConnectionLastUsedAt(0, 'missing'),
+      daemon.getPairingRequest(0, fixture.openRequest)?.senderName];
+  },
+  ['connections.list', a], ['principals.list', {accountId: 0, connectionId: fixture.connection}], ['pairing.list', {accountId: 0, connectionId: fixture.connection}],
+  ['policies.get', {accountId: 0, connectionId: fixture.connection}],
+  ['policies.update', outputs => {
+    const policy = outputs.filter(output => output.procedure === 'policies.get' && output.value).at(-1).value;
+    return {accountId: 0, connectionId: fixture.connection, policy: {...policy, group: {...policy.group, requireMention: false}}};
+  }],
+  ['policies.update', {accountId: 0, connectionId: fixture.connection, policy: {dm: {access: 'open'}}}],
+  ['policies.get', {accountId: 0, connectionId: fixture.connection}],
+  ['principals.update', {accountId: 0, connectionId: fixture.connection, senderId: 'U1', canApprovePairing: true}],
+  ['principals.list', {accountId: 0, connectionId: fixture.connection}],
+  ['principals.remove', {accountId: 0, connectionId: fixture.connection, senderId: 'U2'}], ['principals.list', {accountId: 0, connectionId: fixture.connection}],
+  ['pairing.reject', {accountId: 0, requestId: fixture.expiredRequest}], ['pairing.list', {accountId: 0, connectionId: fixture.connection}],
+  ({daemon}) => {
+    daemon.stateDb(0).$client.prepare("update channel_policies set policy_json = '{\"dm\":7}' where connection_id = ?").run(fixture.connection);
+    return [daemon.getConnectionPolicy(0, fixture.connection), daemon.toPublicConnection(0, daemon.getConnection(0, fixture.connection)), daemon.listConnections(0).length];
+  },
+  ({daemon}) => {
+    daemon.deletePairingRequest(0, fixture.openRequest);
+    daemon.deletePrincipal(0, fixture.connection, 'U1');
+    daemon.deleteConnection(0, fixture.connection);
+    return [daemon.listConnections(0), daemon.listPrincipals(0, fixture.connection), daemon.listPairingRequests(0, fixture.connection), daemon.getConnection(0, fixture.connection)];
+  },
 ]};
 
 const cli = {calls: [
@@ -266,6 +372,24 @@ const memory = {
   ['revertHistoryEntry', {accountId: 0, historyEntryId: 'missing'}], ['rerunExtraction', {accountId: 0, sessionId: 'missing'}],
   ['runDreaming', {accountId: 0, force: false}], ['search', {accountId: 0, queries: []}], ['search', {accountId: 0, queries: ['garden'], maxResults: 3}],
   ['indexStatus', a],
+  // Pages and their history, written the way the memory writer and dreaming write them.
+  async ({daemon}) => {
+    const root = daemon.getAccountRoot(0);
+    return [await daemon.writeMemoryPage(root, 'garden/plants.md', before => before ?? '# Plants\n\nTomatoes.\n', {trigger: 'manual_extraction'}),
+      await daemon.writeMemoryPage(root, 'garden/plants.md', before => `${before}Basil.\n`, {trigger: 'manual_extraction'}),
+      await daemon.writeMemoryPage(root, 'garden/plants.md', before => before, {trigger: 'manual_extraction'}),
+      await daemon.writeMemoryPage(root, 'garden/plants.md', () => undefined, {trigger: 'manual_extraction'}),
+      await daemon.writeMemoryPage(root, 'people.md', () => '# People\n', {trigger: 'settings_ui'}),
+      // Left out of listings: dot entries and Context Awareness pages.
+      await daemon.writeMemoryPage(root, '.drafts/idea.md', () => 'draft', {trigger: 'settings_ui'}),
+      await daemon.writeMemoryPage(root, `${daemon.EPISODIC_DIR}/${daemon.CONTEXT_AWARENESS_PAGE_PREFIX}2026-01-01.md`, () => 'seen', {trigger: 'settings_ui'})];
+  },
+  ['listFiles', a], ['readFile', {accountId: 0, filePath: 'garden/plants.md'}], ['writeFile', {accountId: 0, filePath: 'garden/plants.md', content: '# Plants\n\nPeppers.\n'}],
+  ['writeFile', {accountId: 0, filePath: 'garden/missing.md', content: 'x'}], ['listHistory', a], ['listHistory', {accountId: 0, limit: 1}],
+  ['listHistory', outputs => ({accountId: 0, limit: 1, cursor: outputs.filter(output => output.procedure === 'listHistory' && output.value?.nextCursor).at(-1)?.value.nextCursor})],
+  ['getHistoryEntry', outputs => ({accountId: 0, historyEntryId: outputs.filter(output => output.procedure === 'listHistory' && output.value?.entries.length).at(-1).value.entries[0].id})],
+  ['revertHistoryEntry', outputs => ({accountId: 0, historyEntryId: outputs.filter(output => output.procedure === 'listHistory' && output.value?.entries.length).at(-1).value.entries[0].id})],
+  ['listFiles', a], ['readFile', {accountId: 0, filePath: 'garden/plants.md'}],
 ]};
 
 const contextAwareness = {calls: [
@@ -543,4 +667,7 @@ export const SCENARIOS = {inbox, uiAttention, fullDiskAccess, agentRuntime, capt
 export const EXTRA_EXPORTS = ['attentionByAccountId', 'hasForegroundAgentManagerSessionAttention', 'hasFocusedAgentManagerSurface', 'settings', 'createRoutine', 'allowedExtensionOrigins', 'ProjectStore',
   'listeners$1 as agentFileListeners', 'SessionStore', 'RecentSessionsStore',
   'ingestInboxMessage', 'listInboxMessages', 'upsertNotificationGrant', 'recordObservedNotificationGrant', 'getWebPushNotificationOrigin', 'normalizeNotificationGrantOrigin',
-  'getNotificationPermissionEventTime'];
+  'getNotificationPermissionEventTime', 'listDueRoutines', 'runDueRoutine', 'startRoutineScheduler', 'updateRoutine', 'deleteRoutine', 'getRoutineSummary',
+  'getRoutineDetail', 'listRoutines', 'assertCapacity', 'insertConnection', 'upsertPrincipal', 'updateConnection', 'getPrincipal', 'getConnectionLastUsedAt',
+  'getPairingRequest', 'getConnectionPolicy', 'toPublicConnection', 'getConnection', 'listConnections', 'deletePairingRequest', 'deletePrincipal', 'deleteConnection',
+  'listPrincipals', 'listPairingRequests', 'writeMemoryPage', 'getAccountRoot', 'EPISODIC_DIR', 'CONTEXT_AWARENESS_PAGE_PREFIX'];

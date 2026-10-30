@@ -36,6 +36,8 @@ function comparable({home, outputs, snapshots, agentFileChanges, state, files, j
     if (/(^|_)id$|Id$/.test(key) && /^[0-9A-Za-z]{16}$/.test(value) || /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(value)) ids.add(value);
     return value;
   });
+  // UUIDs also sit inside the transcripts, which the text holds as strings.
+  for (const [uuid] of text.matchAll(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/g)) ids.add(uuid);
   [...ids].forEach((id, index) => { text = text.replaceAll(id, `<id ${index}>`); });
   const now = Date.now(), recent = time => Math.abs(time - now) < 86_400_000;
   const result = JSON.parse(text, (key, value) => {

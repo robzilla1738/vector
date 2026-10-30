@@ -39,4 +39,7 @@ export const STORES = Object.freeze({
   sessions: './stores/sessions.mjs',
   inbox: './stores/inbox.mjs',
   recentSessions: './stores/recentSessions.mjs',
+  routines: './stores/routines.mjs',
+  channels: './stores/channels.mjs',
+  memoryFiles: './stores/memoryFiles.mjs',
 });

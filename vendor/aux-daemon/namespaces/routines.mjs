@@ -1,15 +1,13 @@
 /** The `routines` tRPC namespace. Routines run on this device only: one bound to another device
- * or to the cloud is preserved but cannot be deleted or run here. Storage, scheduling and sync
- * stay the supplied routine service. */
+ * or to the cloud is preserved but cannot be deleted or run here. Storage and scheduling are the
+ * routine store (stores/routines.mjs), reached through the bundle's routine functions. */
+import {requireCurrentDeviceRoutine} from '../stores/routines.mjs';
+
 export function create({accountProcedure, z, routines: service}) {
   const account = {accountId: z.number().int().nonnegative()};
   const byId = accountProcedure.input(z.object({...account, routineId: z.string(), revision: z.number().int().positive().nullable().optional()}));
 
-  const requireCurrentDevice = (accountId, routine) => {
-    const deviceId = service.settings(accountId).get('routineDeviceId');
-    if (typeof deviceId !== 'string' || !deviceId.trim()) throw Error('Local scheduling device is not initialized.');
-    if (routine.environment !== 'device' || routine.deviceId !== deviceId) throw Error('Only routines on this computer are available. Cloud routines are preserved and unavailable.');
-  };
+  const requireCurrentDevice = (accountId, routine) => requireCurrentDeviceRoutine(service.settings, accountId, routine);
 
   return {
     list: accountProcedure.input(z.object({...account, projectId: z.string().nullable().optional(), parentSessionId: z.string().optional(),
