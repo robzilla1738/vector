@@ -1,7 +1,7 @@
 // Host-only: runs transforms.mjs on a minimal staged app holding only the candidate files it touches.
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -11,12 +11,15 @@ import {repoRoot} from '../lib/repo-root.mjs';
 import {RUNTIME_FILES} from '../../vendor/provided/provider-cli/integration.mjs';
 import {DAEMON_FILES as AGENT_FILES, EXTENSION_EDITS as AGENT_EDITS, UI_FILE as AGENT_UI} from '../../vendor/provided/agent/integration.mjs';
 import {EDITS as POLISH_EDITS} from '../../vendor/provided/polish/integration.mjs';
+import {BUILTIN_SKILLS_DIR, SKILL_FILES, frontMatter} from '../../vendor/aux-skills/integration.mjs';
 
 const candidate = requireInput('candidateApp');
 const daemon = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development';
 const dist = 'Contents/Resources/aux/apps/extension/dist';
 const agentChunks = Object.keys(AGENT_EDITS).map(chunk => `${dist}/${chunk}`);
 const polishChunks = Object.keys(POLISH_EDITS).map(chunk => `${dist}/${chunk}`);
+const skills = `${path.dirname(daemon)}/${BUILTIN_SKILLS_DIR}`;
+const skillFiles = SKILL_FILES.map(file => `${skills}/${file}`);
 const touched = [`${daemon}/aux-native-entry.mjs`, `${dist}/assets/strip-markdown-DRcmtuJc.js`, `${dist}/assets/connect-dialog-CacgpFap.js`, ...agentChunks, ...polishChunks];
 // The release applies package edits before the transforms; stage the touched files the same way.
 const packageEdits = JSON.parse(readFileSync(path.join(repoRoot, 'scripts/release/package-edits.json'), 'utf8')).edits;
@@ -30,6 +33,14 @@ for (const relative of touched) {
   for (const rule of packageEdits) if (rule.target === relative) text = text.split(rule.find).join(rule.replace);
   writeFileSync(path.join(app, relative), text);
 }
+// The whole sealed skills tree, with the glob package edits (icon host) applied.
+cpSync(path.join(candidate, skills), path.join(app, skills), {recursive: true});
+const stagedSkill = file => {
+  let text = readFileSync(path.join(candidate, skills, file), 'utf8');
+  for (const rule of packageEdits) if (path.matchesGlob(`${skills}/${file}`, rule.target)) text = text.split(rule.find).join(rule.replace);
+  return text;
+};
+for (const file of SKILL_FILES) writeFileSync(path.join(app, skills, file), stagedSkill(file));
 const transform = () => spawnSync(process.execPath, [path.join(repoRoot, 'scripts/release/transforms.mjs'), app], {encoding: 'utf8'});
 
 test('transforms.mjs adds the provider CLI and agent files and applies every transform once', async () => {
@@ -37,7 +48,8 @@ test('transforms.mjs adds the provider CLI and agent files and applies every tra
   assert.equal(result.status, 0, result.stderr);
   const applied = JSON.parse(result.stdout);
   assert.deepEqual(applied.filter(entry => entry.added).map(entry => path.basename(entry.path)), [...RUNTIME_FILES, ...AGENT_FILES, AGENT_UI]);
-  assert.deepEqual(applied.filter(entry => !entry.added).map(entry => entry.path), [...touched.slice(0, 3), touched[0], ...agentChunks, ...polishChunks]);
+  assert.deepEqual(applied.filter(entry => !entry.added).map(entry => entry.path), [...touched.slice(0, 3), touched[0], ...agentChunks, ...polishChunks, ...skillFiles]);
+  for (const file of skillFiles) assert.deepEqual(readFileSync(path.join(app, file)), readFileSync(path.join(repoRoot, 'vendor/aux-skills/builtin', path.relative(skills, file))), file);
   assert.deepEqual(readFileSync(path.join(app, dist, 'assets', AGENT_UI)), readFileSync(path.join(repoRoot, 'vendor/provided/agent', AGENT_UI)));
   for (const file of RUNTIME_FILES) {
     assert.deepEqual(readFileSync(path.join(app, daemon, 'provider-cli', file)), readFileSync(path.join(repoRoot, 'vendor/provided/provider-cli', file)), file);
@@ -50,11 +62,22 @@ test('transforms.mjs adds the provider CLI and agent files and applies every tra
   const instance = staged.createAuxProviderCli({detect: async () => ({directories: [], providers: []})});
   assert.equal((await instance.status()).rows['claude-code'].state, 'not-installed');
   const agent = await import(new URL('./aux-agent/aux-agent.mjs', pathToFileURL(entry)).href);
-  assert.equal(agent.createAuxAgent({control: () => scratch, task: () => scratch}).read(1).name, 'Aux');
+  assert.equal(agent.createAuxAgent({control: () => scratch, task: () => scratch, shared: () => scratch}).read(1).name, 'Aux');
 });
 
 test('a second run stops: the runtime files already exist', () => {
   const result = transform();
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /already exists/);
+});
+
+test('every supplied built-in skill has a rewrite with the same front matter, and nothing extra', () => {
+  const supplied = readdirSync(path.join(candidate, skills), {recursive: true}).filter(file => file.endsWith('.md')).sort();
+  assert.deepEqual([...SKILL_FILES], supplied);
+  assert.equal(supplied.filter(file => path.basename(file) === 'SKILL.md').length, 51);
+  for (const file of SKILL_FILES.filter(file => path.basename(file) === 'SKILL.md')) {
+    const ours = readFileSync(path.join(repoRoot, 'vendor/aux-skills/builtin', file), 'utf8');
+    assert.equal(frontMatter(ours), frontMatter(stagedSkill(file)), file);
+    assert.notEqual(ours, stagedSkill(file), file);
+  }
 });

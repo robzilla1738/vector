@@ -219,6 +219,31 @@ def replace_cli(app: Path, native: Path) -> list:
     return [{'path': f'{AUX}/{CLI_EXECUTABLE}', 'why': 'CLI launcher built with this browser', 'sha256': sha256(path)}]
 
 
+# The PDF tools and their libraries rebuilt for macOS 15 (scripts/runtime/build-pdf-runtime.py).
+PDF_RUNTIME_MANIFEST = HERE.parent / 'runtime/pdf-runtime-macos15.json'
+
+
+def substitute_pdf_runtime(app: Path, built: Path, manifest: Path = PDF_RUNTIME_MANIFEST) -> list:
+    """Swap the supplied files for the rebuilt ones. Both sides must match the manifest exactly.
+    Returns (path, (old sha256, old size)) for each replaced file, to be signed and re-pinned."""
+    files = json.loads(manifest.read_text())['files']
+    runtime = app / AUX / 'agent-runtime'
+    for rel, entry in files.items():
+        if sha256(runtime / rel) != entry['originalSha256']:
+            raise SystemExit(f'agent-runtime/{rel}: unexpected supplied contents; review the substitution')
+        if not (built / rel).is_file() or sha256(built / rel) != entry['sha256']:
+            raise SystemExit(f'{built / rel}: missing or not the built file the manifest records')
+    replaced = []
+    for rel in files:
+        target = runtime / rel
+        before = (sha256(target), target.stat().st_size)
+        mode = target.stat().st_mode & 0o777
+        shutil.copyfile(built / rel, target)
+        target.chmod(mode)
+        replaced.append((target, before))
+    return replaced
+
+
 def main_executable(app: Path, target: str) -> Path:
     """The file a target's signature covers as code: a loose file itself, a bundle's executable."""
     path = app / target
@@ -342,6 +367,8 @@ def main() -> int:
                              'their hashes are pinned in the browser and daemon policies')
     parser.add_argument('--crash-dsn-ref', help='op:// reference to the Sentry DSN, read with op-agents (never printed)')
     parser.add_argument('--daemon-executable', type=Path, help='relinked aux-daemon (scripts/candidate/relink_daemon.py)')
+    parser.add_argument('--pdf-runtime', type=Path, nargs='?', const=HERE.parents[1] / 'out/runtime/pdf-macos15',
+                        help='replace the runtime PDF tools with the macOS 15 rebuild (default out/runtime/pdf-macos15)')
     args = parser.parse_args()
 
     out = args.out.resolve()
@@ -401,6 +428,12 @@ def main() -> int:
     # Target executables are signed with their target in step 4, never here.
     covered = {main_executable(app, t) for t, _, _ in TARGETS if t != '.'}
     resigned, kept = [], {}
+    # Rebuilt PDF tools are signed with Aux's identity in both modes, keeping their identifiers.
+    pdf_runtime = substitute_pdf_runtime(app, args.pdf_runtime.resolve()) if args.pdf_runtime else []
+    for path, _ in pdf_runtime:
+        run(['codesign', '--force', '--sign', identity, '--options', 'runtime',
+             '--timestamp' if release else '--timestamp=none', '--identifier', path.stem, str(path)])
+    resigned += pdf_runtime
     # The daemon policies pin these addons' exact bytes, and a timestamped signature
     # differs every time, so a release uses one fixed Developer ID copy of each.
     if args.release_addons:

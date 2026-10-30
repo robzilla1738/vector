@@ -11,6 +11,7 @@ import { RUNTIME_FILES, AGENT_PATH, CONNECT_DIALOG_PATH, integrateDaemon, integr
 import { DAEMON_FILES as AGENT_DAEMON_FILES, EXTENSION_EDITS as AGENT_EXTENSION_EDITS, UI_FILE as AGENT_UI_FILE,
   integrateDaemon as integrateAgentDaemon, integrateExtensionChunk as integrateAgentChunk } from '../../vendor/provided/agent/integration.mjs';
 import { EDITS as POLISH_EDITS, integratePolish } from '../../vendor/provided/polish/integration.mjs';
+import { BUILTIN_SKILLS_DIR, SKILL_FILES, assertSameSkillFiles, replaceSkillFile } from '../../vendor/aux-skills/integration.mjs';
 
 const app = process.argv[2];
 if (!app) throw new Error('usage: transforms.mjs <staged Aux.app>');
@@ -32,8 +33,10 @@ const TRANSFORMS = [
   ['agent: daemon profile, home thread and identity', `${daemon}/node-development/aux-native-entry.mjs`, integrateAgentDaemon],
   ...Object.keys(AGENT_EXTENSION_EDITS).map(chunk => [`agent: ${chunk}`, `${agent}/${chunk}`, text => integrateAgentChunk(chunk, text)]),
   ...Object.keys(POLISH_EDITS).map(chunk => [`polish: ${chunk}`, `${agent}/${chunk}`, text => integratePolish(chunk, text)]),
+  ...SKILL_FILES.map(file => [`built-in skills: ${file}`, `${daemon}/${BUILTIN_SKILLS_DIR}/${file}`, text => replaceSkillFile(file, text)]),
 ];
 
+assertSameSkillFiles(path.join(app, daemon, BUILTIN_SKILLS_DIR));
 const applied = [];
 for (const [label, source, relative] of ADDITIONS) {
   const file = path.join(app, relative);

@@ -12,6 +12,10 @@ const edit = (name, find, replace, count = 1) => Object.freeze({name, find, repl
 const NEW_ROWS = ['cursor-cli', 'grok-cli', 'opencode-cli', 'copilot-cli', 'gemini-cli'];
 
 export const DAEMON_EDITS = Object.freeze([
+  // The Computer Use app picker leaves out Aux itself; the Canary's bundle ID has a dot.
+  edit('the app picker leaves out Aux Canary',
+    'new Set([`dev.aux.browser`,`dev.aux.browserCanary`])',
+    'new Set([`dev.aux.browser`,`dev.aux.browser.canary`])'),
   edit('load the provider CLI module beside the entry',
     'const __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);',
     'const auxProviderCli=(await import(new URL("./provider-cli/aux-daemon.mjs",import.meta.url))).createAuxProviderCli();\nconst __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);'),
@@ -60,6 +64,14 @@ export const DAEMON_EDITS = Object.freeze([
   edit('web search loads the browser search client',
     'init_websearch=__esmMin((()=>{init_dist$26(),init_nanoid$1(),init_api_client(),',
     'init_websearch=__esmMin((()=>{init_dist$26(),init_nanoid$1(),init_api_client(),init_google_search(),'),
+  // The aux-browser skill that Aux writes for local agents describes only what the CLI ships:
+  // `aux open`. It has no list or resolve command and the skill doesn't reach memory or history.
+  edit('the browser skill claims no memory or history',
+    "version: 4\\ndescription: Read when you need a browser, or have to work across user's logged-in websites (e.g. Gmail, Slack, cloud consoles, etc.), or have to refer personal contexts like memory and browsing history.\\n",
+    "version: 5\\ndescription: Read when you need a browser, or have to work in the user's logged-in websites (e.g. Gmail, Slack, cloud consoles).\\n"),
+  edit('the browser skill lists the CLI query commands',
+    "\\n- `aux list [--profile <ID or unique name>]` lists what Aux has open, as JSON.\\n- `aux resolve <https://URL> [--profile <ID or unique name> [--space <ID or unique name>]]` shows where Aux would open a URL, as JSON.\\n\\nIf `aux`",
+    "\\n- `aux list [--profile <ID or unique name>]` lists what Aux has open, as JSON.\\n- `aux resolve <https://URL> [--space <ID or unique name>]` shows where Aux would open a URL, as JSON.\\n- `aux spaces`, `aux tabs` and `aux chats` list Spaces, open tabs and chats; `aux status` reports the agent's state. All print JSON.\\n\\nIf `aux`"),
 ]);
 
 /** Agent provider list: Cursor, Grok and OpenCode CLI rows, the Copilot and Gemini CLIs (shown

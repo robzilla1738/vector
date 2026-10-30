@@ -21,13 +21,20 @@ const HELPERS = `
 function auxAgentUsable(Cn){return!!Cn&&!Cn.archivedAt&&!Cn.ephemeral&&!Cn.incognito}
 function auxAgentHome(Cn,ei){return auxAgentUsable(SessionStore.get(Cn,ei))?SessionStore.listPreviewItems(Cn,{sessionIds:[ei],parent:\`all\`})[0]:void 0}
 function auxAgentView(Cn){let ei=auxAgent.read(Cn);return auxAgent.view(ei,!!(ei.homeSessionId&&auxAgentHome(Cn,ei.homeSessionId)))}
+// One agent across Spaces: its instructions and personality are the same in every data
+// group's local account, so an edit in one is written to all of them.
+function auxAgentWriteContext(Cn,ei,ti){const ni=[\`AGENTS.md\`,\`SOUL.md\`].includes(ei)?AccountRegistry.getAll().accounts.filter(ei=>ei.mode===\`local\`||ei.id===Cn).map(ei=>ei.id):[Cn];for(const ri of new Set([Cn,...ni])){writeFileSync(path.join(getAccountTaskRoot(ri),ei),ti,\`utf-8\`);auxAgentApply(ri)}}
 async function auxAgentApply(Cn,ni){try{let ei=auxAgent.read(Cn),ti=ei.homeSessionId&&SessionStore.get(Cn,ei.homeSessionId);if(!auxAgentUsable(ti))return;ti.title!==ei.name&&SessionStore.update(Cn,ti.id,{title:ei.name});GlobalAgentSessionServer.getLoadedAgent(Cn,ti.id)&&!GlobalAgentSessionServer.isRunning(Cn,ti.id)&&await GlobalAgentSessionServer.reloadLoadedAgentSession(Cn,ti.id);ni&&ni!==ei.name&&await GlobalAgentSessionServer.appendMessage(Cn,ti.id,auxAgent.renameNote(ei.name))}catch(ei){console.warn(\`[aux-agent] could not apply the agent profile: \${ei?.message??ei}\`)}}
 `;
 
 export const DAEMON_EDITS = Object.freeze([
+  // The agent button's Stop: interrupt every chat of this account that is working.
+  edit('the agent button can stop the agent',
+    'Cn.post(`/session/for-chrome/mark-all-read`,',
+    'Cn.post(`/session/for-chrome/stop-all`,async Cn=>{let ei=Cn.get(`accountId`),ti=SessionStore.listFull(ei).filter(Cn=>Cn.status===`running`);for(let Cn of ti)await GlobalAgentSessionServer.interrupt(ei,Cn.id);return Cn.json({stopped:ti.length})}),Cn.post(`/session/for-chrome/mark-all-read`,'),
   edit('load the agent module beside the entry',
     'const __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);',
-    'const auxAgent=(await import(new URL("./aux-agent/aux-agent.mjs",import.meta.url))).createAuxAgent({control:Cn=>auxControlAccountRoot(Cn),task:Cn=>getAccountTaskRoot(Cn)});\nconst __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);'),
+    'const auxAgent=(await import(new URL("./aux-agent/aux-agent.mjs",import.meta.url))).createAuxAgent({control:Cn=>auxControlAccountRoot(Cn),task:Cn=>getAccountTaskRoot(Cn),shared:()=>path.join(AUX_HOME_PATH,`agent-shared`)});\nconst __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);'),
   edit('system prompts open with the agent identity',
     'return[Cn??SYSTEM_PROMPT$1,...ti?[ti]:[]].join(',
     'return[Cn??auxAgent.systemPrompt(SYSTEM_PROMPT$1,ei.scanContexts?.accountId),...ti?[ti]:[]].join('),
@@ -48,7 +55,7 @@ export const DAEMON_EDITS = Object.freeze([
     `${PROCEDURES}readContextFile:accountProcedure.input(`),
   edit('personality and instruction edits reach the home thread',
     '.mutation(({ctx:Cn,input:ei})=>(writeFileSync(path.join(getAccountTaskRoot(Cn.accountId),ei.fileName),ei.content,`utf-8`),{success:!0}))',
-    '.mutation(({ctx:Cn,input:ei})=>(writeFileSync(path.join(getAccountTaskRoot(Cn.accountId),ei.fileName),ei.content,`utf-8`),auxAgentApply(Cn.accountId),{success:!0}))'),
+    '.mutation(({ctx:Cn,input:ei})=>(auxAgentWriteContext(Cn.accountId,ei.fileName,ei.content),{success:!0}))'),
 ]);
 
 export function integrateDaemon(text) {

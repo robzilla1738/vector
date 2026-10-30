@@ -1,0 +1,344 @@
+{
+ "format": "aux.pdf-runtime.v1",
+ "deploymentTarget": "15.0",
+ "arch": "arm64",
+ "tools": {
+  "meson": "1.12.1",
+  "ninja": "1.13.2",
+  "packaging": "26.3"
+ },
+ "sources": [
+  {
+   "name": "zstd",
+   "version": "1.5.7",
+   "url": "https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz",
+   "sha256": "37d7284556b20954e56e1ca85b80226768902e2edabd3b649e9e72c0c9012ee3"
+  },
+  {
+   "name": "xz",
+   "version": "5.8.4",
+   "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.4/xz-5.8.4.tar.gz",
+   "sha256": "0014c7886930454fe8bd4228665b51af55eeae560ea135c9c4cd33f55b2591d9"
+  },
+  {
+   "name": "brotli",
+   "version": "1.2.0",
+   "url": "https://github.com/google/brotli/archive/refs/tags/v1.2.0.tar.gz",
+   "sha256": "816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec"
+  },
+  {
+   "name": "libpng",
+   "version": "1.6.59",
+   "url": "https://downloads.sourceforge.net/project/libpng/libpng16/1.6.59/libpng-1.6.59.tar.xz",
+   "sha256": "d80dd2a38a37f803cb9b6ac7b14bd6e74ddc3b654780a8380bdf93523fdb4389"
+  },
+  {
+   "name": "freetype",
+   "version": "2.14.3",
+   "url": "https://downloads.sourceforge.net/project/freetype/freetype2/2.14.3/freetype-2.14.3.tar.xz",
+   "sha256": "36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f"
+  },
+  {
+   "name": "gettext",
+   "version": "1.0",
+   "url": "https://ftp.gnu.org/gnu/gettext/gettext-1.0.tar.gz",
+   "sha256": "85d99b79c981a404874c02e0342176cf75c7698e2b51fe41031cf6526d974f1a"
+  },
+  {
+   "name": "pcre2",
+   "version": "10.49",
+   "url": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.49/pcre2-10.49.tar.bz2",
+   "sha256": "53c156e1ba416a20da8e65395daa132da0d80e76910424caca3fcdae7831d384"
+  },
+  {
+   "name": "glib",
+   "version": "2.90.1",
+   "url": "https://download.gnome.org/sources/glib/2.90/glib-2.90.1.tar.xz",
+   "sha256": "93c941aa17d5eb1d53fe838365f29a8b4e539c222a256d974ec8f30fc413e396"
+  },
+  {
+   "name": "graphite2",
+   "version": "1.3.15",
+   "url": "https://github.com/silnrsi/graphite/releases/download/1.3.15/graphite2-1.3.15.tgz",
+   "sha256": "c6bc8b4252724665297f7cad0c55897285c673f9b8e6db3522ace833593fe0b1"
+  },
+  {
+   "name": "harfbuzz",
+   "version": "14.6.0",
+   "url": "https://github.com/harfbuzz/harfbuzz/releases/download/14.6.0/harfbuzz-14.6.0.tar.xz",
+   "sha256": "d07a007327277708a2a73ae437887cdbaf282937f6d03ca5467723e9099af586"
+  },
+  {
+   "name": "fontconfig",
+   "version": "2.18.3",
+   "url": "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.18.3/fontconfig-2.18.3.tar.gz",
+   "sha256": "9ae01e1d53acdef56010c5451cd34aa41d325b2faccd8606448d8fa01b2496b3"
+  },
+  {
+   "name": "libjpeg-turbo",
+   "version": "3.2.0",
+   "url": "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.2.0/libjpeg-turbo-3.2.0.tar.gz",
+   "sha256": "6f30092cef9fb839779646608f4ee14ae3cbac989c47fa05e841b0841f09878e"
+  },
+  {
+   "name": "openjpeg",
+   "version": "2.5.4",
+   "url": "https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.4.tar.gz",
+   "sha256": "a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a"
+  },
+  {
+   "name": "lcms2",
+   "version": "2.19.1",
+   "url": "https://downloads.sourceforge.net/project/lcms/lcms/2.19.1/lcms2-2.19.1.tar.gz",
+   "sha256": "bfc54f7bab59fbc921012014a8032e4cba4abd46db47d46b76416a8c0b2815c8"
+  },
+  {
+   "name": "libwebp",
+   "version": "1.6.0",
+   "url": "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz",
+   "sha256": "e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564"
+  },
+  {
+   "name": "libtiff",
+   "version": "4.7.2",
+   "url": "https://download.osgeo.org/libtiff/tiff-4.7.2.tar.gz",
+   "sha256": "672bd7d10aee4606171afb864f3570b83340f6a33e2c186dc0512f7145ffdf6a"
+  },
+  {
+   "name": "nspr",
+   "version": "4.40",
+   "url": "https://archive.mozilla.org/pub/nspr/releases/v4.40/src/nspr-4.40.tar.gz",
+   "sha256": "c0c1884c627f3db7a783f7c7314c695226b2043696791d15519e7e0578c19bdc"
+  },
+  {
+   "name": "nss",
+   "version": "3.131",
+   "url": "https://archive.mozilla.org/pub/security/nss/releases/NSS_3_131_RTM/src/nss-3.131.tar.gz",
+   "sha256": "ca0005bc77e9255d9942103e6f9756cfe311a3df72afa99860709e386eb3c167"
+  },
+  {
+   "name": "libgpg-error",
+   "version": "1.61",
+   "url": "https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.61.tar.bz2",
+   "sha256": "7a85413f2bc354f4f8aa832b718af122e48965e9e0eb9012ee659c13c6385c93"
+  },
+  {
+   "name": "libassuan",
+   "version": "3.0.2",
+   "url": "https://gnupg.org/ftp/gcrypt/libassuan/libassuan-3.0.2.tar.bz2",
+   "sha256": "d2931cdad266e633510f9970e1a2f346055e351bb19f9b78912475b8074c36f6"
+  },
+  {
+   "name": "gpgme",
+   "version": "2.2.0",
+   "url": "https://gnupg.org/ftp/gcrypt/gpgme/gpgme-2.2.0.tar.bz2",
+   "sha256": "7160e80e84dafd00d956c84891c533bb7ab16a6a54fbe1574b2f3acf0496977b"
+  },
+  {
+   "name": "gpgmepp",
+   "version": "2.2.0",
+   "url": "https://gnupg.org/ftp/gcrypt/gpgmepp/gpgmepp-2.2.0.tar.xz",
+   "sha256": "6651c5f7f801543d5b676719df9fec8053b0a6f5aba40b98ca0d2bee11136f30"
+  },
+  {
+   "name": "poppler",
+   "version": "26.10.0",
+   "url": "https://poppler.freedesktop.org/poppler-26.10.0.tar.xz",
+   "sha256": "6792cb7c69205007ad87d2e936cecc5b3a31fac29ab54ffc3175fdb6b2a6ce35"
+  }
+ ],
+ "files": {
+  "native/bin/pdfinfo": {
+   "originalSha256": "483852d6e86c51c172e0eea23e16fd6645397c77ef255683bbb01fcdb64c8c99",
+   "rpaths": [
+    "@loader_path/../lib"
+   ],
+   "sha256": "054f25b903fd24931d4a27be6bdcf466f84872a6eb7ab288009c7a5cb1c0ab38"
+  },
+  "native/bin/pdftoppm": {
+   "originalSha256": "166a083ba0a567a3cc9e831505f1f5969d3e1c95856e5795fb925b488f128067",
+   "rpaths": [
+    "@loader_path/../lib"
+   ],
+   "sha256": "f8535c158a3616651dd305a71aea7aaedc1fd980e9adc327856f05304c2c95a2"
+  },
+  "native/bin/pdftotext": {
+   "originalSha256": "00c36d6798b8e8c70474a7c52ba9eff0a2286f2136c6a2816795920c4d0ad578",
+   "rpaths": [
+    "@loader_path/../lib"
+   ],
+   "sha256": "054cbacf68d76e9bd1c9293a38f5b8d3cb91b1ebce3d65f36e8b9d0dbf580a08"
+  },
+  "native/lib/libassuan.9.dylib": {
+   "originalSha256": "a7280e06f48f80bcab49e4585891389acdf0ad44519eb95c653dd2ef96c9a7d8",
+   "rpaths": [],
+   "sha256": "d44a9b3f0c0e624d905aa21e72503aaeffd184444280f39f86af8999d3309c0e"
+  },
+  "native/lib/libbrotlicommon.1.dylib": {
+   "originalSha256": "d5c9e928e339ec5355cb7aaebfe86f8984f4b3bf2fb30bfa433b04314f7a1fc0",
+   "rpaths": [
+    "@loader_path/../lib"
+   ],
+   "sha256": "111f6d5cd82abfcdb1fa243829c0396a9534618fd37b9623fecfa7e77cb48508"
+  },
+  "native/lib/libbrotlidec.1.dylib": {
+   "originalSha256": "c851e32c8fadbd21550059e424333f63a892f2c8d990d528959b11fec0b49b69",
+   "rpaths": [
+    "@loader_path/../lib"
+   ],
+   "sha256": "1fce42e3cec5a4357294c3c384aa93da029a76cc6ac89295fb3acc10ea914caa"
+  },
+  "native/lib/libfontconfig.1.dylib": {
+   "originalSha256": "97f76096b5bb6c0c85980ffce27af1734b903fb36c634c66f928efeb5e2d1ee8",
+   "rpaths": [],
+   "sha256": "93a2d0601cbf44bf5d093162c443a3271a3bd088ba47ac0927918b4260d7608f"
+  },
+  "native/lib/libfreetype.6.dylib": {
+   "originalSha256": "67d04b189d412717cfa1928c82eecc3701c62e0ec80ee399e82c6204180d3780",
+   "rpaths": [],
+   "sha256": "9798c3944329762561f9680e41644406adf7931b4d1a310bda3581a9f49bc966"
+  },
+  "native/lib/libglib-2.0.0.dylib": {
+   "originalSha256": "6e4079138fe2a05ad7c47127be6ef43561a64073e6c055247a33abf57de75c15",
+   "rpaths": [],
+   "sha256": "c298be2643ab3d9c814afd69f92e9e4b24943c5326e7a22176da980aaab09878"
+  },
+  "native/lib/libgpg-error.0.dylib": {
+   "originalSha256": "762b5eeaa1c449f8fa975faa990822cfc2c8a2c9fa3409a74d8dfb2ce40c5ac1",
+   "rpaths": [],
+   "sha256": "71c11383c667dfb9d1fd1756acc887b560b7b7519d53ab9c4edc03cd8d62bb4e"
+  },
+  "native/lib/libgpgme.45.dylib": {
+   "originalSha256": "110ccc7d36b885fdccc5a8ba5b5e0a7f8400a098a251afbeb909c46b95dd32b3",
+   "rpaths": [],
+   "sha256": "813bf8c82dd4a165de5973482972b5e7baf9e0094d929e43f39dd4d7eda417ec"
+  },
+  "native/lib/libgpgmepp.7.dylib": {
+   "originalSha256": "9ad7e883a746ff0a4892b0fb6c0bd78db63220ea20a1ccd297b1f9b9f730e44c",
+   "rpaths": [],
+   "sha256": "f420d0d5febe41dcae0249bec6e3c1722c5cb5da9594068a261f08807d504004"
+  },
+  "native/lib/libgraphite2.3.dylib": {
+   "originalSha256": "82e0f92bfc80c552cc6d5274872511b8ac31bbea750b0ba25ff1387bc34725c9",
+   "rpaths": [
+    "@loader_path/../lib"
+   ],
+   "sha256": "6bd08488277e2adcf3a8296da8a110699b7e5a6adcff22a4c34c718f6652e59d"
+  },
+  "native/lib/libharfbuzz-subset.0.dylib": {
+   "originalSha256": "dc923849491fe1a2a7857d556a9e05c670c7c96256472a8d91ae3fc229b47431",
+   "rpaths": [],
+   "sha256": "48587586f5311bfe236968be25eca62716962de6a971095125854c532dab84cc"
+  },
+  "native/lib/libharfbuzz.0.dylib": {
+   "originalSha256": "dd0460d2bf9237c19ec0b52552675e21f7025080efdbdb5dd43e2c96643cbef5",
+   "rpaths": [],
+   "sha256": "44b3412d1dd8aff523edc6aca38ad3b7a30b845dfda388f10c4ea5c5c55722b2"
+  },
+  "native/lib/libintl.8.dylib": {
+   "originalSha256": "846181fa8c5ab96cf7f34d29b065c7b8c565c8ff10571b8f5dbc6336c0fb096a",
+   "rpaths": [],
+   "sha256": "12f9cfb143dd62517ba22e30c8cc6428010b6ea82589f9cc027248e295271334"
+  },
+  "native/lib/libjpeg.8.dylib": {
+   "originalSha256": "bb02e1bbcd3a31e626b6f8ce78f7fbf221ffe691af2a8b8e2a1e93f6ab506f4c",
+   "rpaths": [],
+   "sha256": "1a252a82ad80a357608a2b8902625e31c1e37236dd48a734b8e87252bb60ec70"
+  },
+  "native/lib/liblcms2.2.dylib": {
+   "originalSha256": "b205ac061c9fd6ec10cb190278ef5c1a2aa919f1ce889a903a17a0ae94d52ac5",
+   "rpaths": [],
+   "sha256": "1cfa6b7893003a5e937c94044e7756c2738d4a9addb0e83a852ee2245ea187d8"
+  },
+  "native/lib/liblzma.5.dylib": {
+   "originalSha256": "950fe81706f0942d1d71751208420878de1f707d40d1cf86ffcd0420a6c75ca0",
+   "rpaths": [],
+   "sha256": "1ee08806814720b70d4fb0e6e56f2b70dadc914727959a4a5f1ff3e6ce108f8b"
+  },
+  "native/lib/libnspr4.dylib": {
+   "originalSha256": "1e6ffe8b0792dfdab53a7ce134cb3ac2ad3b37892b1153106d0a81b0b7e83c37",
+   "rpaths": [],
+   "sha256": "77619f402146a7f9363a1911a195ceafab5a621b30be4753e5afe6b45bc45412"
+  },
+  "native/lib/libnss3.dylib": {
+   "originalSha256": "e65b6817a0328817bab840a1234964e46a5a7b0fb96689e07a89d8c5696c66f1",
+   "rpaths": [],
+   "sha256": "af65b175e26a599e75fbf8ec59490fd8efc1f3e63bfcdbbed0d01d39571baba5"
+  },
+  "native/lib/libnssutil3.dylib": {
+   "originalSha256": "e4a9e4ada55aee75dba11f43cf6e5fcf34b079ea1c4997557cde7c8aae19773a",
+   "rpaths": [],
+   "sha256": "fde18b3f70c840ab1e01ae676c146b178265fee5df97d57541df2df6d195eb11"
+  },
+  "native/lib/libopenjp2.7.dylib": {
+   "originalSha256": "6a450299348bec2a36a5b3a62e1275636e7828bef0dde1d06d271caa68fd72c8",
+   "rpaths": [
+    "@loader_path/../lib"
+   ],
+   "sha256": "77fab7320e7d946e9728fd4db5cddd98ff3c4db24bd342051357f3b3414a7d9d"
+  },
+  "native/lib/libpcre2-8.0.dylib": {
+   "originalSha256": "50e1561928991afd879b475f0d5d1ac200d8c867c902dc7eacf0fba3c961fcd3",
+   "rpaths": [],
+   "sha256": "d01d84a5111d949aadb5c9f2be9bc405b2c1593fba4f29b6716c7c19a649352a"
+  },
+  "native/lib/libplc4.dylib": {
+   "originalSha256": "2eb1a7b0bac634e67eb4708ca00d4873faad1351f295429da48b31bea79d541b",
+   "rpaths": [],
+   "sha256": "14efbb106790c85f5c2d3afc8696c67b11fd9885fc34265867e9a9e5c0cfb93c"
+  },
+  "native/lib/libplds4.dylib": {
+   "originalSha256": "cddfad9344daa2b40a4b0175a098893213b573a5571b44637d629c34db33324d",
+   "rpaths": [],
+   "sha256": "8762e3207fc1c3e7882c3799071bf12df2e8f25d5dc675e7debf60b2eb48ce87"
+  },
+  "native/lib/libpng16.16.dylib": {
+   "originalSha256": "fb0c2c7d30d5552cf44ab56b352795db100aefa98cd56c19171bdc6a6ee77232",
+   "rpaths": [],
+   "sha256": "9614c6f170589598b5a4b59d6c6033fb84eb0ea1e2acbfc630372aa9abfe76b3"
+  },
+  "native/lib/libpoppler.165.dylib": {
+   "originalSha256": "0dadc997fcde3ad9e245034671866e1c28e4d0b27609c593c94b4027a114c0ce",
+   "rpaths": [
+    "@loader_path/../lib"
+   ],
+   "sha256": "48af4b196f7ecc479d08aa594238a81205295d4dd4a6958dae8327a090fa19f9"
+  },
+  "native/lib/libsharpyuv.0.dylib": {
+   "originalSha256": "6f4abef4013ed205da0e78e1ff42cba464571b8d10bf95447a978e311d0d6b7e",
+   "rpaths": [
+    "@loader_path/../lib"
+   ],
+   "sha256": "5fdc38879cf68400bd2ac81de688bbe05c5e730cc058b78e94fe9034fd3b7e7c"
+  },
+  "native/lib/libsmime3.dylib": {
+   "originalSha256": "3aec76393f8d82ac944ee0e71f5fc62d84e9fd7f69ceb64248dd16b18126b1ac",
+   "rpaths": [],
+   "sha256": "615c16e6890940180469586ce8ee2bd82c547572a6034da6ef37285b1668b673"
+  },
+  "native/lib/libssl3.dylib": {
+   "originalSha256": "790e7a206e8dcd6f162ec2694a8d301faf7fe4ed280dd6ffb54dc558881c6fa3",
+   "rpaths": [],
+   "sha256": "d4a8de8bd52808ad58a8154ccc970fc07db20ffe7349108e152fab05c8288e6c"
+  },
+  "native/lib/libtiff.6.dylib": {
+   "originalSha256": "a12ce7b5f857f99b6ced8d523cc6ff8776897b871448e11bb4804c75e85438c6",
+   "rpaths": [],
+   "sha256": "cd3060a4a68c3d920b28a5c98fe6825354ff8775741ff0bfb2bd4e1042a40d11"
+  },
+  "native/lib/libwebp.7.dylib": {
+   "originalSha256": "316a1c2ca5905076b6912a8e4d967b881649353066e6f2e8a4dbacb1561e754a",
+   "rpaths": [
+    "@loader_path/../lib"
+   ],
+   "sha256": "f8ed6287b5f9c8dc28cb2ec5eadf0df7d7ab4b75e7fa1072db4efeec10f64b2c"
+  },
+  "native/lib/libzstd.1.dylib": {
+   "originalSha256": "80e0c873acb84df71819f36687c7a7628148fc977343d545bd8fff777d650b61",
+   "rpaths": [
+    "@loader_path/../lib"
+   ],
+   "sha256": "e8ea80604f360ce1312d6fd95b59da48a1806ced396dfcea4c56c081404c6128"
+  }
+ }
+}

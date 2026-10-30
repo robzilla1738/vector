@@ -131,7 +131,7 @@
 
 ## Phase 2: Providers, the T3 Code way (decision 1)
 
-**Goal.** Users sign in with their own Claude, ChatGPT/Codex, Cursor, Grok and OpenCode subscriptions through each provider's official CLI, the way T3 Code does. Aux uses no borrowed OAuth client IDs and no spoofed editor headers.
+**Goal.** Users bring their own Claude, ChatGPT/Codex, Cursor, Grok and OpenCode subscriptions through each provider's official CLI, signed in outside Aux, the way T3 Code does. Aux never signs in for them, and uses no borrowed OAuth client IDs and no spoofed editor headers. Copilot, Gemini and other Agent Client Protocol agents work the same way when installed (browser excellence plan, Batch 8).
 
 1. **Inventory.**
    - Map every provider path in the daemon and extension: the `openai-codex` loader with the Codex CLI client ID (`app_EMoamEEZ73f0CkXaXp7hrann`), Claude Pro/Max, Copilot (VS Code headers), Kimi, Meta and Grok.
@@ -359,7 +359,7 @@ Once owner item 14 exists, build with the key (or a Web Risk adapter), enable Sa
 | 15 Widevine and EVS | Phase 5C step 4 and a playback check |
 | 16 Apple approval | REPL activation: daemon entitlement and profile, the v11 resource delta, then six journeys (a Bash command, yield and cancel, PTY input, resize and exit, escaped descendant, session revocation, normal Quit) |
 | 17 1Password account | R18: install the official extension, fill the dummy login, pair the desktop app, and check isolation between profiles. Fix the native host's fork/exec sandbox denial if pairing needs it |
-| 18 ChatGPT approval | Aux's own client ID for in-app ChatGPT sign-in beside the Codex CLI path |
+| 18 ChatGPT approval | Withdrawn (2026-10-29): no in-app sign-in; ChatGPT plans come through the Codex CLI |
 | 19 Keychain approval | The real-Keychain check |
 | 20 Publication approvals | Upload to `aux-downloads`, deploy `aux-web`, publish the appcast, one step per approval |
 

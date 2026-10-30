@@ -73,6 +73,37 @@ class RuntimeRepin(unittest.TestCase):
             assemble.repin_runtime(app, [stray])
 
 
+class PdfRuntime(unittest.TestCase):
+    def setUp(self):
+        self.app, self.built = Path(tempfile.mkdtemp()), Path(tempfile.mkdtemp())
+        self.target = self.app / assemble.AUX / 'agent-runtime/native/bin/pdfinfo'
+        self.target.parent.mkdir(parents=True)
+        self.target.write_bytes(b'supplied')
+        self.target.chmod(0o755)
+        (self.built / 'native/bin').mkdir(parents=True)
+        (self.built / 'native/bin/pdfinfo').write_bytes(b'rebuilt')
+        self.manifest = self.built / 'manifest.json'
+        self.manifest.write_text(json.dumps({'files': {'native/bin/pdfinfo': {
+            'originalSha256': hashlib.sha256(b'supplied').hexdigest(),
+            'sha256': hashlib.sha256(b'rebuilt').hexdigest(), 'rpaths': []}}}))
+
+    def test_replaces_and_reports_the_old_digest(self):
+        (path, (old, size)), = assemble.substitute_pdf_runtime(self.app, self.built, self.manifest)
+        self.assertEqual((path.read_bytes(), old, size), (b'rebuilt', hashlib.sha256(b'supplied').hexdigest(), 8))
+        self.assertEqual(path.stat().st_mode & 0o777, 0o755)
+
+    def test_refuses_a_file_the_manifest_does_not_record(self):
+        (self.built / 'native/bin/pdfinfo').write_bytes(b'other')
+        with self.assertRaises(SystemExit):
+            assemble.substitute_pdf_runtime(self.app, self.built, self.manifest)
+        self.assertEqual(self.target.read_bytes(), b'supplied')
+
+    def test_shipped_manifest_covers_the_34_files(self):
+        files = json.loads(assemble.PDF_RUNTIME_MANIFEST.read_text())['files']
+        self.assertEqual(len(files), 34)
+        self.assertTrue(all(len(entry['originalSha256']) == 64 for entry in files.values()))
+
+
 class CrashUpload(unittest.TestCase):
     def test_minidump_endpoint_from_dsn(self):
         self.assertEqual(assemble.crash_upload_url('https://abc123@o1.ingest.sentry.io/42\n'),

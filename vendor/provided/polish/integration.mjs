@@ -45,7 +45,7 @@ const APPEARANCE = [
 
 // Each Aux command says what it does instead of one shared placeholder.
 const COMMAND_DESCRIPTIONS = {
-  'Toggle minimal UI': 'Hide the sidebar so the page fills the window.',
+  'Toggle minimal UI': 'Turn Minimal UI on or off: the sidebar stays hidden until you hover the left edge.',
   'Toggle navigation in sidebar': 'Move the address and back/forward between the sidebar and the top.',
   'New Space': 'Create a Space for a new set of tabs.',
   'Next Space': 'Switch to the next Space.',
@@ -66,9 +66,51 @@ const COMMAND_DESCRIPTIONS = {
   'Toggle developer mode': 'Turn developer tools for extensions on or off.',
   'Edit theme': 'Open the theme editor.',
 };
-const SHORTCUTS = Object.entries(COMMAND_DESCRIPTIONS).map(([title, description]) => edit(`${title} has a description`,
+// Two pairs of commands split the same way. Settings lists the pair with Command defaults;
+// the other pair takes the same names so errors and the command bar agree.
+const COMMAND_TITLES = {'Split horizontally': 'Split side by side', 'Split vertically': 'Split stacked'};
+const SHORTCUTS = [...Object.entries(COMMAND_DESCRIPTIONS).map(([title, description]) => edit(`${title} has a description`,
   `"title":"${title}","key":"","description":"Assign a shortcut to this browser command."`,
-  `"title":"${title}","key":"","description":"${description}"`));
+  `"title":"${COMMAND_TITLES[title] ?? title}","key":"","description":"${description}"`)),
+  edit('one name for splitting side by side',
+    'title:"Split tabs (side by side)",description:"View two tabs side by side."',
+    'title:"Split side by side",description:"Show this tab and the next one side by side."'),
+  edit('one name for splitting stacked',
+    'title:"Split tabs (stacked)",description:"View two tabs one above the other."',
+    'title:"Split stacked",description:"Show this tab and the next one stacked."'),
+  edit('Toggle sidebar reads differently from Minimal UI',
+    'title:"Toggle Sidebar",description:"Show or hide the sidebar."',
+    'title:"Toggle sidebar",description:"Show or hide the sidebar in this window."'),
+];
+
+// Shortcuts get their own Settings page (Batch 7). The Appearance chunk keeps the shortcut
+// table and exports it as a second page; the router and Settings menu gain the route.
+const SHORTCUTS_PAGE = [
+  edit('Appearance no longer holds the shortcut table',
+    'children:(0,e.jsxs)("div",{className:"space-y-8",children:[(0,e.jsx)(z,{}),(0,e.jsx)(re,{})]})',
+    'children:(0,e.jsx)("div",{className:"space-y-8",children:(0,e.jsx)(z,{})})'),
+  edit('the Shortcuts page',
+    'export{we as component};',
+    'function auxShortcutsPage(){return(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(J,{segments:["Settings","Shortcuts"]}),(0,e.jsx)(V,{children:(0,e.jsx)("h1",{children:"Shortcuts"})}),(0,e.jsx)(P.Suspense,{fallback:(0,e.jsx)(L,{}),children:(0,e.jsx)("div",{className:"space-y-8",children:(0,e.jsx)(re,{})})})]})}export{we as component,auxShortcutsPage as shortcuts};'),
+  // The duplicate split commands (no default keys) stay bound but aren't listed twice.
+  edit('each split command is listed once',
+    'children:t.data.map(N)', 'children:t.data.filter(s=>s.commandId!==34132&&s.commandId!==34133).map(N)'),
+  // The browser reports conflicts by command number; name the command or macOS instead.
+  edit('shortcut errors name what owns the keys',
+    'onError:s=>D.error("Couldn’t update shortcut",{description:s.message})',
+    'onError:s=>D.error("Couldn’t update shortcut",{description:(m=>{const name=id=>{const c=Object.values(I).find(x=>String(x.commandId)===id);return c?`“${c.title}”`:"Another command"},pair=/^Shortcut conflict between commands (\\d+) and (\\d+)$/.exec(m);if(pair)return`${name(pair[1])} already uses these keys. Change it first, or choose other keys.`;const owner=/^Command (\\d+) conflicts with (a macOS|a browser menu) shortcut$/.exec(m);return owner?`${owner[2]==="a macOS"?"macOS":"A menu item"} already uses these keys. Choose other keys.`:m})(s.message)})'),
+];
+const SHORTCUTS_ROUTE = [
+  edit('the Shortcuts route',
+    'To=n("/_web/(settings)/u/$userId/settings/appearance/")({component:a(So,"component")}),',
+    'To=n("/_web/(settings)/u/$userId/settings/appearance/")({component:a(So,"component")}),auxShortcutsRoute=n("/_web/(settings)/u/$userId/settings/shortcuts/")({component:a(So,"shortcuts")}),'),
+  edit('the Shortcuts route sits under Settings',
+    'ya=To.update({id:"/appearance/",path:"/appearance/",getParentRoute:()=>m}),',
+    'ya=To.update({id:"/appearance/",path:"/appearance/",getParentRoute:()=>m}),auxShortcutsIndex=auxShortcutsRoute.update({id:"/shortcuts/",path:"/shortcuts/",getParentRoute:()=>m}),'),
+  edit('the Shortcuts route is in the tree',
+    'WebsettingsUUserIdSettingsAppearanceIndexRoute:ya,',
+    'WebsettingsUUserIdSettingsAppearanceIndexRoute:ya,AuxSettingsShortcutsIndexRoute:auxShortcutsIndex,'),
+];
 
 const PRIVACY = [
   // The toggle that said it shared usage statistics changed nothing: analytics
@@ -121,6 +163,10 @@ const GENERAL_ROWS = [
   edit('Run setup again, beside Import',
     '(0,A.jsx)(Pi,{title:"Import",children:(0,A.jsxs)(un,{children:[(0,A.jsx)(Am,{}),(0,A.jsx)(wm,{})]})})',
     '(0,A.jsx)(Pi,{title:"Import",children:(0,A.jsxs)(un,{children:[(0,A.jsx)(Am,{}),(0,A.jsx)(wm,{}),(0,A.jsxs)(Ac,{className:"cursor-pointer gap-1",render:({className:_,...y})=>(0,A.jsx)("button",{...y,type:"button",className:Ui("w-full cursor-pointer gap-1 text-left",_),onClick:()=>chrome.tabs.create({url:chrome.runtime.getURL("main.html#/onboarding/import-browser")})}),children:[(0,A.jsx)(qt,{title:"Run setup again",description:"Import from another browser, connect your password manager and models, and choose the finishing touches."}),(0,A.jsx)(Pl,{className:"text-muted-foreground size-4 shrink-0"})]})]})})'),
+  // Settings › Import: a job that skipped site sign-ins (cookies Aux couldn't read) says so.
+  edit('a partial import says what it skipped',
+    'i==="succeeded"?(0,A.jsx)("span",{children:"Import complete."})',
+    'i==="succeeded"?n?.skippedDataKinds?.length?(0,A.jsxs)(A.Fragment,{children:[(0,A.jsx)("span",{className:"block",children:"Imported everything except site sign-ins."}),n.skippedMessage&&(0,A.jsx)("span",{className:"block",children:n.skippedMessage})]}):(0,A.jsx)("span",{children:"Import complete."})'),
 ];
 
 
@@ -164,6 +210,127 @@ const SETTINGS_SHELL = [
   edit('search shows Lasso’s real description',
     '{title:"Enable on text selection",description:"Drag text click the blue dot."}',
     '{title:"Enable on text selection",description:"Select text, then click the blue dot."}'),
+  // Shortcuts have their own page (see SHORTCUTS_PAGE).
+  edit('Settings menu has Shortcuts after Appearance',
+    '{label:"Appearance",icon:B,activeIcon:B,href:"/u/$userId/settings/appearance"},',
+    '{label:"Appearance",icon:B,activeIcon:B,href:"/u/$userId/settings/appearance"},{label:"Shortcuts",icon:F1,activeIcon:O1,href:"/u/$userId/settings/shortcuts"},'),
+  edit('search finds shortcuts on their own page',
+    '{title:"Transparency"},{title:"Extension shortcuts",description:"Manage shortcuts for Aux extensions"}]},',
+    '{title:"Transparency"}]},{path:"/u/$userId/settings/shortcuts",title:"Shortcuts",sections:["Keyboard shortcuts"],fields:[{title:"Keyboard shortcuts",searchTerms:["shortcut","hotkey","keys","keyboard"]},{title:"Browser shortcut profiles",description:"Import, export or reset in-app shortcuts."},{title:"Extension shortcuts",description:"Manage shortcuts for Aux extensions"}]},'),
+  edit('Appearance search has no shortcuts section',
+    'title:"Appearance",sections:["Appearance","Tabs","Keyboard shortcuts"]',
+    'title:"Appearance",sections:["Appearance","Tabs"]'),
+  // Ads privacy is Chrome's Privacy Sandbox, which Aux turns off.
+  edit('search has no Ads privacy row, and says ad blocker',
+    'sections:["Browsing history","Privacy","Adblock"],fields:[{title:"Ads privacy",description:"Manage ad topics, site-suggested ads, and ad measurement"},',
+    'sections:["Browsing history","Privacy","Ad blocker"],fields:['),
+];
+
+// Settings › Agent: the runtime ships inside Aux (its release URL is a placeholder, so update
+// checks always failed), and tab cleanup isn't a Computer Use setting.
+const AGENT_SETTINGS = [
+  edit('the runtime says it ships with Aux',
+    '(0,e.jsx)("p",{children:"The agent runtime is a package of tools Aux downloads to your computer, including Node.js, Python, and fast file search."}),(0,e.jsx)("p",{children:"Agents use it to run terminal commands and built-in skills locally, so tasks like editing documents and running scripts work without depending on what you already have installed."})',
+    '(0,e.jsx)("p",{children:"The agent runtime ships with Aux: Node.js, Python, fast file search and other tools."}),(0,e.jsx)("p",{children:"Agents use it to run terminal commands and built-in skills on your Mac, so documents and scripts work whatever you have installed."})'),
+  edit('no update line for the runtime',
+    'Ze=(s,t,a)=>{const r=`Current version is ${s}.`;return t?a?`${r} A newer version is available.`:`${r} Agent runtime is up to date.`:`${r} Could not check for updates.`}',
+    'Ze=s=>`Version ${s}, bundled with Aux.`'),
+  edit('Clean up agent tabs has its own section',
+    '(0,e.jsx)(k,{title:"Computer Use",children:(0,e.jsxs)(A,{children:[(0,e.jsx)(ss,{}),(0,e.jsx)(rs,{})]})})',
+    '(0,e.jsx)(k,{title:"Agent tabs",children:(0,e.jsx)(A,{children:(0,e.jsx)(ss,{})})}),(0,e.jsx)(k,{title:"Computer Use",children:(0,e.jsx)(A,{children:(0,e.jsx)(rs,{})})})'),
+  edit('Select… placeholder',
+    'placeholder:"Select.."', 'placeholder:"Select…"', 2),
+  // Install/Reinstall downloads from a placeholder URL and can't work; the version line stays.
+  edit('no Install or Reinstall row for the runtime',
+    ',(0,e.jsxs)(g,{children:[(0,e.jsx)(v,{title:i?"Reinstall agent runtime":"Install agent runtime",description:i?"Download and replace the installed agent runtime.":void 0}),(0,e.jsxs)(y,{children:[a.isError&&(0,e.jsxs)(j,{disabled:a.isFetching,onClick:w,variant:"secondary",children:[a.isFetching&&(0,e.jsx)(V,{}),"Retry"]}),(0,e.jsxs)(j,{className:"click-depth-effect",disabled:a.isPending||n.isPending||h,onClick:c,children:[n.isPending||h?(0,e.jsx)(V,{}):(0,e.jsx)(ke,{className:"size-4"}),(0,e.jsxs)("span",{children:[i?"Reinstall":"Install",u!==null?` (${u}%)`:""]})]})]})]})',
+    ''),
+];
+
+// Command bar: one name for each split, and Settings pages and Import as commands.
+// (New window, Find, Print, Zoom and the rest need native command entries.)
+const COMMAND_BAR_COMMANDS = [
+  edit('split commands read Split side by side and Split stacked',
+    "const commands = (context.commands ?? []).filter(command => command.enabled &&",
+    "const commands = (context.commands ?? []).map(command=>({...command,title:({34132:'Split side by side',34133:'Split stacked'})[command.commandId]??command.title})).filter(command => command.enabled &&"),
+  edit('Settings pages are commands',
+    'function developerSections(context,query,sections){',
+    "function auxSettingsSections(context,query,sections){\n if(context?.mode!=='commands')return sections;\n const text=query.trim().toLowerCase();\n const pages=[['General','general','updates language link routing tab cleanup'],['Appearance','appearance','theme tabs sidebar'],['Shortcuts','shortcuts','keyboard keys hotkeys'],['Security & Privacy','privacy','ad blocker history site settings'],['Agent','agents','permissions sandbox runtime'],['Models','model','providers api keys local agents']];\n const items=[...pages.map(([title,path,terms])=>({id:`aux-settings:${path}`,kind:'aux-settings',title:`Settings: ${title}`,subtitle:'Opens in a new tab',terms,url:`main.html#/settings/${path}`,actionLabel:'Open'})),\n  {id:'aux-settings:import',kind:'aux-settings',title:'Import from another browser',subtitle:'Bookmarks and history',terms:'arc chrome safari',url:'main.html#/onboarding/import-browser',actionLabel:'Open'}]\n  .filter(item=>!text||`${item.title} ${item.subtitle} ${item.terms}`.toLowerCase().includes(text));\n return items.length?[...sections,{id:'aux-settings',title:'Settings',items}]:sections;\n}\nfunction developerSections(context,query,sections){"),
+  edit('the Settings commands are listed',
+    'developerSections(auxNavContext,r,mediaSections(auxNavContext,r,navigationSections(auxNavContext,r,Pe($,r))))),[r,$',
+    'auxSettingsSections(auxNavContext,r,developerSections(auxNavContext,r,mediaSections(auxNavContext,r,navigationSections(auxNavContext,r,Pe($,r)))))),[r,$'),
+  edit('a Settings command opens its page',
+    'if(n.kind==="aux-pip"){',
+    'if(n.kind==="aux-settings"){await chrome.tabs.create({url:chrome.runtime.getURL(n.url)});auxNavSuccess=true;return}if(n.kind==="aux-pip"){'),
+];
+
+// Security & Privacy: no Ads privacy row (Privacy Sandbox is off), one spelling of ad
+// blocker, and an ellipsis while loading.
+const PRIVACY_ROWS = [
+  edit('no Ads privacy row',
+    '(0,e.jsxs)(O,{render:(0,e.jsx)(P,{className:"group",to:"chrome://settings/adPrivacy"}),children:[(0,e.jsx)(C,{title:"Ads privacy",description:"Manage ad topics, site-suggested ads, and ad measurement"}),(0,e.jsx)(E,{className:"text-muted-foreground mx-1 size-4"})]}),',
+    ''),
+  edit('the section is Ad blocker',
+    '(0,e.jsx)(Z,{title:"Adblock",', '(0,e.jsx)(Z,{title:"Ad blocker",'),
+  edit('update errors say ad blocker',
+    '"Couldn’t update Adblock"', '"Couldn’t update the ad blocker"', 2),
+  edit('turning it off says ad blocker',
+    'title:"Disable Adblock?"', 'title:"Turn off the ad blocker?"'),
+  edit('an unavailable ad blocker says so plainly',
+    '"Please update your browser to enable Adblocker."', '"The ad blocker needs a newer version of Aux."'),
+  edit('Loading… placeholder',
+    'placeholder:s?"Loading..":"-"', 'placeholder:s?"Loading…":"-"'),
+  // Sites paused from the command bar (native auxAdblock.pauseSite), each with Resume.
+  edit('paused sites are listed under the filters',
+    'i?.enabled&&(0,e.jsx)(js,{api:t,canUpdate:!!o.data?.length,description:o.isPending||l.isPending?"Loading…":vs(u),disabled:!y||x})]})},js=',
+    'i?.enabled&&(0,e.jsx)(js,{api:t,canUpdate:!!o.data?.length,description:o.isPending||l.isPending?"Loading…":vs(u),disabled:!y||x}),i?.enabled&&(0,e.jsx)(auxPausedSites,{api:t})]})},auxPausedSites=({api:t})=>{const r=j(N({queryKey:[...V,"pausedSites"],queryFn:()=>t.getPausedSites(),enabled:typeof t.getPausedSites==="function",retry:!1})),s=S(o=>t.resumeSite(o)),a=r.data??[];return a.length?(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(R,{className:"gap-1",children:(0,e.jsx)(C,{title:"Paused sites",description:"Ads and trackers aren’t blocked on these sites. Pause one from the command bar while you’re on it."})}),a.map(o=>(0,e.jsxs)(R,{className:"gap-1",children:[(0,e.jsx)(C,{title:o}),(0,e.jsx)(H,{children:(0,e.jsx)(F,{variant:"outline",disabled:s.isPending,onClick:()=>s.mutate(o),children:"Resume"})})]},o))]}):null},js='),
+];
+
+const TASKS = [
+  edit('Loading… while more tasks load',
+    'children:t?"Loading...":"Load more"', 'children:t?"Loading…":"Load more"'),
+];
+
+const IMPORT_BROWSER = [
+  edit('Others has no trailing space',
+    'children:["Others ",(0,e.jsxs)("span",{className:"text-muted-foreground",children:["+",i.length]})]',
+    'children:["Others",(0,e.jsxs)("span",{className:"text-muted-foreground ml-1",children:["+",i.length]})]'),
+];
+
+// Aux has no plans or credits. Billing prompts go; limits read as limits.
+const BILLING_MODEL_SELECT = [
+  edit('Ultrabrowse has no upgrade prompt',
+    'children:t?(0,e.jsx)("p",{children:"Upgrade to Pro and unlock Ultrabrowse"}):(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)("p",{children:"Upgrade to Pro and unlock Ultrabrowse for deep research and complex tasks."}),(0,e.jsxs)(be,{className:"text-brand-content decoration-brand/50 hover:decoration-brand inline-flex items-center gap-0.5 font-medium underline decoration-dotted underline-offset-2",to:xe(`/u/${M}/settings/billing?change_plan=1`),children:[(0,e.jsx)("span",{children:"Upgrade"}),(0,e.jsx)(Be,{className:"size-3"})]})]})',
+    'children:(0,e.jsx)("p",{children:"Ultrabrowse isn’t available for this model."})'),
+];
+const BILLING_CHANNELS = [
+  edit('Channels has no Upgrade to Pro button',
+    't&&(0,e.jsx)("div",{className:"mt-auto",children:(0,e.jsx)(k,{onClick:r,children:"Upgrade to Pro"})})',
+    '!1'),
+  edit('the unused assistant row has no Pro prompt',
+    '"Upgrade to Pro to connect to personal assistants."', '"Not available yet."'),
+];
+const BILLING_ROUTINES = [
+  edit('Routines has no Free plan banner',
+    'children:[h&&(0,e.jsxs)("div",{className:"inner-curved-shape-top',
+    'children:[!1&&(0,e.jsxs)("div",{className:"inner-curved-shape-top'),
+];
+const BILLING_TOOL_CARDS = [
+  edit('a routine limit is a limit, not a plan',
+    '"You\'ve reached the routine limit on the Free plan."', '"Routine limit reached."'),
+  edit('the routine limit card offers no upgrade',
+    '"You have reached the Free plan routine limit. Pause or remove an existing routine, or upgrade to run more routines."',
+    '"You’ve reached the routine limit. Pause or remove a routine to run another."'),
+];
+const BILLING_REFERRAL = [
+  edit('no free week of Aux Pro to share',
+    '!!s?.trialDays&&!!s?.eligible&&(0,e.jsxs)(u,{className:"flex items-center gap-1",children:[(0,e.jsx)(c,{title:"Share a free week of Aux Pro with friends"',
+    '!1&&(0,e.jsxs)(u,{className:"flex items-center gap-1",children:[(0,e.jsx)(c,{title:"Share Aux with friends"'),
+];
+const BILLING_ERRORS = [
+  // Out of credits is the model provider's balance, never an Aux plan.
+  edit('out of credits points at the provider, with no plan or credit actions',
+    '{if(!e)return{description:"Check your plan and credits to keep going.",actions:[]};const r=e==="free",o=r?"Upgrade your plan to keep going":"Add credits to keep going",s=r?["upgrade"]:e==="max"?["addCredits"]:["addCredits","upgrade"],a=t?ma(new Date(t),n):null;return a?{description:`${o}, or wait until your credits reset ${a}.`,actions:s}:{description:`${o}.`,actions:s}}',
+    '{return{description:"Your model provider is out of credits. Add credits with them, or choose another model in Settings › Models.",actions:[]}}'),
 ];
 
 const ACCOUNT = [
@@ -182,10 +349,36 @@ const ONBOARDING_IMPORT = [
     'to:"/onboarding/glance",replace:!0,onClick:()=>{l("onboarding.import-browser.skip")}',
     'to:"/onboarding/import-password",replace:!0,onClick:()=>{l("onboarding.import-browser.skip")}'),
 ];
+// Arc's pinned Spaces import as Aux Spaces (onboarding progress and Settings › Import).
+const SPACES_KIND = edit('Arc Spaces have a label', '["paymentCards","payment cards"]]),', '["paymentCards","payment cards"],["spaces","Spaces and pins"]]),');
+// An import that skipped site sign-ins (cookies Aux couldn't read) still succeeds; the
+// screen says so and stays put, with Try again for just the sign-ins and Next to go on.
 const ONBOARDING_PROGRESS = [
   edit('a finished import goes on to the password manager step',
     'o({to:"/onboarding/glance",replace:!0})',
     'o({to:"/onboarding/import-password",replace:!0})'),
+  edit('a partial import stays on screen',
+    '(u.current=!0,E(),a=window.setTimeout(()=>{o({to:"/onboarding/import-password",replace:!0})},800)))',
+    '(E(),l.skippedDataKinds?.length||(u.current=!0,a=window.setTimeout(()=>{o({to:"/onboarding/import-password",replace:!0})},800))))'),
+  edit('the progress screen can set the pending import',
+    'import{D as R,E as T,L as C,M as E,N as w}from"./extension-main-Dz1-AsCT.js"',
+    'import{D as R,E as T,I as auxSetPending,L as C,M as E,N as w}from"./extension-main-Dz1-AsCT.js"'),
+  edit('the progress screen keeps the import it started',
+    't=j(),[s,c]=', 't=j(),auxPending=(0,d.useRef)(w()),[s,c]='),
+  edit('a partial import is known',
+    'h=n?.state==="succeeded",D=', 'h=n?.state==="succeeded",auxSkipped=h&&!!n.skippedDataKinds?.length,D='),
+  edit('Try again retries only the sign-ins',
+    'c(p=>p+1)};return',
+    'c(p=>p+1)},auxRetrySignIns=()=>{auxPending.current&&auxSetPending({...auxPending.current,dataKinds:["cookies"]}),D()};return'),
+  edit('Back works after a partial import',
+    'disabled:!f,onClick:', 'disabled:!f&&!auxSkipped,onClick:'),
+  edit('a partial import offers Try again and Next',
+    ']}),f?(0,e.jsx)(g,{type:"button",onClick:D,children:"Try again"})',
+    ']}),auxSkipped?(0,e.jsxs)("div",{className:"flex gap-2",children:[(0,e.jsx)(A,{variant:"secondary",size:"lg",onClick:auxRetrySignIns,children:"Try again"}),(0,e.jsx)(g,{type:"button",onClick:()=>t({to:"/onboarding/import-password",replace:!0}),children:"Next"})]}):f?(0,e.jsx)(g,{type:"button",onClick:D,children:"Try again"})'),
+  edit('a partial import says what it skipped',
+    't?.state==="succeeded"?(0,e.jsx)("span",{children:"Import complete."})',
+    't?.state==="succeeded"?t.skippedDataKinds?.length?(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)("span",{className:"block",children:"Imported everything except site sign-ins."}),t.skippedMessage&&(0,e.jsx)("span",{className:"text-muted-foreground block",children:t.skippedMessage})]}):(0,e.jsx)("span",{children:"Import complete."})'),
+  SPACES_KIND,
 ];
 const ONBOARDING_PASSWORD = [
   edit('the password manager step goes back to Import',
@@ -237,12 +430,37 @@ const BACKGROUND = [
     'chrome.action.onClicked.addListener(async (e) => {\n  e.windowId && await chrome.sidePanel.open({ windowId: e.windowId });\n  e.windowId && chrome.runtime.sendMessage({ type: "aux-agent-home", windowId: e.windowId }).catch(() => {});\n});'),
 ];
 
-// Dictation posts to a hosted speech route that doesn't exist, so it always
-// failed. The mic is hidden until on-device dictation replaces it.
+// Dictation runs on this Mac through the browser (auxBrowserPreferences.startDictation and
+// stopDictation, macOS Speech) instead of posting audio to a hosted /stt/transcribe route that
+// doesn't exist. Same shape as the bundled hook, so the Dictate button and overlay are unchanged.
+// The overlay's level meter wants a MediaStream; native capture has none, so `stream` is just
+// `true` while listening (the meter stays flat, Convert is enabled). Without the native API
+// (an older browser build) there is no Dictate button.
+const auxDictationHook = 'auxDictation=insert=>{'
+  + 'const api=typeof chrome<"u"?chrome.auxBrowserPreferences:void 0,'
+  + '[status,setStatus]=(0,g.useState)("idle"),[listening,setListening]=(0,g.useState)(!1),'
+  + '[error,setError]=(0,g.useState)(null),phase=(0,g.useRef)("idle"),inserter=(0,g.useRef)(insert);'
+  + 'inserter.current=insert;'
+  + 'const move=next=>{phase.current=next,setStatus(next),setListening(!1)},'
+  + 'start=(0,g.useCallback)(async()=>{if(phase.current!=="idle")return;setError(null),move("recording");'
+  + 'try{await api.startDictation(),phase.current==="recording"&&setListening(!0)}'
+  + 'catch(e){phase.current==="recording"&&(move("idle"),setError(e?.message||"Dictation couldn\'t start."))}},[api]),'
+  + 'finish=(0,g.useCallback)(async keep=>{if(phase.current!=="recording")return;move(keep?"transcribing":"idle");'
+  + 'try{const text=(await api.stopDictation()).trim();keep&&(text?inserter.current(text):setError("Nothing was heard. Try again."))}'
+  + 'catch(e){keep&&setError(e?.message||"Dictation failed.")}finally{keep&&move("idle")}},[api]);'
+  + '(0,g.useEffect)(()=>()=>{phase.current==="recording"&&api.stopDictation().catch(()=>{})},[api]);'
+  + 'return{supported:typeof api?.startDictation=="function",status,stream:listening||null,error,start,'
+  + 'cancel:()=>finish(!1),confirm:()=>finish(!0),warmMic:()=>{}}},';
 const COMPOSER = [
-  edit('no Dictate button while dictation has no working backend',
-    'children:[n&&(0,a.jsxs)(Ae,{children:[(0,a.jsx)(Ie,{children:"Dictate"})',
-    'children:[!1&&(0,a.jsxs)(Ae,{children:[(0,a.jsx)(Ie,{children:"Dictate"})'),
+  edit('the Dictate button uses on-device dictation',
+    'xn=(0,g.createContext)(null),Su=({children:e})=>{',
+    `xn=(0,g.createContext)(null),${auxDictationHook}Su=({children:e})=>{`),
+  edit('the composer listens through the browser, not a hosted route',
+    'const o=Mc(n);',
+    'const o=auxDictation(n);'),
+  edit('no Dictate button without the native dictation API',
+    '(0,a.jsx)(xn,{value:{...o,hasLiveText:r},',
+    '(0,a.jsx)(xn,{value:o.supported?{...o,hasLiveText:r}:null,'),
 ];
 const CONVERSATION = [
   edit('no Voice input button while dictation has no working backend',
@@ -296,27 +514,49 @@ const CLEANUP_HOURS = [
     "      el(po,null,el(yt,{variant:'secondary',disabled:busy,onClick:onClose},'Close'),\n        el(yt,{disabled:busy||!dirty||!validScope,onClick:save},busy?'Saving\u2026':'Save'))));\n"),
 ];
 
+// Little Aux links get a Settings switch beside Peek (pref aux.little_aux_links_enabled,
+// exposed natively as littleAuxLinks).
+const LITTLE_AUX_KEYS = [
+  edit('frame settings carry the Little Aux switch',
+    "['sidebarNavigation','minimal','peekLinks']",
+    "['sidebarNavigation','minimal','peekLinks','littleAuxLinks']", 2),
+];
+const LITTLE_AUX_ROW = [
+  edit('Little Aux links have a row beside Peek',
+    "['peekLinks','Open links in Peek','Preview ordinary links before moving them into a full tab.']]",
+    "['peekLinks','Open links in Peek','Option-Shift-click a link to preview it before moving it into a full tab.'],\n      ['littleAuxLinks','Open links from other apps in Little Aux','Links from other apps open in a small window you can move into a Space.']]"),
+];
+
 export const EDITS = Object.freeze({
-  'assets/tabsearch-3k_2hgil.js': Object.freeze([...COMMAND_BAR, ...PALETTE_ASK]),
-  'assets/general-3dgRbrRk.js': Object.freeze([...SETTINGS, ...GENERAL_ROWS, ...CLEANUP_HOURS]),
-  'assets/appearance-Ceuw3-j6.js': Object.freeze([...APPEARANCE, ...APPEARANCE_ROWS]),
-  'assets/privacy-BeEEt9Qu.js': Object.freeze(PRIVACY),
+  'assets/tabsearch-3k_2hgil.js': Object.freeze([...COMMAND_BAR, ...PALETTE_ASK, ...COMMAND_BAR_COMMANDS]),
+  'assets/general-3dgRbrRk.js': Object.freeze([...SETTINGS, ...GENERAL_ROWS, ...CLEANUP_HOURS, ...LITTLE_AUX_KEYS, SPACES_KIND]),
+  'assets/appearance-Ceuw3-j6.js': Object.freeze([...APPEARANCE, ...APPEARANCE_ROWS, ...LITTLE_AUX_KEYS, ...LITTLE_AUX_ROW]),
+  'assets/privacy-BeEEt9Qu.js': Object.freeze([...PRIVACY, ...PRIVACY_ROWS]),
   'assets/developers-DTvaoVBC.js': Object.freeze(DEVELOPERS),
   'assets/model-BrFuJM2w.js': Object.freeze(MODELS),
   'assets/lasso-LoarCzmz.js': Object.freeze(LASSO),
   'assets/route-TQyeTEXE.js': Object.freeze(SETTINGS_SHELL),
   'assets/account-Dr_CA8LL.js': Object.freeze(ACCOUNT),
-  'assets/import-browser-DwQpkFpc.js': Object.freeze(ONBOARDING_IMPORT),
+  'assets/import-browser-DwQpkFpc.js': Object.freeze([...ONBOARDING_IMPORT, ...IMPORT_BROWSER]),
   'assets/progress-CS-jrVXz.js': Object.freeze(ONBOARDING_PROGRESS),
   'assets/import-password-mvM-KsU6.js': Object.freeze(ONBOARDING_PASSWORD),
   'assets/ai-CzEX5E7S.js': Object.freeze(ONBOARDING_MODELS),
   'assets/route-CSKkWqf5.js': Object.freeze(ONBOARDING_STEPS),
   'assets/done-DPzI9pFd.js': Object.freeze(ONBOARDING_DONE),
-  'assets/extension-main-Dz1-AsCT.js': Object.freeze(ONBOARDING_ROUTES),
+  'assets/extension-main-Dz1-AsCT.js': Object.freeze([...ONBOARDING_ROUTES, ...SHORTCUTS_ROUTE]),
   'background.js': Object.freeze(BACKGROUND),
   'assets/session-composer-Dc0LRfZA.js': Object.freeze(COMPOSER),
   'assets/conversation-D9Q3VEsl.js': Object.freeze(CONVERSATION),
   'assets/use-shortcut-capture-DGr8Ws5Z.js': Object.freeze(SHORTCUTS),
+  'assets/appearance-C03x8vQf.js': Object.freeze(SHORTCUTS_PAGE),
+  'assets/agents-urkO3LLg.js': Object.freeze(AGENT_SETTINGS),
+  'assets/tasks-D7OPjR17.js': Object.freeze(TASKS),
+  'assets/model-select-BvZsM1Kl.js': Object.freeze(BILLING_MODEL_SELECT),
+  'assets/channels-CJn5l9_T.js': Object.freeze(BILLING_CHANNELS),
+  'assets/routines-BNdQOEUt.js': Object.freeze(BILLING_ROUTINES),
+  'assets/tool-definition-registry-Cc6FCFb2.js': Object.freeze(BILLING_TOOL_CARDS),
+  'assets/referral-link-field-BrKHOkVL.js': Object.freeze(BILLING_REFERRAL),
+  'assets/strip-markdown-DRcmtuJc.js': Object.freeze(BILLING_ERRORS),
 });
 
 export function integratePolish(chunk, text) {

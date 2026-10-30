@@ -7,7 +7,10 @@ import {ORIGINAL_OPENER, cleanName, createAuxAgent, identityBlock, parseAvatar} 
 
 const scratch = mkdtempSync(path.join(tmpdir(), 'aux-agent-'));
 test.after(() => rmSync(scratch, {recursive: true, force: true}));
-const roots = {control: account => path.join(scratch, 'control', String(account)), task: account => path.join(scratch, 'task', String(account))};
+const roots = {control: account => path.join(scratch, 'control', String(account)), task: account => path.join(scratch, 'task', String(account)),
+  shared: () => path.join(scratch, 'shared')};
+// An account file written as before the shared root, which it then moves into.
+const legacy = (file, text) => { rmSync(roots.shared(), {recursive: true, force: true}); writeFileSync(file, text); };
 const agent = createAuxAgent(roots);
 const PROMPT = `${ORIGINAL_OPENER}\n\n# Goal\n\n- Act proactively.`;
 
@@ -38,15 +41,15 @@ test('an account with no agent file has Aux, named outright and working on reque
 test('older profiles drop style and initiative, and the retired default Otto becomes Aux', () => {
   const file = path.join(roots.control(9), 'agent', 'agent.json');
   mkdirSync(path.dirname(file), {recursive: true});
-  writeFileSync(file, JSON.stringify({version: 1, name: 'Aux', style: 'warm', proactivity: 'off', homeSessionId: 'h', setupCompleted: true}));
+  legacy(file, JSON.stringify({version: 1, name: 'Aux', style: 'warm', proactivity: 'off', homeSessionId: 'h', setupCompleted: true}));
   const profile = agent.read(9);
   assert.equal(profile.name, 'Aux');
   assert.equal(profile.version, 3);
   assert.equal(profile.homeSessionId, 'h');
   assert.equal('style' in profile || 'proactivity' in profile, false);
-  writeFileSync(file, JSON.stringify({version: 2, name: 'Otto', homeSessionId: 'h'}));
+  legacy(file, JSON.stringify({version: 2, name: 'Otto', homeSessionId: 'h'}));
   assert.equal(agent.read(9).name, 'Aux', 'version 2 defaulted to Otto');
-  writeFileSync(file, JSON.stringify({version: 1, name: 'Juno'}));
+  legacy(file, JSON.stringify({version: 1, name: 'Juno'}));
   assert.equal(agent.read(9).name, 'Juno', 'a name the user chose stays');
   agent.update(9, {name: 'Otto'});
   assert.equal(agent.read(9).name, 'Otto', 'and Otto, chosen now, stays too');
@@ -139,11 +142,21 @@ test('the native feed drops the home thread from the lists and reports the most 
 test('a damaged agent file falls back to defaults instead of failing', () => {
   const file = path.join(roots.control(7), 'agent', 'agent.json');
   mkdirSync(path.dirname(file), {recursive: true});
-  writeFileSync(file, '{"name": 5, "style": "shouty", "homeSessionId": ""');
+  legacy(file, '{"name": 5, "style": "shouty", "homeSessionId": ""');
   assert.equal(agent.read(7).name, 'Aux');
-  writeFileSync(file, '{"name": "Kit", "style": "shouty", "avatarRevision": "../../x"}');
+  legacy(file, '{"name": "Kit", "style": "shouty", "avatarRevision": "../../x"}');
   const profile = agent.read(7);
   assert.equal(profile.name, 'Kit');
   assert.equal('style' in profile, false);
   assert.equal(profile.avatarRevision, '');
+});
+
+test('every data group has the same agent, each with its own home thread', () => {
+  agent.update(21, {name: 'Juno', setupCompleted: true});
+  agent.setHome(21, 'home-a');
+  agent.setHome(22, 'home-b');
+  assert.equal(agent.read(22).name, 'Juno');
+  assert.equal(agent.read(22).setupCompleted, true);
+  assert.equal(agent.read(21).homeSessionId, 'home-a');
+  assert.equal(agent.read(22).homeSessionId, 'home-b');
 });

@@ -1,7 +1,10 @@
-/** The Agent: one named, customizable assistant per account, with a home thread
- * (docs/plans/2026-10-28-agent-model.md). The daemon entry loads this beside itself and
- * passes account roots in; this module owns only agent/agent.json and agent/avatar.png
- * under the account control root, where the agent's own file tools never write. */
+/** The Agent: one named, customizable assistant, with a home thread
+ * (docs/plans/2026-10-28-agent-model.md). Spaces replace profiles, and each data group
+ * has its own account, so the agent's name, look and setup live once in a shared root
+ * while each account keeps its own home thread, whose sessions carry that group's
+ * sign-ins. The daemon entry loads this beside itself and passes the roots in; this module
+ * owns only agent/agent.json and agent/avatar.png under the control roots, where the
+ * agent's own file tools never write. */
 import {createHash} from 'node:crypto';
 import {mkdirSync, readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
@@ -87,17 +90,32 @@ export function parseAvatar(dataUrl) {
   return bytes;
 }
 
-/** roots: {control(accountId), task(accountId)} → absolute account roots. */
+// What every account shares; the rest of a profile (its home thread) is the account's own.
+const SHARED_FIELDS = ['name', 'avatarRevision', 'setupCompleted', 'revision'];
+
+/** roots: {control(accountId), task(accountId), shared()} → absolute roots. */
 export function createAuxAgent(roots) {
   const dir = account => path.join(roots.control(account), 'agent');
   const profileFile = account => path.join(dir(account), 'agent.json');
-  const avatarFile = account => path.join(dir(account), 'avatar.png');
+  const sharedFile = () => path.join(roots.shared(), 'agent', 'agent.json');
+  const avatarFile = () => path.join(roots.shared(), 'agent', 'avatar.png');
+  const parse = file => { try { return JSON.parse(readFileSync(file, 'utf8')); } catch { return null; } };
+  const pick = (profile, keys) => Object.fromEntries(keys.map(key => [key, profile[key]]));
 
   function read(account) {
-    try { return normalize(JSON.parse(readFileSync(profileFile(account), 'utf8'))); } catch { return defaults(); }
+    const own = parse(profileFile(account));
+    // The first account read after the change brings its agent (and picture) to the shared root.
+    let shared = parse(sharedFile());
+    if (!shared && own) {
+      shared = pick(normalize(own), SHARED_FIELDS);
+      writeAtomic(sharedFile(), `${JSON.stringify(shared, null, 1)}\n`);
+      try { writeAtomic(avatarFile(), readFileSync(path.join(dir(account), 'avatar.png'))); } catch {}
+    }
+    return normalize({...own, ...shared});
   }
   function save(account, profile) {
     const next = normalize(profile);
+    writeAtomic(sharedFile(), `${JSON.stringify(pick(next, SHARED_FIELDS), null, 1)}\n`);
     writeAtomic(profileFile(account), `${JSON.stringify(next, null, 1)}\n`);
     return next;
   }
@@ -122,17 +140,17 @@ export function createAuxAgent(roots) {
     },
     setAvatar(account, dataUrl) {
       const bytes = parseAvatar(dataUrl);
-      writeAtomic(avatarFile(account), bytes);
+      writeAtomic(avatarFile(), bytes);
       return bump(account, {avatarRevision: sha(bytes).slice(0, 16)});
     },
     clearAvatar(account) {
-      rmSync(avatarFile(account), {force: true});
+      rmSync(avatarFile(), {force: true});
       return bump(account, {avatarRevision: ''});
     },
     /** The PNG bytes, or null when the agent uses the Aux mark. */
     avatar(account) {
       if (!read(account).avatarRevision) return null;
-      try { return readFileSync(avatarFile(account)); } catch { return null; }
+      try { return readFileSync(avatarFile()); } catch { return null; }
     },
     avatarDataUrl(account) {
       const bytes = this.avatar(account);

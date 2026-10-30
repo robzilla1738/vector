@@ -2,7 +2,7 @@
 
 Launch policy still stands. Which candidate has been observed, and what provider journeys remain, is in [STATUS](../STATUS.md).
 
-Owner direction, October23, 2026: launch Aux without payments. Users bring an AI-provider API key or connect an eligible ChatGPT/Codex plan. Aux subscriptions, paid tiers, credit purchases and Aux-funded hosted inference are deferred. Preserve the current supplied UI styling, native geometry, glass, sidebars and interactions; change only availability and copy needed for this launch scope.
+Owner direction, October23, 2026: launch Aux without payments. Users bring an AI-provider API key or use a local agent CLI they are signed in to (Codex, Claude Code, Cursor and others). Aux subscriptions, paid tiers, credit purchases and Aux-funded hosted inference are deferred. Preserve the current supplied UI styling, native geometry, glass, sidebars and interactions; change only availability and copy needed for this launch scope.
 
 This supersedes launch-blocking Stripe/paid-plan requirements in the older cloud roadmap. Keep completed resources and implementation recoverable for a later explicit paid release. Do not delete accounts, credentials, historical evidence or user data. Cloud account/sync/private storage/share operations remain separate services with real operating costs; payment deferral does not remove their readiness or backup requirements.
 
@@ -15,23 +15,15 @@ This supersedes launch-blocking Stripe/paid-plan requirements in the older cloud
 - The cloud account page should show provider setup information without plan pickers, checkout, payment management or hosted-credit marketing in the default mode. Keep the prior billing panel recoverable behind explicit opt-in; no CSS or accepted desktop binary changes are part of this source adjustment.
 - Reuse the supplied BYOK dialog, account-scoped credential API and provider transport. Static source existence is not real-app acceptance: credential custody, account isolation, restart/recovery and one bounded inference need verification on the same accepted candidate.
 
-## ChatGPT/Codex subscription connection
+## Subscriptions through the provider CLIs (updated 2026-10-29)
 
-This is an actual supported integration category. Current [OpenAI integration documentation](https://developers.openai.com/cookbook/articles/sign-in-with-chatgpt) describes eligible ChatGPT plan use through an application's OAuth connection. Sign-in identity and permission to consume plan usage are separate. Availability remains subject to OpenAI's [integration eligibility](https://developers.openai.com/siwc/quickstart); a free Aux launch is not by itself proof that an unpublished/private app has production access.
+Subscriptions reach Aux through the agent CLIs the user has already installed and signed in to, the way T3 Code does (browser excellence plan, answer 5 and Batch 8). Aux never signs in on the user's behalf and ships no in-app subscription sign-in.
 
-The accepted supplied runtime currently contains an older shared Codex OAuth/provider path. Preserve its UI structure, but adapt its authentication and provider boundary to the current [official registration contract](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), using Aux's actual app identity. Do not reuse another product's identity, session cookies, OAuth tokens or owner login files.
-
-Source integration now exists in `vendor/provided/provider-launch-stage.mjs` and the count-checked official ChatGPT adapter/sidecar. The supplied dialogs and model picker are retained. Strict authorization, local-only token custody, refresh, public Responses streaming, catalog isolation and awaited disconnect are implemented and covered by focused no-network fixtures. Unsupported legacy ChatGPT images refuse before transport. Fresh staging is separate from actual account/runtime acceptance; see [the integration evidence](../integration/proposed/provider-funded-integration/README.md).
-
-Required behavior and remaining acceptance:
-
-1. Retain a local per-installation host ID, register Aux through the eligible official flow and persist the issued client registration per verified account/workspace.
-2. Keep fresh PKCE/state/nonce and the exact loopback callback bound to each attempt. Reject missing/mismatched state, incorrect identity or a replaced returning client ID. Verify token signature/issuer/audience/expiry/nonce and returned permissions.
-3. Enable subscription inference only after the user grants the plan-usage scope; use permitted model discovery and Responses API transport. An ordinary ChatGPT login is insufficient.
-4. Keep subscription tokens protected and local, excluded from synced provider-credential files. Preserve existing keys through explicit migration rather than silently overwriting or deleting them.
-5. Verify one real connect, model selection, bounded completed request, refresh/restart and disconnect on a disposable Aux account/profile. No such runtime acceptance is claimed by this plan or static audit.
-
-No application-registration consent, owner sign-in, subscription-token migration, new privileged OS access, native signing, production deployment or release is granted by this document. Show an honest availability state until that integration is accepted; BYOK remains the independently usable launch path.
+- Supported today: Codex (`codex app-server`), Claude Code, Cursor, Grok Build and OpenCode, plus Copilot and Gemini (and any other agent that speaks the Agent Client Protocol) when installed. The code is `vendor/provided/provider-cli/`.
+- Settings › Models has two sections: Local agents (Ready, Not signed in with the CLI's login command, or Not installed with its install link) and API keys. Detection runs at daemon start.
+- The in-app ChatGPT, Claude, Copilot, Kimi, Meta and Grok sign-in flows are removed (`borrowed-identity-removal.mjs`), with no borrowed client IDs or editor headers. The earlier plan for Aux's own registered ChatGPT sign-in is withdrawn.
+- A CLI's own shell and file tools run under Aux's permission modes and approvals, and Aux's browser tools reach the CLI over the daemon's per-turn MCP endpoint.
+- Remaining acceptance: one turn per CLI on Robert's own logins, with his yes at the time, plus the approval card on a CLI turn. BYOK API keys stay the other launch path.
 
 ## Launch acceptance
 
