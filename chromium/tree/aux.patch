@@ -92537,7 +92537,7 @@ index 817cd91bdac667c3165d33c55d01ca16842b75a7..ea30261e04cb9e79571d25ea99c64830
      ":util",
      "//chrome/browser:browser_process",
 diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
-index 2653e37becbfa113d92456139d86c321f09ed8b5..7ebd5333bc4d49d2a434c0b2959dd96dbb6da99e 100644
+index 2653e37becbfa113d92456139d86c321f09ed8b5..fd9395bb7900fede917282a9ac74d943a329b24d 100644
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
 @@ -3,6 +3,10 @@
@@ -92624,6 +92624,17 @@ index 2653e37becbfa113d92456139d86c321f09ed8b5..7ebd5333bc4d49d2a434c0b2959dd96d
    toolbar::RegisterProfilePrefs(registry);
  #endif  // BUILDFLAG(IS_ANDROID)
  
+@@ -2279,6 +2320,10 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+ #endif  // BUILDFLAG(IS_ANDROID)
+ 
+   registry->RegisterBooleanPref(prefs::kStaticStorageQuotaEnabled, false);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  registry->SetDefaultPrefValue(prefs::kPrivacySandboxRelatedWebsiteSetsEnabled,
++                                base::Value(false));
++#endif
+ }
+ 
+ void RegisterUserProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
 diff --git a/chrome/browser/prefs/session_startup_pref.cc b/chrome/browser/prefs/session_startup_pref.cc
 index 0159cee9db245937c4c38ac58baa1d08e97713c0..5d7ad30432e5d387aa6a44aa6112e6b8c292fa8c 100644
 --- a/chrome/browser/prefs/session_startup_pref.cc
@@ -118294,21 +118305,213 @@ index 439163d320958ec9b26cda86e51d4d76e2a7b828..f41c83ce66a020580e80560a86628d16
        role="listbox" .result="${this.result_}"
        ?can-show-secondary-side="${this.canShowSecondarySide}"
        ?has-secondary-side="${this.hasSecondarySide}"
+diff --git a/chrome/browser/resources/settings/a11y_page/a11y_page.html.ts b/chrome/browser/resources/settings/a11y_page/a11y_page.html.ts
+index 5205d525ec6b85783cb75dffce812e5fca80f461..4b3c40f500efd7858ee7fc1a16ea5b9034419717 100644
+--- a/chrome/browser/resources/settings/a11y_page/a11y_page.html.ts
++++ b/chrome/browser/resources/settings/a11y_page/a11y_page.html.ts
+@@ -61,7 +61,7 @@ export function getHtml(this: SettingsA11yPageElement) {
+ </if>
+         <settings-toggle-button
+             class="hr"
+-            ?hidden="${!this.hasScreenReader_}"
++            ?hidden="${this.isAux_ || !this.hasScreenReader_}"
+             pref-key="settings.a11y.enable_accessibility_image_labels"
+             @change="${this.onA11yImageLabelsChange_}"
+             label="$i18n{accessibleImageLabelsTitle}"
+diff --git a/chrome/browser/resources/settings/a11y_page/a11y_page.ts b/chrome/browser/resources/settings/a11y_page/a11y_page.ts
+index df4660573c8d3f36b7ea242752ae1bc9eeca392b..cef03f39d781c10e10e6ee6ebc7b3d0c3ab25e6c 100644
+--- a/chrome/browser/resources/settings/a11y_page/a11y_page.ts
++++ b/chrome/browser/resources/settings/a11y_page/a11y_page.ts
+@@ -90,6 +90,7 @@ export class SettingsA11yPageElement extends SettingsA11yPageElementBase {
+        * Indicate whether a screen reader is enabled. Also, determine whether
+        * to show accessibility labels settings.
+        */
++      isAux_: {type: Boolean},
+       hasScreenReader_: {type: Boolean},
+ 
+       /**
+@@ -117,6 +118,8 @@ export class SettingsA11yPageElement extends SettingsA11yPageElementBase {
+   // </if>
+ 
+   protected accessor hasScreenReader_: boolean = false;
++  // Image descriptions come from a Google service.
++  protected accessor isAux_: boolean = loadTimeData.getBoolean('isAux');
+   protected accessor showAxTreeFixingSection_: boolean =
+       loadTimeData.getBoolean('axTreeFixingEnabled');
+   // <if expr="is_win or is_linux or is_macosx">
+diff --git a/chrome/browser/resources/settings/about_page/about_page.html.ts b/chrome/browser/resources/settings/about_page/about_page.html.ts
+index b9ac4e634feddf9e14a6da7c36fcb49fa143c032..3c4e80f3222bfb15737684315590958e943d5d44 100644
+--- a/chrome/browser/resources/settings/about_page/about_page.html.ts
++++ b/chrome/browser/resources/settings/about_page/about_page.html.ts
+@@ -90,7 +90,7 @@ export function getHtml(this: SettingsAboutPageElement) {
+   ` : ''}
+ </if>
+   <cr-link-row class="hr" id="help" @click="${this.onHelpClick_}"
+-      label="$i18n{aboutGetHelpUsingChrome}" external></cr-link-row>
++      ?hidden="${this.isAux_}" label="$i18n{aboutGetHelpUsingChrome}" external></cr-link-row>
+ <if expr="_google_chrome">
+   <cr-link-row class="hr" id="reportIssue" @click="${this.onReportIssueClick_}"
+       ?hidden="${!this.feedbackAllowedPref_?.value}"
+diff --git a/chrome/browser/resources/settings/about_page/about_page.ts b/chrome/browser/resources/settings/about_page/about_page.ts
+index aaaf8c6e7e535ae5a7682891ce8f20a27eb795a3..e7c3a8e96f0d8ac6eed1e6797f0e12dd9883a716 100644
+--- a/chrome/browser/resources/settings/about_page/about_page.ts
++++ b/chrome/browser/resources/settings/about_page/about_page.ts
+@@ -88,6 +88,7 @@ export class SettingsAboutPageElement extends SettingsAboutPageElementBase
+ 
+       // <if expr="not is_chromeos">
+       obsoleteSystemInfo_: {type: Object},
++      isAux_: {type: Boolean},
+       showUpdateStatus_: {type: Boolean},
+       showButtonContainer_: {type: Boolean},
+       showRelaunch_: {type: Boolean},
+@@ -126,6 +127,7 @@ export class SettingsAboutPageElement extends SettingsAboutPageElementBase
+   protected accessor showRelaunch_: boolean = false;
+   // </if>
+ 
++  protected accessor isAux_: boolean = loadTimeData.getBoolean('isAux');
+   protected accessor feedbackAllowedPref_:
+       chrome.settingsPrivate.PrefObject<boolean>|undefined;
+ 
+diff --git a/chrome/browser/resources/settings/autofill_page/autofill_page.html b/chrome/browser/resources/settings/autofill_page/autofill_page.html
+index e502f1c29b4abb4dcb1c220c5baf634b8cdb6874..65e3b92de3a082b5790d992fd49bec167812afe8 100644
+--- a/chrome/browser/resources/settings/autofill_page/autofill_page.html
++++ b/chrome/browser/resources/settings/autofill_page/autofill_page.html
+@@ -132,11 +132,11 @@
+         start-icon="cr20:password-manager" external>
+     </cr-link-row>
+     <cr-link-row id="googleWalletButton" label="$i18n{googleWalletTitle}"
+-        on-click="onGoogleWalletRelatedServiceClick_"
++        on-click="onGoogleWalletRelatedServiceClick_" hidden="[[isAux_]]"
+         start-icon="settings20:wallet" external>
+     </cr-link-row>
+     <cr-link-row id="googleAccountButton" label="$i18n{googleAccount}"
+-        on-click="onGoogleAccountRelatedServiceClick_"
++        on-click="onGoogleAccountRelatedServiceClick_" hidden="[[isAux_]]"
+         start-icon="settings20:google" external>
+     </cr-link-row>
+   </div>
+diff --git a/chrome/browser/resources/settings/autofill_page/autofill_page.ts b/chrome/browser/resources/settings/autofill_page/autofill_page.ts
+index 01d53832ca38bb8b8cf98f33a418f95c9397c281..f84fe8897aedc336989cbe4d63f74afa2eda5ba7 100644
+--- a/chrome/browser/resources/settings/autofill_page/autofill_page.ts
++++ b/chrome/browser/resources/settings/autofill_page/autofill_page.ts
+@@ -109,6 +109,11 @@ export class SettingsAutofillPageElement extends
+         type: Object,
+       },
+ 
++      isAux_: {
++        type: Boolean,
++        value: () => loadTimeData.getBoolean('isAux'),
++      },
++
+       isShoppingEnabled_: {
+         type: Boolean,
+         value() {
+@@ -140,6 +145,7 @@ export class SettingsAutofillPageElement extends
+ 
+   declare prefs: Record<string, unknown>;
+   declare private hierarchy_: DataTypeHierarchy;
++  declare private isAux_: boolean;
+   declare private isShoppingEnabled_: boolean;
+   declare private showSuggestionsFromGeminiSettings_: boolean;
+ 
+diff --git a/chrome/browser/resources/settings/clear_browsing_data_dialog/clear_browsing_data_dialog.html.ts b/chrome/browser/resources/settings/clear_browsing_data_dialog/clear_browsing_data_dialog.html.ts
+index 4e9028019f3701337d48f270d4c9e6b56466888f..13a2a312f90b47c1813168e03edea622aab622b0 100644
+--- a/chrome/browser/resources/settings/clear_browsing_data_dialog/clear_browsing_data_dialog.html.ts
++++ b/chrome/browser/resources/settings/clear_browsing_data_dialog/clear_browsing_data_dialog.html.ts
+@@ -48,6 +48,7 @@ export function getHtml(this: SettingsClearBrowsingDataDialogElement) {
+       </cr-icon>
+     </cr-button>
+     <cr-link-row id="manageOtherGoogleDataRow"
++        ?hidden="${this.isAux_}"
+         label="${this.computeOtherGoogleDataRowLabel_()}"
+         sub-label="${this.computeOtherGoogleDataRowSubLabel_()}"
+         @click="${this.onManageOtherGoogleDataRowClick_}"
+diff --git a/chrome/browser/resources/settings/clear_browsing_data_dialog/clear_browsing_data_dialog.ts b/chrome/browser/resources/settings/clear_browsing_data_dialog/clear_browsing_data_dialog.ts
+index 8035c3ed9ec5a508de37594ebeb09bf21f37dffa..8d5797c3a97f9152a8184302f044713e6787ba83 100644
+--- a/chrome/browser/resources/settings/clear_browsing_data_dialog/clear_browsing_data_dialog.ts
++++ b/chrome/browser/resources/settings/clear_browsing_data_dialog/clear_browsing_data_dialog.ts
+@@ -168,6 +168,7 @@ export class SettingsClearBrowsingDataDialogElement extends
+       deletingDataAlertString_: {type: String},
+       isDeletionInProgress_: {type: Boolean},
+       isNoDatatypeSelected_: {type: Boolean},
++      isAux_: {type: Boolean},
+       isGoogleDse_: {type: Boolean},
+       showHistoryDeletionDialog_: {type: Boolean},
+       showOtherGoogleDataDialog_: {type: Boolean},
+@@ -182,6 +183,7 @@ export class SettingsClearBrowsingDataDialogElement extends
+   protected accessor isDeletionInProgress_: boolean = false;
+   private accessor isNoDatatypeSelected_: boolean = false;
+   private accessor isGoogleDse_: boolean = false;
++  protected accessor isAux_: boolean = loadTimeData.getBoolean('isAux');
+   protected accessor showHistoryDeletionDialog_: boolean = false;
+   protected accessor showOtherGoogleDataDialog_: boolean = false;
+   protected accessor expandedBrowsingDataTypeOptionsList_:
 diff --git a/chrome/browser/resources/settings/page_visibility.ts b/chrome/browser/resources/settings/page_visibility.ts
-index feff9bdf645523030d2b06eb354d09c234ae733e..1a3fa7d3a0e7c1deaba739354b61cfe5796424b6 100644
+index feff9bdf645523030d2b06eb354d09c234ae733e..13b931aa0717e9cf74cbedf01befe2e4bbb2a0ed 100644
 --- a/chrome/browser/resources/settings/page_visibility.ts
 +++ b/chrome/browser/resources/settings/page_visibility.ts
-@@ -43,6 +43,10 @@ export interface PrivacyPageVisibility {
+@@ -43,6 +43,27 @@ export interface PrivacyPageVisibility {
  }
  
  function createPageVisibility(): PageVisibility|undefined {
 +  // Aux has no Google account, sync or AI settings to show.
 +  if (loadTimeData.getBoolean('isAux')) {
-+    return {ai: false, people: false};
++    return {
++      a11y: true,
++      ai: false,
++      appearance: true,
++      autofill: true,
++      defaultBrowser: true,
++      downloads: true,
++      extensions: true,
++      languages: true,
++      onStartup: true,
++      people: false,
++      performance: true,
++      privacy: true,
++      reset: true,
++      safetyHub: true,
++      system: true,
++      yourSavedInfo: true,
++    };
 +  }
    if (!loadTimeData.getBoolean('isGuest')) {
      return undefined;
    }
+diff --git a/chrome/browser/resources/settings/performance_page/speed_page.html.ts b/chrome/browser/resources/settings/performance_page/speed_page.html.ts
+index 84248b1f476c67795f503cb61008db11a59d2ebc..f6fd95404dce0e44bd43a44b04050dc26f46632e 100644
+--- a/chrome/browser/resources/settings/performance_page/speed_page.html.ts
++++ b/chrome/browser/resources/settings/performance_page/speed_page.html.ts
+@@ -22,7 +22,7 @@ export function getHtml(this: SpeedPageElement) {
+       .numericCheckedValue="${NetworkPredictionOptions.STANDARD}"
+       @change="${this.onPreloadingStateChange_}">
+   </settings-toggle-button>
+-  <cr-collapse ?opened="${this.isPreloadingEnabled_()}">
++  <cr-collapse ?opened="${!this.isAux_ && this.isPreloadingEnabled_()}">
+     <div class="cr-row continuation settings-section-bottom-padding">
+       <settings-radio-group id="preloadingRadioGroup"
+           pref-key="net.network_prediction_options"
+diff --git a/chrome/browser/resources/settings/performance_page/speed_page.ts b/chrome/browser/resources/settings/performance_page/speed_page.ts
+index e3bb481ddd0f4bb1b0e36dd9eec6d5a31699d22b..94461728c90eb71fd3cfe970aa1440f260024976 100644
+--- a/chrome/browser/resources/settings/performance_page/speed_page.ts
++++ b/chrome/browser/resources/settings/performance_page/speed_page.ts
+@@ -57,6 +57,7 @@ export class SpeedPageElement extends SpeedPageElementBase {
+ 
+   static override get properties() {
+     return {
++      isAux_: {type: Boolean},
+       numericUncheckedValues_: {type: Array},
+       cpuPerformanceInfo_: {type: Object},
+       cpuPerformanceModelLabel_: {type: String},
+@@ -66,6 +67,8 @@ export class SpeedPageElement extends SpeedPageElementBase {
+     };
+   }
+ 
++  // Extended preloading goes through Google servers.
++  protected accessor isAux_: boolean = loadTimeData.getBoolean('isAux');
+   protected accessor cpuPerformanceInfo_: CpuPerformanceInfo|null = null;
+   protected accessor cpuPerformanceModelLabel_: string = '';
+   protected accessor cpuPerformanceEnabled_: boolean =
 diff --git a/chrome/browser/resources/settings/privacy_page/privacy_page.ts b/chrome/browser/resources/settings/privacy_page/privacy_page.ts
 index c1fb233a132181d8a5f75228264c8e44dd1e34ea..dc9b889ba5ed98a1dbe4c287244703a8690948f4 100644
 --- a/chrome/browser/resources/settings/privacy_page/privacy_page.ts
@@ -118329,9 +118532,15 @@ index c1fb233a132181d8a5f75228264c8e44dd1e34ea..dc9b889ba5ed98a1dbe4c287244703a8
  
      if (this.shouldShowDbdDeletionConfirmationToast_) {
 diff --git a/chrome/browser/resources/settings/privacy_page/security/security_page.html b/chrome/browser/resources/settings/privacy_page/security/security_page.html
-index ee6059097c7f0514562f536f3e3020989910f837..08e573a118e375010422524cf32efc39031467d5 100644
+index ee6059097c7f0514562f536f3e3020989910f837..1e3cab753ecb725a40b4d2803feb5d55ce1b73de 100644
 --- a/chrome/browser/resources/settings/privacy_page/security/security_page.html
 +++ b/chrome/browser/resources/settings/privacy_page/security/security_page.html
+@@ -1,4 +1,4 @@
+-  <style include="cr-shared-style settings-shared settings-columned-section">
++  <style include="cr-shared-style cr-hidden-style settings-shared settings-columned-section">
+     :host-context([settings-refresh-2026]) {
+       #safeBrowsingSection {
+         padding: 0;
 @@ -86,6 +86,7 @@
            selectable-elements="cr-radio-button, settings-collapse-radio-button"
            on-change="onSafeBrowsingRadioChange_">
@@ -118341,10 +118550,18 @@ index ee6059097c7f0514562f536f3e3020989910f837..08e573a118e375010422524cf32efc39
              pref="[[prefs.generated.safe_browsing]]"
              label="$i18n{safeBrowsingEnhanced}"
 diff --git a/chrome/browser/resources/settings/privacy_page/security/security_page.ts b/chrome/browser/resources/settings/privacy_page/security/security_page.ts
-index f0ca661a0511ffc67b56782036f4523359a62618..e16373230b1882bdd989df180a754c2e03a9c7ff 100644
+index f0ca661a0511ffc67b56782036f4523359a62618..54e98217b5ec90fe6bbe6e20a9fab5e7a22ddcd4 100644
 --- a/chrome/browser/resources/settings/privacy_page/security/security_page.ts
 +++ b/chrome/browser/resources/settings/privacy_page/security/security_page.ts
-@@ -102,6 +102,12 @@ export class SettingsSecurityPageElement extends
+@@ -7,6 +7,7 @@ import 'chrome://resources/cr_elements/cr_collapse/cr_collapse.js';
+ import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
+ import 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+ import 'chrome://resources/cr_elements/cr_link_row/cr_link_row.js';
++import 'chrome://resources/cr_elements/cr_hidden_style.css.js';
+ import 'chrome://resources/cr_elements/cr_shared_style.css.js';
+ import '../../controls/collapse_radio_button.js';
+ import '../../controls/controlled_radio_button.js';
+@@ -102,6 +103,12 @@ export class SettingsSecurityPageElement extends
  
    static get properties() {
      return {
@@ -118357,7 +118574,7 @@ index f0ca661a0511ffc67b56782036f4523359a62618..e16373230b1882bdd989df180a754c2e
        /**
         * Whether the secure DNS setting should be displayed.
         */
-@@ -217,6 +223,7 @@ export class SettingsSecurityPageElement extends
+@@ -217,6 +224,7 @@ export class SettingsSecurityPageElement extends
        },
      };
    }
@@ -118365,6 +118582,66 @@ index f0ca661a0511ffc67b56782036f4523359a62618..e16373230b1882bdd989df180a754c2e
    declare private showSecureDnsSetting_: boolean;
  
    // <if expr="is_chromeos">
+diff --git a/chrome/browser/resources/settings/privacy_page/security/security_page_v2.html b/chrome/browser/resources/settings/privacy_page/security/security_page_v2.html
+index 9069773a9aecffde4e67de3fc608acf47160611c..d484aedb2aefc9cb88d77fb84c2d8da81cf7cce6 100644
+--- a/chrome/browser/resources/settings/privacy_page/security/security_page_v2.html
++++ b/chrome/browser/resources/settings/privacy_page/security/security_page_v2.html
+@@ -1,4 +1,4 @@
+-<style include="cr-shared-style settings-shared settings-columned-section">
++<style include="cr-shared-style cr-hidden-style settings-shared settings-columned-section">
+   :host {
+     display: flex;
+     flex-direction: column;
+@@ -270,7 +270,7 @@
+           </ul>
+         </controlled-radio-button>
+       </div>
+-      <div class="box card card-end">
++      <div class="box card card-end" hidden$="[[isAux_]]">
+         <controlled-radio-button id="securitySettingsBundleEnhanced"
+             name="[[securitySettingsBundleSettingEnum_.ENHANCED]]"
+             pref="{{prefs.generated.security_settings_bundle}}"
+@@ -348,6 +348,7 @@
+             </div>
+           </controlled-radio-button>
+           <controlled-radio-button id="enhancedProtectionButton"
++              hidden$="[[isAux_]]"
+               label="$i18n{securitySafeBrowsingEnhancedTitle}"
+               name="[[safeBrowsingSettingEnum_.ENHANCED]]"
+               pref="[[prefs.generated.safe_browsing]]"
+diff --git a/chrome/browser/resources/settings/privacy_page/security/security_page_v2.ts b/chrome/browser/resources/settings/privacy_page/security/security_page_v2.ts
+index 77f81ea0615ddd6e566414dca631ef3d508d88a3..668aec934e1e6e87c58b90cb091f1f03070f1f43 100644
+--- a/chrome/browser/resources/settings/privacy_page/security/security_page_v2.ts
++++ b/chrome/browser/resources/settings/privacy_page/security/security_page_v2.ts
+@@ -6,6 +6,7 @@ import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
+ import 'chrome://resources/cr_elements/cr_link_row/cr_link_row.js';
+ import 'chrome://resources/cr_elements/cr_button/cr_button.js';
+ import 'chrome://resources/cr_elements/cr_collapse/cr_collapse.js';
++import 'chrome://resources/cr_elements/cr_hidden_style.css.js';
+ import 'chrome://resources/cr_elements/cr_shared_style.css.js';
+ import '/shared/settings/prefs/prefs.js';
+ import '../../controls/controlled_radio_button.js';
+@@ -125,6 +126,12 @@ export class SettingsSecurityPageV2Element extends
+         value: HttpsFirstModeSetting,
+       },
+ 
++      // This build has no Safe Browsing API key, so no Enhanced protection.
++      isAux_: {
++        type: Boolean,
++        value: () => loadTimeData.getBoolean('isAux'),
++      },
++
+       isResetStandardBundleToDefaultsButtonVisible_: {
+         type: Boolean,
+         value: false,
+@@ -280,6 +287,7 @@ export class SettingsSecurityPageV2Element extends
+   declare private enableSecurityKeysSubpage_: boolean;
+   declare private httpsFirstModeUncheckedValues_: HttpsFirstModeSetting[];
+   declare private httpsFirstModeStateTextMap_: Object;
++  declare private isAux_: boolean;
+   declare private isResettingToDefaults_: boolean;
+   declare private isResetStandardBundleToDefaultsButtonVisible_: boolean;
+   declare private isResetEnhancedBundleToDefaultsButtonVisible_: boolean;
 diff --git a/chrome/browser/resources/settings/route.ts b/chrome/browser/resources/settings/route.ts
 index 2aaa938c7e14a03b6528aa087ff6109f8ac335eb..129906db7dd449c3cbb7f57e54e304276e13e57b 100644
 --- a/chrome/browser/resources/settings/route.ts
@@ -120006,7 +120283,7 @@ index c37fff7744c06bb91f0dc1908f2e7a6f2056cb42..b95145e68ff085c107781d77317dca55
    virtual void SetCustomDefaultTheme(
        scoped_refptr<CustomThemeSupplier> theme_supplier);
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
-index 82f397571fefaff0096247d0e98c28c20db709bd..02b8a4b1c53684951a844871cc4a228b5501d5a9 100644
+index 82f397571fefaff0096247d0e98c28c20db709bd..9827276b3287ede1121584edd688aed2a3e3a58c 100644
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
 @@ -39,6 +39,14 @@ generate_allowlist_from_histograms_file("webui_name_variants") {
@@ -120119,7 +120396,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..02b8a4b1c53684951a844871cc4a228b
      ":browser_element_identifiers",
      ":browser_otr_state",
      ":browser_ui_prefs",
-@@ -1088,6 +1125,273 @@ static_library("ui") {
+@@ -1088,6 +1125,271 @@ static_library("ui") {
      "//ui/webui",
    ]
  
@@ -120141,7 +120418,6 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..02b8a4b1c53684951a844871cc4a228b
 +      "//chrome/browser/autocomplete",
 +      "//components/omnibox/browser",
 +      "//base:i18n",
-+      "//chrome/browser/extensions/api/aux_browser_import:standalone_window",
 +      "//chrome/browser/ui/tabs:aux_bookmark_tab_representation",
 +      "//chrome/browser/extensions/api/aux_mini_popup",
 +      "//chrome/browser/extensions/api/aux_adblock",
@@ -120155,7 +120431,6 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..02b8a4b1c53684951a844871cc4a228b
 +      "//ui/snapshot",
 +    ]
 +    sources += [
-+      "webui/aux_importer/import_standalone_window.mm",
 +      "views/frame/aux_section_view.cc",
 +      "views/frame/aux_section_view.h",
 +      "views/frame/aux_tab_expand_chevron_view.cc",
@@ -120393,7 +120668,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..02b8a4b1c53684951a844871cc4a228b
    allow_circular_includes_from = [
      # page_load_metrics's :impl includes headers from //chrome/browser/ui that
      # can't be split out yet.
-@@ -1510,6 +1814,7 @@ static_library("ui") {
+@@ -1510,6 +1812,7 @@ static_library("ui") {
      ]
    } else {
      # !is_android
@@ -120401,7 +120676,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..02b8a4b1c53684951a844871cc4a228b
      sources += [
        # This file physically lives in //chrome/browser but is compiled here so
        # that //chrome/browser:browser has no remaining sources. It registers
-@@ -2548,6 +2853,7 @@ static_library("ui") {
+@@ -2548,6 +2851,7 @@ static_library("ui") {
      sources += [
        "views/frame/browser_frame_view_factory_mac.mm",
        "views/frame/browser_frame_view_mac.h",
@@ -120409,7 +120684,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..02b8a4b1c53684951a844871cc4a228b
        "views/frame/browser_frame_view_mac.mm",
        "views/frame/browser_native_widget_mac.h",
        "views/frame/browser_native_widget_mac.mm",
-@@ -2592,11 +2898,17 @@ static_library("ui") {
+@@ -2592,11 +2896,17 @@ static_library("ui") {
        "//components/remote_cocoa/app_shim:features",
        "//components/remote_cocoa/browser",
      ]
@@ -120427,7 +120702,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..02b8a4b1c53684951a844871cc4a228b
    }
  
    if (is_win) {
-@@ -2711,6 +3023,8 @@ static_library("ui") {
+@@ -2711,6 +3021,8 @@ static_library("ui") {
  
    if (toolkit_views) {
      sources += [
@@ -120436,7 +120711,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..02b8a4b1c53684951a844871cc4a228b
        "views/browser_commands_views.cc",
        "views/browser_dialogs_views.cc",
        "views/frame/app_menu_button.cc",
-@@ -2748,6 +3062,37 @@ static_library("ui") {
+@@ -2748,6 +3060,37 @@ static_library("ui") {
        "views/frame/picture_in_picture_browser_frame_view.h",
        "views/frame/top_container_view.cc",
        "views/frame/top_container_view.h",
@@ -120474,7 +120749,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..02b8a4b1c53684951a844871cc4a228b
        "views/frame/vertical_tab_strip_region_view.cc",
        "views/frame/vertical_tab_strip_region_view.h",
        "views/tab_search_bubble_host.cc",
-@@ -2762,6 +3107,15 @@ static_library("ui") {
+@@ -2762,6 +3105,15 @@ static_library("ui") {
  
      sources += get_target_outputs(":webui_name_variants")
  
@@ -120490,7 +120765,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..02b8a4b1c53684951a844871cc4a228b
      public_deps += [ "//chrome/browser/ui/views/tabs/common:impl" ]
  
      deps += [
-@@ -4685,3 +5039,15 @@ if (is_mac) {
+@@ -4685,3 +5037,15 @@ if (is_mac) {
      ]
    }
  }
@@ -140887,7 +141162,7 @@ index fdbb4cf741eb3de803fdf4b053813d8f1ad2d16e..a77e9da5095e95eb74e2671d1fe6b916
      window->OnTopContainerViewBoundsChanged(bounds);
    }
 diff --git a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc2ddd327f 100644
+index 29dfbde914c55ad1453a1c70998c9299b49c1132..96d0b9ee8f405d28c686dfef2bdb4fa0ab562ba8 100644
 --- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 @@ -3,6 +3,8 @@
@@ -140953,23 +141228,18 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
  // Minimum area next to caption buttons to use as a grab handle.
  constexpr int kVerticalTabsGrabHandleSize = 40;
  
-@@ -258,6 +292,48 @@ BrowserViewTabbedLayoutImpl::CalculateSeparatorInfo() const {
+@@ -258,6 +292,43 @@ BrowserViewTabbedLayoutImpl::CalculateSeparatorInfo() const {
        break;
    }
  
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +  // Aux's toolbar/page already owns the shared window-radius surface. The
 +  // stock side-panel shadow box paints another set of corner cutouts over it,
-+  // even though the supplied Agent panel has no inset. Keep one corner owner.
++  // even though a card panel has no inset. Keep one corner owner.
 +  if (has_side_panel && !is_fullscreen(layout_data_->window_state) &&
 +      layout_data_->tab_strip_type == TabStripType::kVertical &&
 +      views().vertical_tab_strip_region_view->GetAuxProfilePreviewAdmission()) {
-+    auto* browser_view =
-+        views::AsViewClass<BrowserView>(views().browser_view.get());
-+    auto* panel_ui =
-+        browser_view ? SidePanelUI::From(browser_view->browser()) : nullptr;
-+    if (panel_ui && panel_ui->IsSidePanelEntryShowing(SidePanelEntryKey(
-+            SidePanelEntryId::kExtension, aux::kAgentExtensionId))) {
++    if (views().side_panel && views().side_panel->aux_card()) {
 +      info.shadow_box = false;
 +      info.side_panel_top_padding = false;
 +    }
@@ -141002,32 +141272,23 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
    return info;
  }
  
-@@ -382,6 +458,24 @@ BrowserViewTabbedLayoutImpl::CalculateHorizontalLayout(
+@@ -382,6 +453,15 @@ BrowserViewTabbedLayoutImpl::CalculateHorizontalLayout(
    layout.force_top_container_to_top =
        layout_data_->tab_strip_type != TabStripType::kHorizontal;
  
 +#if BUILDFLAG(ENABLE_AUX_BROWSER)
-+  // The supplied Agent panel shares the toolbar row in vertical-tab windows.
-+  // Other panel entries keep Chromium's default vertical-tab layout policy.
++  // A card panel shares the toolbar row in vertical-tab windows.
 +  if (layout_data_->tab_strip_type == TabStripType::kVertical &&
-+      views().side_panel &&
++      views().side_panel && views().side_panel->aux_card() &&
 +      views().side_panel->GetCurrentEntryType() == SidePanelType::kToolbar) {
-+    if (auto* browser_view =
-+            views::AsViewClass<BrowserView>(views().browser_view.get())) {
-+      auto* side_panel_ui = SidePanelUI::From(browser_view->browser());
-+      if (side_panel_ui && side_panel_ui->IsSidePanelEntryShowing(
-+              SidePanelEntryKey(SidePanelEntryId::kExtension,
-+                                aux::kAgentExtensionId))) {
-+        layout.force_top_container_to_top = false;
-+      }
-+    }
++    layout.force_top_container_to_top = false;
 +  }
 +#endif
 +
    layout.is_split_view = delegate().IsActiveTabSplit();
  
    if (views().side_panel &&
-@@ -392,7 +486,8 @@ BrowserViewTabbedLayoutImpl::CalculateHorizontalLayout(
+@@ -392,7 +472,8 @@ BrowserViewTabbedLayoutImpl::CalculateHorizontalLayout(
    layout.min_content_width = kContentsContainerMinimumWidth;
  
    // Get information about the vertical tabstrip, if present.
@@ -141037,24 +141298,20 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
    int min_vertical_tab_strip_width = 0;
    int preferred_vertical_tab_strip_width = 0;
    if (layout_data_->tab_strip_type == TabStripType::kVertical) {
-@@ -471,6 +566,16 @@ BrowserViewTabbedLayoutImpl::CalculateHorizontalLayout(
+@@ -471,6 +552,12 @@ BrowserViewTabbedLayoutImpl::CalculateHorizontalLayout(
      // Add additional padding.
      layout.side_panel_padding =
          GetLayoutConstant(LayoutConstant::kSidePanelInset);
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
-+    if (layout_data_->tab_strip_type == TabStripType::kVertical) {
-+      auto* browser_view = views::AsViewClass<BrowserView>(views().browser_view.get());
-+      auto* panel_ui = browser_view ? SidePanelUI::From(browser_view->browser()) : nullptr;
-+      if (panel_ui && panel_ui->IsSidePanelEntryShowing(SidePanelEntryKey(
-+              SidePanelEntryId::kExtension, aux::kAgentExtensionId))) {
-+        layout.side_panel_padding = 0;
-+      }
++    if (layout_data_->tab_strip_type == TabStripType::kVertical &&
++        views().side_panel->aux_card()) {
++      layout.side_panel_padding = 0;
 +    }
 +#endif
  
      // See if the toolbar-height side panel can fit next to the toolbar. If not,
      // it is forced into content height.
-@@ -545,8 +650,8 @@ BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation() {
+@@ -545,8 +632,8 @@ BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation() {
  
    auto* const controller = delegate().GetAnimationController();
  
@@ -141064,7 +141321,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
      const bool would_have_separator = has_infobar || !is_split_view;
      switch (layout_data_->window_state) {
        case WindowState::kFullscreen:
-@@ -604,6 +709,67 @@ BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation() {
+@@ -604,6 +691,67 @@ BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation() {
    animation.bottom_corner = *controller->GetCurrentValue(
        TabStripAnimations::kVerticalTabStrip, TabStripAnimations::kBottomCorner);
  
@@ -141132,7 +141389,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
    return animation;
  }
  
-@@ -614,7 +780,8 @@ int BrowserViewTabbedLayoutImpl::GetMinimumGrabHandlePadding() const {
+@@ -614,7 +762,8 @@ int BrowserViewTabbedLayoutImpl::GetMinimumGrabHandlePadding() const {
  
  gfx::Size BrowserViewTabbedLayoutImpl::GetMinimumMainAreaSize(
      const BrowserLayoutParams& params) const {
@@ -141142,7 +141399,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
    const auto tab_strip_type = delegate().GetTabStripType();
    if (tab_strip_type == TabStripType::kVertical) {
      toolbar_size.Enlarge(GetExclusionWidth(params), 0);
-@@ -641,6 +808,17 @@ BrowserViewTabbedLayoutImpl::GetVerticalTabStripCollapsedState() const {
+@@ -641,6 +790,17 @@ BrowserViewTabbedLayoutImpl::GetVerticalTabStripCollapsedState() const {
    if (!views().vertical_tab_strip_region_view) {
      return VerticalTabStripCollapsedState::kExpanded;
    }
@@ -141160,7 +141417,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
    const auto motion = delegate().GetAnimationController()->GetCurrentMotion(
        TabStripAnimations::kVerticalTabStrip);
    if (motion == TabStripAnimations::kCollapse) {
-@@ -674,7 +852,7 @@ int BrowserViewTabbedLayoutImpl::GetCollapsedVerticalTabStripRelativeTop()
+@@ -674,7 +834,7 @@ int BrowserViewTabbedLayoutImpl::GetCollapsedVerticalTabStripRelativeTop()
        base::ClampCeil(params.leading_exclusion.ContentWithPadding().height());
  
    // Try to align with toolbar. But if it's not visible, then don't.
@@ -141169,7 +141426,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
      return exclusion_height;
    }
  
-@@ -785,6 +963,19 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -785,6 +945,19 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
        int vertical_tab_strip_width =
            horizontal_layout.vertical_tab_strip_width +
            vertical_tab_strip_hover_width;
@@ -141189,7 +141446,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
  
        // The overall width during an expand must change monotonically.
        if (vertical_tab_strip_animation.current_motion ==
-@@ -812,6 +1003,19 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -812,6 +985,19 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
                      params.visual_client_area.height() -
                          vertical_tab_strip_animation.top_offset);
  
@@ -141209,7 +141466,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
        if (layout_data_->window_state == WindowState::kFullscreenWithToolbar &&
            layout_data_->separator_info.adjust_for_missing_separator) {
          vertical_tab_strip_bounds.Inset(
-@@ -830,15 +1034,20 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -830,15 +1016,20 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
              vertical_tab_strip_animation.current_motion ==
                  TabStripAnimations::kCollapse;
          unclipped_contents_region.Inset(gfx::Insets::TLBR(
@@ -141232,7 +141489,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
    }
  
    if (IsParentedTo(views().vertical_tab_strip_background_blur_backdrop,
-@@ -846,17 +1055,30 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -846,17 +1037,30 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
      layout.AddChild(
          views().vertical_tab_strip_background_blur_backdrop,
          vertical_tab_strip_bounds,
@@ -141265,7 +141522,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
          vertical_tab_strip_animation.top_corner > 0.0;
  
      // The top corner is drawn when the tabstrip goes all the way to the top.
-@@ -879,7 +1101,9 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -879,7 +1083,9 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
                     views().browser_view)) {
      gfx::Rect corner_bounds;
      const bool bottom_corner_visible =
@@ -141275,7 +141532,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
          vertical_tab_strip_animation.bottom_corner > 0.0;
      if (bottom_corner_visible) {
        auto preferred =
-@@ -1139,6 +1363,30 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1139,6 +1345,30 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
  
      views().multi_contents_view->SetSplitViewInsets(contents_insets);
    }
@@ -141306,7 +141563,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
  
    // Update the multi-contents view about if we will be animating content
    // bounds. This is to make optimizations during animations e.g. avoid
-@@ -1214,8 +1462,9 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1214,8 +1444,9 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
      }
    }
  
@@ -141318,7 +141575,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
      gfx::RoundedCornersF content_corners;
      if (layout_data_->tab_strip_type == TabStripType::kVertical &&
          !is_fullscreen(layout_data_->window_state)) {
-@@ -1230,6 +1479,40 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1230,6 +1461,40 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
          content_corners.set_lower_left(radius);
        }
      }
@@ -141359,7 +141616,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
      views().multi_contents_view->SetBackgroundRadii(content_corners);
    }
  
-@@ -1254,6 +1537,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1254,6 +1519,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
        // leading caption buttons).
        toolbar_height = toolbar_bounds->bottom() - tabstrip_bounds->y();
  
@@ -141372,7 +141629,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
        caption_button_width =
            base::ClampCeil(browser_params.leading_exclusion.content.width()) -
            tabstrip_bounds->x();
-@@ -1339,6 +1628,26 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
+@@ -1339,6 +1610,26 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
      bool needs_exclusion) const {
    const int original_top = params.visual_client_area.y();
  
@@ -141399,7 +141656,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
    if (IsParentedTo(views().horizontal_tab_strip_region_view,
                     views().top_container)) {
      gfx::Rect tabstrip_bounds;
-@@ -1399,6 +1708,19 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
+@@ -1399,6 +1690,19 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
                      layout_data_->separator_info.top_container_separator);
    }
  
@@ -141419,7 +141676,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
    return gfx::Rect(params.visual_client_area.x(), original_top,
                     params.visual_client_area.width(),
                     params.visual_client_area.y() - original_top);
-@@ -1423,6 +1745,17 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1423,6 +1727,17 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    } else {
      background->SetPrimaryColor(CustomCornersBackground::ToolbarTheme());
    }
@@ -141437,7 +141694,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
  
    // By default, this is just a flat background.
    CustomCornersBackground::Corners corners;
-@@ -1430,14 +1763,19 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1430,14 +1745,19 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    // Rounded corners are drawn in vertical tab strip mode when not maximized or
    // fullscreen.
    if (layout_data_->tab_strip_type == TabStripType::kVertical &&
@@ -141459,7 +141716,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
        corners[CornerOrientation::kTopLeading] =
            background->GetWindowCorner(/*upper=*/true);
      }
-@@ -1484,6 +1822,11 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
+@@ -1484,6 +1804,11 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
  
  void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      const BrowserLayoutParams& params) {
@@ -141471,7 +141728,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
    // Want to cut the vertical tabstrip and its decorations out of the top
    // container in transparency mode.
    CustomCornersBackground::Cutouts top_container_cutout_views;
-@@ -1496,6 +1839,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1496,6 +1821,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
                                                    1.0f);
    if (layout_data_->tab_strip_type == TabStripType::kVertical) {
      side_panel_start = views().vertical_tab_strip_region_view->bounds().right();
@@ -141484,7 +141741,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
  
      // Vertical tabstrip goes all the way to the top of the window if it is not
      // collapsed or there are no caption buttons on the leading edge.
-@@ -1508,10 +1857,26 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1508,10 +1839,26 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      CHECK(vertical_tabs_background)
          << "Expected vertical tab strip to have a CustomCornersBackground.";
  
@@ -141513,7 +141770,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
        // Use a curve that goes very close to 1 very quickly, but still has a
        // visible fade. This isn't perfect, but hopefully with glass
        // expand-on-hover it will improve.
-@@ -1530,7 +1895,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1530,7 +1877,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
  
      // Ensure that corners of the window remain rounded.
      CustomCornersBackground::Corners vertical_tabs_corners;
@@ -141522,7 +141779,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
        if (animation.top_offset == 0) {
          vertical_tabs_corners[CornerOrientation::kTopLeading] =
              vertical_tabs_background->GetWindowCorner(/*upper=*/true);
-@@ -1566,6 +1931,21 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1566,6 +1913,21 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
            vertical_tabs_bottom_corner_size;
      }
  
@@ -141544,7 +141801,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
      vertical_tabs_background->SetCorners(vertical_tabs_corners);
  
      // When the organizer panel is animating open or closed and does not appear
-@@ -1619,8 +1999,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1619,8 +1981,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
                                            vertical_tabs_bottom_corner_amount) *
              frame_color.opacity,
      };
@@ -141556,7 +141813,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
      // Top edge is drawn when the tabstrip is not flush with the edge of the
      // screen, or with a visual element that provides a natural border.
      if (animation.expand_on_hover_width > 0.0 || animation.top_corner < 0.0 ||
-@@ -1630,6 +2011,19 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1630,6 +1993,19 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      if (animation.expand_on_hover_width > 0.0) {
        vertical_tabs_outline.bottom = true;
      }
@@ -141576,7 +141833,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
      vertical_tabs_background->SetOutline(vertical_tabs_outline);
  
      // Cut the vertical tab strip out of the top container.
-@@ -1707,6 +2101,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1707,6 +2083,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        break;
      }
      case TabStripType::kVertical: {
@@ -141592,7 +141849,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
        // Curve trailing corner when it becomes the top trailing corner of the
        // browser.
        if (layout_data_->window_state == WindowState::kNormal &&
-@@ -1722,7 +2125,30 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1722,7 +2107,30 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        // happen.
        break;
    }
@@ -141623,7 +141880,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
  
    auto* const top_container_background =
        views().top_container->background()->AsA<CustomCornersBackground>();
-@@ -1733,9 +2159,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1733,9 +2141,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
    // is active for the current window.
    if (features::IsGlassFrameEnabled()) {
      if (!is_fullscreen(layout_data_->window_state)) {
@@ -141636,7 +141893,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..05855644205a778967e88cb23b85b3dc
          top_container_cutout_views.push_back(
              CustomCornersBackground::InverseOf(*toolbar_background));
        }
-@@ -1842,8 +2269,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1842,8 +2251,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
  
      // Need to ensure the bottom of the window is properly rounded for normal
      // windows.
@@ -142702,7 +142959,7 @@ index e182430481fed7ac4c17b0fd11b57c3d511a80b9..fcc198b15c7110544be73f960a116b54
    // Creates a new tab for the first valid URL in `urls` and creates a split
    // with it and the active tab. If all URLs are blocked, then it will open
 diff --git a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
-index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b85c6b42c8 100644
+index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..6f3a5b2e0626e82aff19afe70510ea09350de1eb 100644
 --- a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
 +++ b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
 @@ -4,6 +4,13 @@
@@ -142719,7 +142976,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b8
  #include <optional>
  
  #include "base/functional/bind.h"
-@@ -13,12 +20,16 @@
+@@ -13,14 +20,20 @@
  #include "chrome/app/vector_icons/vector_icons.h"
  #include "chrome/browser/favicon/favicon_utils.h"
  #include "chrome/browser/search/search.h"
@@ -142735,8 +142992,12 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b8
 +#include "chrome/browser/ui/views/frame/aux_frame_metrics.h"
  #include "chrome/browser/ui/views/frame/browser_view.h"
  #include "chrome/browser/ui/views/frame/contents_container_outline.h"
++#include "chrome/browser/ui/views/frame/aux_split_commands.h"
++#include "chrome/browser/ui/views/frame/contents_container_view.h"
  #include "chrome/browser/ui/views/frame/contents_web_view.h"
-@@ -50,7 +61,9 @@
+ #include "chrome/browser/ui/views/frame/themed_background.h"
+ #include "chrome/common/webui_url_constants.h"
+@@ -50,7 +63,9 @@
  #include "url/url_constants.h"
  
  namespace {
@@ -142746,7 +143007,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b8
  constexpr int kMiniToolbarDomainMaxWidth = 140;
  
  tabs::TabInterface* GetTabInterface(content::WebContents* web_contents) {
-@@ -141,19 +154,30 @@ MultiContentsViewMiniToolbar::~MultiContentsViewMiniToolbar() = default;
+@@ -141,19 +156,30 @@ MultiContentsViewMiniToolbar::~MultiContentsViewMiniToolbar() = default;
  
  void MultiContentsViewMiniToolbar::UpdateState(bool is_active,
                                                 bool is_highlighted) {
@@ -142781,7 +143042,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b8
        contents_container_outline_thickness,
        contents_container_outline_thickness);
  
-@@ -166,8 +190,105 @@ void MultiContentsViewMiniToolbar::UpdateState(bool is_active,
+@@ -166,8 +192,107 @@ void MultiContentsViewMiniToolbar::UpdateState(bool is_active,
    favicon_->SetVisible(!is_active);
    domain_label_->SetVisible(!is_active);
    alert_state_indicator_->SetVisible(!is_active);
@@ -142802,8 +143063,8 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b8
 +
 +void MultiContentsViewMiniToolbar::OnEvent(const ui::Event& event) {
 +  UpdateAuxReveal();
-+}
-+
+ }
+ 
 +void MultiContentsViewMiniToolbar::UpdateAuxReveal() {
 +  auto* pane = parent();
 +  bool reveal = false;
@@ -142836,8 +143097,8 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b8
 +      .Once()
 +      .SetDuration(base::Milliseconds(120))
 +      .SetOpacity(this, reveal ? 1.f : 0.f);
- }
- 
++}
++
 +bool MultiContentsViewMiniToolbar::OnMousePressed(const ui::MouseEvent& event) {
 +  if (!aux_in_split_ || !event.IsOnlyLeftMouseButton())
 +    return false;
@@ -142853,21 +143114,23 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b8
 +}
 +
 +void MultiContentsViewMiniToolbar::OnMouseReleased(const ui::MouseEvent& event) {
-+  // Dropped over the other pane of a two-pane split, the panes change places.
++  // Dropped over another pane of the split, the two change places.
 +  auto* pane = parent();
 +  auto* tab = GetTabInterface(web_contents_);
 +  if (!std::exchange(aux_pane_drag_, false) || !pane || !pane->parent() || !tab || !tab->IsSplit())
 +    return;
 +  gfx::Point point = event.location();
 +  views::View::ConvertPointToTarget(this, pane, &point);
-+  auto* model = tab->GetBrowserWindowInterface()->GetTabStripModel();
-+  const auto split = *tab->GetSplit();
 +  gfx::Point in_panes = point;
 +  views::View::ConvertPointToTarget(pane, pane->parent(), &in_panes);
-+  if (!pane->GetLocalBounds().Contains(point) &&
-+      pane->parent()->GetLocalBounds().Contains(in_panes) &&
-+      model->GetSplitData(split)->ListTabs().size() == 2) {
-+    model->ReverseTabsInSplit(split);
++  for (views::View* other : pane->parent()->children()) {
++    auto* container = views::AsViewClass<ContentsContainerView>(other);
++    if (!container || other == pane || !other->GetVisible() || !other->bounds().Contains(in_panes))
++      continue;
++    auto* contents = container->contents_view()->web_contents();
++    aux::SwapNativeSplitPanes(*tab->GetBrowserWindowInterface(), tab,
++                              contents ? GetTabInterface(contents) : nullptr);
++    return;
 +  }
 +}
 +#else
@@ -142887,7 +143150,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b8
  void MultiContentsViewMiniToolbar::UpdateContents() {
    auto* const interface = GetTabInterface(web_contents_);
    if (!interface) {
-@@ -181,7 +302,8 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
+@@ -181,7 +306,8 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
      domain_url = tab_ui_helper->GetLastCommittedURL();
    }
  
@@ -142897,7 +143160,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b8
    std::u16string domain;
    if (IsNTP(domain_url)) {
      domain = u"";
-@@ -208,7 +330,11 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
+@@ -208,7 +334,11 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
                                            !domain_url.SchemeIsFileSystem()
                                        ? gfx::ELIDE_HEAD
                                        : gfx::ELIDE_TAIL);
@@ -142910,7 +143173,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b8
  
    UpdateFavicon(tab_ui_helper);
  }
-@@ -221,6 +347,8 @@ void MultiContentsViewMiniToolbar::UpdateWebContents(views::WebView* web_view) {
+@@ -221,6 +351,8 @@ void MultiContentsViewMiniToolbar::UpdateWebContents(views::WebView* web_view) {
  }
  
  void MultiContentsViewMiniToolbar::ClearWebContents(views::WebView*) {
@@ -142919,7 +143182,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b8
    tab_alert_status_subscription_.reset();
    OnAlertStatusIndicatorChanged(std::nullopt);
    web_contents_ = nullptr;
-@@ -247,6 +375,17 @@ void MultiContentsViewMiniToolbar::OnThemeChanged() {
+@@ -247,6 +379,17 @@ void MultiContentsViewMiniToolbar::OnThemeChanged() {
  }
  
  void MultiContentsViewMiniToolbar::RegisterTabSubscriptions() {
@@ -145501,7 +145764,7 @@ index 0a5e9cce40424b65d14d006a59c8d22b7f130e46..f8e4037832510b7d9a4cec65d321c95c
      controller_observation_.Observe(controller);
    }
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53da31c9c8 100644
+index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..71675f07034f4ce2c755a5720bec8388f1438f59 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
 @@ -10,6 +10,7 @@
@@ -145563,7 +145826,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  #include "components/omnibox/common/input_state.h"
  #include "components/omnibox/common/omnibox_feature_configs.h"
  #include "components/omnibox/common/omnibox_features.h"
-@@ -143,15 +154,21 @@
+@@ -143,15 +154,22 @@
  #include "ui/gfx/geometry/skia_conversions.h"
  #include "ui/gfx/image/image.h"
  #include "ui/gfx/paint_vector_icon.h"
@@ -145572,6 +145835,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  #include "ui/gfx/vector_icon_types.h"
  #include "ui/menus/simple_menu_model.h"
  #include "ui/views/accessibility/view_accessibility.h"
++#include "ui/views/animation/ink_drop.h"
  #include "ui/views/background.h"
 +#include "ui/views/controls/button/label_button.h"
 +#include "components/url_formatter/elide_url.h"
@@ -145585,7 +145849,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  #include "ui/views/controls/focus_ring.h"
  #include "ui/views/controls/highlight_path_generator.h"
  #include "ui/views/controls/label.h"
-@@ -172,6 +189,8 @@
+@@ -172,6 +190,8 @@
  
  namespace {
  
@@ -145594,7 +145858,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  int IncrementalMinimumWidth(const views::View* view) {
    return (view && view->GetVisible()) ? view->GetMinimumSize().width() : 0;
  }
-@@ -234,12 +253,15 @@ LocationBarView::LocationBarView(BrowserWindowInterface* browser,
+@@ -234,12 +254,15 @@ LocationBarView::LocationBarView(BrowserWindowInterface* browser,
            }
  
            // Show focus ring when the Omnibox is visibly focused and the popup
@@ -145613,7 +145877,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  
  #if BUILDFLAG(OS_LEVEL_GEOLOCATION_PERMISSION_SUPPORTED)
      if (features::IsOsLevelGeolocationPermissionSupportEnabled()) {
-@@ -269,6 +291,9 @@ LocationBarView::~LocationBarView() {
+@@ -269,6 +292,9 @@ LocationBarView::~LocationBarView() {
    // is destroyed before the omnibox controller (a member variable), since it
    // holds a raw_ptr to the omnibox controller.
    popup_state_changed_subscription_ = base::CallbackListSubscription();
@@ -145623,7 +145887,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    omnibox_popup_view_.reset();
    RemoveChildViewT(omnibox_view_.ExtractAsDangling());
  }
-@@ -367,10 +392,14 @@ void LocationBarView::Init() {
+@@ -367,10 +393,14 @@ void LocationBarView::Init() {
  
      if (web_ui_popup_dropdown_only &&
          !base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopupDebug)) {
@@ -145639,7 +145903,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
      } else if (omnibox::IsWebUIOmniboxInBrowserViewEnabled()) {
        omnibox_popup_view_ =
            std::make_unique<OmniboxPopupViewBrowserView>(this, browser_);
-@@ -453,6 +482,50 @@ void LocationBarView::Init() {
+@@ -453,6 +483,51 @@ void LocationBarView::Init() {
        AddChildView(std::move(omnibox_additional_text_view));
    omnibox_additional_text_view_->SetEnabledColor(kColorOmniboxResultsUrl);
  
@@ -145662,6 +145926,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
 +    button->SetPreferredSize(gfx::Size(24, 24));
 +    views::InstallRoundRectHighlightPathGenerator(button.get(), gfx::Insets(), 6);
 +    views::FocusRing::Install(button.get());
++    views::InkDrop::Get(button.get())->SetBaseColor(kColorToolbarInkDrop);
 +    button->SetVisible(false);
 +    return AddChildView(std::move(button));
 +  };
@@ -145690,7 +145955,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    selected_keyword_view_ = AddChildView(std::make_unique<SelectedKeywordView>(
        this, profile_, omnibox_controller_.get(), font_list));
  
-@@ -524,8 +597,14 @@ int LocationBarView::GetBorderRadius() const {
+@@ -524,8 +599,14 @@ int LocationBarView::GetBorderRadius() const {
  
  // static
  int LocationBarView::ComputeBorderRadius(gfx::Size size) {
@@ -145705,7 +145970,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  }
  
  // static
-@@ -766,6 +845,63 @@ void LocationBarView::Layout(PassKey) {
+@@ -766,6 +847,63 @@ void LocationBarView::Layout(PassKey) {
      return;
    }
  
@@ -145769,7 +146034,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    selected_keyword_view_->SetVisible(false);
  
    // TODO(manukh): Move constants to layout_constants.cc.
-@@ -853,6 +989,36 @@ void LocationBarView::Layout(PassKey) {
+@@ -853,6 +991,36 @@ void LocationBarView::Layout(PassKey) {
      }
    }
  
@@ -145806,7 +146071,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    if (ShouldShowKeywordBubble()) {
      location_icon_view_->SetVisible(false);
      leading_decorations.AddDecoration(
-@@ -883,6 +1049,19 @@ void LocationBarView::Layout(PassKey) {
+@@ -883,6 +1051,19 @@ void LocationBarView::Layout(PassKey) {
      }
    };
  
@@ -145826,7 +146091,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    if (features::IsPageActionsElevatedToolbarEnabled()) {
      if (page_action_container_ && page_action_container_->GetVisible()) {
        const bool is_capsule_active = page_action_container_->IsCapsuleActive();
-@@ -912,6 +1091,10 @@ void LocationBarView::Layout(PassKey) {
+@@ -912,6 +1093,10 @@ void LocationBarView::Layout(PassKey) {
                                  ? kTrailingEdgePaddingForAim
                                  : trailing_decorations_edge_padding);
    }
@@ -145837,7 +146102,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    add_trailing_decoration(ai_mode_hint_label_, /*intra_item_padding=*/0,
                            /*edge_padding=*/trailing_decorations_edge_padding);
    for (ContentSettingImageView* view :
-@@ -943,7 +1126,9 @@ void LocationBarView::Layout(PassKey) {
+@@ -943,7 +1128,9 @@ void LocationBarView::Layout(PassKey) {
    trailing_decorations.LayoutPass2(&entry_width);
  
    // Compute widths needed for location bar.
@@ -145848,7 +146113,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  
    int available_width = entry_width - location_needed_width;
    // The bounds must be wide enough for all the decorations to fit, so if
-@@ -957,9 +1142,18 @@ void LocationBarView::Layout(PassKey) {
+@@ -957,9 +1144,18 @@ void LocationBarView::Layout(PassKey) {
    // |omnibox_view_| has an opaque background, so ensure it doesn't paint atop
    // the rounded ends.
    location_bounds.Intersect(GetLocalBoundsWithoutEndcaps());
@@ -145868,7 +146133,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
      // Short circuit the below logic when the additional views aren't visible.
      // This is necessary as resizing the omnibox can throw off it's scroll,
      // i.e., which chars are visible when its text overflows its width.
-@@ -1000,6 +1194,7 @@ void LocationBarView::Layout(PassKey) {
+@@ -1000,6 +1196,7 @@ void LocationBarView::Layout(PassKey) {
          reserve_label_width(ime_inline_autocomplete_view_);
      int omnibox_additional_text_width =
          reserve_label_width(omnibox_additional_text_view_);
@@ -145876,7 +146141,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  
      // A helper to position `view` to the right of the previous positioned
      // `view`.
-@@ -1017,7 +1212,19 @@ void LocationBarView::Layout(PassKey) {
+@@ -1017,7 +1214,19 @@ void LocationBarView::Layout(PassKey) {
      position_view(omnibox_view_, omnibox_width);
      position_view(ime_inline_autocomplete_view_, ime_inline_autocomplete_width);
      position_view(omnibox_additional_text_view_, omnibox_additional_text_width);
@@ -145896,7 +146161,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  
    LayoutSuperclass<View>(this);
  }
-@@ -1036,6 +1243,12 @@ void LocationBarView::OnThemeChanged() {
+@@ -1036,6 +1245,12 @@ void LocationBarView::OnThemeChanged() {
      image_view->SetIconColor(icon_color);
    }
  
@@ -145909,7 +146174,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    RefreshBackground();
    RefreshClearAllButtonIcon();
  }
-@@ -1368,7 +1581,7 @@ int LocationBarView::GetMinimumTrailingWidth() const {
+@@ -1368,7 +1583,7 @@ int LocationBarView::GetMinimumTrailingWidth() const {
  }
  
  gfx::Rect LocationBarView::GetLocalBoundsWithoutEndcaps() const {
@@ -145918,7 +146183,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    gfx::Rect bounds_without_endcaps(GetLocalBounds());
    bounds_without_endcaps.Inset(gfx::Insets::VH(0, border_radius));
    return bounds_without_endcaps;
-@@ -1388,8 +1601,30 @@ void LocationBarView::RefreshBackground() {
+@@ -1388,8 +1603,30 @@ void LocationBarView::RefreshBackground() {
    SkColor hovered =
        color_provider->GetColor(kColorLocationBarBackgroundHovered);
  
@@ -145950,7 +146215,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
      // Match the background color to the popup if the Omnibox is visibly
      // focused.
      background_color_ =
-@@ -1428,7 +1663,10 @@ void LocationBarView::RefreshBackground() {
+@@ -1428,7 +1665,10 @@ void LocationBarView::RefreshBackground() {
  
    // Keep the views::Textfield in sync. It needs an opaque background to
    // correctly enable subpixel AA.
@@ -145962,7 +146227,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  
    // The divider between indicators and request chips should have the same color
    // as the omnibox.
-@@ -1620,6 +1858,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
+@@ -1620,6 +1860,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
    } else {
      omnibox_view_->SaveStateToTab(contents);
    }
@@ -145975,7 +146240,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  }
  
  LocationBarTesting* LocationBarView::GetLocationBarForTesting() {
-@@ -2003,6 +2247,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
+@@ -2003,6 +2249,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
  }
  
  void LocationBarView::OnChanged() {
@@ -145987,7 +146252,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    TRACE_EVENT("omnibox", "LocationBarView::OnChanged");
    // Ensure that background colors get updated on tab-switch.
    RefreshBackground();
-@@ -2033,6 +2282,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
+@@ -2033,6 +2284,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
  }
  
  void LocationBarView::OnOmniboxFocused() {
@@ -146000,7 +146265,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    if (views::FocusRing::Get(this)) {
      views::FocusRing::Get(this)->Refresh();
    }
-@@ -2092,6 +2347,7 @@ void LocationBarView::OnTouchUiChanged() {
+@@ -2092,6 +2349,7 @@ void LocationBarView::OnTouchUiChanged() {
    omnibox_view_->SetFontList(font_list);
    ime_inline_autocomplete_view_->SetFontList(font_list);
    omnibox_additional_text_view_->SetFontList(font_list);
@@ -146008,7 +146273,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    selected_keyword_view_->SetFontList(font_list);
    for (ContentSettingImageView* view : content_setting_views_) {
      view->SetFontList(font_list);
-@@ -2255,6 +2511,38 @@ SkColor LocationBarView::GetSecurityChipColor(
+@@ -2255,6 +2513,38 @@ SkColor LocationBarView::GetSecurityChipColor(
    return GetColorProvider()->GetColor(id);
  }
  
@@ -146047,7 +146312,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
  bool LocationBarView::ShowPageInfoDialog() {
    WebContents* contents = GetWebContents();
    if (!contents) {
-@@ -2304,6 +2592,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
+@@ -2304,6 +2594,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
      return GetOmniboxController()->edit_model()->GetAddContextIcon(dip_size);
    }
  
@@ -146090,7 +146355,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..9ae9f276a48ae25cd6b6d54ec02bba53
    return omnibox_view_
               ? omnibox_view_->GetIcon(
                     dip_size, location_icon_view_->GetForegroundColor(),
-@@ -2421,3 +2745,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
+@@ -2421,3 +2747,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
  ADD_READONLY_PROPERTY_METADATA(gfx::Rect, LocalBoundsWithoutEndcaps)
  ADD_READONLY_PROPERTY_METADATA(bool, PopupMode)
  END_METADATA
@@ -149681,7 +149946,7 @@ index 343391ba3c80dd4091abebccc3ec567f10a89862..e7a3e1f4975442887eab9806468409e0
  
    ui::ScopedUnownedUserData<ReadingListSidePanelCoordinator>
 diff --git a/chrome/browser/ui/views/side_panel/side_panel.cc b/chrome/browser/ui/views/side_panel/side_panel.cc
-index ab8999f84de6992bbf403b92ef5c3a5ad0386390..aa21f510dcdba5b56a881a8d89d7ae9588796ca8 100644
+index ab8999f84de6992bbf403b92ef5c3a5ad0386390..c0c8b949172628f2240807bc8bb7d2448040017b 100644
 --- a/chrome/browser/ui/views/side_panel/side_panel.cc
 +++ b/chrome/browser/ui/views/side_panel/side_panel.cc
 @@ -4,6 +4,11 @@
@@ -149718,34 +149983,27 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..aa21f510dcdba5b56a881a8d89d7ae95
  #include "chrome/browser/ui/views/frame/themed_background.h"
  #include "chrome/browser/ui/views/side_panel/side_panel_animation_content_view.h"
  #include "chrome/browser/ui/views/side_panel/side_panel_resize_area.h"
-@@ -91,6 +104,18 @@ gfx::Insets GetBorderInsets() {
+@@ -91,6 +104,11 @@ gfx::Insets GetBorderInsets() {
                             border_thickness, border_thickness);
  }
  
-+// The Aux Agent coordinator installs an explicit empty border before adding
-+// content. A null border still means the panel has not been initialized: keep
-+// the stock estimate then, and for every ordinary panel/header border.
++// A card has no stock border, only room for its header.
 +gfx::Insets GetContentSizingInsets(const SidePanel* panel) {
-+#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
-+  if (panel->GetBorder() && panel->GetInsets().IsEmpty()) {
-+    return panel->GetInsets();
-+  }
-+#endif
-+  return GetBorderInsets();
++  return panel->aux_card() ? panel->GetInsets() : GetBorderInsets();
 +}
 +
  SidePanel::HorizontalAlignment GetHorizontalAlignment(
      PrefService* pref_service,
      std::optional<SidePanelEntryId> entry_id) {
-@@ -121,6 +146,15 @@ class ContentParentBackground : public views::Background {
+@@ -121,6 +139,15 @@ class ContentParentBackground : public views::Background {
    }
  
    void Paint(gfx::Canvas* canvas, views::View* view) const override {
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
-+    // The Agent panel is a card like the page beside it: the window's own
-+    // surface shows in the gutter around it, unclipped to the window edge.
++    // A panel is a card like the page beside it: the window's own surface
++    // shows in the gutter around it, unclipped to the window edge.
 +    if (const auto* panel = views::AsViewClass<SidePanel>(view->parent());
-+        panel && panel->GetBorder() && panel->GetInsets().IsEmpty()) {
++        panel && panel->aux_card()) {
 +      ThemedBackground::PaintAuxWindowSurface(canvas, view, browser_view_);
 +      return;
 +    }
@@ -149753,7 +150011,7 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..aa21f510dcdba5b56a881a8d89d7ae95
      gfx::RoundedCornersF radii = get_rounded_corners_callback_.Run();
      SkVector sk_radii[4] = {{radii.upper_left(), radii.upper_left()},
                              {radii.upper_right(), radii.upper_right()},
-@@ -131,7 +165,7 @@ class ContentParentBackground : public views::Background {
+@@ -131,7 +158,7 @@ class ContentParentBackground : public views::Background {
      SkPath path = SkPath::RRect(rrect);
      canvas->ClipPath(path, /*do_anti_alias=*/true);
  
@@ -149762,7 +150020,7 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..aa21f510dcdba5b56a881a8d89d7ae95
    }
  
   private:
-@@ -166,8 +200,24 @@ class ContentParentView : public views::View, public views::ViewObserver {
+@@ -166,8 +193,24 @@ class ContentParentView : public views::View, public views::ViewObserver {
                              base::Unretained(this))));
    }
  
@@ -149774,10 +150032,10 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..aa21f510dcdba5b56a881a8d89d7ae95
    void OnChildViewAdded(views::View* observed_view,
                          views::View* child) override {
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
-+    // The Agent card keeps one gutter from the window's top, trailing and
-+    // bottom edges; the page card's own inset makes the gap beside it.
++    // A card keeps one gutter from the window's top, trailing and bottom
++    // edges; the page card's own inset makes the gap beside it.
 +    if (const auto* panel = views::AsViewClass<SidePanel>(parent());
-+        panel && panel->GetBorder() && panel->GetInsets().IsEmpty() && !GetBorder()) {
++        panel && panel->aux_card() && !GetBorder()) {
 +      const int gutter = aux::frame_metrics::kGutter;
 +      SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(
 +          gutter, panel->IsRightAligned() ? 0 : gutter, gutter,
@@ -149787,22 +150045,35 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..aa21f510dcdba5b56a881a8d89d7ae95
      // Setting rounded corners on a WebView's holder requires the
      // NativeViewHost's native_wrapper_ to be set. For a WebView, this is set in
      // View::ViewHierarchyChanged, specifically after
-@@ -224,6 +274,14 @@ class ContentParentView : public views::View, public views::ViewObserver {
+@@ -224,6 +267,14 @@ class ContentParentView : public views::View, public views::ViewObserver {
    }
  
    gfx::RoundedCornersF GetRoundedCorners() {
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
-+    // The Agent coordinator installs its empty border before attaching content,
-+    // so this works before the current-entry key is published as well.
++    // The coordinator marks the card before attaching content, so this works
++    // before the current-entry key is published as well.
 +    if (const auto* panel = views::AsViewClass<SidePanel>(parent());
-+        panel && panel->GetBorder() && panel->GetInsets().IsEmpty()) {
++        panel && panel->aux_card()) {
 +      return gfx::RoundedCornersF(aux::frame_metrics::CardRadius());
 +    }
 +#endif
      ChromeDistanceMetric corner_radius =
          ChromeDistanceMetric::DISTANCE_SIDE_PANEL_CONTENT_RADIUS;
      return GetLayoutProvider()
-@@ -377,8 +435,17 @@ void SidePanel::UpdateWidthOnEntryChanged() {
+@@ -343,6 +394,12 @@ void SidePanel::SetPanelWidth(int width) {
+   SetPreferredSize(gfx::Size(width, 1));
+ }
+ 
++void SidePanel::SetAuxCard(bool card) {
++  aux_card_ = card;
++  // Content gets its gutter as it's added; a stock panel has none.
++  if (!card) content_parent_view_->SetBorder(nullptr);
++}
++
+ void SidePanel::SetBackgroundRadii(const gfx::RoundedCornersF& radii) {
+   if (radii == background_radii_) {
+     return;
+@@ -377,8 +434,17 @@ void SidePanel::UpdateWidthOnEntryChanged() {
    if (std::optional<int> width_from_pref = dict.FindInt(panel_id)) {
      SetPanelWidth(width_from_pref.value());
    } else {
@@ -149822,7 +150093,7 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..aa21f510dcdba5b56a881a8d89d7ae95
    }
  }
  
-@@ -388,9 +455,20 @@ bool SidePanel::IsRightAligned() const {
+@@ -388,9 +454,20 @@ bool SidePanel::IsRightAligned() const {
  
  gfx::Size SidePanel::GetMinimumSize() const {
    const int min_height = 0;
@@ -149846,7 +150117,28 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..aa21f510dcdba5b56a881a8d89d7ae95
  }
  
  bool SidePanel::IsClosing() {
-@@ -442,8 +520,8 @@ gfx::Size SidePanel::GetContentSizeUpperBound() const {
+@@ -422,6 +499,10 @@ void SidePanel::AddHeaderView(std::unique_ptr<views::View> view) {
+   AddChildView(std::move(view));
+   header_view_->InsertAfterInFocusList(resize_area_);
+   header_view_->DeprecatedLayoutImmediately();
++  if (aux_card_) {
++    SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(header_view_->height(), 0, 0, 0)));
++    return;
++  }
+   // Update the border so that the insets include space for the header to be
+   // placed on top of the border area.
+   int top_inset = header_view_->height() - GetBorderInsets().top();
+@@ -430,7 +511,8 @@ void SidePanel::AddHeaderView(std::unique_ptr<views::View> view) {
+ }
+ 
+ void SidePanel::RemoveHeaderView() {
+-  SetBorder(views::CreateEmptyBorder(GetBorderInsets().set_top(0)));
++  SetBorder(views::CreateEmptyBorder(aux_card_ ? gfx::Insets()
++                                               : GetBorderInsets().set_top(0)));
+   if (header_view_) {
+     auto header_view = RemoveChildViewT(header_view_);
+     header_view_ = nullptr;
+@@ -442,8 +524,8 @@ gfx::Size SidePanel::GetContentSizeUpperBound() const {
    const int side_panel_height =
        height() > 0 ? height() : browser_view_->height();
  
@@ -149857,7 +150149,7 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..aa21f510dcdba5b56a881a8d89d7ae95
  }
  
  void SidePanel::OnBoundsChanged(const gfx::Rect& previous_bounds) {
-@@ -548,7 +626,7 @@ void SidePanel::RecordMetricsIfResized() {
+@@ -548,7 +630,7 @@ void SidePanel::RecordMetricsIfResized() {
        return;
      }
  
@@ -149866,8 +150158,30 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..aa21f510dcdba5b56a881a8d89d7ae95
      int browser_window_width = browser_view_->width();
      SidePanelMetrics::RecordSidePanelResizeMetrics(
          id.value(), side_panel_contents_width, browser_window_width);
+diff --git a/chrome/browser/ui/views/side_panel/side_panel.h b/chrome/browser/ui/views/side_panel/side_panel.h
+index de391b015c1fa483b38a0e85a74629c211021261..91b38c63e2f7c75b2e50e81641915046f2459af2 100644
+--- a/chrome/browser/ui/views/side_panel/side_panel.h
++++ b/chrome/browser/ui/views/side_panel/side_panel.h
+@@ -92,6 +92,9 @@ class SidePanel : public views::AccessiblePaneView,
+   void RecordMetricsIfResized();
+ 
+   void SetCurrentEntryType(SidePanelType type);
++  // A card is a sibling of the page: the window's surface shows in its gutter.
++  void SetAuxCard(bool card);
++  bool aux_card() const { return aux_card_; }
+   SidePanelType GetCurrentEntryType() const;
+ 
+   // Reflects the current state of the visibility of the side panel.
+@@ -129,6 +132,7 @@ class SidePanel : public views::AccessiblePaneView,
+       const std::optional<gfx::Rect>& clip_to_visible_area);
+ 
+  private:
++  bool aux_card_ = false;
+   // This method is the shared implementation of Open/Close.
+   void UpdateVisibility(bool should_be_open, bool animated);
+ 
 diff --git a/chrome/browser/ui/views/side_panel/side_panel_coordinator.cc b/chrome/browser/ui/views/side_panel/side_panel_coordinator.cc
-index f65b51ef5ea4c5338bd83224826dbc5eaf6174a0..a14555ec54c6c290cd4172a66b46cfa61eb2a061 100644
+index f65b51ef5ea4c5338bd83224826dbc5eaf6174a0..b3ec2edfe9352aa6b7f3c92fb27b47af196440c0 100644
 --- a/chrome/browser/ui/views/side_panel/side_panel_coordinator.cc
 +++ b/chrome/browser/ui/views/side_panel/side_panel_coordinator.cc
 @@ -13,6 +13,12 @@
@@ -149877,8 +150191,8 @@ index f65b51ef5ea4c5338bd83224826dbc5eaf6174a0..a14555ec54c6c290cd4172a66b46cfa6
 +#include "chrome/browser/buildflags.h"
 +#if BUILDFLAG(ENABLE_AUX_BROWSER)
 +#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 +#include "chrome/browser/ui/views/frame/browser_view.h"
-+#include "ui/views/border.h"
 +#endif
  #include "chrome/browser/ui/browser_element_identifiers.h"
  #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -149908,22 +150222,21 @@ index f65b51ef5ea4c5338bd83224826dbc5eaf6174a0..a14555ec54c6c290cd4172a66b46cfa6
    side_panel_toolbar_pinning_controller_.reset();
  }
  
-@@ -280,6 +301,14 @@ void SidePanelCoordinator::PopulateSidePanel(
-             &*browser_, side_panel_toolbar_pinning_controller_.get(), entry)));
-   } else {
-     side_panel->RemoveHeaderView();
+@@ -274,6 +295,13 @@ void SidePanelCoordinator::PopulateSidePanel(
+ 
+   side_panel->UpdateHorizontalAlignment(entry->key().id());
+ 
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
-+    if (entry->key() == SidePanelEntryKey(SidePanelEntryId::kExtension,
-+                                        aux::kAgentExtensionId)) {
-+      // The supplied panel extends to the window edges; it does not inherit
-+      // Chromium's nine-pixel content border after removing its native header.
-+      side_panel->SetBorder(views::CreateEmptyBorder(gfx::Insets()));
-+    }
++  const auto* vertical_tabs = tabs::VerticalTabStripStateController::From(&*browser_);
++  side_panel->SetAuxCard(
++      entry->key() == SidePanelEntryKey(SidePanelEntryId::kExtension, aux::kAgentExtensionId) ||
++      (entry->type() == SidePanelType::kToolbar && vertical_tabs &&
++       vertical_tabs->ShouldDisplayVerticalTabs()));
 +#endif
-   }
-   auto* content_wrapper = side_panel->GetContentParentView();
-   DCHECK(content_wrapper);
-@@ -435,6 +464,19 @@ void SidePanelCoordinator::OnViewVisibilityChanged(views::View* observed_view,
+   if (entry->should_show_header()) {
+     side_panel->AddHeaderView(std::make_unique<SidePanelHeader>(
+         std::make_unique<SidePanelHeaderController>(
+@@ -435,6 +463,19 @@ void SidePanelCoordinator::OnViewVisibilityChanged(views::View* observed_view,
    // callback inside current_entry->OnEntryHidden() is calling Close() to
    // trigger race condition.
    SidePanelEntry* previous_entry = GetEntryForUniqueKey(*current_key());
@@ -149943,7 +150256,7 @@ index f65b51ef5ea4c5338bd83224826dbc5eaf6174a0..a14555ec54c6c290cd4172a66b46cfa6
    SetCurrentKey(std::nullopt);
    if (previous_entry) {
      previous_entry->OnEntryHidden();
-@@ -454,7 +496,18 @@ void SidePanelCoordinator::OnViewVisibilityChanged(views::View* observed_view,
+@@ -454,7 +495,18 @@ void SidePanelCoordinator::OnViewVisibilityChanged(views::View* observed_view,
    // exists.
    auto* content_wrapper = side_panel->GetContentParentView();
    if (!content_wrapper->children().empty()) {
@@ -150008,6 +150321,35 @@ index 73bad76d1e3f736cdcdc741afb304b9871a8fb77..617f499f91dc16797cdf27d5dd5d059d
    const raw_ref<BrowserWindowInterface> browser_;
  
    std::unique_ptr<SidePanelToolbarPinningController>
+diff --git a/chrome/browser/ui/views/side_panel/side_panel_header.cc b/chrome/browser/ui/views/side_panel/side_panel_header.cc
+index bcb52bda7f0679b1865fe14b7c8a520c6e6cb592..b9086868ff9b50693788425b59887845b4114f11 100644
+--- a/chrome/browser/ui/views/side_panel/side_panel_header.cc
++++ b/chrome/browser/ui/views/side_panel/side_panel_header.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/ui/views/side_panel/side_panel_header.h"
+ 
++#include "chrome/browser/ui/views/frame/aux_frame_metrics.h"
++#include "chrome/browser/ui/views/side_panel/side_panel.h"
++
+ #include <memory>
+ 
+ #include "chrome/browser/ui/views/chrome_layout_provider.h"
+@@ -99,6 +102,14 @@ void SidePanelHeader::Layout(PassKey) {
+   gfx::Rect header_bounds = gfx::Rect(
+       contents_bounds.x(), contents_bounds.y() - GetPreferredSize().height(),
+       contents_bounds.width(), GetPreferredSize().height());
++  // On a card the header sits inside the gutter, above the content.
++  if (const auto* panel = views::AsViewClass<SidePanel>(parent());
++      panel && panel->aux_card()) {
++    const int gutter = aux::frame_metrics::kGutter;
++    header_bounds.Inset(gfx::Insets::TLBR(0, panel->IsRightAligned() ? 0 : gutter, 0,
++                                          panel->IsRightAligned() ? gutter : 0));
++    header_bounds.Offset(0, gutter);
++  }
+ 
+   SetBoundsRect(header_bounds);
+ }
 diff --git a/chrome/browser/ui/views/side_panel/side_panel_toolbar_pinning_controller.cc b/chrome/browser/ui/views/side_panel/side_panel_toolbar_pinning_controller.cc
 index 812dd960ff1543c48fd602727b74af291168612c..9c3d6579dad07327bae32e105248b005b40b3584 100644
 --- a/chrome/browser/ui/views/side_panel/side_panel_toolbar_pinning_controller.cc
@@ -155895,95 +156237,46 @@ index c3fa8790d1db2b86147d010021ad7a98538abe6d..d56db24aea885b488ea857289e748bbb
  
    void SetPresenterDelegate(OmniboxPopupPresenterBase* delegate);
  
-diff --git a/chrome/browser/ui/webui/settings/BUILD.gn b/chrome/browser/ui/webui/settings/BUILD.gn
-index 9c9878f6450b4c14b71cdce0c401410fea83c308..84bcf1ab4d38755cd0004fb036aa7fba694bb6fd 100644
---- a/chrome/browser/ui/webui/settings/BUILD.gn
-+++ b/chrome/browser/ui/webui/settings/BUILD.gn
-@@ -3,6 +3,7 @@
- # found in the LICENSE file.
- 
- import("//build/config/ozone.gni")
-+import("//chrome/browser/buildflags.gni")
- import("//build/config/ui.gni")
- import("//components/signin/features.gni")
- 
-@@ -136,6 +137,9 @@ source_set("settings") {
- 
- source_set("impl") {
-   public_deps = [ "//chrome/browser:browser_public_dependencies" ]
-+  if (enable_aux_browser && is_mac) {
-+    public_deps += [ "//chrome/browser/extensions/api/aux_browser_import:standalone_window" ]
-+  }
- 
-   sources = [
-     "about_handler.cc",
-diff --git a/chrome/browser/ui/webui/settings/people_handler.cc b/chrome/browser/ui/webui/settings/people_handler.cc
-index 1169a401e01a6140d010995d3da68db9ba772580..32ec7941723e607af075a68a587d9d8112e4173a 100644
---- a/chrome/browser/ui/webui/settings/people_handler.cc
-+++ b/chrome/browser/ui/webui/settings/people_handler.cc
-@@ -23,6 +23,9 @@
- #include "base/values.h"
- #include "build/build_config.h"
- #include "chrome/browser/browser_process.h"
-+#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
-+#include "chrome/browser/ui/webui/aux_importer/import_standalone_window.h"
-+#endif
- #include "chrome/browser/enterprise/util/managed_browser_utils.h"
- #include "chrome/browser/lifetime/application_lifetime.h"
- #include "chrome/browser/profiles/profile.h"
-@@ -388,6 +391,12 @@ void PeopleHandler::RegisterMessages() {
-       "ShowAccountSettingsUI",
-       base::BindRepeating(&PeopleHandler::HandleShowAccountSettingsUI,
-                           base::Unretained(this)));
-+#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
-+  web_ui()->RegisterMessageCallback(
-+      "openBrowserImportWindow",
-+      base::BindRepeating(&PeopleHandler::HandleOpenBrowserImportWindow,
-+                          base::Unretained(this)));
-+#endif
-   web_ui()->RegisterMessageCallback(
-       "SetDatatype", base::BindRepeating(&PeopleHandler::HandleSetDatatype,
-                                          base::Unretained(this)));
-@@ -991,6 +1000,15 @@ void PeopleHandler::HandleShowAccountSettingsUI(const base::ListValue& args) {
-   web_ui()->GetWebContents()->Focus();
- }
- 
-+#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
-+void PeopleHandler::HandleOpenBrowserImportWindow(const base::ListValue& args) {
-+  CHECK(args.empty());
-+  auto* owner = GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(
-+      web_ui()->GetWebContents());
-+  aux_importer::ShowStandaloneImporter(*profile_, owner);
-+}
-+#endif
-+
- void PeopleHandler::HandleSetDatatype(const base::ListValue& args) {
-   CHECK(syncer::IsReplaceSyncPromosWithSignInPromosEnabled());
-   AllowJavascript();
-diff --git a/chrome/browser/ui/webui/settings/people_handler.h b/chrome/browser/ui/webui/settings/people_handler.h
-index baac6f2df13ddb51daafc9d0731c35e520695e6c..e225f61d8b0d0c7c78eabc29d16248ec8bec294c 100644
---- a/chrome/browser/ui/webui/settings/people_handler.h
-+++ b/chrome/browser/ui/webui/settings/people_handler.h
-@@ -15,6 +15,7 @@
+diff --git a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
+index 774e32188161b70bd96fddd794c652cd7c1067e9..9860908cdf71d94c042fd56626014dd595b9cf1c 100644
+--- a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
++++ b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
+@@ -17,6 +17,7 @@
+ #include "build/branding_buildflags.h"
  #include "build/build_config.h"
  #include "build/buildflag.h"
- #include "chrome/browser/profiles/profile_attributes_storage.h"
 +#include "chrome/browser/buildflags.h"
- #include "chrome/browser/ui/webui/settings/settings_page_ui_handler.h"
- #include "chrome/browser/ui/webui/signin/login_ui_service.h"
- #include "components/prefs/pref_change_registrar.h"
-@@ -240,6 +241,9 @@ class PeopleHandler : public SettingsPageUIHandler,
+ #include "chrome/browser/autofill/personal_data_manager_factory.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/browser_process_platform_part.h"
+@@ -182,6 +183,12 @@
+ #include "device/vr/public/cpp/features.h"
+ #endif
  
-   void HandleShowSyncPassphraseDialog(const base::ListValue& args);
-   void HandleShowAccountSettingsUI(const base::ListValue& args);
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
-+  void HandleOpenBrowserImportWindow(const base::ListValue& args);
++namespace extensions {
++std::string ReadAuxProductVersion();
++}  // namespace extensions
 +#endif
-   void HandleSetDatatype(const base::ListValue& args);
-   void HandleGetStoredAccounts(const base::ListValue& args);
-   void HandleStartSyncingWithEmail(const base::ListValue& args);
++
+ namespace settings {
+ namespace {
+ 
+@@ -342,6 +349,12 @@ void AddAboutStrings(content::WebUIDataSource* html_source, Profile* profile) {
+ #endif
+ 
+   std::u16string browser_version = VersionUI::GetAnnotatedVersionStringForUi();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (std::string version = extensions::ReadAuxProductVersion();
++      !version.empty()) {
++    browser_version = u"Version " + base::UTF8ToUTF16(version);
++  }
++#endif
+ 
+   html_source->AddString("aboutBrowserVersion", browser_version);
+   html_source->AddString(
 diff --git a/chrome/browser/ui/webui/settings/settings_ui.cc b/chrome/browser/ui/webui/settings/settings_ui.cc
-index 781744f9cfdb691b41299d8b07c984888605366a..948b95a8b417b10470d0a4eed1623a0c44ed2b4d 100644
+index 781744f9cfdb691b41299d8b07c984888605366a..44ef6191d7b4228b3dfca2e925c68e8275adb458 100644
 --- a/chrome/browser/ui/webui/settings/settings_ui.cc
 +++ b/chrome/browser/ui/webui/settings/settings_ui.cc
 @@ -20,6 +20,7 @@
@@ -156002,6 +156295,22 @@ index 781744f9cfdb691b41299d8b07c984888605366a..948b95a8b417b10470d0a4eed1623a0c
    html_source->OverrideContentSecurityPolicy(
        network::mojom::CSPDirectiveName::WorkerSrc,
        "worker-src blob: chrome://resources 'self';");
+@@ -365,10 +367,15 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
+   html_source->AddBoolean("isOSSettings", false);
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // The guide walks through history sync and ad topics, which Aux doesn't have.
++  html_source->AddBoolean("showPrivacyGuide", false);
++#else
+   bool show_privacy_guide =
+       base::FeatureList::IsEnabled(features::kPrivacyGuideForceAvailable) ||
+       (!ShouldDisplayManagedUi(profile) && !profile->IsChild());
+   html_source->AddBoolean("showPrivacyGuide", show_privacy_guide);
++#endif
+ 
+   html_source->AddBoolean("enableHandTrackingContentSetting",
+ #if BUILDFLAG(ENABLE_VR)
 diff --git a/chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.cc b/chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.cc
 index bdc15de2863c73f32506c97ab0eec962d8c677d3..8f3489f5800de5279a1e212dadfa88ec947b7a0a 100644
 --- a/chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.cc
@@ -187453,10 +187762,10 @@ index 593de2a260e2ad288e292ba845b75a6360654bf4..0133b029ce4f861d03b63a5ae0bd3fd7
    // tools/metrics/histograms/update_extension_histograms.py
    ENUM_BOUNDARY
 diff --git a/extensions/browser/extension_function_histogram_value.h b/extensions/browser/extension_function_histogram_value.h
-index 4f8efeb0d3dc9d682c5c5fa31c2a9a0f58746b47..a2737f5bafbe9f0a9d93a27e5c5c3829b647b81f 100644
+index 4f8efeb0d3dc9d682c5c5fa31c2a9a0f58746b47..0718fd1535782227573e1f4863338d4a46acbf20 100644
 --- a/extensions/browser/extension_function_histogram_value.h
 +++ b/extensions/browser/extension_function_histogram_value.h
-@@ -2051,6 +2051,171 @@ enum HistogramValue {
+@@ -2051,6 +2051,172 @@ enum HistogramValue {
    ENTERPRISE_WEBRTC_STARTCAPTURE = 1986,
    ENTERPRISE_WEBRTC_GETCAPTURESTATUS = 1987,
    ENTERPRISE_WEBRTC_STOPCAPTURE = 1988,
@@ -187625,6 +187934,7 @@ index 4f8efeb0d3dc9d682c5c5fa31c2a9a0f58746b47..a2737f5bafbe9f0a9d93a27e5c5c3829
 +  AUXBROWSERPREFERENCES_SETSHORTCUTALWAYSFORAUX = 2151,
 +  AUXBROWSERPREFERENCES_GETCONFIRMTOQUITENABLED = 2152,
 +  AUXBROWSERPREFERENCES_SETCONFIRMTOQUITENABLED = 2153,
++  AUXBROWSERPREFERENCES_RETRYDAEMON = 2154,
    // Last entry: Add new entries above, then run:
    // tools/metrics/histograms/update_extension_histograms.py
    ENUM_BOUNDARY
