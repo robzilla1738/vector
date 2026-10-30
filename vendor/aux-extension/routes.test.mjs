@@ -1957,8 +1957,221 @@ test('the onboarding splash hero renders and schedules like the supplied one', a
   same('__pair_frameScale', element); same('__pair_pointerPath', element, {x: 300, y: 40}); same('__pair_omniboxPointer', element, element); same('__pair_newTabPointer', element, element);
 });
 
+const TOOLS = 'assets/tool-definition-registry-Cc6FCFb2.js';
+// The bundled diff renderer loads its themes through the preload helper; under these scenes the loads
+// stay pending (a stub loader would only reject after the test).
+const quiet = scene => world => {
+  const shown = typeof scene === 'function' ? scene(world) : scene;
+  return {...shown, imports: {'./preload-helper-WHe_eoSx.js#t': () => new Promise(() => {}), ...shown.imports}};
+};
 test('the tool step icons render like the supplied ones', async () => {
   const chunk = 'assets/tool-definition-registry-Cc6FCFb2.js';
   await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 15, defaults: false,
-    renamed: renamedBindings, scenes: [{}], props: [{}, {size: 16, ariaHidden: false, className: 'size-4', 'aria-label': 'Tool'}]});
+    renamed: renamedBindings, scenes: [quiet({})], props: [{}, {size: 16, ariaHidden: false, className: 'size-4', 'aria-label': 'Tool'}]});
+});
+
+// Tool definitions pass 2: realistic tool steps in every phase through each summary, routine schedules
+// of every kind, and the cards with real terminal output, memory search results and questions.
+const toolArgs = {path: 'src/app/main.ts', file_path: 'notes/plan.md', content: 'one\ntwo\nthree', title: 'Build the app', input: 'ls -la\n', resize: {cols: 120, rows: 40},
+  signal: 'interrupt', pattern: 'TODO(aux)', description: 'Watch the dev server', id: 'bg-1', ids: ['bg-1', 'bg-2'], background: true,
+  script: "export const meta = {name: 'Weekly digest', steps: 3}", code: 'const page = await tabs.openTab("https://x.com"); await page.click("#go"); slack.chat.postMessage({})',
+  url: 'https://www.example.com/docs/a', objective: 'aux browser release notes', queries: ['release notes', 7, 'changelog'], argquery: 'aux', query: 'trip to Paris',
+  action: 'spawn', to: 'Research agent', task_id: 'task-9', status: 'paused', mode: 'update', name: 'Morning brief', rrule: 'FREQ=DAILY;BYHOUR=8;BYMINUTE=30',
+  scheduleKind: 'recurring', timezone: 'America/Chicago', questions: [{header: 'Size', question: 'Which size?'}, {header: 'Color', question: 'Which color?'}],
+  todos: [{id: 'd1', content: 'Read', status: 'completed'}]};
+const variants = [toolArgs, {}, {...toolArgs, input: '\x03', signal: 'terminate', resize: undefined}, {...toolArgs, input: '\x04', signal: 'kill'}, {...toolArgs, input: '', signal: undefined, resize: undefined},
+  {...toolArgs, action: 'list_models', background: false, mode: 'create', status: 'active'}, {...toolArgs, action: 'resume', mode: 'delete', path: 'skills/deep-research/SKILL.md'},
+  {...toolArgs, action: 'list', mode: 'view', code: 'imagegen.generate({prompt: "a cat"})', title: 'Take screenshot'}, {...toolArgs, action: 'wait', pattern: '', queries: undefined, url: 'not a url'}];
+const toolDetails = [undefined, {diff: '--- a\n+++ b\n@@ -1 +1 @@\n-old\n+new\n+more', skillName: 'Deep Research', skillIcon: 'https://cdn.example/skill.png', title: 'Docs page',
+  faviconUrl: 'https://example.com/favicon.ico', recipientTitle: 'Planner', routine: {id: 'r1', name: 'Morning brief', scheduleKind: 'recurring', rrule: 'FREQ=WEEKLY;BYDAY=MO,WE'},
+  previousTodos: [{id: 'd1', status: 'pending'}, {id: 'd2', status: 'in_progress'}], updatedTodos: [{id: 'd1', status: 'completed', content: 'Read'}, {id: 'd2', status: 'completed', content: 'Write'}, {id: 'd3', status: 'pending', content: 'Ship'}]},
+  {skipped: 'indexing', previousTodos: [{id: 'd1', status: 'pending'}], updatedTodos: []}, {routineId: 'r2', name: 'Digest', previousTodos: [], updatedTodos: [{id: 'd9', status: 'in_progress', content: 'Plan'}]}];
+const resultTexts = ['---\nname: deep-research\nicon: https://cdn.example/i.png\n---\nbody', 'Asked user 3 question(s)\nUser confirmed the action', 'Free plan can create up to 3 routines',
+  'id: r7\nname: Standup\nscheduleKind: once\nrunAt: 2026-11-02T09:00:00Z\ntimezone: UTC', 'interrupted by user', 'Asked user 1 question(s)'];
+const toolNames = ['read_file', 'write_file', 'edit_file', 'bash', 'bash_interact', 'fd', 'rg', 'bg_start', 'bg_monitor', 'bg_status', 'bg_list', 'bg_kill', 'memory_read', 'memory_write',
+  'workflow', 'automation_create', 'automation_list', 'automation_delete', 'start_coder', 'repl', 'webfetch', 'websearch', 'browsing_history_search', 'history_search', 'history_read',
+  'search_channels', 'search_threads', 'read_thread', 'route_message', 'send_message', 'memory_search', 'message_agent', 'notification', 'subagent', 'subagent_wait', 'ask_user_question',
+  'request_action_confirmation', 'write_todos', 'get_time', 'notify_parent', 'routine_update', 'routine.notify_parent', 'routine.update', 'mcp__github__create_issue', 'mcp__odd', 'unknown_tool'];
+function* toolSteps() {
+  for (const name of toolNames) for (const [index, args] of variants.entries()) {
+    const call = {id: `c-${name}-${index}`, name, arguments: args};
+    const details = toolDetails[index % toolDetails.length], text = resultTexts[index % resultTexts.length];
+    yield {call};
+    yield {call, isStreaming: true};
+    yield {call, result: {content: [{type: 'text', text}, {type: 'image', data: 'AA'}, {type: 'text', text: 'more'}], details, isError: false}};
+    yield {call, result: {content: [{type: 'text', text}], details, isError: true}, isStreaming: true};
+  }
+}
+const schedules = [
+  {triggerKind: 'event', eventFilter: {source: 'webhook', from: 'https://hooks.example.com', externalConversationId: 'C42'}}, {triggerKind: 'event', eventFilter: {source: 'telegram'}}, {triggerKind: 'event'},
+  {scheduleKind: 'once', runAt: '2026-10-30T15:00:00Z', timezone: 'America/Chicago'}, {scheduleKind: 'once', nextRunAt: '2026-10-31T09:30:00Z', timezone: 'Not/AZone'}, {scheduleKind: 'once'},
+  {rrule: 'DTSTART;TZID=Europe/Paris:20261101T090000\nRRULE:FREQ=DAILY;COUNT=1'}, {rrule: 'DTSTART:20261101T090000Z\nRRULE:FREQ=DAILY;COUNT=1'},
+  ...['FREQ=MINUTELY', 'FREQ=MINUTELY;INTERVAL=5', 'FREQ=HOURLY', 'FREQ=HOURLY;INTERVAL=3', 'FREQ=DAILY', 'FREQ=DAILY;INTERVAL=2;BYHOUR=7,19', 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0,30',
+    'FREQ=DAILY;BYHOUR=9,10,11,12,13,14,15,16,17;BYMINUTE=0,15,30,45', 'FREQ=DAILY;BYHOUR=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23', 'FREQ=DAILY;BYHOUR=8,9,10,11,12;BYMINUTE=0',
+    'FREQ=DAILY;BYHOUR=1,3,5,7,9,11', 'FREQ=WEEKLY;BYDAY=MO,WE,FR;BYHOUR=18;BYMINUTE=45', 'FREQ=WEEKLY', 'FREQ=WEEKLY;INTERVAL=2;BYDAY=1SU,XX', 'FREQ=MONTHLY;BYMONTHDAY=1,15,40,x',
+    'FREQ=MONTHLY;INTERVAL=3', 'FREQ=YEARLY', 'freq=daily;interval=0;byhour=25,12', 'RRULE:FREQ=WEEKLY;BYDAY=SA,SU;BYHOUR=10'].map(rrule => ({rrule, timezone: 'UTC'})), {},
+];
+test('the tool summaries, schedules and cards render and summarize like the supplied ones', async () => {
+  const output = '\x1B[32mok\x1B[0m line one\r\n[session 4 still running]\nline two\r' + 'x'.repeat(8100);
+  const memory = {results: [{chunkId: 'k1', path: '/Users/r/aux/memory/people/ada.md', title: 'Ada', excerpt: '**Ada** likes tea', line: 12}, {chunkId: 'k2', path: 'C:\\notes\\memory\\trip.md', title: 'Trip', excerpt: 'Paris', line: 3}]};
+  const review = {title: 'Send the email', message: 'Send it to Ada?', artifact: {type: 'email', data: {to: 'ada@example.com', cc: null, n: 2, tags: ['a', {deep: true}]}}};
+  await assertParity({blocksByChunk: {[TOOLS]: ROUTES[TOOLS]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 300, defaults: false,
+    renamed: renamedBindings, scenes: [quiet({}), quiet({state: [true]})],
+    props: [world => ({args: {command: 'pnpm test', ...toolArgs}, resultText: output, state: 'idle', details: memory, onOpenMemoryFile: world.stub('spy:open'), children: 'body', className: 'probe',
+      content: output, output: 'done', label: 'Result', expandLabel: 'More'}),
+      {args: {questions: toolArgs.questions, ...review}, resultText: 'User responses to asked questions:\n- Size: Large\n- Color: custom: teal\nignored\n- Bad', state: 'loading', details: {skipped: 'indexing'}, errorText: 'Boom', content: 'short', limit: 3},
+      {args: {resize: {cols: 80}, input: 'q', signal: 'interrupt', exec_session_id: 3, artifact: {type: 'screenshot', path: 'shots/a.png', alt: 'A', caption: 'Cap'}, title: 'T', message: 'M'}, resultText: '', state: 'error', details: {results: []}},
+      {args: {exec_session_id: 'e1', title: '', artifact: {type: 'list', data: {f: () => 1}}}, state: 'suspended', details: null, output: null},
+      {details: {skipped: 'indexing'}, state: 'idle', args: {}}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: TOOLS, text: textOf(TOOLS), blocks: ROUTES[TOOLS], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES,
+    renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name} ${JSON.stringify(args).slice(0, 160)}`);
+  let steps = 0;
+  for (const step of toolSteps()) { same('__kept_ho', step); same('__kept_dl', supplied.__kept_ho(step)); steps++; }
+  assert.ok(steps > 1500);
+  // dayjs, enough of it for one-off runs: dates in UTC, a timezone that does not exist throws.
+  const day = date => {
+    const value = new Date(date), valid = !Number.isNaN(value.getTime());
+    const self = {isValid: () => valid, toDate: () => value, minute: () => value.getUTCMinutes(), add: (n, unit) => day(value.getTime() + n * 864e5 * (unit === 'day')),
+      isSame: (other, unit) => unit === 'day' && value.toISOString().slice(0, 10) === other.toDate().toISOString().slice(0, 10),
+      tz: zone => { if (zone.startsWith('Not/')) throw Error('bad zone'); return self; },
+      format: pattern => pattern === 'MMM D' ? `${['Oct', 'Nov'][value.getUTCMonth() - 9]} ${value.getUTCDate()}` : `${value.getUTCHours() % 12 || 12}${pattern === 'hA' ? '' : `:${String(value.getUTCMinutes()).padStart(2, '0')}`}${value.getUTCHours() < 12 ? 'AM' : 'PM'}`};
+    return self;
+  };
+  world.enter({imports: {'*.default': day, '*.default.tz': (date, zone) => day(`${date}Z`).tz(zone)}});
+  for (const routine of [...schedules, {scheduleKind: 'once', runAt: '2026-10-31T09:00:00Z'}, {scheduleKind: 'once', runAt: '2026-11-04T21:15:00Z', timezone: 'UTC'}, {scheduleKind: 'once', runAt: 'nope'}])
+    same('__kept_tl', routine, new Date(Date.UTC(2026, 9, 30, 12)));
+  world.enter();
+  for (const step of toolSteps()) if (step.result) { same('__kept_gi', step.call, step.result); same('__kept_cl', step.call, step.result); same('__kept_bg', step.result); }
+  for (const text of [output, '', '\x1B[1mbold\x1B[0m']) same('__pair_cleanTerminalOutput', text);
+  for (const text of ['', 'User responses to asked questions:\n- A: b\n- C: custom: d\n- e', 'no answers']) assert.deepEqual([...ours.__pair_parseQuestionAnswers(text)], [...supplied.__pair_parseQuestionAnswers(text)]);
+  for (const args of [review, {...review, title: ''}, {...review, artifact: {type: 'screenshot', path: 'a.png'}}, {...review, artifact: {type: 'screenshot'}}, {...review, artifact: [1]}, {}])
+    same('__pair_parseActionReview', args);
+  for (const state of ['loading', 'error', 'suspended', 'idle']) { same('__pair_stateLabel', state); same('__kept_Ne', state); }
+  for (const path of ['/a/memory/b/c.md', 'C:\\x\\memory\\y.md', 'plain.md']) same('__pair_memoryRelativePath', path);
+  for (const code of ['imessage.contacts.list()', 'gmail.send("a")', 'x.conversations.history({})', 'notion.pages', 'const page = tabs.openTab()', 'page.click() // "slack.x"', 'console.log(1)', '']) {
+    for (const title of ['Type the name', 'Scroll down', 'Take screenshot', '']) same('__kept_vi', {title, code});
+    same('__kept_po', code);
+  }
+  for (const label of ['a [b] (c) *d*\n  e', '']) for (const kind of ['file', 'routine']) same('__pair_markdownLink', label, kind, "it's (x)!*/y");
+});
+
+// Tool definitions pass 3: each step's title and icon in every phase, with and without the host's
+// renderers, the summary's links drawn with real hrefs, and REPL scripts classified.
+test('the tool step titles, icons and browse classification render like the supplied ones', async () => {
+  const phases = [...toolSteps()].filter((_, index) => index % 3 === 0);
+  const runtime = world => ({context: {renderFileLink: world.stub('spy:renderFileLink'), renderRoutineLink: world.stub('spy:renderRoutineLink'),
+    renderMcpIcon: world.stub('spy:renderMcpIcon'), renderSubagentIcon: world.stub('spy:renderSubagentIcon')}});
+  await assertParity({blocksByChunk: {[TOOLS]: ROUTES[TOOLS]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 2000, defaults: false,
+    renamed: renamedBindings, scenes: [quiet({context: {}}), quiet(runtime), quiet({context: {}, state: [true]})],
+    props: [...phases.map((step, index) => ({...step, state: step.result ? (step.result.isError ? 'error' : 'idle') : ['loading', 'idle', 'suspended'][index % 3]})),
+      {icon: {type: 'image', url: 'https://example.com/favicon.ico', fallback: 'browser'}}, {icon: {type: 'image', url: 'https://cdn.example/s.png', fallback: 'skill'}},
+      {children: 'child', runtime: {renderFileLink: () => 'link'}}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: TOOLS, text: textOf(TOOLS), blocks: ROUTES[TOOLS], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES,
+    renamed: renamedBindings});
+  // The markdown link renderer a title hands its summary, called with real links under both runtimes.
+  const linkRenderer = (element, depth = 0) => {
+    if (!element || typeof element !== 'object' || depth > 40) return undefined;
+    if (element.props?.components?.a) return element.props.components.a;
+    for (const child of [element.props?.children].flat()) { const found = linkRenderer(child, depth + 1); if (found) return found; }
+    return undefined;
+  };
+  const step = {call: {id: 'l1', name: 'edit_file', arguments: {path: 'src/a b.ts'}}, result: {content: [{type: 'text', text: 'ok'}], isError: false, details: {diff: '+a\n-b'}}, state: 'idle'};
+  const routine = {call: {id: 'l2', name: 'routine_update', arguments: {mode: 'create', id: 'r/1', name: 'Brief', rrule: 'FREQ=DAILY;BYHOUR=8'}}, result: {content: [{type: 'text', text: 'ok'}]}, state: 'idle'};
+  let links = 0;
+  for (const scene of [{context: {}}, runtime(world)]) for (const props of [step, {...step, state: 'loading', result: undefined}, routine]) {
+    world.enter(scene);
+    const [a, b] = [linkRenderer(supplied.__kept_kl(props)), linkRenderer(ours.__kept_kl(props))];
+    assert.equal(typeof b, typeof a);
+    if (!a) continue;
+    for (const href of ['#aux-file:src%2Fa%20b.ts', '#aux-routine:r%2F1', 'https://example.com/x', '']) {
+      assert.equal(JSON.stringify(world.render(() => b({href, children: 'label'}), {}, scene)), JSON.stringify(world.render(() => a({href, children: 'label'}), {}, scene)), href);
+      links++;
+    }
+  }
+  assert.ok(links >= 8, `compared ${links} links`);
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name} ${JSON.stringify(args).slice(0, 160)}`);
+  for (const code of ['await slack.chat.postMessage({channel: "c"}); slack.search.messages({})', 'x.conversations.history({}); x.chat.postMessage({})', 'gmail.users.messages.list(); notion.pages.create()',
+    'imessage.sendMessage("hi")', 'slack.chat.postMessage(); gmail.users.list(); notion.pages.create()', 'twitter.tweet("x"); twitter.getClient()', 'linkedin.getProfile(); linkedin.update()', 'notion.pages.updatePage(); notion.blocks.append()',
+    'googleAccounts.listAccounts(); googleAccounts.drive.files.retrieve()', 'gmail.x.y.z.read(); console.log(gmail)', 'const page = await tabs.openTab("u")', 'print(1)', '', undefined])
+    for (const title of ['Click Send', '']) same('__kept_Cg', {code, title});
+  for (const args of [{action: 'spawn'}, {action: 'resume'}, {action: 'wait'}, {action: 7}, {}]) { assert.equal(ours.__kept_Ll.hide({args}), supplied.__kept_Ll.hide({args})); assert.equal(ours.__kept_wl.hide({args}), supplied.__kept_wl.hide({args})); }
+  for (const skill of [{name: 'Deep Research', path: 'deep-research'}, {name: 'deep-research', path: 'deep-research.md'}, {name: '', path: 'pdf-to-csv-api'}, {path: 'x-twitter'},
+    {name: '  ', path: 'html-url'}, {name: 'skill.md', path: 'skill.md'}]) same('__kept_Cl', skill);
+});
+
+// Tool definitions passes 4 and 5: every tool's definition through the registry, each of its parts
+// rendered with real results of that tool, with and without the host's renderers.
+const cardArgs = {...toolArgs, path: 'src/app/main.ts', content: 'export const a = 1;\nexport const b = 2;', format: 'markdown', prompt: 'Build the settings page',
+  code: 'await page.fill("#email", "ada@example.com"); await page.type(\'#pw\', `s3cret`); page.click("#go")', message: 'Ping the planner', todos: [
+    {id: 't1', content: 'Read the spec', status: 'completed'}, {id: '', content: 'Write it', status: 'in_progress'}, {content: 'Plan', status: 'pending'}, {id: 't4', content: 'Drop', status: 'cancelled'}, {id: 't5', content: 'Odd', status: 'other'}]};
+const cardResults = [
+  {text: '<webfetch-citation source_id="s1"></webfetch-citation>\n# Docs\nThe page body', details: {diff: '@@ -1,2 +1,2 @@\n-old line\n+new line\n context', elapsedMs: 412.6, taskId: 'task-3', title: 'Settings page',
+    items: [{url: 'https://www.example.com/a', title: 'Example A', faviconUrl: 'https://example.com/f.ico', lastVisitTime: 1793000000000}, {url: 'not a url', title: 'Local'}], openSettings: true}},
+  {text: JSON.stringify({search_id: 's9', results: [{url: 'https://news.example/1', title: 'One'}, {url: 'https://b.example/2'}]}), details: {skipped: 'indexing'}},
+  {text: '[Output too large, saved to out.json] {"search_id":"s2","results":[{"url":"https://c.example/x","title":"Cut"},{"title":"no url"}', details: {results: memoryResults()}},
+  {text: JSON.stringify({items: [{url: 'https://d.example/', title: 'D', lastVisitTime: 1}]}), details: null},
+  {text: 'Free plan can run up to 2 routines', details: {openSettings: false}}, {text: '', details: {items: 'nope'}},
+  {text: '{"search_id":"e","results":[]}', details: {openSettings: 1}}, {text: '[Output too large] {"search_id":"t","results":[]', details: [1, 2]},
+  {text: `${'long output line\n'.repeat(500)}`, details: 'not an object'},
+];
+function memoryResults() { return [{chunkId: 'k1', path: '/u/memory/people/ada.md', title: 'Ada', excerpt: 'tea', line: 4}]; }
+function* cardSteps() {
+  for (const name of [...toolNames, 'start_coder', 'webfetch', 'websearch']) for (const [index, {text, details}] of cardResults.entries())
+    for (const state of ['loading', 'idle', 'error', 'suspended']) {
+      const args = index % 2 ? {...cardArgs, action: 'list', format: 'text', title: 7, message: undefined, todos: []} : cardArgs;
+      yield {call: {id: `k-${name}-${index}`, name, arguments: args}, args, result: state === 'loading' ? undefined : {content: [{type: 'text', text}], isError: state === 'error', details},
+        resultText: state === 'loading' ? undefined : text, details: state === 'loading' ? undefined : details, state, sessionId: 's1'};
+    }
+}
+// Enough of a partial JSON parser for a cut-off search result: closes what is still open.
+const partialJson = text => {
+  for (const tail of ['', '}', ']}', '}]}', '"}]}']) try { return JSON.parse(text + tail); } catch {}
+  throw Error('unparseable');
+};
+test('the tool cards and the registry render like the supplied ones', async () => {
+  const host = world => ({context: {showDeveloperOutput: true, renderMcpSettingsLink: world.stub('spy:mcpLink'), openMemoryFile: world.stub('spy:openMemory'),
+    renderCoderCard: world.stub('spy:coderCard'), renderFileLink: world.stub('spy:fileLink')}, imports: {'*useCopy': () => ({copy: async () => true}), '*.parseJSON': partialJson}});
+  const steps = [...cardSteps()];
+  await assertParity({blocksByChunk: {[TOOLS]: ROUTES[TOOLS]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 3000, defaults: false,
+    renamed: renamedBindings, scenes: [quiet({context: {}}), quiet(host), quiet({context: {}, state: [true], imports: {'./strip-markdown-DRcmtuJc.js#Xt': true}})],
+    props: [...steps.filter((_, index) => index % 7 === 0), {title: 'Settings page', prompt: 'Build it', status: 'running', onOpen: () => {}}, {title: '', status: 'pending', onOpen: () => {}},
+      {patch: '--- a.ts\n+++ a.ts\n@@ -1 +1 @@\n-a\n+b', stats: {addedLines: 1, removedLines: 1}, filename: 'a.ts', result: 'Boom', status: 'completed'},
+      {options: {hunkSeparators: 'line-info'}, style: {color: 'red'}, patch: 'p', oldFile: {name: 'a', contents: 'x'}, newFile: {name: 'a', contents: 'y'}, status: 'cancelled'}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: TOOLS, text: textOf(TOOLS), blocks: ROUTES[TOOLS], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES,
+    renamed: renamedBindings});
+  const json = value => JSON.stringify(value, (key, item) => (typeof item === 'function' ? `fn:${item.length}` : item));
+  let parts = 0;
+  for (const name of [...new Set([...toolNames, 'routine.update', 'mcp__linear__list', 'mcp_single'])]) {
+    const [a, b] = [supplied.__kept_Hg(name), ours.__kept_Hg(name)];
+    assert.deepEqual(Object.keys(b), Object.keys(a), name);
+    for (const key of Object.keys(a)) {
+      assert.equal(typeof b[key], typeof a[key], `${name}.${key}`);
+      if (typeof a[key] !== 'function') { assert.equal(json(b[key]), json(a[key]), `${name}.${key}`); continue; }
+      for (const step of steps.filter(step => step.call.name === name || step.call.name === 'repl').slice(0, 24)) for (const scene of [quiet({context: {}})(world), quiet(host)(world)]) {
+        assert.equal(JSON.stringify(world.render(b[key], step, scene)), JSON.stringify(world.render(a[key], step, scene)), `${name}.${key} ${step.state}`);
+        parts++;
+      }
+    }
+  }
+  assert.ok(parts > 1500, `compared ${parts} parts`);
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name} ${JSON.stringify(args).slice(0, 160)}`);
+  for (const step of [...toolSteps()].slice(0, 400)) for (const options of [undefined, {isStreaming: false, isSuspended: true, sessionId: 's1'}, {isStreaming: true}])
+    same('__kept_Vg', step.call, step.result, options);
+  same('__kept_Vg', {id: 'x', name: 'bash'}, undefined, undefined);
+  world.enter({imports: {'*.parseJSON': partialJson}});
+  for (const {text} of cardResults) { same('__pair_parseSearchResults', text); same('__pair_stripCitation', text); }
+  for (const {text, details} of cardResults) same('__kept_Vg', {id: 'v', name: 'webfetch', arguments: cardArgs}, {content: [{type: 'text', text}], details});
+  world.enter();
+  for (const code of [cardArgs.code, 'page.insertText(`a\\`b`); x.pressSequentially("q\\"r")', '']) same('__pair_redactTypedText', code);
+  for (const args of [cardArgs, {file_path: 'C:\\w\\b.md', content: ''}, {path: 5}, {}]) for (const text of ['+a\n-b', '+a\n']) {
+    same('__pair_editPatch', args, text); same('__pair_writePatch', args, text); same('__pair_fileNameArg', args); same('__pair_editDiffPatch', {args, details: {diff: text}});
+  }
+  for (const url of ['https://www.example.com/x', 'garbage', '']) same('__pair_hostLabel', url);
+  world.enter();
+  assert.equal(JSON.stringify(world.render(() => ours.__kept_Fg(ours.__pair_TodosCard, {args: cardArgs}), {})), JSON.stringify(world.render(() => supplied.__kept_Fg(supplied.__pair_TodosCard, {args: cardArgs}), {})));
+  assert.equal(ours.__kept_Fg(null, {}), supplied.__kept_Fg(null, {}));
 });

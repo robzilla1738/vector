@@ -1,0 +1,16 @@
+{
+ "hl": "routineDetails",
+ "pl": "routineFromDetails",
+ "ze": "resultField",
+ "vl": "resultScheduleKind",
+ "se": "stringOrUndefined",
+ "_i": "scheduleKindOf",
+ "go": "isObject",
+ "yl": "UPPERCASE_WORDS",
+ "vo": "ToolRuntimeContext",
+ "xl": "SubagentIconBoundary",
+ "El": "SubagentIcon",
+ "Sl": "RuntimeSubagentIcon",
+ "_o": "SYMBOL_ICONS",
+ "Rl": "ImageIcon"
+}

@@ -376,10 +376,20 @@ export const ROUTES = Object.freeze({
     block('Splash hero', 'splash-hero.js', 'qe="/assets/background-BriNwY3v.webm",R1=y', '",children:(0,e.jsx)(g2,{})})})]})})})]})}',
       '2aa3930d5449787cbca39fe3f13fc75ccbad705ddd707b95658ca98e6896ea55', 51642),
   ],
-  // Tool definitions, by family: the step icons so far. The bundled syntax highlighter and diff
-  // renderer stay supplied; the embedded Aux mark belongs to scripts/lib/provided-ui.mjs.
-  'assets/tool-definition-registry-Cc6FCFb2.js': [block('Tool step icons', 'tool-icons.js', 'ro=({size:e=24,ariaHidden:t=!0,...n})=>(0,',
-    '5 9.43262 2.25Z",fill:"currentColor"})})', 'a9aad28e077a3f05212c83a6b4fe9cc7cdf191006234ecb8694d3af6cd3d48bc', 20894)],
+  // Tool definitions, by family: the step icons, the summaries, the step rows and the cards. The bundled
+  // strip-ansi, syntax highlighter and diff renderer stay supplied; the embedded Aux mark (Sp, Lp, wp)
+  // between the last two passes belongs to scripts/lib/provided-ui.mjs.
+  'assets/tool-definition-registry-Cc6FCFb2.js': [
+    block('Tool step icons', 'tool-icons.js', 'ro=({size:e=24,ariaHidden:t=!0,...n})=>(0,',
+    '5 9.43262 2.25Z",fill:"currentColor"})})', 'a9aad28e077a3f05212c83a6b4fe9cc7cdf191006234ecb8694d3af6cd3d48bc', 20894),
+    block('Tool states, terminal and memory search cards, schedules and step summaries', 'tool-summaries.js', 'var Ha=e=>e==="loading",Ne=e=>e==="error',
+      '])*`|\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*/g," ");', 'c471a763a282729351553ec0a857fc09e31094b9ee49d6f1fe0e3667c76a5497', 24096),
+    block('Browse classification, routine fields, the tool runtime, step titles and icons', 'tool-steps.js', 'function Cg(e){const t=vi(e),n=po(e.code',
+      'nded-[3px] object-contain",onError:r})};', 'd1caaf1b7beb6bea3f1ccccbf4a91e14df2163f5a449c799251e35068d5b01ba', 6586),
+    block('Diff, history, MCP, memory, notification, REPL and routine cards', 'tool-cards.js', 'var Ms={theme:{dark:"pierre-dark",light:',
+      'pandMode:"none",footer:Ep,standalone:!0}', 'cc46ce364e24178a35759a217bd1811708122429e98f9eb119e14c0a7dbe6127', 10359),
+    block('Aux Code handoff, web fetch, web search and to-do cards, and the registry', 'tool-registry.js', 'kp=({title:e,prompt:t,status:n,onOpen:i}',
+      '=(e,t)=>e?(0,j.createElement)(e,t):null;', '932af1b3be4351a5c4543d211d4f68cb3a20152dcfa4e03d5fe46b32419de587', 6250)],
 });
 
 /** Supplied name → Aux name for the module bindings a route renamed (the parity tests compare them
@@ -437,6 +447,11 @@ export const TOKEN_CHANGES = Object.freeze([
   ['skills-page.js', 'hover:bg-neutral-100', 'hover:bg-muted'],
   // The update banner card: the 12px card corner.
   ['update-banner.js', 'rounded-2xl', 'rounded-xl'],
+  // The notification card and the image generation placeholder: the 12px card corner. The notification's
+  // app tile was fixed white with a black mark in both modes; it takes the page surface and text.
+  ['tool-cards.js', 'rounded-2xl', 'rounded-xl'],
+  ['tool-cards.js', 'bg-white', 'bg-background'],
+  ['tool-cards.js', 'text-black', 'text-foreground'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');

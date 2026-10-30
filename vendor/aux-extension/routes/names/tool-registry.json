@@ -1,0 +1,15 @@
+{
+ "Tp": "CoderHandoff",
+ "Rp": "START_CODER_TOOL",
+ "Ap": "CITATION_PREFIX",
+ "Ip": "stripCitation",
+ "Dp": "WebfetchCard",
+ "Pp": "WEBFETCH_TOOL",
+ "Op": "partialJson",
+ "Mp": "parseSearchResults",
+ "Np": "WebsearchCard",
+ "Hp": "WEBSEARCH_TOOL",
+ "Fp": "TodosCard",
+ "jp": "WRITE_TODOS_TOOL",
+ "zp": "TOOL_DEFINITIONS"
+}
