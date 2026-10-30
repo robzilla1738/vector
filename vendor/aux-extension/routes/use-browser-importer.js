@@ -9,7 +9,8 @@
  * setPendingImport, z/Q the radio group, P/C/N/k/F/D/S the dialog parts, H useSuspenseQueries.
  * Aux changes: sources the browser lists as installed count as detected (the daemon's own list stops
  * at the browsers it knew), the Keychain explainer names the browser's real item and shows for
- * passwords as well as sign-ins, never for Firefox or Zen, and Safari's copy names the real menu. */
+ * passwords as well as sign-ins, never for Firefox or Zen, Safari's copy names the real menu, and the file
+ * dialog also takes Orion's exported bookmarks HTML (the supplied one only knew Safari). */
 var f = B(K(), 1),
   GRANT_PERMISSION_IMAGE = '/assets/grant-permission-lDve06mu.webp',
   SAFARI_EXPORT_IMAGE = '/assets/safari-file-export-ClYcYuwR.webp',
@@ -294,16 +295,49 @@ var f = B(K(), 1),
       }),
     });
   },
-  /** Asks for Safari's exported ZIP and reads it. */
+  /** What the file dialog asks for, per source. Orion only exports its bookmarks, as HTML. */
+  fileImport = source =>
+    source?.id === 'orion'
+      ? {
+          title: 'Export your Orion bookmarks first',
+          description: ['Export your bookmarks from Orion as an HTML file, then choose that file here.'],
+          label: 'Orion bookmarks HTML file',
+          accept: '.html,.htm',
+          matches: name => /\.html?$/i.test(name),
+          wrongFile: 'Please choose an HTML file',
+          unreadable: 'Failed to read the HTML file',
+          request: async file => ({dataKinds: ['bookmarks'], bookmarksFile: {data: await file.arrayBuffer()}}),
+        }
+      : {
+          title: 'Export your Safari data first',
+          description: [
+            'In Safari, choose ',
+            (0, jsxRuntime.jsx)('span', {children: 'File › Export Browsing Data to File…'}),
+            ', then import the ZIP file Safari creates.',
+          ],
+          image: SAFARI_EXPORT_IMAGE,
+          imageAlt: 'In Safari, choose File › Export Browsing Data to File…, then import the ZIP file Safari creates.',
+          label: 'Safari browsing data ZIP file',
+          accept: '.zip',
+          matches: name => name.endsWith('.zip'),
+          wrongFile: 'Please upload a ZIP file',
+          unreadable: 'Failed to read the ZIP file',
+          request: async (file, dialog) => ({
+            dataKinds: dialog.dataKinds,
+            safariArchive: {fileName: file.name, data: await file.arrayBuffer()},
+          }),
+        },
+  /** Asks for the file a source exports and reads it. */
   SafariImportDialog = ({dialog, onOpenChange, onResolve}) => {
     const inputRef = (0, f.useRef)(null),
       [isReading, setReading] = (0, f.useState)(false),
       navigate = _(),
+      copy = fileImport(dialog?.source),
       onFileChange = async event => {
         const file = event.target.files?.[0];
         if (file) {
-          if (!file.name.endsWith('.zip')) {
-            b.error('Please upload a ZIP file');
+          if (!copy.matches(file.name)) {
+            b.error(copy.wrongFile);
             return;
           }
           if (dialog?.type === 'safari-file-import')
@@ -313,8 +347,7 @@ var f = B(K(), 1),
                 A({
                   sourceId: dialog.source.id,
                   sourceName: dialog.source.name,
-                  dataKinds: dialog.dataKinds,
-                  safariArchive: {fileName: file.name, data: await file.arrayBuffer()},
+                  ...(await copy.request(file, dialog)),
                 }),
                 onResolve('completed'),
                 dialog.navigateToProgress)
@@ -328,7 +361,7 @@ var f = B(K(), 1),
               }
               (setReading(false), onOpenChange(false));
             } catch (error) {
-              (console.error(error), b.error('Failed to read the ZIP file'), setReading(false));
+              (console.error(error), b.error(copy.unreadable), setReading(false));
             }
         }
       },
@@ -343,24 +376,19 @@ var f = B(K(), 1),
         children: [
           (0, jsxRuntime.jsxs)(k, {
             children: [
-              (0, jsxRuntime.jsx)(D, {className: 'font-display text-xl', children: 'Export your Safari data first'}),
-              (0, jsxRuntime.jsxs)(C, {
-                children: [
-                  'In Safari, choose ',
-                  (0, jsxRuntime.jsx)('span', {children: 'File › Export Browsing Data to File…'}),
-                  ', then import the ZIP file Safari creates.',
-                ],
-              }),
+              (0, jsxRuntime.jsx)(D, {className: 'font-display text-xl', children: copy.title}),
+              (0, jsxRuntime.jsxs)(C, {children: copy.description}),
             ],
           }),
-          (0, jsxRuntime.jsx)('div', {
-            className: '-mx-1 mt-1 overflow-hidden rounded-lg',
-            children: (0, jsxRuntime.jsx)('img', {
-              src: SAFARI_EXPORT_IMAGE,
-              className: 'pointer-events-none w-full select-none',
-              alt: 'In Safari, choose File › Export Browsing Data to File…, then import the ZIP file Safari creates.',
+          copy.image &&
+            (0, jsxRuntime.jsx)('div', {
+              className: '-mx-1 mt-1 overflow-hidden rounded-lg',
+              children: (0, jsxRuntime.jsx)('img', {
+                src: copy.image,
+                className: 'pointer-events-none w-full select-none',
+                alt: copy.imageAlt,
+              }),
             }),
-          }),
           (0, jsxRuntime.jsxs)(P, {
             children: [
               (0, jsxRuntime.jsx)(N, {render: (0, jsxRuntime.jsx)(h, {variant: 'secondary'}), children: 'Cancel'}),
@@ -373,10 +401,10 @@ var f = B(K(), 1),
           }),
           (0, jsxRuntime.jsx)('input', {
             ref: inputRef,
-            'aria-label': 'Safari browsing data ZIP file',
+            'aria-label': copy.label,
             className: 'sr-only',
             type: 'file',
-            accept: '.zip',
+            accept: copy.accept,
             onChange: onFileChange,
           }),
         ],

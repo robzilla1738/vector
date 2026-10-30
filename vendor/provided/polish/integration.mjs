@@ -560,11 +560,11 @@ const BROWSER_ICONS = [
     'const e=m.get(A)??auxBrowserTile(A);return e?'),
   edit('the letter tile',
     'a=b(),U=({value:A,className:t,...i})=>{',
-    `a=b(),auxBrowserTile=id=>{const color={vivaldi:"#ef3939",opera:"#ff1b2d",chromium:"#4587f3",zen:"#1f1f1f"}[id];return color?"data:image/svg+xml,"+encodeURIComponent(\`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="\${color}"/><text x="32" y="44" font-family="-apple-system,sans-serif" font-size="36" font-weight="600" fill="#fff" text-anchor="middle">\${id[0].toUpperCase()}</text></svg>\`):void 0},U=({value:A,className:t,...i})=>{`),
+    `a=b(),auxBrowserTile=id=>{const color={vivaldi:"#ef3939",opera:"#ff1b2d",chromium:"#4587f3",zen:"#1f1f1f",orion:"#7a5af8"}[id];return color?"data:image/svg+xml,"+encodeURIComponent(\`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="\${color}"/><text x="32" y="44" font-family="-apple-system,sans-serif" font-size="36" font-weight="600" fill="#fff" text-anchor="middle">\${id[0].toUpperCase()}</text></svg>\`):void 0},U=({value:A,className:t,...i})=>{`),
 ];
 const ONBOARDING_ROUTES = [
   edit('the import progress names every source',
-    '["helium","Helium"]]),Mr=', '["helium","Helium"],["vivaldi","Vivaldi"],["opera","Opera"],["chromium","Chromium"],["zen","Zen"]]),Mr='),
+    '["helium","Helium"]]),Mr=', '["helium","Helium"],["vivaldi","Vivaldi"],["opera","Opera"],["chromium","Chromium"],["zen","Zen"],["orion","Orion"]]),Mr='),
   edit('Make it yours has a route',
     'wr=n("/_public/onboarding/import-password/")({beforeLoad:()=>{throw c({to:"/onboarding/ai",replace:!0})},component:a(Pr,"component")})',
     'wr=n("/_public/onboarding/import-password/")({component:a(Pr,"component")}),auxYoursRoute=n("/_public/onboarding/make-it-yours/")({component:a(gr,"yours")})'),

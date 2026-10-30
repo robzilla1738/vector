@@ -223,6 +223,32 @@ test('import: the new sources have names and tiles, and a partial import says wh
   assert.equal(progress.__skippedSummary(['cookies', 'passwords']), 'Imported everything except site sign-ins and passwords.');
 });
 
+test('import: Orion sends its exported bookmarks HTML, and nothing about Safari', async () => {
+  const orion = {id: 'orion', name: 'Orion', requiresFileImport: true, profiles: []};
+  const world = createWorld();
+  const {__SafariImportDialog: Dialog, __importTargets: targets} = await load(world, IMPORTER, ['SafariImportDialog', 'importTargets']);
+  assert.equal(targets(new Map([['orion', orion]]), new Map(), new Set())[0].kind, 'file');
+  const data = new ArrayBuffer(4);
+  const open = name => {
+    const sent = [], errors = [];
+    const rendered = world.render(Dialog, {dialog: {type: 'safari-file-import', source: orion, navigateToProgress: false}, onOpenChange: () => {}, onResolve: () => {}}, {
+      state: [null, false], event: {target: {files: [{name, arrayBuffer: async () => data}]}},
+      imports: {'./extension-main-Dz1-AsCT.js#I': request => sent.push(request), './dist-LyKrHgST.js#n.error': message => errors.push(message)}});
+    return {rendered: text(rendered), sent, errors};
+  };
+  const html = open('bookmarks.HTML');
+  assert.ok(html.rendered.includes('Orion bookmarks HTML file') && html.rendered.includes('.html,.htm'));
+  assert.ok(!html.rendered.includes('Safari'));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(html.sent.length, 1);
+  assert.deepEqual(plain({...html.sent[0], bookmarksFile: undefined}), {sourceId: 'orion', sourceName: 'Orion', dataKinds: ['bookmarks']});
+  assert.equal(html.sent[0].bookmarksFile.data, data);
+  assert.equal('safariArchive' in html.sent[0], false);
+  const zip = open('export.zip');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual([zip.sent.length, plain(zip.errors)], [0, ['Please choose an HTML file']]);
+});
+
 test('import: Settings names every kind, so no default search engine comes without the switch', async () => {
   const world = createWorld();
   const general = await load(world, 'assets/general-3dgRbrRk.js', ['ImportDialog']);

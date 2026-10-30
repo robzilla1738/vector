@@ -1,8 +1,8 @@
 # macOS utilities addon (`aux-macos-utilities.node`)
 
-Status: **implemented** by `apps/macos-utilities-addon` (Swift with a C Node-API shim), checked against the supplied addon by `apps/macos-utilities-addon/tests/parity.test.mjs`. Batch 10 of [the browser excellence plan](../../plans/2026-10-29-browser-excellence.md) ("the native addons"). Not wired into assembly; section 7 lists what that needs. This page is current work, not part of the historical clean-room set described in [README](../README.md).
+Status: **implemented** by `apps/macos-utilities-addon` (Swift with a C Node-API shim), checked against the supplied addon by `apps/macos-utilities-addon/tests/parity.test.mjs`, and **shipped** by `--release-addons out/live-inputs/completion-20261026/release-addons-a2` (section 7). Batch 10 of [the browser excellence plan](../../plans/2026-10-29-browser-excellence.md) ("the native addons"). This page is current work, not part of the historical clean-room set described in [README](../README.md).
 
-Reference artifact: the fixed Developer ID copy `out/live-inputs/completion-20261026/release-addons-a1/aux-macos-utilities.node` (409,712 bytes, sha256 `66a61601…c4c6`, identifier `dev.aux.browser.macos-utilities`, team `9F2JXY8TCK`), which is what build 99 ships.
+Reference artifact: the supplied image's fixed Developer ID copy `out/live-inputs/completion-20261026/release-addons-a1/aux-macos-utilities.node` (409,712 bytes, sha256 `66a61601…c4c6`, identifier `dev.aux.browser.macos-utilities`, team `9F2JXY8TCK`), which builds through 118 ship. The parity test keeps comparing against it. The release image is Aux's: `release-addons-a2/aux-macos-utilities.node` (163,344 bytes, sha256 `10bdcb53…1c5b`).
 
 Evidence tags: **[O]** observed by loading the supplied addon in plain Node 26 against throwaway files in a temp directory, or read from build 99 files; **[S]** read from the reconstructed source the supplied image was built from (`docs/integration/proposed/aux-native-macos-utilities/source/`, `docs/integration/proposed/aux-macos-utility-node/source/`); **[D]** read from the supplied daemon JS (the SEA of `out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon`). The Aux implementation was written from this page, not from machine code.
 
@@ -12,7 +12,7 @@ Evidence tags: **[O]** observed by loading the supplied addon in plain Node 26 a
 | --- | --- | --- |
 | Format | Mach-O arm64 dylib, Swift + C++ | Mach-O arm64 dylib, Swift + C |
 | Deployment target | macOS 13.0 | macOS 15.0 |
-| Size | 409,712 (signed) / 393,720 (unsigned) | about 145 KB, linker ad-hoc signature only |
+| Size | 409,712 (signed) / 393,720 (unsigned) | 163,344 (signed) / 145,912 (unsigned, linker ad-hoc signature) |
 | Links | AppKit, QuickLookThumbnailing, ImageIO, Foundation, libobjc, libc++, system Swift runtime | the same, without libc++ |
 | Exports | `napi_register_module_v1`, `node_api_module_get_api_version_v1` (Node-API 8), `AuxMacUtilityCloseAdmissionAndDrain`, `AuxMacUtilityPendingEnvironments`, plus about 100 Swift and C++ symbols nobody uses | the four named ones only |
 | Node internals | uses `node.h` and V8 (`node::GetCurrentEnvironment`) to cross-check the Environment | pure Node-API, so not tied to one Node ABI |
@@ -116,17 +116,19 @@ Not tested, and why:
 - A forked child (-1, `UINT64_MAX`): Node can't fork with the addon loaded.
 - Reentrancy and `Native utility returned no output`: not reachable from JS.
 - The supplied image's V8 cross-check (`Native utility Environment mismatch`, and refusing a second attach in one Environment): not reachable through `require`; the Aux image leaves it out.
-- Running inside the real daemon (hardened runtime, Developer ID signature, sandbox, TCC): needs integration (section 7).
+- Running inside the real daemon (hardened runtime, Developer ID signature, sandbox, TCC): needs a launch (section 7).
 
-## 7. Integration (not done)
+## 7. Integration
 
-Swapping the image means new bytes, so every pin of the current ones changes:
+Done for the release path (relink `release-state-root-a7`, sources in `docs/integration/proposed/completion-20261026/runtime/release-addons-a2/`). New bytes mean every pin changes:
 
-1. **Sign** it with Developer ID, hardened runtime, timestamp and identifier `dev.aux.browser.macos-utilities`, once, and keep that fixed copy (with a `pins.txt`) next to the current `aux-pdf.node` in a new `--release-addons` directory, because `scripts/release/assemble.py` copies both names from that one directory and a re-signed timestamp changes the hash.
-2. **`Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json`** `macOSUtilitiesModule` `{path, identifier, sha256, bytes}`: text, so assembly's `repin_cascade` updates it.
-3. **`Aux Daemon.app/Contents/MacOS/aux-daemon`**: compiled constants (`AuxFreshBootstrapMacUtilitiesIdentity`: the sha256 and byte count; build 99 holds both the components copy `e7204915…`/409,728 and the release copy `66a61601…`/409,712). Mach-O, so the cascade doesn't touch it: change the source constants and relink (`scripts/candidate/relink_daemon.py`), as with the memory helper's `sourceSha256`.
-4. **`Aux Framework`** (browser): build 99 contains the release hash once, so a browser-side pin in `chromium/tree` changes too, with a native build.
-5. **`native/aux-macos-utilities.cjs`**, generated by `createMacUtilityLoader` (`docs/integration/proposed/aux-macos-utility-node/source/adapt.mjs`) from `docs/integration/proposed/aux-macos-utility-integration/artifact.json`, pins size and sha256. In build 99 it still pins the unsigned 393,720 / `7aff7611…` image, which matches neither shipped copy, so if the daemon still loads through it those five commands would refuse today. Worth checking separately.
-6. **Staging pins**: `docs/integration/proposed/aux-macos-utility-integration/{artifact.json,inputs.json}` and the source list in `scripts/lib/provided-stage-inputs.mjs` name the reconstructed sources and the unsigned image; the components `bundle.json` pins the components copy. `scripts/candidate/repair_combined.py` already skips both addons when pinning.
-7. **Protected host policy**: the stage manifest names `aux.development.host.policy.v4` as the image policy for this addon; a new image needs that policy's finite list updated.
-8. The daemon host looks up `AuxMacUtilityCloseAdmissionAndDrain` and `AuxMacUtilityPendingEnvironments` (section 5); the Aux image exports both with the same contract.
+1. **Fixed copy:** `apps/macos-utilities-addon/build.sh` output signed once with Developer ID, hardened runtime, timestamp and identifier `dev.aux.browser.macos-utilities`, kept with `pins.txt` in `release-addons-a2`. `scripts/release/assemble.py --release-addons` copies both addon names from that one directory, and a re-signed timestamp changes the hash, so never re-sign it.
+2. **`AuxFreshBootstrapPolicy.json`** `macOSUtilitiesModule`: text, updated by assembly's `repin_cascade` (sha256 and bytes).
+3. **`aux-daemon`:** `AuxFreshBootstrapMacUtilitiesIdentity.releaseSha256`/`releaseBytes` in `daemon-policy.swift`, and `kRelease` plus the two size checks in `utility-lifetime.cc` (the loaded-image capture), rebuilt with the recorded `clang++` command (which reproduces the old object byte for byte from the old source) and relinked with `scripts/candidate/relink_daemon.py`. The development pair `e7204915…`/409,728 stays, for `--identity development` builds of the components copy.
+4. **`Aux Framework`:** the same two constants in `chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift`. The browser refuses the a1 release copy from now on, so a build needs a2 and a7 together.
+5. **`native/aux-macos-utilities.cjs`** still pins the unsigned 393,720 / `7aff7611…` image and is not on the shipped route: the daemon reaches the module through `process._linkedBinding('aux_macos_utilities_builtin')`, whose host loads the image itself (`docs/integration/proposed/completion-20261026/runtime/fixed-builtins/README.md`). Unchanged, and it refused every shipped copy before too.
+6. **Staging pins** (`docs/integration/proposed/aux-macos-utility-integration/{artifact.json,inputs.json}`, `vendor/provided/aux-macos-utility-stage.mjs`, `scripts/lib/provided-stage-inputs.mjs`): the record of how the supplied image was staged in the predecessor pipeline, which assembly does not use. Unchanged.
+7. **`aux.development.host.policy.v4`** is a name in that staging manifest. No such list exists in the daemon executable or the release path, so there was nothing to update.
+8. The daemon host looks up `AuxMacUtilityCloseAdmissionAndDrain` and `AuxMacUtilityPendingEnvironments` (section 5); the Aux image exports both with the same contract. Its eight unresolved `napi_*` symbols are all exported by the daemon executable.
+
+Not yet checked: the image inside the running daemon (hardened runtime, sandbox, TCC, `copy-file` and `open-with` success, the section 6 gaps). That needs a launch of a build carrying a2 and a7.
