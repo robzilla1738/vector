@@ -57,6 +57,7 @@ export function stageParityEntry(scratch, namespaces, extra = []) {
     'module.exports=new Proxy({configureLifetime(){},AccountModelCatalog,captureAccount:()=>({}),hasPlanCredentials:()=>false,planModels:()=>[],planResponsesApi:()=>({})},',
     '{get:(target,name)=>typeof name!=="string"||name==="__esModule"||name==="then"?undefined:target[name]??none(name)});',
   ].join('\n'));
+  writeFileSync(path.join(app, 'native/runtime-bootstrap.cjs'), 'exports.inspectRetainedRuntime=()=>{};\n');
   writeFileSync(path.join(app, 'native/aux-owned-native.cjs'), 'module.exports=Object.freeze({run(){throw Error("parity harness: no native commands")},withAccountRegistryLock:work=>work()});\n');
   const text = harnessEntry(candidate, rootsOf(namespaces), extra);
   const entries = {aux: path.join(app, 'node-development/parity-entry.mjs'), supplied: path.join(app, 'node-development/parity-entry-supplied.mjs')};

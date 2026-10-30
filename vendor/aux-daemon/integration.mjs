@@ -3,10 +3,10 @@
  * edits: load it, and build the root tRPC router through it. scripts/release/transforms.mjs applies
  * them after the agent integration; any drifted anchor stops the release. */
 import {applyExactEdits} from '../provided/provider-cli/integration.mjs';
-import {NAMESPACES, STORES} from './registry.mjs';
+import {NAMESPACES, STORES, SUPPORT_FILES} from './registry.mjs';
 
 /** Copied under node-development/aux-daemon/. Tests and the parity harness stay out. */
-export const RUNTIME_FILES = Object.freeze(['dispatcher.mjs', 'registry.mjs', ...[...Object.values(NAMESPACES), ...Object.values(STORES)].map(file => file.slice(2))]);
+export const RUNTIME_FILES = Object.freeze(['dispatcher.mjs', 'registry.mjs', ...[...Object.values(NAMESPACES), ...Object.values(STORES)].map(file => file.slice(2)), ...SUPPORT_FILES]);
 
 /** The supplied root router, verbatim. */
 const ROOT_ROUTER = 'agentRuntime:agentRuntimeRouter,accounts:accountsRouter,projects:projectsRouter,analytics:analyticsRouter,billing:billingRouter,'
@@ -24,7 +24,8 @@ export const ROOT_NAMESPACES = Object.freeze(Object.fromEntries(ROOT_ROUTER.spli
  * namespace the supplied schemas, stores and services a port still relies on. */
 export const BINDINGS = Object.freeze({
   router: 'router', accountProcedure: 'accountProcedure', publicProcedure: 'publicProcedure', TRPCError: 'TRPCError', stateDb: 'stateDb',
-  z: {object: 'object', string: 'string$3', number: 'number$2', boolean: 'boolean$1', record: 'record', enum: '_enum', array: 'array', literal: 'literal', unknown: 'unknown$1', custom: 'custom'},
+  z: {object: 'object', string: 'string$3', number: 'number$2', boolean: 'boolean$1', record: 'record', enum: '_enum', array: 'array', literal: 'literal', unknown: 'unknown$1', custom: 'custom', discriminatedUnion: 'discriminatedUnion', url: 'url$2'},
+  Hono: 'Hono', logger: 'logger',
   uiAttention: {attentionByAccountId: 'attentionByAccountId'},
   fullDiskAccess: {runComputerUseCommand: 'runComputerUseCommand', prepareHelper: 'prepareComputerUseHelperRuntime',
     helperAppPath: 'COMPUTER_USE_HELPER_APP_PATH', contextAwarenessHelper: 'nativeContextAwarenessHelper'},
@@ -137,6 +138,77 @@ export const BINDINGS = Object.freeze({
     getLastUpdatedAt: 'getLastUpdatedAt', listFilesRecursive: 'listFilesRecursive$1'},
   analytics: {updateUserProfile: 'updateAnalyticsUserProfile', propertiesSchema: 'analyticsPropertiesSchema', posthog: 'posthog', isAccountExperimentalEligible: 'isAccountExperimentalEligible'},
   sync: {loadAgentFileSyncMeta: 'loadAgentFileSyncMeta', listAgentFileConflicts: 'listAgentFileConflicts', isSyncEnabled: 'isSyncEnabled', resolveAgentFileConflict: 'resolveAgentFileConflict'},
+  contextHistory: {resolveCredentialDomain: 'resolveCredentialDomain', settings: 'settings', accountHasAllowedPlan: 'accountHasAllowedPlan', AccountRegistry: 'AccountRegistry',
+    CONTEXT_AWARENESS_ALLOWED_PLANS: 'CONTEXT_AWARENESS_ALLOWED_PLANS', isAccountExperimentalEligibleCached: 'isAccountExperimentalEligibleCached', ContextAwarenessEventTable: 'ContextAwarenessEventTable',
+    and: 'and', inArray: 'inArray', gte: 'gte$1', lte: 'lte$1', ledgerDb: 'ledgerDb', memoryDir: 'memoryDir', getAccountRoot: 'getAccountRoot', EPISODIC_DIR: 'EPISODIC_DIR',
+    CONTEXT_AWARENESS_PAGE_PREFIX: 'CONTEXT_AWARENESS_PAGE_PREFIX', measureDbFootprint: 'measureDbFootprint', dayjs: 'import_dayjs_min$2', takeBytes: 'takeBytes', HISTORY_SEARCH_FOOTER_BYTES: 'HISTORY_SEARCH_FOOTER_BYTES',
+    historyRowStart: 'historyRowStart', localDayHeading: 'localDayHeading', renderHistoryRow: 'renderHistoryRow', readHead: 'readHead', READ_BLOCK_SEPARATOR: 'READ_BLOCK_SEPARATOR'},
+  mcpManager: {DEFAULT_STARTUP_TIMEOUT_MS: 'DEFAULT_STARTUP_TIMEOUT_MS', DEFAULT_TOOL_TIMEOUT_MS: 'DEFAULT_TOOL_TIMEOUT_MS', createMcpAgentTools: 'createMcpAgentTools', listAllMcpTools: 'listAllMcpTools',
+    MCP_TOOL_LIST_TOTAL_TIMEOUT_MS: 'MCP_TOOL_LIST_TOTAL_TIMEOUT_MS', classifyMcpConnectionFailure: 'classifyMcpConnectionFailure', McpConnectionError: 'McpConnectionError', McpStdioConnectionError: 'McpStdioConnectionError',
+    McpError: 'McpError', ErrorCode: 'ErrorCode', CallToolResultSchema: 'CallToolResultSchema', createTransport: 'createTransport$1', StdioClientTransport: 'StdioClientTransport', Client: 'Client$2', DAEMON_VERSION: 'DAEMON_VERSION'},
+  mcpConnections: {settings: 'settings', isEqual: 'isEqual', McpOAuthProvider: 'McpOAuthProvider', McpManager: 'McpManager', clearMcpCodeVerifier: 'clearMcpCodeVerifier', clearMcpOAuthCredential: 'clearMcpOAuthCredential',
+    OAUTH_FLOW_TTL_MS: 'OAUTH_FLOW_TTL_MS', StreamableHTTPClientTransport: 'StreamableHTTPClientTransport', secureOAuthFetch: 'secureOAuthFetch', Client: 'Client$2', DAEMON_VERSION: 'DAEMON_VERSION', auth: 'auth',
+    UnauthorizedError: 'UnauthorizedError', listAllMcpTools: 'listAllMcpTools', MCP_TOOL_LIST_TOTAL_TIMEOUT_MS: 'MCP_TOOL_LIST_TOTAL_TIMEOUT_MS', classifyMcpConnectionFailure: 'classifyMcpConnectionFailure'},
+  bridge: {commands: 'ExtensionBridgeCommand', protocol: 'ExtensionBridgeProtocol', browserModeSchema: 'browserModeSchema', isAllowedExtensionMv3ApiMethod: 'isAllowedExtensionMv3ApiMethod',
+    safeWebsocketClose: 'safeWebsocketClose', safeWebsocketSend: 'safeWebsocketSend', parseWsData: 'parseWsData', markSettledBrowserActionError: 'auxMarkSettledBrowserActionError',
+    browserEventHandlers: 'auxBrowserEventHandlers', isConnectedFromLocalhost: 'isConnectedFromLocalhost', isTrustedLocalUiOrigin: 'isTrustedLocalUiOrigin', upgradeWebSocket: 'upgradeWebSocket',
+    usesBoundBrowserActions: 'auxUsesBoundBrowserActions', runOwnedBrowserAction: 'auxRunOwnedBrowserAction', requireSupervisedTasks: 'auxRequireSupervisedTasks',
+    ensureProfileWindow: 'ensureProfileWindow', pickDirectory: 'pickDirectory', sleep: 'sleep$12', AccountRegistry: 'AccountRegistry', BROWSER_BINDING_REQUIRED_MESSAGE: 'BROWSER_BINDING_REQUIRED_MESSAGE',
+    CliBrowserBindingError: 'CliBrowserBindingError', BRIDGE_CONNECTION_REPLACED_MESSAGE: 'BRIDGE_CONNECTION_REPLACED_MESSAGE', RESOLVE_BINDING_UNSUPPORTED_MESSAGE: 'RESOLVE_BINDING_UNSUPPORTED_MESSAGE', ZodError: 'ZodError',
+    globalExtensionBridge: 'globalExtensionBridge', legacyWindowSchema: 'legacyWindowSchema', legacyLastFocusedWindowSchema: 'legacyLastFocusedWindowSchema', selectBindingWindow: 'selectBindingWindow', SessionStore: 'SessionStore'},
+  typebox: {Object: '_Object_', String: 'String$1', Number: 'Number$1', Boolean: 'Boolean$1', Integer: 'Integer', Array: '_Array_', Optional: 'Optional', Union: 'Union', Literal: 'Literal', Omit: 'Omit', Unsafe: 'Unsafe'},
+  tools: {Buffer: 'Buffer$1', DEFAULT_HEADERS: 'DEFAULT_HEADERS', DEFAULT_MAX_BYTES: 'DEFAULT_MAX_BYTES', ErrorCode: 'ErrorCode',
+    GoogleSearchClient: 'GoogleSearchClient', INLINE_TEXT_MIME_TYPES: 'INLINE_TEXT_MIME_TYPES', MAX_ACTIVE_SUBAGENTS: 'MAX_ACTIVE_SUBAGENTS',
+    McpConnectionError: 'McpConnectionError', McpError: 'McpError', MemoryManager: 'MemoryManager', MemorySearchUnavailableError: 'MemorySearchUnavailableError',
+    STATUS_STDERR: 'STATUS_STDERR', STATUS_STDOUT: 'STATUS_STDOUT', SUBAGENT_PROFILES: 'SUBAGENT_PROFILES', SessionStore: 'SessionStore',
+    UnauthorizedError: 'UnauthorizedError', actionConfirmationRequestSchema: 'actionConfirmationRequestSchema', applyEdits: 'applyEdits$1',
+    applyMemoryEdits: 'applyEdits', approveEscalation: 'approveEscalation', arm: 'arm', assembleHistoryEvidence: 'assembleHistoryEvidence',
+    backgroundRuns: 'backgroundRuns', blockedSleepReason: 'blockedSleepReason', brokerBoundary: 'auxBrokerBoundary',
+    buildWebSearchToolResult: 'buildWebSearchToolResult', callTimestamp: 'callTimestamp', canStartCoder: 'canStartCoder', canUseAgentMessaging: 'canUseAgentMessaging',
+    capReplContextContent: 'capReplContextContent', coderToolNames: 'coderToolNames', contextAwarenessSearchQuerySchema: 'contextAwarenessSearchQuerySchema',
+    countChangedDiffLines: 'countChangedDiffLines', createActionConfirmationTool: 'createActionConfirmationTool', createAskUserQuestionTool: 'createAskUserQuestionTool',
+    createAutomationTools: 'createAutomationTools', createBackgroundProcessTools: 'createBackgroundProcessTools', createBashTool: 'createBashTool',
+    createDesktopRepl: 'createDesktopRepl', createEditFileTool: 'createEditFileTool', createFdTool: 'createFdTool', createGetTimeTool: 'createGetTimeTool',
+    createHistoryReadTool: 'createHistoryReadTool', createHistorySearchTool: 'createHistorySearchTool', createLazyDesktopRepl: 'auxCreateLazyDesktopRepl',
+    createMemoryReadTool: 'createMemoryReadTool', createMemoryTools: 'createMemoryTools', createMessageAgentTool: 'createMessageAgentTool',
+    createNotificationTool: 'createNotificationTool', createPowerShellTool: 'createPowerShellTool', createReadFileTool: 'createReadFileTool',
+    createReplTool: 'createReplTool', createRgTool: 'createRgTool', createRoutine: 'createRoutine', createRoutineNotifyParentTool: 'createRoutineNotifyParentTool',
+    createRoutineUpdateTool: 'createRoutineUpdateTool', createStartCoderTool: 'createStartCoderTool', createSubagentTool: 'createSubagentTool',
+    createSubagentWaitTool: 'createSubagentWaitTool', createTerminalInteractTool: 'createTerminalInteractTool', createTerminalTool: 'createTerminalTool',
+    createTodosTool: 'createTodosTool', createWebFetchTool: 'createWebFetchTool', createWebSearchTool: 'createWebSearchTool', createWorkflowTool: 'createWorkflowTool',
+    createWriteFileTool: 'createWriteFileTool', dayjs: 'import_dayjs_min$2', delegatorOf: 'delegatorOf', deleteRoutine: 'deleteRoutine', describe: 'describe',
+    describeAutomation: 'describeAutomation', describeRunning: 'describeRunning', detectLineEnding: 'detectLineEnding', diff: 'diff', disarm: 'disarm',
+    ensureSessionTmpDir: 'ensureSessionTmpDir', entryKey: 'entryKey', errorText: 'errorText', executeYieldedCommand: 'executeYieldedCommand',
+    fetchAuxAPIAuthenticated: 'fetchAuxAPIAuthenticated', fetchHTMLWithBrowser: 'fetchHTMLWithBrowser', find: 'find', findCapturedUrls: 'findCapturedUrls',
+    formatAgentLabel: 'formatAgentLabel', formatAgentList: 'formatAgentList', formatClock: 'formatClock', formatDimensionNote: 'formatDimensionNote',
+    formatExit: 'formatExit', formatHistoryRead: 'formatHistoryRead', formatHistorySearch: 'formatHistorySearch', formatInterval: 'formatInterval',
+    formatModel: 'formatModel', formatOutput: 'formatOutput', formatSize: 'formatSize', generateCitationSource: 'generateCitationSource',
+    getAgentToolName: 'getAgentToolName', getContentDispositionFilename: 'getContentDispositionFilename', getDeletionEpoch: 'getDeletionEpoch',
+    getFirstChangedLine: 'getFirstChangedLine', getHeader: 'getHeader', getMimeType: 'getMimeType', getRoutine: 'getRoutine',
+    getRoutineNotificationPolicy: 'getRoutineNotificationPolicy', getSubagentApproval: 'getSubagentApproval', getUrlFilename: 'getUrlFilename', groupAlive: 'groupAlive',
+    hasForegroundAgentManagerSessionAttention: 'hasForegroundAgentManagerSessionAttention', hasPermission: 'hasPermission', historyRowAt: 'historyRowAt',
+    htmlToReadableMarkdown: 'htmlToReadableMarkdown', isBrowserApp: 'isBrowserApp', isCloudRuntime: 'isCloudRuntime', isCloudflareChallenge: 'isCloudflareChallenge',
+    isContextAwarenessMemoryPath: 'isContextAwarenessMemoryPath', isContextAwarenessReadable: 'isContextAwarenessReadable', isForkSelfSubagent: 'isForkSelfSubagent',
+    isHeadlessSessionTrigger: 'isHeadlessSessionTrigger', isManagedPage: 'isManagedPage', isOnboardingSessionTrigger: 'isOnboardingSessionTrigger',
+    isReadOnlySubagent: 'isReadOnlySubagent', isSideChat: 'isSideChat', listActiveAgents: 'listActiveAgents', listPages: 'listPages',
+    listSubagentModels: 'listSubagentModels', matchNames: 'matchNames', mcpResultToAgentContent: 'mcpResultToAgentContent', memoryDir: 'memoryDir',
+    mergeTodos: 'mergeTodos', moveToBackground: 'moveToBackground', nanoid: 'nanoid', neutralizePromptInjectionSyntax: 'neutralizePromptInjectionSyntax',
+    nodeFetch: 'nodeFetch', normalizeDefuddleMarkdownOutput: 'normalizeDefuddleMarkdownOutput', normalizeToLF: 'normalizeToLF', notify: 'notify',
+    notifyRoutineParent: 'notifyRoutineParent', outputSection: 'outputSection', parseArgs: 'parseArgs', parseInterval: 'parseInterval',
+    parseSkillFrontmatterValue: 'parseSkillFrontmatterValue', plural: 'plural', prepareSessionSpawn: 'prepareSessionSpawn', processesBySession: 'processesBySession',
+    readContextAwarenessEvents: 'readContextAwarenessEvents', readFileInRange: 'readFileInRange', readFilePdfBinding: 'auxReadFilePdfBinding',
+    readFileUtility: 'auxReadFileUtility', readResponseBody: 'readResponseBody', registerBrowserReplTool: 'auxRegisterBrowserReplTool',
+    registerDirectFixedTool: 'auxRegisterDirectFixedTool', registerSelectedReadFileTool: 'auxRegisterSelectedReadFileTool', rememberReadSkill: 'rememberReadSkill',
+    replDescription: 'REPL_TOOL_DESCRIPTION', resizeImage: 'resizeImage', resolveCredentialDomain: 'resolveCredentialDomain', resolveFileToolPath: 'resolveFileToolPath',
+    resolvePermission: 'resolvePermission', resolveTimeoutMs: 'resolveTimeoutMs', restoreLineEndings: 'restoreLineEndings', resumeSubagent: 'resumeSubagent',
+    runRg: 'runRg', runSessionBash: 'runSessionBash', runWorkflow: 'runWorkflow', sanitizeDownloadFilename: 'sanitizeDownloadFilename', scrubUrl: 'scrubUrl',
+    searchBrowsingHistory: 'searchBrowsingHistory', searchRoot: 'searchRoot', selectedReadFileBytes: 'auxSelectedReadFileBytes',
+    selectedReadFileMime: 'auxSelectedReadFileMime', selectedReadFileStat: 'auxSelectedReadFileStat', sendAgentMessage: 'sendAgentMessage',
+    sendCommandToExtension: 'sendCommandToExtension', sessionTmpDir: 'sessionTmpDir', setAutomations: 'setAutomations', settings: 'settings', sliceLines: 'sliceLines',
+    spawnSubagent: 'spawnSubagent', start: 'start', startCoder: 'startCoder', stop: 'stop', stripBom: 'stripBom', timeoutScope: 'timeoutScope',
+    timersBySession: 'timersBySession', toMemoryRelative: 'toMemoryRelative', truncateHead: 'truncateHead', updateRoutine: 'updateRoutine',
+    usesBoundBrowserActions: 'auxUsesBoundBrowserActions', waitForSubagent: 'waitForSubagent', waitUnlessMessaged: 'waitUnlessMessaged',
+    withChildTimeout: 'withChildTimeout', withoutHistory: 'withoutHistory', writeMemoryPage: 'writeMemoryPage'},
   stores: {
     settings: {settingsCache: 'settingsCache', FileJsonStoreBackend: 'FileJsonStoreBackend', getSettingsJsonPath: 'getSettingsJsonPath', schema: 'settingsSchema',
       defaults: 'DEFAULT_SETTINGS', notifyAgentFileChange: 'notifyAgentFileChange'},
@@ -226,6 +298,28 @@ const ASYNC_ROUTINE_FUNCTIONS = ['createRoutine', 'updateRoutine', 'deleteRoutin
 const delegate = (store, name, kind = '') => edit(`the ${store} store's ${name} is Aux's`, `${kind}function ${name}(`,
   `${kind}function ${name}(...auxArgs){return auxOwnedDaemon.store(\`${store}\`,auxOwnedDaemonBindings).${name}(...auxArgs)}${kind}function auxSupplied_${name}(`);
 
+/** A tool factory the bundle keeps as a variable in a comma list: `name=head…`. The supplied body
+ * stays under another name, unreachable; those names are declared at the end of the entry. */
+const MCP_FUNCTIONS = ['inspectMcpConnection', 'migrateLegacyMcpInventories', 'getMcpConnectionStatus', 'connectMcpServer', 'finishMcpOAuthFlow', 'cancelMcpConnection', 'disconnectMcpServer'];
+
+const delegateVariable = (store, name, head) => edit(`${name} is Aux's`, `${name}=${head}`,
+  `${name}=(...auxArgs)=>auxOwnedDaemon.store(\`${store}\`,auxOwnedDaemonBindings).${name}(...auxArgs),auxSupplied_${name}=${head}`);
+
+const TOOL_VARIABLES = Object.freeze({
+  toolFiles: {createReadFileTool: '({context:Cn,autoResizeImages:ei=!auxUsesBoundBrowserActions()})=>', createWriteFileTool: '(Cn,{overwrite:ei=!1}={})=>', createEditFileTool: 'Cn=>', createRgTool: 'Cn=>', createFdTool: 'Cn=>'},
+  toolSession: {createGetTimeTool: '()=>', createTodosTool: 'Cn=>', createNotificationTool: 'Cn=>', createAskUserQuestionTool: 'Cn=>', createActionConfirmationTool: 'Cn=>', createReplTool: 'Cn=>'},
+  toolWeb: {createWebFetchTool: '(Cn={})=>', createWebSearchTool: 'Cn=>', createHistorySearchTool: 'Cn=>', createHistoryReadTool: 'Cn=>'},
+  toolMemory: {createMemoryReadTool: 'Cn=>'},
+  toolAgents: {createSubagentTool: '(Cn,ei=[])=>', createSubagentWaitTool: 'Cn=>', createMessageAgentTool: 'Cn=>', createStartCoderTool: 'Cn=>'},
+});
+const TOOL_FUNCTIONS = Object.freeze({
+  toolSession: ['createRoutineUpdateTool', 'createRoutineNotifyParentTool', 'createAutomationTools'],
+  toolShell: ['createTerminalTool', 'createBashTool', 'createTerminalInteractTool', 'createBackgroundProcessTools'],
+  toolMemory: ['createMemoryTools'],
+  toolAgents: ['createWorkflowTool', 'structuredOutputTool'],
+  toolsets: ['createCoreToolset', 'createAgentToolset', 'createCoderTools', 'createTools', 'createMcpAgentTools'],
+});
+
 /** The bundle's own stores, reaching Aux's. Kept apart so the parity harness can stage the bundle
  * without them, as the supplied reference. */
 export const STORE_EDITS = Object.freeze([
@@ -251,6 +345,20 @@ export const STORE_EDITS = Object.freeze([
   ...MEMORY_FILE_FUNCTIONS.map(name => delegate('memoryFiles', name, 'async ')),
   ...LEDGER_FUNCTIONS.map(name => delegate('contextLedger', name)),
   delegate('contextLedger', 'listContextAwarenessView', 'async '),
+  ...Object.entries(TOOL_VARIABLES).flatMap(([store, names]) => Object.entries(names).map(([name, head]) => delegateVariable(store, name, head))),
+  ...Object.entries(TOOL_FUNCTIONS).flatMap(([store, names]) => names.map(name => delegate(store, name))),
+  ...MCP_FUNCTIONS.map(name => delegate('mcpConnections', name, 'async ')),
+  delegate('mcpConnections', 'forgetMcpConnectionStatus'),
+  ...['isCaptureAllowed', 'findCapturedUrls', 'getContextAwarenessFootprint', 'historyRowAt', 'formatHistorySearch', 'formatHistoryRead'].map(name => delegate('contextHistory', name)),
+  ...['listOpenTabs', 'resolveCliBrowserBinding', 'restoreCliBrowserBinding'].map(name => delegate('browserBinding', name, 'async ')),
+  ...['listCliBrowserProfiles', 'isCliSession'].map(name => delegate('browserBinding', name)),
+  edit('the MCP manager is Aux\'s', 'McpManager=class{#e;', 'McpManager=auxOwnedDaemon.store(`mcpManager`,auxOwnedDaemonBindings),auxSupplied_McpManager=class{#e;'),
+  edit('the extension bridge commands are Aux\'s, with the supplied credential commands among them', '})(ExtensionBridgeCommand||={})',
+    '})(ExtensionBridgeCommand||={}),auxOwnedDaemon.store(`bridgeCommands`,auxOwnedDaemonBindings).adopt(ExtensionBridgeCommand)'),
+  edit('the extension bridge messages are Aux\'s', '})(ExtensionBridgeProtocol||={})',
+    '})(ExtensionBridgeProtocol||={}),auxOwnedDaemon.store(`bridgeCommands`,auxOwnedDaemonBindings).adoptProtocol(ExtensionBridgeProtocol)'),
+  edit('the extension bridge server is Aux\'s', 'ExtensionBridgeServer=class{connections=',
+    'ExtensionBridgeServer=auxOwnedDaemon.store(`bridgeServer`,auxOwnedDaemonBindings),auxSupplied_ExtensionBridgeServer=class{connections='),
 ]);
 
 /** The bundle as supplied for the stores: `text` with every store edit undone. */
@@ -258,5 +366,6 @@ export const withoutStoreEdits = text => STORE_EDITS.reduce((output, rule) => ou
 
 export function integrateDaemon(text) {
   if (text.includes('function auxOwnedDaemonBindings(')) throw Error('Aux daemon integration: the entry already has the dispatcher');
-  return `${applyExactEdits('aux daemon', [...DAEMON_EDITS, ...STORE_EDITS], text)}\n${BINDINGS_FUNCTION}\n`;
+  const supplied = [...Object.values(TOOL_VARIABLES).flatMap(names => Object.keys(names)), 'ExtensionBridgeServer', 'McpManager'].map(name => `auxSupplied_${name}`).join(',');
+  return `${applyExactEdits('aux daemon', [...DAEMON_EDITS, ...STORE_EDITS], text)}\n${BINDINGS_FUNCTION}\nvar ${supplied};\n`;
 }

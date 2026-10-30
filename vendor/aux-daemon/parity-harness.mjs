@@ -17,14 +17,20 @@ const controlHome = path.join(home, 'control'), taskHome = path.join(home, 'task
 
 // Both the ESM imports and the bundle's require() calls resolve child_process to this refusal.
 const refused = path.join(home, 'child-process-refused.cjs');
-writeFileSync(refused, ['spawn', 'exec', 'execFile', 'fork', 'spawnSync', 'execSync', 'execFileSync']
+writeFileSync(refused, [...['spawn', 'exec', 'execFile', 'fork', 'spawnSync', 'execSync', 'execFileSync']
   // The refusal names the command, so a port that runs a different one shows a different error.
-  .map(name => `exports.${name}=(...args)=>{throw Error('parity harness: child_process.${name} refused: '+JSON.stringify(args.filter(arg=>typeof arg==='string'||Array.isArray(arg))))};`).join('\n'));
+  .map(name => `exports.${name}=(...args)=>{throw Error('parity harness: child_process.${name} refused: '+JSON.stringify(args.filter(arg=>typeof arg==='string'||Array.isArray(arg))))};`),
+  // A step may answer execFile, as promisify(execFile) would.
+  `const refuseExecFile=exports.execFile;exports.execFile[require('node:util').promisify.custom]=(...args)=>{
+    if(globalThis.auxParityExecFile===undefined)refuseExecFile(...args);
+    const reply=Promise.resolve({stdout:globalThis.auxParityExecFile(...args),stderr:''});reply.child={stdin:{on(){return this},end(){}}};return reply;};`].join('\n'));
 registerHooks({resolve: (specifier, context, next) => /^(node:)?child_process$/.test(specifier)
   ? {url: pathToFileURL(refused).href, format: 'commonjs', shortCircuit: true} : next(specifier, context)});
 // The hosted Aux service as a signed-out client sees it: every account route answers 401 without
 // a bearer token (services/aux-cloud/src/auth.ts, requireUser). Anything else is refused.
 globalThis.fetch = async (url, options = {}) => {
+  const answered = await globalThis.auxParityFetch?.(url, options);
+  if (answered) return answered;
   if (new URL(url).origin === 'https://api.getaux.co' && !new Headers(options.headers).has('authorization'))
     return Response.json({error: 'Sign in to continue.', code: 'ACCESS_TOKEN_INVALID'}, {status: 401});
   throw Error(`parity harness: network request to ${new URL(url).origin} refused`);
@@ -37,14 +43,16 @@ const native = {};
 for (const [name, value] of Object.entries({
   captureStorageRoots: () => storageRoots, supervisedTasksEnabled: false,
   assertBrokerOwner: () => {}, withBrokerSync: work => work(), withBrokerAwaited: work => work(), closeBrokerWriteAdmission: () => {},
-  noteUntrackedBrokerWork: () => {}, withAccountRegistryLock: work => work(), validateMemoryRegistryTarget: () => {}, finishMemoryRegistryTarget: () => {},
+  noteUntrackedBrokerWork: () => {}, acquireRuntimeUse: () => ({close() {}}), withAccountRegistryLock: work => work(), validateMemoryRegistryTarget: () => {}, finishMemoryRegistryTarget: () => {},
   captureSelectedBuiltinSession: () => { throw Error('parity harness: no native session'); },
   run: () => { throw Error('parity harness: no native commands'); },
   ...Object.fromEntries(['beginChatGPTCredentialLock', 'withChatGPTCredentialLockSync', 'closeChatGPTCredentialLock']
     .map(name => [name, () => { throw Error('parity harness: no ChatGPT credentials'); }])),
 })) Object.defineProperty(native, name, {value, enumerable: true});
+const supervised = Object.defineProperties({}, {...Object.getOwnPropertyDescriptors(native), supervisedTasksEnabled: {value: true, enumerable: true}});
+let currentNative = native;
 const linkedBinding = process._linkedBinding.bind(process);
-process._linkedBinding = name => name === 'aux_owned_native' ? native : linkedBinding(name);
+process._linkedBinding = name => name === 'aux_owned_native' ? currentNative : linkedBinding(name);
 
 // One clock for both runs: each call happens one second after the last.
 let clock = Date.parse('2026-01-01T00:00:00.000Z');
@@ -55,6 +63,7 @@ globalThis.Date = class extends SystemDate {
 };
 
 const {SCENARIOS} = await import(new URL(scenariosModule, import.meta.url));
+const {STEPS} = await import(new URL('./parity-steps.mjs', import.meta.url));
 const daemon = await import(pathToFileURL(entry).href);
 daemon.init_accounts();
 const roots = [...new Set(Object.keys(SCENARIOS).map(namespace => namespace.split('.')[0]))];
@@ -63,7 +72,12 @@ await daemon.tryMigrateStateDb(0);
 const supplied = Object.fromEntries(roots.map(root => [root, daemon[`supplied_${root}`]]));
 const bindings = daemon.auxOwnedDaemonBindings();
 const routers = mode === 'aux' ? daemon.auxOwnedDaemon.compose(supplied, bindings) : supplied;
-const harness = {daemon, home, advance: ms => { clock += ms; }};
+const harness = {daemon, home, advance: ms => { clock += ms; }, trace: [],
+  // A step may stand in for remote servers.
+  answerFetch: answer => { globalThis.auxParityFetch = answer; },
+  // Past the supervised-task gate, with the commands of `child_process` still refused or answered.
+  supervise: on => { currentNative = on ? supervised : native; },
+  answerExecFile: stdout => { globalThis.auxParityExecFile = stdout === undefined ? undefined : (file, args) => { harness.trace.push(['execFile', file, args]); return stdout; }; }};
 // Agent file change notifications (settings and Project writes send them), in order.
 const agentFileChanges = [];
 daemon.agentFileListeners.add((accountId, kind) => agentFileChanges.push([accountId, kind]));
@@ -91,6 +105,9 @@ for (const [namespace, scenario] of Object.entries(SCENARIOS)) {
   }
   if (scenario.snapshot) snapshots[namespace] = await scenario.snapshot(harness);
 }
+
+const steps = {};
+for (const [name, step] of Object.entries(STEPS)) steps[name] = await step(harness);
 
 // The daemon's own root router, built through the integration edit: which procedures it serves
 // from Aux's modules rather than the supplied routers.
@@ -141,5 +158,5 @@ const files = readdirSync(home, {recursive: true}).filter(file => !file.split(pa
 const jsonFiles = Object.fromEntries(files.filter(file => /\.jsonl?$/.test(file)).map(file => [file, readFileSync(path.join(home, file), 'utf8')]));
 
 mkdirSync(path.dirname(out), {recursive: true});
-writeFileSync(out, JSON.stringify({owned: mode === 'aux' ? daemon.auxOwnedDaemon.owned() : {}, storesInUse: daemon.auxOwnedDaemon.storesInUse(), wired, outputs, snapshots, agentFileChanges, state, ledger, files, jsonFiles}));
+writeFileSync(out, JSON.stringify({owned: mode === 'aux' ? daemon.auxOwnedDaemon.owned() : {}, storesInUse: daemon.auxOwnedDaemon.storesInUse(), wired, outputs, snapshots, steps, agentFileChanges, state, ledger, files, jsonFiles}));
 process.exit(0);

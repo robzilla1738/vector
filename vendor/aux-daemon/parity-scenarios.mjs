@@ -718,4 +718,17 @@ export const EXTRA_EXPORTS = ['attentionByAccountId', 'hasForegroundAgentManager
   'getRoutineDetail', 'listRoutines', 'assertCapacity', 'insertConnection', 'upsertPrincipal', 'updateConnection', 'getPrincipal', 'getConnectionLastUsedAt',
   'getPairingRequest', 'getConnectionPolicy', 'toPublicConnection', 'getConnection', 'listConnections', 'deletePairingRequest', 'deletePrincipal', 'deleteConnection',
   'listPrincipals', 'listPairingRequests', 'writeMemoryPage', 'getAccountRoot', 'EPISODIC_DIR', 'CONTEXT_AWARENESS_PAGE_PREFIX', 'ledgerDb',
-  'listHistorySummaries', 'listContextAwarenessRecents', 'listNativeCaptureHealth', 'getSummaryJobStatus', 'tenMinuteWindow', 'eventIndexAt', 'resetTenMinuteWindow'];
+  'listHistorySummaries', 'listContextAwarenessRecents', 'listNativeCaptureHealth', 'getSummaryJobStatus', 'tenMinuteWindow', 'eventIndexAt', 'resetTenMinuteWindow',
+  // The agent tools, for parity-steps.mjs.
+  'getAccountTaskRoot', 'getSessionTaskDir', 'createAgentToolset', 'createTools as createChannelTools', 'createCoderTools', 'createTools$1 as createOrchestratorTools', 'createGetTimeTool', 'createTodosTool',
+  'createReadFileTool', 'createWriteFileTool', 'createEditFileTool', 'createWebFetchTool', 'createWebSearchTool', 'createAskUserQuestionTool', 'createActionConfirmationTool', 'createNotificationTool',
+  'createMemoryReadTool', 'createMemoryTools', 'createRoutineUpdateTool', 'createRoutineNotifyParentTool', 'createHistorySearchTool', 'createHistoryReadTool', 'createSubagentTool', 'createSubagentWaitTool',
+  'createMessageAgentTool', 'createStartCoderTool', 'structuredOutputTool', 'createReplTool', 'createAutomationTools', 'createMcpAgentTools', 'createBashTool', 'createTerminalInteractTool',
+  'createBackgroundProcessTools', 'createRgTool', 'createFdTool', 'createWorkflowTool',
+  // The extension bridge.
+  'globalExtensionBridge', 'ExtensionBridgeCommand', 'ExtensionBridgeProtocol', 'sendCommandToExtension', 'serve', 'import_websocket_server', 'listOpenTabs', 'auxBrowserEventHandlers', 'resolveCliBrowserBinding', 'restoreCliBrowserBinding', 'listCliBrowserProfiles', 'isCliSession',
+  'BRIDGE_CONNECTION_REPLACED_MESSAGE', 'RESOLVE_BINDING_UNSUPPORTED_MESSAGE',
+  // MCP.
+  'McpManager', 'getMcpConnectionStatus', 'inspectMcpConnection', 'connectMcpServer', 'cancelMcpConnection', 'forgetMcpConnectionStatus', 'disconnectMcpServer', 'finishMcpOAuthFlow', 'migrateLegacyMcpInventories',
+  // Context Awareness.
+  'isCaptureAllowed', 'findCapturedUrls', 'getContextAwarenessFootprint', 'formatHistorySearch', 'formatHistoryRead', 'historyRowAt'];

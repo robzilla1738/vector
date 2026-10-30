@@ -1,0 +1,288 @@
+{
+ "allowed": {
+  "off": [
+   {
+    "allowed": false,
+    "reason": "disabled",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "disabled",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "disabled",
+    "domain": "a.example"
+   },
+   {
+    "allowed": false,
+    "reason": "disabled",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "disabled",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "disabled",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "disabled",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "disabled",
+    "domain": "secret.example"
+   },
+   {
+    "allowed": false,
+    "reason": "disabled",
+    "domain": "fine.example"
+   }
+  ],
+  "on": [
+   {
+    "allowed": true,
+    "domain": ""
+   },
+   {
+    "allowed": true,
+    "domain": ""
+   },
+   {
+    "allowed": true,
+    "domain": "a.example"
+   },
+   {
+    "allowed": false,
+    "reason": "unresolvable-url",
+    "domain": ""
+   },
+   {
+    "allowed": true,
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "blocked-app",
+    "domain": ""
+   },
+   {
+    "allowed": true,
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "blocked-url",
+    "domain": "secret.example"
+   },
+   {
+    "allowed": true,
+    "domain": "fine.example"
+   }
+  ],
+  "typed text off": [
+   {
+    "allowed": true,
+    "domain": ""
+   },
+   {
+    "allowed": true,
+    "domain": ""
+   },
+   {
+    "allowed": true,
+    "domain": "a.example"
+   },
+   {
+    "allowed": false,
+    "reason": "unresolvable-url",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "typed-text-disabled",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "blocked-app",
+    "domain": ""
+   },
+   {
+    "allowed": true,
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "blocked-url",
+    "domain": "secret.example"
+   },
+   {
+    "allowed": true,
+    "domain": "fine.example"
+   }
+  ],
+  "paused": [
+   {
+    "allowed": false,
+    "reason": "paused",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "paused",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "paused",
+    "domain": "a.example"
+   },
+   {
+    "allowed": false,
+    "reason": "paused",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "paused",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "paused",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "paused",
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "paused",
+    "domain": "secret.example"
+   },
+   {
+    "allowed": false,
+    "reason": "paused",
+    "domain": "fine.example"
+   }
+  ],
+  "pause over": [
+   {
+    "allowed": true,
+    "domain": ""
+   },
+   {
+    "allowed": true,
+    "domain": ""
+   },
+   {
+    "allowed": true,
+    "domain": "a.example"
+   },
+   {
+    "allowed": false,
+    "reason": "unresolvable-url",
+    "domain": ""
+   },
+   {
+    "allowed": true,
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "blocked-app",
+    "domain": ""
+   },
+   {
+    "allowed": true,
+    "domain": ""
+   },
+   {
+    "allowed": false,
+    "reason": "blocked-url",
+    "domain": "secret.example"
+   },
+   {
+    "allowed": true,
+    "domain": "fine.example"
+   }
+  ]
+ },
+ "captured": [
+  [],
+  [
+   "https://example.com/tomatoes"
+  ],
+  [],
+  []
+ ],
+ "footprint": {
+  "keys": [
+   "retainedDbBytes",
+   "durableDbBytes",
+   "slackBytes",
+   "fileBytes"
+  ],
+  "cached": true,
+  "stale": true,
+  "fileBytes": 4
+ },
+ "search": [
+  "(no matching history)\n[Try fewer or different keywords, or widen from/to.]",
+  "(no matching history)\n[Try fewer or different words, widen from/to, or drop app/domain. Older days rank in memory_search.]",
+  "(no matches in the scanned captures)\n[Partial scan; narrow from/to, app or domain.]",
+  "(no matches in the scanned captures)\n[More: to=\"2026-01-01T06:00:00.000-06:00\", offset=0]",
+  "(no more matches at this offset)",
+  "(no more matches at this offset)\n[More: to=\"2026-01-01T06:00:00.000-06:00\", offset=0]",
+  "2026-01-01 Thu\n  06:01 Safari \"Window a\" https://example.com/a page.visit\n      Snippet of a\n  Safari \"Window bb\" https://example.com/bb\n⟨e:bb⟩ 2026 Snippet of bb\n  06:03 Safari \"Window ccc\" https://example.com/ccc page.visit\n      Snippet of bb\n  06:00–06:04 Safari \"Window dddd\" https://example.com/dddd page.visit\n      Snippet of dddd\n2025-12-31 Wed\n  06:00–06:01 summary ⟨s:s1⟩ About s1\nWhat happened in this window.\n  06:00–06:01 summary ⟨s:s2⟩ About s2\nEvidence text\n2026-01-01 Thu\n  05:00 visited \"v1\" https://example.com/v1 ×3\n  05:00 visited \"v2\" https://example.com/v2",
+  "2026-01-01 Thu\n  06:01 Safari \"Window a\" https://example.com/a page.visit\n      Snippet of a\n  Safari \"Window bb\" https://example.com/bb\n⟨e:bb⟩ 2026 Snippet of bb\n  06:03 Safari \"Window ccc\" https://example.com/ccc page.visit\n      Snippet of bb\n[more: to=\"2026-01-01T06:04:00.000-06:00\"]",
+  "2026-01-01 Thu\n  Safari \"Window bb\" https://example.com/bb\n⟨e:bb⟩ 2026 Snippet of bb\n  06:03 Safari \"Window ccc\" https://example.com/ccc page.visit\n      Snippet of bb\n  06:00–06:04 Safari \"Window dddd\" https://example.com/dddd page.visit\n      Snippet of dddd\n[more: offset=4]",
+  "2026-01-01 Thu\n  06:01 Safari \"Window a\" https://example.com/a page.visit\n      Snippet of a\n  Safari \"Window bb\" https://example.com/bb\n⟨e:bb⟩ 2026 Snippet of bb\n  06:03 Safari \"Window ccc\" https://example.com/ccc page.visit\n      Snippet of bb\n[more: offset=3]",
+  "2026-01-01 Thu\n  06:01 Safari \"Window a\" https://example.com/a page.visit\n      Snippet of a\n  Safari \"Window bb\" https://example.com/bb\n⟨e:bb⟩ 2026 Snippet of bb\n  06:03 Safari \"Window ccc\" https://example.com/ccc page.visit\n      Snippet of bb\n  06:00–06:04 Safari \"Window dddd\" https://example.com/dddd page.visit\n      Snippet of dddd\n2025-12-31 Wed\n  06:00–06:01 summary ⟨s:s1⟩ About s1\nWhat happened in this window.\n  06:00–06:01 summary ⟨s:s2⟩ About s2\nEvidence text\n2026-01-01 Thu\n  05:00 visited \"v1\" https://example.com/v1 ×3\n  05:00 visited \"v2\" https://example.com/v2\n[more: to=\"2025-12-31T05:59:59.999-06:00\"]",
+  "2026-01-01 Thu\n  06:01 Safari \"Window a\" https://example.com/a page.visit\n      Snippet of a\n  Safari \"Window bb\" https://example.com/bb\n⟨e:bb⟩ 2026 Snippet of bb\n  06:03 Safari \"Window ccc\" https://example.com/ccc page.visit\n      Snippet of bb\n  06:00–06:04 Safari \"Window dddd\" https://example.com/dddd page.visit\n      Snippet of dddd\n2025-12-31 Wed\n  06:00–06:01 summary ⟨s:s1⟩ About s1\nWhat happened in this window.\n  06:00–06:01 summary ⟨s:s2⟩ About s2\nEvidence text\n2026-01-01 Thu\n  05:00 visited \"v1\" https://example.com/v1 ×3\n  05:00 visited \"v2\" https://example.com/v2",
+  "2026-01-01 Thu\n  06:01 Safari \"Window a\" https://example.com/a page.visit\n      Snippet of a\n  Safari \"Window bb\" https://example.com/bb\n⟨e:bb⟩ 2026 Snippet of bb\n  06:03 Safari \"Window ccc\" https://example.com/ccc page.visit\n      Snippet of bb\n[more: to=\"2026-01-02T06:00:00.000-06:00\"]",
+  "2026-01-01 Thu\n  06:01 Safari \"Window a\" https://example.com/a page.visit\n      Snippet of a\n  Safari \"Window bb\" https://example.com/bb\n⟨e:bb⟩ 2026 Snippet of bb\n  06:03 Safari \"Window ccc\" https://example.com/ccc page.visit\n      Snippet of bb\n  06:00–06:04 Safari \"Window dddd\" https://example.com/dddd page.visit\n      Snippet of dddd\n2025-12-31 Wed\n  06:00–06:01 summary ⟨s:s1⟩ About s1\nWhat happened in this window.\n  06:00–06:01 summary ⟨s:s2⟩ About s2\nEvidence text\n2026-01-01 Thu\n  05:00 visited \"v1\" https://example.com/v1 ×3\n  05:00 visited \"v2\" https://example.com/v2",
+  "2026-01-01 Thu\n  Safari \"Window huge\" https://example.com/huge\n語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語\n…\n語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語語\n[more: to=\"2026-01-01T06:01:00.000-06:00\" · partial page]",
+  "2026-01-01 Thu\n  06:01 Safari \"Window a\" https://example.com/a page.visit\n      Snippet of a\n  Safari \"Window bb\" https://example.com/bb\n⟨e:bb⟩ 2026 Snippet of bb\n  06:03 Safari \"Window ccc\" https://example.com/ccc page.visit\n      Snippet of bb\n[more: to=\"2026-01-01T06:04:00.000-06:00\" · partial page]",
+  "2026-01-01 Thu\n  0\n…\n      Snippet of a\n[more: to=\"2026-01-01T06:02:00.000-06:00\" · partial page]",
+  "2026-01-01 Thu\n  0\n…\n     Snippet of bb\n[more: offset=3 · partial page]",
+  "[more: to=\"2026-01-01T06:01:00.000-06:00\"]"
+ ],
+ "rowAt": [
+  1767268860000,
+  1767268920000,
+  1767268980000,
+  1767269040000,
+  1767182500000,
+  1767182500000,
+  1767265200000,
+  1767265200000
+ ],
+ "read": [
+  "(no events or summaries with those ids)",
+  "⟨e:e1⟩ 2026-01-01 Thu 06:00:00 Safari page.visit\nLine one",
+  "⟨e:e1⟩ 2026-01-01 Thu 06:00:00 Safari page.visit\nCareful.\nLine one",
+  "⟨e:e1⟩ 2026-01-01 Thu 06:00:00 Safari page.visit\nLine one\n[4 more lines · offset=9]",
+  "⟨e:e1⟩ 2026-01-01 Thu 06:00:00 Safari page.visit, since ⟨e:e0⟩ (+1 −2 lines)\nLine one\n[… 4 more changed lines. Read ⟨e:e1⟩ alone for its whole screen.]",
+  "⟨s:s1⟩ summary 2026-01-01 Thu 06:00–06:00 \"T\"\nBody\n[2 more lines · offset=3]",
+  "⟨e:e1⟩ 2026-01-01 Thu 06:00:00 Safari page.visit\nLine one\n[Partial text]",
+  "⟨e:e1⟩ 2026-01-01 Thu 06:00:00 Safari page.visit\n[Offset 9 is past the end of 3 outline lines.]",
+  "⟨e:e1⟩ 2026-01-01 Thu 06:00:00 Safari page.visit\n[Stored content unavailable under the read budget.]\n[Partial text]",
+  "⟨e:e1⟩ 2026-01-01 Thu 06:00:00 Safari page.visit\n(no matching lines in the available source text)",
+  "⟨e:e1⟩ 2026-01-01 Thu 06:00:00 Safari page.visit\n(no stored text)",
+  "⟨e:e1⟩ 2026-01-01 Thu 06:00:00 Safari page.visit\n(no stored text)",
+  "⟨e:e1⟩ 2026-01-01 Thu 06:00:00 Safari page.visit\n(no stored text)",
+  "⟨e:e1⟩ = ⟨e:e2⟩ 2026-01-01 Thu 06:00:00–06:00:00 Safari · a.example \"W\" page.visit\nLine one\n\n────────\n\n⟨s:s1⟩ summary 2026-01-01 Thu 06:00–06:00 \"T\"\nBody"
+ ]
+}

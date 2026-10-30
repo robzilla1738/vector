@@ -1,0 +1,1203 @@
+{
+ "results": [
+  {
+   "step": "listTools",
+   "value": {
+    "tools": [
+     "ok/echo",
+     "ok/fails",
+     "ok/drops",
+     "raced/echo",
+     "raced/fails",
+     "raced/drops"
+    ],
+    "failures": {
+     "denied": {
+      "type": "authentication_required",
+      "message": "This server requires authentication."
+     },
+     "slow": {
+      "type": "timeout",
+      "message": "The connection timed out."
+     },
+     "gone": {
+      "type": "unreachable",
+      "message": "The MCP server could not be reached."
+     },
+     "teapot": {
+      "type": "invalid_server",
+      "message": "The endpoint did not complete a valid MCP handshake."
+     },
+     "oauth": {
+      "type": "invalid_server",
+      "message": "The endpoint did not complete a valid MCP handshake."
+     },
+     "authed": {
+      "type": "invalid_server",
+      "message": "The endpoint did not complete a valid MCP handshake."
+     },
+     "plain": {
+      "type": "invalid_server",
+      "message": "parity harness: child_process.spawn refused: [\"node\",[\"server.js\"]]"
+     }
+    }
+   }
+  },
+  {
+   "step": "initialize",
+   "value": [
+    "mcp__ok__echo",
+    "mcp__ok__fails",
+    "mcp__ok__drops"
+   ]
+  },
+  {
+   "step": "testConnection",
+   "value": null
+  },
+  {
+   "step": "testConnection, unknown",
+   "error": "Unknown MCP server 'absent'",
+   "name": "Error"
+  },
+  {
+   "step": "testConnection, off",
+   "error": "Unknown MCP server 'off'",
+   "name": "Error"
+  },
+  {
+   "step": "testConnection, refused",
+   "error": "parity harness: child_process.spawn refused: [\"node\",[\"server.js\"]]",
+   "name": "McpStdioConnectionError",
+   "cause": "parity harness: child_process.spawn refused: [\"node\",[\"server.js\"]]"
+  },
+  {
+   "step": "callTool",
+   "value": {
+    "content": [
+     {
+      "type": "text",
+      "text": "{\"name\":\"echo\",\"arguments\":{\"a\":\"b\"}}"
+     }
+    ]
+   }
+  },
+  {
+   "step": "callTool, unknown",
+   "error": "Unknown MCP server 'absent'",
+   "name": "Error"
+  },
+  {
+   "step": "callTool, tool error",
+   "error": "MCP error -32000: tool refused",
+   "name": "Cn"
+  },
+  {
+   "step": "callTool, server error",
+   "error": "Streamable HTTP error: Error POSTing to endpoint: gone",
+   "name": "McpConnectionError",
+   "cause": "Streamable HTTP error: Error POSTing to endpoint: gone"
+  },
+  {
+   "step": "callTool, reconnects",
+   "value": {
+    "content": [
+     {
+      "type": "text",
+      "text": "{\"name\":\"echo\",\"arguments\":{\"a\":\"again\"}}"
+     }
+    ]
+   }
+  },
+  {
+   "step": "callTool, cannot connect",
+   "error": "fetch failed",
+   "name": "McpConnectionError",
+   "cause": "fetch failed"
+  },
+  {
+   "step": "callTool, cancelled",
+   "error": "This operation was aborted",
+   "name": "DOMException"
+  },
+  {
+   "step": "shutdown",
+   "value": null
+  },
+  {
+   "step": "listTools, closed",
+   "error": "MCP manager is closed.",
+   "name": "Error"
+  },
+  {
+   "step": "callTool, closed",
+   "error": "MCP manager is closed.",
+   "name": "McpConnectionError",
+   "cause": "MCP manager is closed."
+  },
+  {
+   "step": "ok: status",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "ok: inspect",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "ok: status after",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "ok: connect",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "ok: cancel",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "ok: status forgotten",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "ok: disconnect",
+   "error": "parity harness: no native commands",
+   "name": "Error"
+  },
+  {
+   "step": "ok: status disconnected",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "off: status",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "off: inspect",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "off: status after",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "off: connect",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "off: cancel",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "off: status forgotten",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "off: disconnect",
+   "error": "parity harness: no native commands",
+   "name": "Error"
+  },
+  {
+   "step": "off: status disconnected",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "denied: status",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "denied: inspect",
+   "value": {
+    "status": "invalid_server",
+    "message": "The configured authentication was rejected. Edit this server."
+   }
+  },
+  {
+   "step": "denied: status after",
+   "value": {
+    "status": "invalid_server",
+    "message": "The configured authentication was rejected. Edit this server."
+   }
+  },
+  {
+   "step": "denied: connect",
+   "value": {
+    "status": "invalid_server",
+    "message": "The configured authentication was rejected. Edit this server."
+   }
+  },
+  {
+   "step": "denied: cancel",
+   "value": {
+    "status": "invalid_server",
+    "message": "The configured authentication was rejected. Edit this server."
+   }
+  },
+  {
+   "step": "denied: status forgotten",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "denied: disconnect",
+   "error": "parity harness: no native commands",
+   "name": "Error"
+  },
+  {
+   "step": "denied: status disconnected",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "slow: status",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "slow: inspect",
+   "value": {
+    "status": "unreachable",
+    "message": "The connection timed out."
+   }
+  },
+  {
+   "step": "slow: status after",
+   "value": {
+    "status": "unreachable",
+    "message": "The connection timed out."
+   }
+  },
+  {
+   "step": "slow: connect",
+   "value": {
+    "status": "unreachable",
+    "message": "The connection timed out."
+   }
+  },
+  {
+   "step": "slow: cancel",
+   "value": {
+    "status": "unreachable",
+    "message": "The connection timed out."
+   }
+  },
+  {
+   "step": "slow: status forgotten",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "slow: disconnect",
+   "error": "parity harness: no native commands",
+   "name": "Error"
+  },
+  {
+   "step": "slow: status disconnected",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "gone: status",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "gone: inspect",
+   "value": {
+    "status": "unreachable",
+    "message": "The MCP server could not be reached."
+   }
+  },
+  {
+   "step": "gone: status after",
+   "value": {
+    "status": "unreachable",
+    "message": "The MCP server could not be reached."
+   }
+  },
+  {
+   "step": "gone: connect",
+   "value": {
+    "status": "unreachable",
+    "message": "The MCP server could not be reached."
+   }
+  },
+  {
+   "step": "gone: cancel",
+   "value": {
+    "status": "unreachable",
+    "message": "The MCP server could not be reached."
+   }
+  },
+  {
+   "step": "gone: status forgotten",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "gone: disconnect",
+   "error": "parity harness: no native commands",
+   "name": "Error"
+  },
+  {
+   "step": "gone: status disconnected",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "teapot: status",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "teapot: inspect",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "teapot: status after",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "teapot: connect",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "teapot: cancel",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "teapot: status forgotten",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "teapot: disconnect",
+   "error": "parity harness: no native commands",
+   "name": "Error"
+  },
+  {
+   "step": "teapot: status disconnected",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "raced: status",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "raced: inspect",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "raced: status after",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "raced: connect",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "raced: cancel",
+   "value": {
+    "status": "connected",
+    "authStatus": "not_required"
+   }
+  },
+  {
+   "step": "raced: status forgotten",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "raced: disconnect",
+   "error": "parity harness: no native commands",
+   "name": "Error"
+  },
+  {
+   "step": "raced: status disconnected",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "oauth: status",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "oauth: inspect",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "oauth: status after",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "oauth: connect",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "oauth: cancel",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "oauth: status forgotten",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "oauth: disconnect",
+   "error": "parity harness: no native commands",
+   "name": "Error"
+  },
+  {
+   "step": "oauth: status disconnected",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "authed: status",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "authed: inspect",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "authed: status after",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "authed: connect",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "authed: cancel",
+   "value": {
+    "status": "invalid_server",
+    "message": "The endpoint did not complete a valid MCP handshake."
+   }
+  },
+  {
+   "step": "authed: status forgotten",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "authed: disconnect",
+   "error": "parity harness: no native commands",
+   "name": "Error"
+  },
+  {
+   "step": "authed: status disconnected",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "plain: status",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "plain: inspect",
+   "value": {
+    "status": "invalid_server",
+    "message": "parity harness: child_process.spawn refused: [\"node\",[\"server.js\"]]"
+   }
+  },
+  {
+   "step": "plain: status after",
+   "value": {
+    "status": "invalid_server",
+    "message": "parity harness: child_process.spawn refused: [\"node\",[\"server.js\"]]"
+   }
+  },
+  {
+   "step": "plain: connect",
+   "value": {
+    "status": "invalid_server",
+    "message": "parity harness: child_process.spawn refused: [\"node\",[\"server.js\"]]"
+   }
+  },
+  {
+   "step": "plain: cancel",
+   "value": {
+    "status": "invalid_server",
+    "message": "parity harness: child_process.spawn refused: [\"node\",[\"server.js\"]]"
+   }
+  },
+  {
+   "step": "plain: status forgotten",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "plain: disconnect",
+   "error": "parity harness: no native commands",
+   "name": "Error"
+  },
+  {
+   "step": "plain: status disconnected",
+   "value": {
+    "status": "connect"
+   }
+  },
+  {
+   "step": "unknown: status",
+   "error": "Unknown MCP server 'absent'.",
+   "name": "Error"
+  },
+  {
+   "step": "unknown: inspect",
+   "error": "Unknown MCP server 'absent'.",
+   "name": "Error"
+  },
+  {
+   "step": "unknown: connect",
+   "error": "Unknown MCP server 'absent'.",
+   "name": "Error"
+  },
+  {
+   "step": "unknown flow",
+   "error": "The authorization session is invalid or expired.",
+   "name": "Error"
+  },
+  {
+   "step": "together",
+   "value": [
+    {
+     "status": "connected",
+     "authStatus": "not_required"
+    },
+    {
+     "status": "connected",
+     "authStatus": "not_required"
+    },
+    {
+     "status": "connected",
+     "authStatus": "not_required"
+    }
+   ]
+  },
+  {
+   "inventories": {
+    "ok": [
+     "echo",
+     "fails",
+     "drops"
+    ],
+    "off": [
+     "echo",
+     "fails",
+     "drops"
+    ]
+   }
+  },
+  {
+   "step": "migrate",
+   "value": null
+  },
+  {
+   "step": "migrate again",
+   "value": null
+  },
+  {
+   "enabled": {
+    "ok": true,
+    "off": false,
+    "denied": false,
+    "slow": false,
+    "gone": false,
+    "teapot": false,
+    "raced": true,
+    "oauth": false,
+    "authed": false,
+    "plain": false
+   },
+   "toolInventoryMigrationVersion": 1,
+   "inventories": {
+    "off": [
+     "echo",
+     "fails",
+     "drops"
+    ],
+    "ok": [
+     "echo",
+     "fails",
+     "drops"
+    ]
+   }
+  }
+ ],
+ "calls": [
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "initialize",
+   "k"
+  ],
+  [
+   "https://denied.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://slow.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://teapot.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://raced.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "notifications/initialized",
+   "k"
+  ],
+  [
+   "https://raced.test/mcp",
+   "POST",
+   "notifications/initialized",
+   null
+  ],
+  [
+   "https://ok.test/mcp",
+   "GET",
+   null,
+   "k"
+  ],
+  [
+   "https://raced.test/mcp",
+   "GET",
+   null,
+   null
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/list",
+   "k"
+  ],
+  [
+   "https://raced.test/mcp",
+   "POST",
+   "tools/list",
+   null
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/list",
+   "k"
+  ],
+  [
+   "https://raced.test/mcp",
+   "POST",
+   "tools/list",
+   null
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/call",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/call",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "initialize",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "notifications/initialized",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "GET",
+   null,
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/call",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "initialize",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "notifications/initialized",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "GET",
+   null,
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/call",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "initialize",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "notifications/initialized",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "GET",
+   null,
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/list",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/list",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "initialize",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "notifications/initialized",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "GET",
+   null,
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/list",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/list",
+   "k"
+  ],
+  [
+   "https://off.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://off.test/mcp",
+   "POST",
+   "notifications/initialized",
+   null
+  ],
+  [
+   "https://off.test/mcp",
+   "GET",
+   null,
+   null
+  ],
+  [
+   "https://off.test/mcp",
+   "POST",
+   "tools/list",
+   null
+  ],
+  [
+   "https://off.test/mcp",
+   "POST",
+   "tools/list",
+   null
+  ],
+  [
+   "https://off.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://off.test/mcp",
+   "POST",
+   "notifications/initialized",
+   null
+  ],
+  [
+   "https://off.test/mcp",
+   "GET",
+   null,
+   null
+  ],
+  [
+   "https://off.test/mcp",
+   "POST",
+   "tools/list",
+   null
+  ],
+  [
+   "https://off.test/mcp",
+   "POST",
+   "tools/list",
+   null
+  ],
+  [
+   "https://denied.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://denied.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://slow.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://slow.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://teapot.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://teapot.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://raced.test/mcp/edited/edited",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://raced.test/mcp/edited/edited",
+   "POST",
+   "notifications/initialized",
+   null
+  ],
+  [
+   "https://raced.test/mcp/edited/edited",
+   "GET",
+   null,
+   null
+  ],
+  [
+   "https://raced.test/mcp/edited/edited",
+   "POST",
+   "tools/list",
+   null
+  ],
+  [
+   "https://raced.test/mcp/edited/edited",
+   "POST",
+   "tools/list",
+   null
+  ],
+  [
+   "https://raced.test/mcp/edited/edited/edited/edited",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://raced.test/mcp/edited/edited/edited/edited",
+   "POST",
+   "notifications/initialized",
+   null
+  ],
+  [
+   "https://raced.test/mcp/edited/edited/edited/edited",
+   "GET",
+   null,
+   null
+  ],
+  [
+   "https://raced.test/mcp/edited/edited/edited/edited",
+   "POST",
+   "tools/list",
+   null
+  ],
+  [
+   "https://raced.test/mcp/edited/edited/edited/edited",
+   "POST",
+   "tools/list",
+   null
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "initialize",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "notifications/initialized",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "GET",
+   null,
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/list",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/list",
+   "k"
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "initialize",
+   "k"
+  ],
+  [
+   "https://denied.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://slow.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://teapot.test/mcp",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://raced.test/mcp/edited/edited/edited/edited/edited/edited",
+   "POST",
+   "initialize",
+   null
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "notifications/initialized",
+   "k"
+  ],
+  [
+   "https://raced.test/mcp/edited/edited/edited/edited/edited/edited",
+   "POST",
+   "notifications/initialized",
+   null
+  ],
+  [
+   "https://ok.test/mcp",
+   "GET",
+   null,
+   "k"
+  ],
+  [
+   "https://raced.test/mcp/edited/edited/edited/edited/edited/edited",
+   "GET",
+   null,
+   null
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/list",
+   "k"
+  ],
+  [
+   "https://raced.test/mcp/edited/edited/edited/edited/edited/edited",
+   "POST",
+   "tools/list",
+   null
+  ],
+  [
+   "https://ok.test/mcp",
+   "POST",
+   "tools/list",
+   "k"
+  ],
+  [
+   "https://raced.test/mcp/edited/edited/edited/edited/edited/edited",
+   "POST",
+   "tools/list",
+   null
+  ]
+ ]
+}

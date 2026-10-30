@@ -43,4 +43,20 @@ export const STORES = Object.freeze({
   channels: './stores/channels.mjs',
   memoryFiles: './stores/memoryFiles.mjs',
   contextLedger: './stores/contextLedger.mjs',
+  contextHistory: './stores/contextHistory.mjs',
+  toolFiles: './tools/files.mjs',
+  toolSession: './tools/session.mjs',
+  toolShell: './tools/shell.mjs',
+  toolWeb: './tools/web.mjs',
+  toolMemory: './tools/memory.mjs',
+  toolAgents: './tools/agents.mjs',
+  toolsets: './tools/toolsets.mjs',
+  bridgeCommands: './bridge/commands.mjs',
+  bridgeServer: './bridge/server.mjs',
+  browserBinding: './bridge/binding.mjs',
+  mcpManager: './mcp/manager.mjs',
+  mcpConnections: './mcp/connections.mjs',
 });
+
+/** Modules the namespaces and stores import, copied with them. */
+export const SUPPORT_FILES = Object.freeze(['tools/common.mjs', 'tools/prompts.mjs', 'tools/schemas.mjs']);
