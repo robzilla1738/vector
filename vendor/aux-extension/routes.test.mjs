@@ -2175,3 +2175,42 @@ test('the tool cards and the registry render like the supplied ones', async () =
   assert.equal(JSON.stringify(world.render(() => ours.__kept_Fg(ours.__pair_TodosCard, {args: cardArgs}), {})), JSON.stringify(world.render(() => supplied.__kept_Fg(supplied.__pair_TodosCard, {args: cardArgs}), {})));
   assert.equal(ours.__kept_Fg(null, {}), supplied.__kept_Fg(null, {}));
 });
+
+// Small chunks: the New Tab nudges, the chat error alert and the file tree, each with the data it reads.
+test('the New Tab nudges, the error alert and the file tree render like the supplied ones', async () => {
+  const chunks = ['assets/nudges-7TFAp4B-.js', 'assets/error-alert-Bu3EEewB.js', 'assets/file-tree-YTG8I4Hr.js'];
+  const nudge = (world, browser, extra = {}) => ({imports: {'./strip-markdown-DRcmtuJc.js#nr': {data: browser, isLoading: false, refetch: world.stub('spy:refetch')},
+    './utils-BEeo4-cB.js#t': {isDismissed: false, dismiss: world.stub('spy:dismiss')}, './browser-color-scheme-Df5VSuPV.js#r': true,
+    './strip-markdown-DRcmtuJc.js#er': options => ({mutate: world.stub('spy:mutate'), isPending: false, options}), './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')},
+    './use-agent-settings-DiedG0R1.js#n': {isLoading: false, modelProvider: 'anthropic'}, './strip-markdown-DRcmtuJc.js#qt': {accountId: 7}, ...extra}});
+  const alert = (world, classified, meta = {}, detailsOpen = false) => ({actions: {retry: world.stub('spy:retry'), addCredits: world.stub('spy:addCredits'),
+    upgrade: world.stub('spy:upgrade'), report: world.stub('spy:report')}, meta, state: {classified, details: classified.details, detailsOpen}, toggleDetails: world.stub('spy:toggle')});
+  const kinds = [{kind: 'auth', title: 'Sign in again', description: 'The provider signed you out'}, {kind: 'disk-full', title: 'Disk full', description: 'Free space', details: 'ENOSPC'},
+    {kind: 'generic', title: 'Something failed', description: 'Try again', reportable: true, details: 'stack'}, {kind: 'aborted', title: 'Stopped', description: 'You stopped it'},
+    {kind: 'credits-aux-v2', title: 'Out of credits', description: 'Add credits', actions: ['addCredits', 'upgrade']}, {kind: 'credits-other', title: 'Provider credits', description: 'Top up'},
+    {kind: 'rate-limit', title: 'Slow down', description: 'Rate limited'}, {kind: 'overloaded', title: 'Busy', description: 'Overloaded'}, {kind: 'provider-server', title: 'Provider error', description: '500'}];
+  const nodes = [{type: 'directory', path: 'notes', name: 'notes', children: [{type: 'file', path: 'notes/plan.md', name: 'plan.md'},
+    {type: 'directory', path: 'notes/old', name: 'old', children: [{type: 'file', path: 'notes/old/a.txt', name: 'a.txt', trailing: '2 KB'}]}]},
+    {type: 'file', path: 'readme.md', name: 'readme.md', icon: 'custom-icon'}, {type: 'file', path: 'data.csv', name: 'data.csv'}];
+  await assertParity({blocksByChunk: Object.fromEntries(chunks.map(chunk => [chunk, ROUTES[chunk]])), textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES,
+    minimum: 400, defaults: false, renamed: renamedBindings, scenes: [
+      world => ({...nudge(world, {isDefault: false, canSet: true}), state: ['hidden'], context: alert(world, kinds[2], {}, true)}),
+      world => ({...nudge(world, {isDefault: false, canSet: false, policyDisabled: false}), state: ['pending'], context: alert(world, kinds[4], {compact: true, className: 'probe'})}),
+      world => ({...nudge(world, {isDefault: true}, {'./strip-markdown-DRcmtuJc.js#qt': null}), context: alert(world, kinds[0])}),
+      world => ({...nudge(world, {policyDisabled: true}, {'./utils-BEeo4-cB.js#t': {isDismissed: true, dismiss: world.stub('spy:dismiss')}}), context: alert(world, kinds[3])}),
+      ...kinds.slice(5).concat(kinds[1], kinds[4]).map(kind => world => ({...nudge(world, undefined, {'./browser-color-scheme-Df5VSuPV.js#r': false}), context: alert(world, kind, {}, true)})),
+    ],
+    props: [world => ({accountId: 7, className: 'probe', from: 'user', children: 'child', title: 'Out of credits', description: 'Add credits to continue', icon: 'abort', tone: 'destructive',
+      actionsBelow: true, primary: true, onClick: world.stub('spy:onClick'), classified: kinds[2], actions: {retry: world.stub('spy:retry')}, meta: {compact: true},
+      nodes, ariaLabel: 'Files', selectedPath: 'notes/old/a.txt', renderIcon: world.stub('spy:renderIcon'), onSelect: world.stub('spy:onSelect'), depth: 1,
+      expandedPaths: new Set(['notes', 'notes/old']), node: nodes[0], onToggleDirectory: path => () => path}),
+      {from: 'assistant', title: 'Hi', description: 'there', icon: 'brand', tone: 'muted', classified: kinds[0], nodes, expandAllByDefault: true, ariaLabel: 'All', node: nodes[1],
+        depth: 0, expandedPaths: new Set(), selectedPath: 'readme.md', onSelect: () => () => 1, onToggleDirectory: () => () => 2},
+      {icon: 'warning', tone: 'default', nodes: [], node: nodes[2], expandedPaths: new Set(), onSelect: () => () => 0, onToggleDirectory: () => () => 0}, {icon: undefined, children: 'Retry'}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: chunks[2], text: textOf(chunks[2]), blocks: ROUTES[chunks[2]], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES,
+    renamed: renamedBindings});
+  for (const path of ['notes/old/a.txt', 'a', '', 'x/y/z/w.md']) assert.equal(JSON.stringify(ours.__pair_ancestorPaths(path)), JSON.stringify(supplied.__pair_ancestorPaths(path)));
+  assert.equal(JSON.stringify(ours.__pair_directoryPaths(nodes)), JSON.stringify(supplied.__pair_directoryPaths(nodes)));
+  for (const path of ['a.md', 'a.MD', 'a.txt']) assert.equal(ours.__pair_iconFor(path) === ours.__pair_FileIcon, supplied.__pair_iconFor(path) === supplied.__pair_FileIcon);
+});

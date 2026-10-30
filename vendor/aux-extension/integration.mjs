@@ -390,6 +390,13 @@ export const ROUTES = Object.freeze({
       'pandMode:"none",footer:Ep,standalone:!0}', 'cc46ce364e24178a35759a217bd1811708122429e98f9eb119e14c0a7dbe6127', 10359),
     block('Aux Code handoff, web fetch, web search and to-do cards, and the registry', 'tool-registry.js', 'kp=({title:e,prompt:t,status:n,onOpen:i}',
       '=(e,t)=>e?(0,j.createElement)(e,t):null;', '932af1b3be4351a5c4543d211d4f68cb3a20152dcfa4e03d5fe46b32419de587', 6250)],
+  // vendor/provided/agent/integration.mjs drops the default-browser nudge's small Aux mark first.
+  'assets/nudges-7TFAp4B-.js': [block('New Tab nudges', 'new-tab-nudges.js', 'var c=A(S(),1),e=j(),o="new-tab",L=()=>{',
+    '(i)}),n==="hidden"&&(0,e.jsx)(L,{})]})};', 'ef340de832ed2fb142c094068d251e02fba985c9f871242b15405f6a62367f7a', 1642)],
+  'assets/error-alert-Bu3EEewB.js': [block('Chat error alert', 'error-alert.js', 'var t=h(),I=({size:r=24,ariaHidden:e=!0,',
+    'eric"&&e.reportable&&(0,t.jsx)(T,{})]})}', '26ed1281abeeb6fee31e9ebfb32f0c448c498eb79afd341a311c0ede41d54a5b', 4841)],
+  'assets/file-tree-YTG8I4Hr.js': [block('File tree', 'file-tree.js', 'var r=H(),E=({size:s=24,ariaHidden:t=!0,',
+    '));return e},F=s=>s.endsWith(".md")?M:E;', '3af3c357f280965efd55825651707da97b6063ace756da0e9d1611ceb9eb935d', 4353)],
 });
 
 /** Supplied name → Aux name for the module bindings a route renamed (the parity tests compare them
@@ -452,6 +459,8 @@ export const TOKEN_CHANGES = Object.freeze([
   ['tool-cards.js', 'rounded-2xl', 'rounded-xl'],
   ['tool-cards.js', 'bg-white', 'bg-background'],
   ['tool-cards.js', 'text-black', 'text-foreground'],
+  // A chat error card: the 12px card corner (its compact form already used it).
+  ['error-alert.js', 'rounded-2xl', 'rounded-xl'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');
