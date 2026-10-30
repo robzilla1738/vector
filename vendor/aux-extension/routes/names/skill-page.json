@@ -1,0 +1,23 @@
+{
+ "nt": "DeleteIcon",
+ "d": "React",
+ "Ut": "UNUSED_SKILL_ROUTE",
+ "lt": "treeNodes",
+ "ot": "skillTree",
+ "X": "overriddenBadge",
+ "ct": "addFile",
+ "ue": "sortTree",
+ "dt": "treeOrder",
+ "M": "SkillRoute",
+ "me": "SkillFileContext",
+ "ut": "SkillFileProvider",
+ "q": "useSkillFile",
+ "mt": "SkillHeader",
+ "ht": "EditSkillDialog",
+ "pt": "SkillFileContent",
+ "xt": "MarkdownFile",
+ "gt": "OtherFile",
+ "Y": "Markdown",
+ "ee": "MetadataRow",
+ "ft": "AGENTS"
+}

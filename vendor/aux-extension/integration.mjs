@@ -301,6 +301,73 @@ export const ROUTES = Object.freeze({
     block('Composer: toolbar, model menu, queued messages and composer shell', 'composer-toolbar-model.js', 'function Ep(e){const t=e.diagn',
       'p-1 first:shrink-0 first:grow",children:e});', '3bbd99658e6f6b7f84fdeaf0abbbaaab9ef12c3762b978c361674885579e04ad', 30866),
   ],
+  'assets/_sessionId-ClN_BWh5.js': [block('Task session page', 'task-session.js', 'var e=Ue(),Gt=({size:s=24,ariaH',
+    'navigateToSession:l})})}', 'f0c655307a23a4bb4be9c2f6e2c54fe373aaeb99ab8c8c39e2a2134881063627', 42641)],
+  // The chat input and its prompts, in two passes around the supplied chat input (js), which carries
+  // vendor/provided/aux-productivity-tab-context.mjs's tab checks and stays with it.
+  'assets/permission-approval-D-GTf91U.js': [
+    block('Chat input: icons, contexts, page selection, attachments and the message', 'chat-input-context.js', 'dn=({size:e=24,ariaHidden:t=!0,...r})=>(',
+      'useChatInputText must be used within ChatInputProvider");return e}', '5b7598e0c1ac692e0a7d22031e239c7ba0e3cb7bf4531ac69f8e43cda70896f9', 7580),
+    block('Chat input: action confirmation, questions and permission approval', 'chat-input-prompts.js', 'we=e=>JSON.stringify(e.doc),kn=(e,t)=>e=',
+      '(0,n.jsx)(Ot,{className:"size-3!"})})]})', '08d5f7ddb3970f2f9035ddcb0485a497befb42c682a17524594867d10e473802', 25788),
+  ],
+  // Plugins › MCPs in two passes; the bundled MCP SDK and settings schemas between them stay supplied
+  // (the experimental settings schema in them belongs to vendor/provided/aux-experimental-settings-v2.mjs).
+  'assets/mcps-DmPp5oo9.js': [
+    block('MCPs: icons and command-line and URL helpers', 'mcps-helpers.js', 'La=({size:e=24,ariaHidden:n=!0,...r})=>(',
+      '"http:"&&Ua(n.hostname)}catch{return!1}}', 'c65711cb4ef8e197f96b4d0a73a34d44114ec33977a5101b895a8b9d5ec4fd12', 6423),
+    block('MCPs: presets, servers, the server dialog and the page', 'mcps-page.js', 'function po(e){return e.transport==="std',
+      '0,a.jsx)(go,{accountId:n,servers:i})]})}', '72f4d17987b5c18d4db52e6a962826c27f42cc78b24810056f54f8dd68e68895', 19833),
+  ],
+  // The connect provider dialog in three passes. vendor/provided/provider-cli/integration.mjs owns the
+  // CLI rows (In, Sn, auxCliDialog), the reserved provider IDs (Ve) and the dialog list (Rn); the
+  // OAuth sign-in flow its edits left unreachable stays supplied.
+  'assets/connect-dialog-CacgpFap.js': [
+    block('Connect dialog: the dialog parts and API key providers', 'connect-api-keys.js', 'Ae=(0,d.createContext)(null),P=({provider:',
+      'udio",baseUrl:"http://localhost:1234/v1"}}', '0727f5c05cca2a7da2b7280ad17f93ec6f230f2194f2c6bf1af2e9f875a82d07', 13695),
+    block('Connect dialog: custom JSON providers, Ollama and LM Studio', 'connect-local-custom.js', 'on=j().min(1).refine(t=>!Ve.has(t),{messag',
+      '.providerName}`)}},isPending:l.isPending}}', 'babf837e322035d86253cca1c7d3a56e9b73e5341b18b83ea896dbdca578ff5b', 11618),
+    block('Connect dialog: every provider dialog', 'connect-dialogs.js', 'var cs=()=>(0,e.jsxs)(e.Fragment,{children:[',
+      'n,{}),(0,e.jsx)(Rn,{}),(0,e.jsx)(hn,{})]})', '9ce8cb95f423a97737a5a12f3949ab59965f73351bac8ae299ed40354dcdb24f', 488),
+  ],
+  // Model select in three passes; the launch policy at the top of the chunk belongs to
+  // vendor/provided/provider-funded-launch.mjs (the provider reads it).
+  'assets/model-select-BvZsM1Kl.js': [
+    block('Model select: the Ultrabrowse switch and label', 'model-select-ultrabrowse.js', 'Ve=({checked:r,disabled:o,onCheckedChange:',
+      'Me=(0,d.createContext)(null),se=new WeakMap', '1b0c38aae840534eb8bed3d311911a3627692060e0b6e9f4d07b9bbd3fad24d5', 3420),
+    block('Model select: the provider', 'model-select-provider.js', 'vr=({value:r,fallbackValue:o,modelCatalog:',
+      'kingOpenChange:B,onChange:k},children:N})}', 'd67a5b1ae77b50a6a8b3487a0e94577355e1cb147f1212bf136dbe74b1489bdb', 2885),
+    block('Model select: shortcuts, the model menu and the thinking menu', 'model-select-menus.js', 'br=({thinking:r=!0})=>{const o=(0,d.useRef)',
+      'Levels),fastMode:r.supportsFastMode?o:!1})', 'd9ba8bcc2f124143063f7c32cbb35936b7fdabba0df75939218e7d8c7a8d50f8', 9585),
+  ],
+  'assets/skills-CfSQ7MCw.js': [block('Plugins › Skills', 'skills-page.js', 'Pe=({size:s=24,ariaHidden:i=!0,...a})=>(0,',
+    't.isPending,children:"Create"})]})]})})})}', 'd55787adc117d697628f88f900e2e2e0cc9a6eff3d5e9a15b4a1e0450df18a3a', 9748)],
+  'assets/_skillId-CAwCRjA8.js': [block('A skill\'s page', 'skill-page.js', 'nt=({size:t=24,ariaHidden:i=!0,...s})=>(0,',
+    '-0",children:(0,e.jsx)(pt,{})})})]})})]})}', '0e9e90ae637b2064952e5435291191f9198a22c819949d34d107d9e1f693254a', 14792)],
+  'assets/skill-activation-fields-wmmVsYeN.js': [block('Skill activation fields and helpers', 'skill-activation.js',
+    'var I=/^---\\r?\\n([\\s\\S]*?)\\r?\\n---\\r?\\n?/,T=new S', ',t.length>0?t.join(" · "):"Manual only"}',
+    'd068debd65677704927c4f155f8021db62f5b3fb860984f641593dd97829cdd7', 4137)],
+  // The app shell: only its UI. The router and route table, whose guards and redirects belong to
+  // vendor/provided/native-ui-compat.mjs and scripts/lib/provided-password-manager-scope.mjs, stay supplied.
+  'assets/extension-main-Dz1-AsCT.js': [
+    block('App root providers', 'app-root.js', 'function Ct(){return(0,i.jsxs)(Ne,{attri', '(0,i.jsx)(Tt,{}),(0,i.jsx)(Ut,{})]})]})}',
+      '1df23e1d4867f4016288fe4d6e140faba0e29cdb5fd554d2a17ef27c90714063', 486),
+    block('Settings page placeholder', 'settings-pending.js', 'function $o(){const e=it();return(0,i.js', 'ssName:"h-3 w-4/5"})]},r))})]})]})})]})}',
+      '5e06bfdab3f15d50fdfda1819ada8379ac88813a1a34631b31d80f76d5fab0f9', 1190),
+    block('Memory index status', 'memory-index-status.js', 'ui=()=>{const e=tt(),t=Xe(),{userId:r}=m', 'dedBytes,max:e.totalDownloadBytes}:null}',
+      '87620a4bd2ea5187690fb23582eb81669f7bd1325c0ff151bf2ac356aa65e2e2', 2942),
+  ],
+  // Assistant steps and the turn fold, around the bundled Radix controllable-state hooks.
+  'assets/turn-fold-B4gN_g5e.js': [
+    block('Assistant steps and subagent rows', 'turn-steps.js', 're=({size:e=24,ariaHidden:n=!0,...r})=>(0,',
+      'te pt-0.5 text-[13px]",children:o})]})]})}', '7e1672fce77ad3e7c59d59a6fe7ec035701ce45da545c891c0d40b658f6bbd85', 4794),
+    block('The turn fold', 'turn-fold.js', 'le=({children:e,open:n,defaultOpen:r=!1,on', 'st be rendered inside TurnFold");return e}',
+      'e3ca5e08f3c4f43693e99baf2e7499e81c23871e7dbefd7d75a6dd5c4421d7da', 1450),
+  ],
+  'assets/update-banner-C_z-hMCt.js': [block('New Tab update banner', 'update-banner.js', 'var g=j(I(),1),N=f({version:s(),minVersion',
+    'm:-24,right:-12,transition:{duration:.1}}}', '3cd433acf30e361610d61ac4ec48c3a4c6791df8c772689d457367296fdc29c7', 4684)],
+  'assets/copy-button-C-CFkoWv.js': [block('Copy button', 'copy-button.js', 'k=({size:t=24,ariaHidden:n=!0,...r})=>(0,e',
+    '??(0,e.jsx)(j,{})},r?"copied":"copy")})})}', 'b97098a9e0b08dcbc2232061f607062e034ba325a63700cb3cf2d6d03e8a1d33', 1792)],
 });
 
 /** Supplied name → Aux name for the module bindings a route renamed (the parity tests compare them
@@ -347,6 +414,17 @@ export const TOKEN_CHANGES = Object.freeze([
   ['channels-setup.js', 'text-orange-500', 'text-destructive'],
   // General's import summary card: the 12px card corner.
   ['general-settings.js', 'rounded-2xl', 'rounded-xl'],
+  // The Share dialog's options were fixed white with a neutral hover in light mode.
+  ['task-session.js', 'hover:bg-neutral-100', 'hover:bg-muted'],
+  ['task-session.js', 'rounded-none bg-white', 'rounded-none bg-background'],
+  // The artifact in an action confirmation used a 14px corner off the scale.
+  ['chat-input-prompts.js', 'rounded-[14px]', 'rounded-xl'],
+  // The connect dialog's required marks were a fixed orange, like the channel setup ones were.
+  ['connect-local-custom.js', 'text-orange-500', 'text-destructive'],
+  // A hovered skill row used a fixed neutral-100 in light mode, unlike the settings rows around it.
+  ['skills-page.js', 'hover:bg-neutral-100', 'hover:bg-muted'],
+  // The update banner card: the 12px card corner.
+  ['update-banner.js', 'rounded-2xl', 'rounded-xl'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');

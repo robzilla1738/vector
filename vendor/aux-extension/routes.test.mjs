@@ -1366,3 +1366,558 @@ test('General settings keep languages, label versions and render like the suppli
       {status: 'succeeded', error: null, languages: [], preferredLanguages: [], code: 'xx', index: 0, open: false}]});
 });
 
+
+// The task session page: a running chat in a project, started by another chat from a channel, with
+// agent tabs (owned and borrowed), outputs (an app bundle, nested artifacts), its routines and a
+// standalone routine's details; the share link, the menu and the rename dialog; docked and floating.
+test('the task session page renders like the supplied one with tabs, outputs, routines and sharing', async () => {
+  const chunk = 'assets/_sessionId-ClN_BWh5.js';
+  const SM = './strip-markdown-DRcmtuJc.js';
+  const tabs = [{sessionTabId: 'st1', targetId: 'T1', url: 'https://docs.example/a#top', iconUrl: 'https://docs.example/i.png', title: 'Docs', ownership: 'owned', createdAt: '2026-10-30T09:00:00Z'},
+    {sessionTabId: 'st2', targetId: null, url: 'https://blog.example/b', title: '', ownership: 'owned', createdAt: '2026-10-30T10:00:00Z'},
+    {sessionTabId: 'st3', targetId: 'T3', url: 'https://mail.example', title: 'Mail', ownership: 'borrowed', createdAt: '2026-10-30T08:00:00Z'}];
+  const files = ['output/report.md', 'artifacts/Tool.app/Contents/Info.plist', 'artifacts/docs/b.md', 'artifacts/docs/a.md', 'artifacts/notes', 'scratch.tmp'];
+  const routine = {id: 'r1', name: 'Morning brief', status: 'active', environment: 'device', deviceId: 'd2', isCurrentDevice: false, lastRunAt: '2026-10-30T08:00:00Z', nextRunAt: null};
+  const routines = [routine, {id: 'r2', name: 'Weekly', status: 'paused'}, {id: 'r3', name: 'Done', status: 'completed'}];
+  const element = {getBoundingClientRect: () => ({right: 900, bottom: 64, width: 640}), closest: () => element, contains: () => false};
+  const session = (extra = {}) => ({id: 's1', title: 'Plan the trip', status: 'running', incognito: false, messages: [{role: 'user'}], projectId: 'p1',
+    trigger: {type: 'channel', channel: 'slack'}, activeTabTargetId: 'T1', ...extra});
+  const context = (world, extra = {}) => ({sidePanelMode: 'open', sidePanelRef: {current: null}, setSidePanelDockLocked: world.stub('spy:dockLocked'),
+    setSidePanelRef: world.stub('spy:setSidePanelRef'), syncSidePanelCollapsed: world.stub('spy:syncCollapsed'), toggleSidePanel: world.stub('spy:toggle'),
+    floatAnchorElement: element, floatShellRef: {current: element}, isDocked: false, layoutElement: element, setFloatAnchorElement: world.stub('spy:anchor'),
+    setLayoutElement: world.stub('spy:layout'), sessionId: 's1', userId: '7', playground: undefined, navigateToSession: world.stub('spy:navigateToSession'), ...extra});
+  const scene = (world, {current = session(), share = {url: 'https://share.example/s1'}, local = true, wide = true, list = files, ctx = {}, mode = 'open'} = {}) => ({
+    context: context(world, ctx), imports: {
+      './context-q_vohNW8.js#n': {currentSession: current, create: world.stub('spy:create')}, [`${SM}#Kt`]: {accountId: 7},
+      [`${SM}#jn`]: {host: {kind: local ? 'local' : 'cloud'}, can: name => name === 'tabs'}, [`${SM}#g`]: status => status === 'running',
+      [`${SM}#Ht`]: {capture: world.stub('spy:capture')}, [`${SM}#M`]: {confirm: world.stub('spy:confirm')}, [`${SM}#N`]: {broadcast: world.stub('spy:broadcast')},
+      [`${SM}#mt`]: path => !path.endsWith('.tmp'), [`${SM}#dt`]: path => path.startsWith('artifacts/'), [`${SM}#ct`]: path => path.split('/').pop(),
+      [`${SM}#en`]: true, [`${SM}#pr`]: {invalidateQueries: world.stub('spy:invalidate'), refetchQueries: world.stub('spy:refetch')},
+      './error-tracking-B1YG2RRM.js#u': {copy: world.stub('spy:copy')}, './provider-Cw0zhujt.js#X': {mode}, './utils-BEeo4-cB.js#n': true,
+      './session-composer-Dc0LRfZA.js#H': (list, active) => ({tabs: list.map(tab => ({...tab, active: tab.targetId === active}))}),
+      './favicon-Dpszfa2o.js#i': (url, icon) => [icon, `${url}/favicon.ico`].filter(Boolean), './tool-definition-registry-Cc6FCFb2.js#f': item => `Repeats for ${item.name}`,
+      './date-CxUVm-Dr.js#n.default': at => ({format: pattern => `${at} as ${pattern}`}), 'window.matchMedia': () => ({matches: wide}),
+      './extension-main-Dz1-AsCT.js#b.useParams': () => ({sessionId: 's1', userId: '7'}), './extension-main-Dz1-AsCT.js#b.useSearch': () => ({playground: undefined, [`${SM}#Fn`]: 'host-key'}),
+      './tag-icon-DeMC7uIN.js#f': () => ({reset: world.stub('spy:reset'), handleSubmit: submit => submit, register: name => ({name}), watch: () => ' Plan '}),
+      [`${SM}#tr`]: {data: {model: 'opus', projectId: 'p1'}}, 'chrome.debugger.getTargets': async () => [{id: 'T1', tabId: 11}, {id: 'T3', tabId: 13}],
+      'chrome.tabs.update': async id => ({id, windowId: 2}), 'chrome.tabs.query': async () => [], 'chrome.tabs.create': async ({url}) => ({id: 31, url, windowId: 3}),
+      'chrome.tabs.get': async id => ({id, groupId: 5}), 'chrome.tabGroups.get': async id => ({id, title: 'Agent Tabs'}), 'chrome.tabs.remove': async () => {},
+      'chrome.windows.update': async () => {},
+      [`${SM}#er`]: options => ({isPending: false, mutateAsync: world.stub('spy:mutateAsync'), name: queryName(options)}),
+      [`${SM}#nr`]: queries({shareStatus: {data: share, isPending: false, refetch: world.stub('spy:refetchShare')}, 'tabs.list': {data: tabs},
+        'routines.summary': {data: routine}, 'auth.devices': {data: [{id: 'd2', deviceName: 'Studio', isCurrent: false}], isLoading: false},
+        'routines.list': {data: routines}, 'files.list': {data: list}, 'projects.get': {data: {id: 'p1', name: 'Aux', color: 'blue', icon: 'folder'}},
+        listPreviewItems: {data: {id: 's0', title: 'Parent chat', name: '#general'}}}),
+    }});
+  const tree = [{type: 'file', name: 'report.md', path: 'output/report.md', data: 'output/report.md', children: []},
+    {type: 'directory', name: 'docs', path: 'artifacts/docs', children: [{type: 'file', name: 'a.md', path: 'artifacts/docs/a.md', data: 'artifacts/docs/a.md', children: []}]}];
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 700, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world),
+      world => scene(world, {current: session({trigger: {type: 'standalone-routine', routineId: 'r1'}, status: 'idle', projectId: null}), share: null, ctx: {isDocked: true}}),
+      world => scene(world, {current: session({incognito: true, trigger: {type: 'agent', starterId: 's0'}}), local: false, wide: false, list: [], mode: 'collapsed',
+        ctx: {sidePanelMode: 'collapsed', floatAnchorElement: null}}),
+      world => scene(world, {current: session({status: 'idle', messages: [], trigger: undefined, title: ''})}),
+      world => ({...scene(world), state: [true], event: {target: element, currentTarget: element, key: 'Enter', preventDefault: world.stub('spy:preventDefault'),
+        stopPropagation: world.stub('spy:stopPropagation')}})],
+    props: [world => ({sessionId: 's1', userId: '7', navigateToSession: world.stub('spy:navigate'), enabled: true, routineId: 'r1', datetime: '2026-10-30T08:00:00Z',
+      empty: 'Not run yet', item: tabs[0], previewEnabled: true, canSwitchToTab: true, onActivate: world.stub('spy:activate'), onKeyDownActivate: world.stub('spy:keyDown'),
+      onClose: world.stub('spy:close'), url: tabs[0].url, faviconUrl: tabs[0].iconUrl, nodes: tree, previewFilesByPath: new Map([['output/report.md', {previewUrl: 'blob:r'}]]),
+      osActionsEnabled: true, onOpenFile: world.stub('spy:openFile'), open: true, onOpenChange: world.stub('spy:openChange'), files, tabs, filesOverride: files, children: 'chat',
+      options: {outputArtifacts: false, streaming: true, subagentSeed: 3, subagents: true, todoList: false}, playgroundOptions: {streaming: false},
+      onPlaygroundOptionsChange: world.stub('spy:playground'), onChange: world.stub('spy:change')}),
+      {enabled: false, previewFiles: [{metadata: {path: 'output/a.md'}, previewUrl: 'blob:a'}, {metadata: {path: 'x.tmp'}}], item: tabs[1], canSwitchToTab: false,
+        previewEnabled: false, nodes: [], previewFilesByPath: new Map(), datetime: null, empty: 'Not scheduled', open: false, files: [], tabs: [tabs[2]], className: 'probe'}]});
+});
+
+test('the task session page helpers share, address, open tabs and build output trees like the supplied ones', async () => {
+  const chunk = 'assets/_sessionId-ClN_BWh5.js';
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  world.enter({imports: {'./strip-markdown-DRcmtuJc.js#g': status => status === 'running', './strip-markdown-DRcmtuJc.js#mt': () => true,
+    './strip-markdown-DRcmtuJc.js#dt': path => path.startsWith('artifacts/'), './strip-markdown-DRcmtuJc.js#ct': path => path.split('/').pop(),
+    './favicon-Dpszfa2o.js#r': url => new URL(url).hostname}});
+  for (const [s, hasTurns] of [[{incognito: true, status: 'idle', messages: []}, false], [{status: 'running', messages: []}, true], [{status: 'idle', messages: []}, false],
+    [{status: 'idle', messages: []}, true], [{status: 'idle', messages: [{}]}, false]]) same('__pair_shareBlockedReason', s, hasTurns);
+  for (const url of ['https://a.example/p?q=1#frag', 'https://u:p@a.example:8443/x/#', 'not a url', 'chrome://newtab/']) { same('__pair_withoutHash', url); same('__pair_pageAddress', url); }
+  for (const name of ['Tool.app', 'Widget.APPEX', 'notes.md', 'Kit.framework', 'x.xpcx']) same('__pair_isBundle', name);
+  for (const status of ['running', 'suspended', 'idle', undefined]) same('__pair_isLiveStatus', status);
+  for (const tab of [{title: 'Docs', url: 'https://d.example'}, {title: '', url: 'https://d.example/x'}, {}]) same('__pair_tabTitle', tab);
+  same('__pair_fileTree', ['output/z.md', 'output/a.md', 'artifacts/Tool.app/Contents/Info.plist', 'artifacts/docs/b.md', 'artifacts/docs/a.md', 'artifacts/zeta', 'artifacts/Kit.framework']);
+  same('__pair_fileTree', []);
+  for (const input of [{files: ['a'], tabs: []}, {files: [], tabs: [{ownership: 'borrowed'}]}, {files: [], tabs: [{ownership: 'owned'}]}]) same('__pair_hasPinnedContent', input);
+  for (const name of ['__pair_SIDE_PANEL_SIZE', '__pair_SIDE_PANEL_WIDTH', '__pair_TAB_QUERY_OPTIONS', '__pair_PLAYGROUND_DEFAULTS', '__pair_PLAYGROUND_SWITCHES',
+    '__pair_PLAYGROUND_TODOS', '__pair_PLAYGROUND_MARKDOWN', '__pair_PLAYGROUND_CSV', '__pair_BUNDLE_EXTENSIONS', '__pair_CRUMB_CLASS', '__pair_PANEL_TRANSITION',
+    '__pair_TAB_POLL_MS', '__pair_TAB_REFRESH_DELAY_MS', '__pair_DOCKED_MIN_WIDTH', '__pair_WIDE_MIN_WIDTH', '__pair_FLOAT_INSET', '__pair_PLAYGROUND_ENABLED'])
+    assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
+  assert.deepEqual([...ours.__pair_TAB_EVENTS], [...supplied.__pair_TAB_EVENTS]);
+  // Opening and closing tabs through a fake tabs API: a target that has a tab, a page already open
+  // under another hash, a new page, a borrowed group, and an aborted command.
+  const run = async (side, command, {targets = [{id: 'T1', tabId: 11}, {id: 'T2', tabId: 12}], open = [{id: 21, url: 'https://a.example/p#x', windowId: 2}],
+    group = 'Agent Tabs', abort = false} = {}) => {
+    const calls = [];
+    const record = (name, value) => (...args) => (calls.push([name, ...args]), Promise.resolve(typeof value === 'function' ? value(...args) : value));
+    world.enter({imports: {'chrome.tabs.get': record('get', id => ({id, groupId: 5, active: id === 11})), 'chrome.tabGroups.get': record('group', id => ({id, title: group})),
+      'chrome.tabs.remove': record('remove'), 'chrome.tabs.update': record('update', id => ({id, windowId: 2})), 'chrome.windows.update': record('focus'),
+      'chrome.tabs.query': record('query', open), 'chrome.tabs.create': record('create', ({url}) => ({id: 31, url, windowId: 3})),
+      'chrome.debugger.getTargets': record('targets', targets)}});
+    const signal = abort ? {aborted: true} : undefined;
+    try { return JSON.stringify([await side.__pair_controlChromeTab(command, signal, command.windowId), calls]); } catch (error) { return JSON.stringify([error.name, error.message, calls]); }
+  };
+  for (const [command, options] of [[{action: 'open', targetId: 'T1', url: 'https://a.example/p'}], [{action: 'open', targetId: 'T9', url: 'https://a.example/p#y'}],
+    [{action: 'open', url: 'https://new.example/', windowId: 4}], [{action: 'close', targetId: 'T1', skipIfActive: true}], [{action: 'close', targetId: 'T2'}],
+    [{action: 'close', targetId: 'T2'}, {group: 'Mine'}], [{action: 'close', targetId: 'T9'}], [{action: 'open', targetId: 'T1', url: 'https://a.example'}, {abort: true}]])
+    assert.equal(await run(ours, command, options), await run(supplied, command, options), JSON.stringify(command));
+  for (const command of [{action: 'open'}, {action: 'close'}]) same('__pair_canControlChromeTabs', command);
+});
+
+// The prompts that take over the composer: an action to confirm, two questions (one multiple
+// choice) and a permission for a tool, a file, the browser and the network, from the chat and from
+// a subagent; then the chat input's attachment and message helpers on real attachments.
+const PERMISSION = 'assets/permission-approval-D-GTf91U.js';
+const confirmation = {kind: 'action-confirmation', id: 'su1', toolCallId: 'c1', request: {title: 'Send the email', message: 'To: r@aux.example\nSubject: Plan', artifact: {type: 'email', to: 'r@aux.example'}}};
+const questions = [{header: 'Scope', question: 'Which files?', multiple: false, options: [{label: 'All', description: 'Every file'}, {label: 'Changed'}]},
+  {header: 'Format', question: 'Which formats?', multiple: true, options: [{label: 'PDF'}, {label: 'CSV'}]}, {header: 'Note', question: 'Anything else?', options: []}];
+const question = {kind: 'ask-user-question', id: 'su2', toolCallId: 'c2', request: {questions}};
+const scopes = [{type: 'tool', tool: 'bash', args: {command: 'ls -la'}}, {type: 'file', path: '/w/aux/README.md', mode: 'read'}, {type: 'file', path: '/w/aux/out.md', mode: 'write'},
+  {type: 'browser', action: 'modify', url: 'https://mail.example'}, {type: 'browser', action: 'download', url: 'https://files.example/a.zip'}, {type: 'network', url: 'https://api.example'}];
+const approval = (scope, source) => ({kind: 'approval', id: 'su3', toolCallId: 'c3', createdAt: 5, request: {scope, source}});
+
+test('the composer prompts confirm, ask and approve like the supplied ones', async () => {
+  const SM = './strip-markdown-DRcmtuJc.js';
+  const scene = (world, {suspension = confirmation, text = '', session = {}, state, key = 'Enter'} = {}) => ({state,
+    context: {text, getText: () => text, setText: world.stub('spy:setText'), registerResponseSubmit: world.stub('spy:registerSubmit'),
+      setResponsePending: world.stub('spy:pending'), setResponseSubmitLabel: world.stub('spy:submitLabel')},
+    event: {key, metaKey: key === 'Enter', shiftKey: false, nativeEvent: {isComposing: false}, isComposing: false, defaultPrevented: false, preventDefault: world.stub('spy:preventDefault'),
+      stopPropagation: world.stub('spy:stopPropagation'), target: {value: 'typed', closest: () => null}},
+    imports: {'./context-q_vohNW8.js#n': {currentSession: {id: 's1', suspension, ...session}}, [`${SM}#Kt`]: {accountId: 7},
+      [`${SM}#er`]: options => ({isPending: false, mutateAsync: world.stub('spy:mutateAsync'), name: queryName(options)}),
+      [`${SM}#pr`]: {setQueryData: world.stub('spy:setQueryData'), invalidateQueries: world.stub('spy:invalidate')},
+      './file-attachments-D5m1O8aA.js#a': value => Boolean(value?.kind), './platform-CX_yPATJ.js#i': event => Boolean(event?.metaKey),
+      './platform-CX_yPATJ.js#n': shortcut => shortcut.replace('Meta+', '⌘'), './tool-definition-registry-Cc6FCFb2.js#t': name => ({icon: `icon:${name}`, title: call => `Run ${call.name}`}),
+      './tool-definition-registry-Cc6FCFb2.js#n': call => ({...call, input: call.arguments}), './tool-definition-registry-Cc6FCFb2.js#r': (value, call) => (typeof value === 'function' ? value(call) : value),
+      './tag-icon-DeMC7uIN.js#f': () => ({watch: () => ' instead ', handleSubmit: submit => submit, register: name => ({name})})}});
+  await assertParity({blocksByChunk: {[PERMISSION]: ROUTES[PERMISSION]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 4000, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world), world => scene(world, {text: 'Do it tomorrow'}), world => scene(world, {suspension: question}),
+      world => scene(world, {suspension: question, text: 'my own answer', state: [1, {0: {type: 'select', items: ['Changed']}, 1: {type: 'select', items: ['PDF', 'CSV']}}, true]}),
+      world => scene(world, {suspension: approval(scopes[0])}), world => scene(world, {suspension: approval(scopes[1], {taskId: 'task-9'})}),
+      world => scene(world, {suspension: approval(scopes[3]), session: {parentId: 'p1', trigger: {type: 'subagent'}}}),
+      world => scene(world, {suspension: approval(scopes[5]), key: 'ArrowDown'}), world => scene(world, {suspension: question, key: 'ArrowUp', state: [2, {}, false, true]}),
+      world => scene(world, {suspension: null, state: [true]})],
+    props: [world => ({className: 'probe', request: confirmation.request, sessionId: 's1', onSubmit: world.stub('spy:onSubmit'), compact: false, isBusy: false, questions,
+      onCancel: world.stub('spy:onCancel'), scope: scopes[0], toolCallId: 'c3', sourceTaskId: undefined, onResolve: world.stub('spy:onResolve'), delegated: false, index: 2,
+      label: 'All', multiple: true, selected: true, muted: false, value: 'typed', visible: true, onActivate: world.stub('spy:onActivate'), onChange: world.stub('spy:onChange'),
+      disabled: false}),
+      world => ({request: {...confirmation.request, artifact: undefined}, compact: true, isBusy: true, questions: questions.slice(0, 1), scope: scopes[2], sourceTaskId: 'task-9',
+        delegated: true, onResolve: world.stub('spy:onResolve'), index: 1, label: 'Changed', multiple: false, selected: false, muted: true, visible: false, shortcut: 'Esc'}),
+      ...scopes.slice(3).map(scope => ({scope, toolCallId: 'c4', delegated: false, label: 'Access', value: scope.url})),
+      {scope: scopes[0], toolCallId: 'c5', delegated: true}, {questions: [], label: 'x', value: ''}].map(props => world => {
+      const given = typeof props === 'function' ? props(world) : props;
+      return {onResolve: world.stub('spy:onResolve'), onSubmit: world.stub('spy:onSubmit'), onCancel: world.stub('spy:onCancel'), ...given};
+    })});
+});
+
+test('the chat input helpers keep context, summarize attachments and step through answers like the supplied ones', async () => {
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: PERMISSION, text: textOf(PERMISSION), blocks: ROUTES[PERMISSION], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  const tab = {id: 'tab:1', type: 'tab', targetId: 'T1', name: 'Docs', url: 'https://docs.example', faviconUrl: 'f.png'};
+  const page = {id: 'sel:1', type: 'selection', requestKey: 'page:1', name: 'Picked', text: 'Picked text', selectionKind: 'text', sourceKind: 'page'};
+  const region = {id: 'sel:2', type: 'selection', requestKey: 'page:2', name: 'Region', selectionKind: 'region', elementSummary: 'A table with 3 rows', sourceKind: 'page', elements: [{tag: 'table'}]};
+  const chat = {id: 'sel:3', type: 'selection', requestKey: 'chat:1', name: 'From chat', text: 'x', sourceKind: 'chat'};
+  const file = {id: 'f1', type: 'file', name: 'a.pdf', mimeType: 'application/pdf', path: '/w/a.pdf', data: 'AA'};
+  const folder = {id: 'd1', type: 'directory', name: 'docs', path: '/w/docs'};
+  for (const text of ['  short  ', 'x'.repeat(72), `${'word '.repeat(20)}end`, '   ', '\n\tmulti\n line ']) same('__pair_selectionName', text);
+  const context = {tabAttachment: tab, selectionAttachment: page, suppressedTabTargetIds: new Set(), suppressedSelectionRequestKey: null};
+  for (const [list, ctx] of [[[tab, page, file], context], [[file], context], [[tab, file], {...context, tabAttachment: {...tab, name: 'Docs 2'}}],
+    [[{...tab, targetId: 'T2'}, page], context], [[tab, page], {...context, suppressedTabTargetIds: new Set(['T1'])}], [[page], {...context, suppressedSelectionRequestKey: 'page:1'}],
+    [[], {...context, tabAttachment: null, selectionAttachment: null}], [[chat, region], context]])
+    assert.equal(JSON.stringify(ours.__kept_ue(list, ctx)), JSON.stringify(supplied.__kept_ue(list, ctx)));
+  for (const [a, b] of [[tab, {...tab}], [tab, {...tab, url: 'x'}], [region, {...region, elements: []}], [file, {...file}], [folder, {...folder, path: '/x'}], [file, folder]])
+    same('__pair_sameAttachment', a, b);
+  for (const list of [[file, folder, {...file, id: 'f2', name: 'b.txt'}], [page], [region], [page, region, file], [chat], []]) {
+    same('__pair_attachmentsSummary', list);
+    for (const plainText of ['', '  Hello  ']) {
+      const at = Date.now();
+      same('__pair_userMessage', {plainText}, list);
+      assert.equal(JSON.stringify(ours.__kept_An({plainText}, list)), JSON.stringify(supplied.__kept_An({plainText}, list)), `${at}`);
+    }
+  }
+  const state = {attachments: [file], uploadQueue: ['u'], text: 'a', richInputAttachments: [], initialRichInputSnapshot: null};
+  for (const action of [{type: 'richInputSummary', richInputAttachments: [tab], text: 'b'}, {type: 'updateAttachments', update: list => [...list, folder]},
+    {type: 'uploadQueue', uploadQueue: []}, {type: 'resetScope', attachments: [], initialRichInputSnapshot: {doc: 1}, richInputAttachments: [], text: '', uploadQueue: ['kept']}, {type: 'other'}])
+    assert.equal(JSON.stringify(ours.__kept_In(state, action)), JSON.stringify(supplied.__kept_In(state, action)), action.type);
+  for (const value of [chat, page, tab]) assert.equal(ours.__kept_Ee(value), supplied.__kept_Ee(value));
+  same('__kept_we', {doc: {type: 'doc', content: [1]}});
+  assert.equal(ours.__kept_kn('{"a":1}', {doc: {a: 1}}), supplied.__kept_kn('{"a":1}', {doc: {a: 1}}));
+  // Answers: defaults from first options, a step's state, toggling multiple choice, custom text, and submitting.
+  const defaults = ours.__pair_defaultAnswers(questions);
+  same('__pair_defaultAnswers', questions);
+  same('__pair_questionsKey', questions);
+  const answers = [{}, {0: {type: 'select', items: ['Changed']}, 1: {type: 'select', items: []}}, {1: {type: 'custom', content: '  both  '}, 2: {type: 'custom', content: 'Thanks'}}];
+  for (const given of answers) {
+    same('__pair_answersFor', questions.slice(0, 2), given, defaults);
+    same('__pair_allAnswered', questions, given, defaults);
+    for (const step of [0, 1, 2, 3]) { same('__pair_questionState', {answers: given, currentStep: step, defaultAnswers: defaults, questions}); same('__pair_answerAt', given, defaults, step); }
+  }
+  for (const answer of [{type: 'select', items: []}, {type: 'select', items: ['A'], customDraft: 'd'}, {type: 'custom', content: ' '}, {type: 'custom', content: 'x'}]) {
+    same('__pair_isAnswered', answer); same('__pair_customText', answer);
+    for (const [q, label] of [[questions[0], 'All'], [questions[1], 'PDF'], [questions[1], 'CSV']]) same('__pair_toggleOption', {currentAnswer: answer, currentQuestion: q, label});
+  }
+  same('__pair_toggleOption', {currentAnswer: {type: 'select', items: ['PDF', 'CSV']}, currentQuestion: questions[1], label: 'PDF'});
+  for (const event of [{key: 'Enter', shiftKey: false, nativeEvent: {isComposing: false}}, {key: 'Enter', shiftKey: true, nativeEvent: {}}, {key: 'Enter', nativeEvent: {isComposing: true}}, {key: 'a', nativeEvent: {}}])
+    same('__pair_isPlainEnter', event);
+  for (const name of ['__pair_PERMISSION_CHOICES', '__pair_EMPTY_ANSWER', '__pair_SELECTION_NAME_MAX']) assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
+});
+
+// Plugins › MCPs: a local stdio server, an OAuth server that is connected but needs authorizing
+// (and matches a preset), a disabled one with request headers, presets to connect, cached tools,
+// and the add and edit dialog for each transport and auth type.
+const MCPS = 'assets/mcps-DmPp5oo9.js';
+const mcpServers = {
+  files: {enabled: true, transport: 'stdio', command: 'npx', args: ['-y', '@example/files', '--root', '/w/my docs'], env: {TOKEN: 'a=b'}},
+  linear: {enabled: true, transport: 'streamable-http', url: 'https://MCP.Linear.app/mcp/', auth: {type: 'auto', clientId: 'client-1'}},
+  intranet: {enabled: false, transport: 'streamable-http', url: 'http://localhost:8080/mcp', auth: {type: 'headers', headers: {Authorization: 'Bearer x', 'X-Key': 'v'}}},
+};
+const mcpPresets = [{name: 'Linear', description: 'Issues', url: 'https://linear.app', server: {transport: 'streamable-http', url: 'https://mcp.linear.app/mcp', auth: {type: 'auto'}}},
+  {name: 'Granola', description: 'Notes', url: 'https://granola.ai', server: {transport: 'streamable-http', url: 'https://mcp.granola.ai/mcp', auth: {type: 'auto'}}},
+  {name: 'Files', description: 'Local files', server: {transport: 'stdio', command: 'npx', args: ['-y', '@example/files', '--root', '/w/my docs']}}];
+const inventories = {files: {tools: [{name: 'read_file', description: 'Reads a file'}, {name: 'list'}], refreshedAt: '2026-10-30T09:00:00Z'}, linear: {tools: [{name: 'create_issue'}], refreshedAt: '2026-10-29T00:00:00Z'}};
+
+test('Plugins › MCPs renders servers, presets and the server dialog like the supplied page', async () => {
+  const SM = './strip-markdown-DRcmtuJc.js';
+  const scene = (world, {status = {status: 'connected', authStatus: 'required', message: 'Signed in as r'}, values = {transport: 'stdio', authType: 'auto'}, state} = {}) => ({state,
+    renderProps: {field: {value: values.transport, onChange: world.stub('spy:fieldChange')}},
+    imports: {[`${SM}#tr`]: {data: {mcp: {servers: mcpServers, inventories}}}, [`${SM}#nr`]: {data: status}, [`${SM}#M`]: {confirm: world.stub('spy:confirm')},
+      [`${SM}#er`]: options => ({isPending: false, mutate: world.stub('spy:mutate'), mutateAsync: world.stub('spy:mutateAsync'), name: queryName(options)}),
+      [`${SM}#pr`]: {setQueryData: world.stub('spy:setQueryData'), removeQueries: world.stub('spy:removeQueries'), invalidateQueries: world.stub('spy:invalidate')},
+      './extension-main-Dz1-AsCT.js#r.useParams': () => ({userId: '7'}), './types-CMWBt-OE.js#r.map': fn => mcpPresets.map(fn),
+      './tag-icon-DeMC7uIN.js#f': () => ({handleSubmit: submit => submit, formState: {isValid: true, isSubmitting: false}, control: 'control'}),
+      './tag-icon-DeMC7uIN.js#p': () => ({control: 'control', reset: world.stub('spy:reset'), getValues: name => (name === 'name' ? 'files' : values[name]), register: name => ({name})}),
+      './tag-icon-DeMC7uIN.js#m': ({name}) => values[name], './tag-icon-DeMC7uIN.js#d': ({name}) => ({field: {name, value: 'files', onChange: world.stub('spy:nameChange')}})}});
+  const list = Object.entries(mcpServers).map(([name, server]) => ({name, ...server}));
+  const value = (world, server, connection) => ({state: {connection, inventory: inventories[server.name], server},
+    actions: Object.fromEntries(['cancel', 'connect', 'delete', 'disconnect', 'edit', 'refresh', 'test', 'toggle', 'viewTools'].map(name => [name, world.stub(`spy:${name}`)])),
+    meta: {connectionPending: false, refreshing: server.name === 'files', testing: false, toggling: false}});
+  await assertParity({blocksByChunk: {[MCPS]: ROUTES[MCPS]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 900, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world), world => scene(world, {status: {status: 'connecting'}, values: {transport: 'streamable-http', authType: 'headers'}}),
+      world => scene(world, {status: {status: 'unreachable', message: 'Timed out'}, values: {transport: 'streamable-http', authType: 'auto'}}),
+      world => scene(world, {status: {status: 'invalid_server'}, values: {transport: 'streamable-http', authType: 'none'}}),
+      world => ({...scene(world), context: value(world, list[1], {status: 'connected', authStatus: 'required'})}),
+      world => ({...scene(world), context: value(world, list[0], undefined)}),
+      world => ({...scene(world, {status: undefined}), context: value(world, list[2], {status: 'connected', authStatus: 'ok', message: 'Ready'}), state: [{mode: 'edit', name: 'linear', draft: {}}]})],
+    props: [world => ({accountId: 7, servers: list, inventories, existingNames: new Set(['files', 'Linear']), preset: mcpPresets[1], server: list[1], inventory: inventories.linear,
+      onEdit: world.stub('spy:onEdit'), state: {mode: 'create', draft: {name: '', transport: 'stdio', command: '', envText: ''}}, onSave: world.stub('spy:onSave'), mode: 'create',
+      open: true, serverName: 'linear', connection: {status: 'connected', authStatus: 'required'}, children: 'row'}),
+      world => ({accountId: 7, servers: [], inventories: {}, existingNames: new Set(), preset: mcpPresets[2], server: undefined, inventory: undefined, state: {mode: 'edit', name: 'x', draft: {}},
+        mode: 'edit', open: false, serverName: 'files', connection: {status: 'unreachable'}, onSave: world.stub('spy:onSave')}),
+      {accountId: 7, preset: mcpPresets[0], existingNames: new Set(), server: {...list[1], enabled: false}, inventory: {tools: [], refreshedAt: 'x'}, open: true, serverName: 'x', connection: {status: 'connecting'}}]});
+});
+
+test('Plugins › MCPs parses commands, drafts servers and checks URLs like the supplied page', async () => {
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: MCPS, text: textOf(MCPS), blocks: ROUTES[MCPS], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  for (const line of ['npx -y @example/mcp', `node "my server.js" --flag='a b' \\"x\\" c\\ d`, '  spaced   out  ', "echo 'it''s'", 'tail\\', '', 'a "unterminated', 'x \\q'])
+    same('__kept_dt', line);
+  for (const [command, args] of [['npx', ['-y', 'a b', "it's", '$HOME', '']], ['node', []]]) same('__kept_ut', command, args);
+  for (const arg of ['plain', 'with space', "o'neil", 'back\\slash', '"q"']) same('__pair_shellQuote', arg);
+  for (const host of ['localhost', 'App.Localhost', '127.0.0.1', '127.1.2.300', '[::1]', '::', '0.0.0.0', 'example.com', ' LOCALHOST ']) same('__pair_isLoopbackHost', host);
+  for (const url of ['https://mcp.example', 'http://localhost:3000/mcp', 'http://127.0.0.1', 'http://example.com', 'ftp://x', 'not a url', 'http://[::1]:8080'])
+    same('__kept_pt', url);
+  for (const server of Object.entries(mcpServers).map(([name, s]) => ({name, ...s}))) { same('__pair_serverDraft', server); same('__pair_endpointLabel', server); }
+  for (const server of [{transport: 'stdio', command: ''}, {transport: 'streamable-http', url: ''}]) same('__pair_endpointLabel', server);
+  for (const args of [[], ['stdio', 'files'], ['streamable-http', 'x']]) same('__pair_emptyDraft', ...args);
+  const drafts = [{transport: 'stdio', command: 'npx -y "a b"', envText: 'A=1\n\n B = two=2 \n'}, {transport: 'streamable-http', url: 'https://x', authType: 'headers', headersText: 'Authorization=Bearer t'},
+    {transport: 'streamable-http', url: 'https://x', authType: 'none'}, {transport: 'streamable-http', url: 'https://x', authType: 'auto', clientId: '  '}, {transport: 'streamable-http', url: 'https://x', authType: 'auto', clientId: ' id '}];
+  for (const draft of drafts) for (const previous of [undefined, {enabled: false}]) same('__pair_serverFromDraft', draft, previous, 'name');
+  for (const url of ['https://MCP.Example.com/mcp/#x', 'https://a.example/', 'https://a.example/x//', 'http://Localhost:8/A/']) same('__pair_normalUrl', url);
+  for (const [name, taken] of [['linear', []], ['linear', ['linear']], ['linear', ['linear', 'linear_2']], ['x'.repeat(40), ['x'.repeat(32)]]]) same('__pair_uniqueName', name, new Set(taken));
+  for (const text of ['A=1\nB=2', 'A=1\n=2', 'novalue', '', ' A = 1 \r\n\r\n']) { same('__kept_Ue', text); same('__pair_parseEnv', text); }
+  same('__pair_envText', {A: '1', B: 'x=y'});
+  for (const name of ['__pair_STATUS_LABELS', '__pair_ACTION_LABELS']) assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
+  // The OAuth popup: a chrome window that reports closing, and the window.open fallback.
+  const auth = side => { const calls = []; world.enter({imports: {'chrome.windows.create': options => (calls.push(['create', options]), {then: then => (then({id: 4}), {catch: () => {}})}),
+    'chrome.windows.onRemoved.addListener': listener => (calls.push(['listen']), listener(3), listener(4)), 'chrome.windows.onRemoved.removeListener': () => calls.push(['unlisten'])}});
+    side.__pair_openAuthWindow('https://auth.example', () => calls.push(['closed'])); return JSON.stringify(calls); };
+  assert.equal(auth(ours), auth(supplied));
+});
+
+// The connect provider dialog: each kind of provider current in turn (an API key, a regional token
+// plan, Cloudflare, a local server new and saved, the custom JSON editor and a saved custom provider),
+// with detected and saved models.
+const CONNECT = 'assets/connect-dialog-CacgpFap.js';
+test('the connect provider dialogs render like the supplied ones for keys, local servers and custom JSON', async () => {
+  const SM = './strip-markdown-DRcmtuJc.js';
+  const ids = ['openai', 'meta', 'openrouter', 'opencode', 'opencode-go', 'qwen-token-plan', 'anthropic', 'google', 'xai', 'deepseek', 'commandcode', 'minimax',
+    'moonshotai', 'kimi-coding', 'zai', 'xiaomi', 'xiaomi-token-plan-cn', 'xiaomi-token-plan-ams', 'xiaomi-token-plan-sgp', 'cloudflare-ai-gateway', 'ollama', 'lm-studio',
+    'custom-json', 'my-provider'];
+  const all = new Map(ids.map(id => [id, {id, name: id.toUpperCase()}]));
+  const saved = {name: 'Ollama', baseUrl: 'http://localhost:11434/v1', models: [{id: 'llama3', name: 'Llama 3', reasoning: false}, {id: 'gone', name: 'Gone'}]};
+  const scene = (world, current, {connected = ['ollama', 'my-provider'], detected = [{id: 'llama3', name: 'Llama 3 8B'}, {id: 'qwen', name: 'Qwen'}], errors = {}, state} = {}) => ({state,
+    imports: {'./provider-context-A_wu0fRN.js#n': {all, currentProvider: current, setCurrentProvider: world.stub('spy:setCurrent'), accountId: 7,
+      connected: new Map(connected.map(id => [id, {id, method: 'models_json'}])), completeConnection: world.stub('spy:complete')},
+      [`${SM}#er`]: options => ({isPending: false, mutateAsync: world.stub('spy:mutateAsync'), name: queryName(options)}),
+      [`${SM}#tr`]: queries({getCustomProviderConfig: {data: {providerConfig: current === 'my-provider' ? {name: 'Mine', api: 'openai-completions', models: []} : saved}}}),
+      [`${SM}#nr`]: queries({discoverCustomProviderModels: {data: {models: detected}}}), [`${SM}#pr`]: {fetchQuery: world.stub('spy:fetchQuery')},
+      '*schemas-Z5KNLPhp.js#S().safeParse': value => ({success: Boolean(value?.id), data: value}),
+      './tag-icon-DeMC7uIN.js#f': () => ({formState: {errors}, register: name => ({name}),
+        handleSubmit: submit => () => void submit({apiKey: ' key ', region: 'sgp', accountId: 'acct', gatewayId: 'gw', baseUrl: 'http://localhost:11434/v1', modelIds: ['llama3', 'qwen'],
+          json: '{"providers":{"mine":{"api":"openai-completions","models":[{"id":"m"}]}}}'})?.catch?.(() => {})}),
+      './tag-icon-DeMC7uIN.js#p': () => ({register: name => ({name, ref: world.stub('spy:ref')}), formState: {errors}, watch: () => ['llama3'], getValues: name => (name === 'modelIds' ? ['llama3'] : 'http://localhost:11434/v1'),
+        getFieldState: () => ({isDirty: false}), setValue: world.stub('spy:setValue'), setError: world.stub('spy:setError')})}});
+  await assertParity({blocksByChunk: {[CONNECT]: ROUTES[CONNECT]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 1200, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world, 'openai'), world => scene(world, 'commandcode', {errors: {apiKey: [{message: 'Please enter your API key'}]}}),
+      world => scene(world, 'xiaomi-token-plan-sgp', {state: ['sgp']}), world => scene(world, 'cloudflare-ai-gateway'), world => scene(world, 'ollama'),
+      world => scene(world, 'lm-studio', {connected: [], detected: []}), world => scene(world, 'custom-json'), world => scene(world, 'my-provider'),
+      world => scene(world, 'ollama', {state: [[{id: 'extra', name: 'Extra'}, {id: 'llama3', name: 'Llama'}]]}), world => scene(world, null)],
+    props: [world => ({provider: 'openai', description: 'Get a key', placeholder: 'sk-...', preset: 'ollama', mode: 'update', defaultValues: {baseUrl: 'http://localhost:11434/v1', apiKey: '',
+      modelIds: ['llama3']}, defaultModels: saved.models, models: saved.models, defaultModelIds: ['llama3'], onModelsDetected: world.stub('spy:detected'), value: 'cn',
+      onValueChange: world.stub('spy:valueChange'), invalid: true, register: {name: 'apiKey', ref: world.stub('spy:ref')}, defaultJson: '{"providers":{}}', children: 'body',
+      title: 'Custom', contentClassName: 'wide', schema: 'schema', name: 'apiKey'}),
+      world => ({provider: 'my-provider', preset: 'lm-studio', mode: 'create', defaultValues: {baseUrl: '', apiKey: 'k', modelIds: []}, defaultModels: [], models: [], defaultModelIds: [],
+        invalid: false, register: {name: 'json'}, value: 'global', defaultJson: '{}', name: 'json', onModelsDetected: world.stub('spy:detected')})]});
+});
+
+test('the connect provider dialog indents JSON and checks values like the supplied one', async () => {
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: CONNECT, text: textOf(CONNECT), blocks: ROUTES[CONNECT], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  for (const text of ['plain', '$HOME', '${TOKEN}', '$$HOME', '$!cmd', 'cost $5', 'end$', '$_x']) assert.equal(ours.__pair_hasEnvReference(text), supplied.__pair_hasEnvReference(text), text);
+  for (const id of ['ollama', 'lm-studio', 'openrouter', 'mine']) assert.equal(ours.__pair_isBuiltInCustom(id), supplied.__pair_isBuiltInCustom(id), id);
+  // Tab in the JSON editor: insert at a caret, indent and outdent a selection over lines, and other keys.
+  const tab = (side, {key = 'Tab', shiftKey = false, value = '{\n  "a": 1,\n"b": 2\n}', start = 2, end = 2} = {}) => {
+    const calls = [];
+    const target = {value, selectionStart: start, selectionEnd: end, setRangeText: (...args) => calls.push(['range', ...args]),
+      dispatchEvent: event => calls.push(['dispatch', event.type, event.data])};
+    world.enter({});
+    side.__pair_indentWithTab({key, shiftKey, currentTarget: target, preventDefault: () => calls.push(['prevent'])});
+    return JSON.stringify([calls, target.selectionStart, target.selectionEnd]);
+  };
+  for (const options of [{}, {start: 2, end: 14}, {shiftKey: true, start: 4, end: 14}, {shiftKey: true, start: 2, end: 2}, {key: 'Enter'}, {value: '\tx', shiftKey: true, start: 0, end: 2}])
+    assert.equal(tab(ours, options), tab(supplied, options), JSON.stringify(options));
+  for (const name of ['__pair_EXAMPLE_JSON', '__pair_INDENT', '__kept_fe']) assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
+});
+
+// Model select: several providers (one signed out), models with thinking levels and fast mode,
+// searching, the default option, loading, empty and error states, and Ultrabrowse on and off.
+const MODEL_SELECT = 'assets/model-select-BvZsM1Kl.js';
+test('the model and thinking menus render like the supplied ones', async () => {
+  const catalog = {anthropic: [{provider: 'anthropic', id: 'opus', name: 'Claude Opus', shortName: 'Opus', availableThinkingLevels: ['off', 'low', 'high', 'max'], supportsFastMode: true},
+    {provider: 'anthropic', id: 'haiku', name: 'Claude Haiku', shortName: 'Haiku', availableThinkingLevels: [], supportsFastMode: false}],
+    openai: [{provider: 'openai', id: 'gpt', name: 'GPT', shortName: 'GPT', availableThinkingLevels: ['minimal', 'medium'], supportsFastMode: false}]};
+  const selectable = [{id: 'anthropic', name: 'Claude Subscription', state: 'active'}, {id: 'openai', name: 'OpenAI', state: 'active'}, {id: 'grok', name: 'Grok', state: 'auth-expired'}];
+  const selected = {provider: 'anthropic', modelId: 'opus', modelShortName: 'Claude Opus', thinkingLevel: 'high', fastMode: true, supportsFastMode: true, availableThinkingLevels: ['off', 'low', 'high', 'max']};
+  const context = (world, extra = {}) => ({allowDefaultOption: true, isAvailableModelsLoading: false, isAvailableModelsError: false, retryAvailableModels: world.stub('spy:retry'),
+    isUsingDefaultValue: false, isOpen: true, defaultOptionLabel: 'Default model', selectableProviders: selectable, selectedModel: selected, unavailableValueLabel: undefined,
+    getModels: id => catalog[id] ?? [], isModelSelected: (provider, id) => provider === 'anthropic' && id === 'opus', onOpenChange: world.stub('spy:openChange'),
+    onChange: world.stub('spy:change'), enableUltrabrowse: true, canUseUltrabrowse: true, proactiveMode: true, isThinkingOpen: true, onThinkingOpenChange: world.stub('spy:thinkingOpen'), ...extra});
+  const providerOptions = [...selectable, {id: 'aux', name: 'Aux', state: 'active'}];
+  const modelsByProvider = {...catalog, aux: [{provider: 'aux', id: 'free', shortName: 'Free', availableThinkingLevels: [], supportsFastMode: false}],
+    grok: [{provider: 'grok', id: 'grok-4', shortName: 'Grok', availableThinkingLevels: [], supportsFastMode: false}]};
+  const allModels = Object.values(modelsByProvider).flat().map(model => ({...model, supportsVision: model.id !== 'haiku'}));
+  const imports = (world, plan = 'pro') => ({'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7},
+    './use-agent-settings-DiedG0R1.js#n': () => ({providerOptions, modelsByProvider, availableModels: allModels, isLoading: false, isModelCatalogError: false,
+      subscriptionPlan: plan, refetchModelCatalog: world.stub('spy:refetchCatalog')}),
+    './use-agent-settings-DiedG0R1.js#o': (level, levels) => (levels?.includes(level) ? level : levels?.[0] ?? 'off')});
+  const scene = (world, extra, more = {}) => ({context: context(world, extra), imports: imports(world, more.plan), ...more});
+  await assertParity({blocksByChunk: {[MODEL_SELECT]: ROUTES[MODEL_SELECT]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 950, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world, {}), world => scene(world, {}, {state: ['opus']}), world => scene(world, {}, {state: ['grok']}), world => scene(world, {}, {state: ['reauth']}), world => scene(world, {}, {state: ['zzz']}), world => scene(world, {}, {plan: 'free'}),
+      world => scene(world, {selectableProviders: selectable.slice(0, 1), selectedModel: null, isUsingDefaultValue: true, proactiveMode: false}),
+      world => scene(world, {selectableProviders: selectable.slice(2)}), world => scene(world, {isAvailableModelsLoading: true}),
+      world => scene(world, {selectableProviders: [], isAvailableModelsError: true}), world => scene(world, {selectableProviders: [], allowDefaultOption: false, selectedModel: null, unavailableValueLabel: 'Gone'}),
+      world => scene(world, {canUseUltrabrowse: false, isOpen: false, isThinkingOpen: false, selectedModel: {...selected, thinkingLevel: 'max', fastMode: false}}),
+      world => scene(world, {selectedModel: {...selected, supportsFastMode: false, availableThinkingLevels: []}}),
+      world => scene(world, {}, {event: {key: '2', defaultPrevented: false, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, preventDefault: world.stub('spy:prevent'),
+        stopPropagation: world.stub('spy:stop'), target: {value: 'gp'}, currentTarget: {closest: () => null}}})],
+    props: [world => ({checked: true, disabled: false, onCheckedChange: world.stub('spy:checked'), compact: false, animated: true, className: 'probe', thinking: true, shortcut: 'model',
+      children: 'child', menuSize: 'sm', submenu: true, provider: selectable[2], onRetry: world.stub('spy:retry')}),
+      world => ({checked: false, disabled: true, compact: true, tooltipAlign: 'start', thinking: false, shortcut: 'thinking', submenu: false, onCheckedChange: world.stub('spy:checked')}),
+      {disabled: true, animated: false},
+      world => ({value: {provider: 'anthropic', modelId: 'opus', thinkingLevel: 'max', fastMode: true}, allowDefaultOption: true, enableUltrabrowse: true, proactiveMode: true,
+        children: 'menus', onChange: world.stub('spy:onChange'), onInvalidProactiveMode: world.stub('spy:invalidProactive')}),
+      world => ({value: null, fallbackValue: {provider: 'openai', modelId: 'gpt', thinkingLevel: 'medium'}, requireVision: true, unavailableValueLabel: 'Gone', proactiveMode: true,
+        onChange: world.stub('spy:onChange'), modelCatalog: {providerOptions: providerOptions.slice(1), modelsByProvider, models: allModels}}),
+      world => ({value: {provider: 'anthropic', modelId: 'haiku'}, requireVision: true, hideFreeAuxProvider: false, onChange: world.stub('spy:onChange')}),
+      world => ({value: null, onChange: world.stub('spy:onChange'), modelCatalog: {providerOptions: [providerOptions[0], providerOptions[3]], modelsByProvider, models: allModels}})]});
+});
+
+test('the model select helpers label, match and pick like the supplied ones', async () => {
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: MODEL_SELECT, text: textOf(MODEL_SELECT), blocks: ROUTES[MODEL_SELECT], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  world.enter({imports: {'./platform-CX_yPATJ.js#i': event => Boolean(event.metaKey)}});
+  for (const event of [{key: 'M', metaKey: true, shiftKey: true}, {key: 'µ', code: 'KeyM', metaKey: true, shiftKey: true}, {key: '>', code: 'Period', metaKey: true, shiftKey: true},
+    {key: '.', metaKey: true, shiftKey: true, altKey: true}, {key: 'm', metaKey: false, shiftKey: true}, {key: 'm', metaKey: true, shiftKey: false}, {key: 'x', metaKey: true, shiftKey: true},
+    {key: 'm', metaKey: true, shiftKey: true, isComposing: true}, {key: 'm', metaKey: true, shiftKey: true, defaultPrevented: true}]) same('__pair_shortcutFor', event);
+  for (const args of [[{modelShortName: 'Claude Opus 5'}], [null, true, 'Default'], [null, false, 'Default'], [null, true, 'Default', 'Unavailable']]) same('__pair_triggerLabel', ...args);
+  const model = {shortName: 'Opus', name: 'Claude Opus', id: 'claude-opus'};
+  for (const query of ['', 'opus', 'anthropic', 'gpt', 'claude-o']) same('__pair_matchesQuery', model, {name: 'Anthropic'}, query);
+  for (const name of ['Claude Subscription', 'OpenAI', 'ChatGPT Subscription Plus']) same('__pair_providerLabel', name);
+  for (const levels of [['off', 'minimal', 'low', 'high'], [], ['off']]) same('__kept_je', levels);
+  for (const args of [[null, 'b', false], [undefined, undefined, true], ['a', 'b', true], [null, null, true]]) same('__kept_Je', ...args);
+  for (const [model, fast] of [[{provider: 'p', id: 'm', availableThinkingLevels: ['low'], supportsFastMode: true}, true], [{provider: 'p', id: 'm', supportsFastMode: false}, true],
+    [{provider: 'p', id: 'm', supportsFastMode: true}, undefined]]) same('__kept_Se', model, fast);
+  for (const name of ['__pair_ULTRABROWSE_LETTERS', '__pair_ULTRABROWSE_COLORS', '__pair_ULTRABROWSE_GRADIENT']) assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
+  // A shortcut opens its menu once, remembering focus, and only when that menu is there and enabled.
+  const press = (side, key, {disabled = false, thinking = true} = {}) => {
+    const calls = [];
+    const button = {disabled, click: () => calls.push('click')};
+    const root = {querySelector: selector => (calls.push(selector), button)};
+    side.__pair_handleShortcut({key, metaKey: true, shiftKey: true, preventDefault: () => calls.push('prevent'), stopPropagation: () => calls.push('stop')},
+      {closest: () => root}, thinking);
+    return JSON.stringify(calls);
+  };
+  for (const [key, options] of [['m'], ['.'], ['.', {thinking: false}], ['m', {disabled: true}], ['x']]) assert.equal(press(ours, key, options), press(supplied, key, options), key);
+});
+
+// Skills: a user skill with files, keywords, URL patterns and both agents, a built-in overridden by
+// it, a system skill, a password-manager skill and a single-file skill; the Skills page, a skill's
+// page on each kind of file, and the activation fields and catalog helpers on the same skills.
+const skillFixtures = [
+  {name: 'weekly-review', path: 'user/weekly-review', definitionPath: 'user/weekly-review/SKILL.md', absolutePath: '/u/skills/weekly-review', group: 'user', creator: 'user',
+    description: 'Review the week', enabled: true, siteSpecific: false, files: ['run.sh', 'notes/b.md', 'SKILL.md', 'notes/a.md', 'a.md'],
+    metadata: {icon: 'https://img.example/w.png', autoInject: {keywords: ['week', 'metrics'], url: ['github.com/**']}, agents: ['aux', 'aux-code']}},
+  {name: 'visualize', path: 'builtin/visualize', definitionPath: 'builtin/visualize/SKILL.md', absolutePath: '/app/skills/visualize', group: 'builtin', creator: 'builtin',
+    description: 'Charts', enabled: false, files: ['SKILL.md'], overriddenBy: 'user/visualize', metadata: {}},
+  {name: 'aux', path: 'builtin/aux', definitionPath: 'builtin/aux/SKILL.md', absolutePath: '/app/skills/aux', group: 'builtin', creator: 'builtin', description: 'Aux', enabled: true, files: ['SKILL.md']},
+  {name: '1password', path: 'builtin/1password', definitionPath: 'builtin/1password/SKILL.md', absolutePath: '/app/skills/1password', group: 'builtin', creator: 'builtin', description: '1P', enabled: true, files: ['SKILL.md']},
+  {name: 'linkedin', path: 'builtin/linkedin', group: 'builtin', creator: 'builtin', files: ['SKILL.md'], absolutePath: '/app/skills/linkedin'},
+  {name: 'sites', path: 'builtin/sites', group: 'builtin-site-specific', creator: 'builtin', files: ['SKILL.md'], absolutePath: '/app/skills/sites'},
+  {name: 'notes.md', path: 'user/notes.md', definitionPath: 'user/notes.md', absolutePath: '/u/skills/notes.md', group: 'user', creator: 'user', description: 'One file', enabled: true, files: [],
+    overriddenBy: 'user/notes-2.md'},
+];
+const isSingleFile = path => path.endsWith('.md');
+const displayName = skill => skill.name.replace(/-/g, ' ');
+
+test('the Skills pages render like the supplied ones', async () => {
+  const SM = './strip-markdown-DRcmtuJc.js';
+  const chunks = ['assets/skills-CfSQ7MCw.js', 'assets/_skillId-CAwCRjA8.js', 'assets/skill-activation-fields-wmmVsYeN.js'];
+  const skills = skillFixtures.slice(0, 4).concat(skillFixtures[6]);
+  const join = (...parts) => parts.flatMap(part => part.split('/').filter(Boolean)).join('/');
+  const scene = (world, {file = 'user/weekly-review/SKILL.md', skill = 'user/weekly-review', auxCode = true, content = '---\nname: x\n---\n# Weekly review\n\nSteps', loading = false, state} = {}) => ({state,
+    context: {accountId: 7, projectId: null, canPreviewFile: isSingleFile(file), filePath: file, skill: skills.find(s => s.path === skill), skillName: displayName(skills.find(s => s.path === skill)),
+      onRevealFile: world.stub('spy:reveal')},
+    imports: {[`${SM}#Kt`]: {accountId: 7}, [`${SM}#Ht`]: {capture: world.stub('spy:capture')}, [`${SM}#M`]: {confirm: world.stub('spy:confirm')},
+      [`${SM}#er`]: options => ({isPending: false, mutateAsync: world.stub('spy:mutateAsync'), name: queryName(options)}),
+      [`${SM}#pr`]: {invalidateQueries: world.stub('spy:invalidate')},
+      [`${SM}#tr`]: {data: {skills, skillByFilePath: new Map([[file, skills.find(s => s.path === skill)]])}},
+      [`${SM}#nr`]: queries({'settings.getAll': {data: auxCode}, readSkillFile: {data: {content, metadata: {description: 'Review the week', autoInject: {keywords: ['week', 'metrics']}}}, isLoading: loading}}),
+      '*useParams': () => ({userId: '7', skillId: `id:${skill}`}), '*useSearch': () => ({file}), '*useNavigate': () => world.stub('spy:navigate'),
+      './skill-activation-fields-wmmVsYeN.js#n.has': name => ['1password', 'bitwarden'].includes(name), './skill-activation-fields-wmmVsYeN.js#l': s => s.path === 'builtin/aux',
+      './skill-activation-fields-wmmVsYeN.js#f': list => [...list].reverse(), './skill-activation-fields-wmmVsYeN.js#i': path => `id:${path}`,
+      './skill-activation-fields-wmmVsYeN.js#r': id => id.replace(/^id:/, ''), './skill-activation-fields-wmmVsYeN.js#u': join,
+      './skill-activation-fields-wmmVsYeN.js#m': path => path.split('/').filter(Boolean), './skill-activation-fields-wmmVsYeN.js#s': path => path.split('/').at(-1),
+      './skill-activation-fields-wmmVsYeN.js#o': (s, path) => `${s.absolutePath}/${path}`, './skill-activation-fields-wmmVsYeN.js#c': text => text.replace(/^---[\s\S]*?---\n/, ''),
+      './skill-activation-fields-wmmVsYeN.js#p': text => ({heading: text.split('\n')[0], body: text.split('\n').slice(1).join('\n')}),
+      './skill-activation-fields-wmmVsYeN.js#d': text => text.split(/[\n,]/).map(part => part.trim()).filter(Boolean),
+      './utils-WfPpT5w5.js#t': displayName, './utils-WfPpT5w5.js#n': isSingleFile, './platform-CX_yPATJ.js#r': () => ({name: 'Finder', revealLabel: 'Show in Finder', revealError: 'Could not show'}),
+      './utils-WfPpT5w5.js#u': isSingleFile}});
+  await assertParity({blocksByChunk: Object.fromEntries(chunks.map(chunk => [chunk, ROUTES[chunk]])), textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES,
+    minimum: 700, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world), world => scene(world, {file: 'user/weekly-review/run.sh'}), world => scene(world, {skill: 'builtin/visualize', file: 'builtin/visualize/SKILL.md', auxCode: false}),
+      world => scene(world, {file: 'user/weekly-review/notes/a.md', loading: true}), world => scene(world, {skill: 'user/notes.md', file: 'user/notes.md', content: 'No heading'}),
+      world => scene(world, {state: [true, 'Weekly', 'Review', true, 'week, metrics', 'github.com/**', 'Do it']}), world => scene(world, {state: ['https://x.example/**']}),
+      world => scene(world, {state: ['Name', '', true, 'k', 'u', 'Body']}), world => scene(world, {skill: 'builtin/visualize', file: 'builtin/visualize/SKILL.md', state: [true]})],
+    props: [world => ({skill: skillFixtures[0], userId: '7', title: 'My Skills', skills, open: true, onOpenChange: world.stub('spy:openChange'), accountId: 7, projectId: null,
+      filePath: 'user/weekly-review/SKILL.md', showSkillMetadata: true, onRevealFile: world.stub('spy:reveal'), children: '# Title', className: 'probe', label: 'Keywords', value: 'week',
+      idPrefix: 'edit-skill', keywordsText: 'week, metrics', urlPatternsText: 'github.com/**\nexample.com', onKeywordsTextChange: world.stub('spy:keywords'),
+      onUrlPatternsTextChange: world.stub('spy:urls')}),
+      world => ({skill: skillFixtures[1], userId: '7', title: 'System', skills: [], open: false, accountId: 7, filePath: 'builtin/visualize/run.sh', showSkillMetadata: false,
+        keywordsText: '', urlPatternsText: '', idPrefix: 'create-skill', onOpenChange: world.stub('spy:openChange')})]});
+});
+
+test('the skill helpers sort, catalog, encode and summarize like the supplied ones', async () => {
+  const world = createWorld();
+  const chunk = 'assets/skill-activation-fields-wmmVsYeN.js';
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args), (_, value) => (value instanceof Map ? [...value] : value instanceof Set ? [...value] : value)),
+    JSON.stringify(supplied[name](...args), (_, value) => (value instanceof Map ? [...value] : value instanceof Set ? [...value] : value)), `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  world.enter({imports: {'./utils-WfPpT5w5.js#n': isSingleFile, './utils-WfPpT5w5.js#t': displayName}});
+  for (const path of ['a/b\\c//d', '', '/x/']) { same('__kept_v', path); same('__kept_G', path); }
+  same('__kept_i', 'a/', '/b', 'c\\d');
+  for (const skill of [...skillFixtures, {...skillFixtures[1], path: 'builtin/Visualize/'}]) { same('__kept_U', skill); same('__pair_isHidden', skill); same('__pair_builtinName', skill); }
+  same('__kept_W', [...skillFixtures].reverse());
+  for (const text of ['week, metrics\n reports ,', '', ' , ']) same('__kept_g', text);
+  same('__pair_catalogPaths', skillFixtures);
+  same('__pair_skillsByFile', skillFixtures);
+  same('__kept_Y', [...skillFixtures, {...skillFixtures[2], metadata: {settingsGate: 'x'}}, {...skillFixtures[2], name: 'internal', metadata: {metadata: {internal: true}}}]);
+  for (const [skill, path] of [[skillFixtures[0], 'user/weekly-review/notes/a.md'], [skillFixtures[0], 'user/weekly-review'], [skillFixtures[6], 'user/notes.md']]) same('__kept_q', skill, path);
+  for (const text of ['# Title\n\nBody', '#NoSpace\nBody', 'Body only', '# Only']) same('__kept_J', text);
+  for (const text of ['---\nname: x\n---\nBody', '---\r\nname: x\r\n---\r\n\r\nBody', 'No front matter', '---\nunclosed']) same('__kept_Q', text);
+  for (const id of ['user/weekly-review', 'builtin/ünïcode/✓', '']) { same('__kept_V', id); same('__kept_X', ours.__kept_V(id)); }
+  same('__kept_X', '!!not base64');
+  for (const [keywords, urls] of [[0, 0], [1, 0], [2, 3], [0, 1]]) same('__pair_activationSummary', keywords, urls);
+  for (const name of ['__kept_K', '__pair_HIDDEN_BUILTINS', '__pair_SYSTEM_ORDER']) assert.deepEqual([...ours[name]], [...supplied[name]], name);
+  assert.equal(String(ours.__pair_FRONT_MATTER), String(supplied.__pair_FRONT_MATTER));
+});
+
+// The app shell's UI: the root providers, the Settings placeholder (sidebar collapsed or not) and the
+// memory index status in every phase.
+const MAIN = 'assets/extension-main-Dz1-AsCT.js';
+test('the app root, Settings placeholder and memory index status render like the supplied ones', async () => {
+  const SM = './strip-markdown-DRcmtuJc.js';
+  const statuses = [{phase: 'downloading', downloadedBytes: 25, totalDownloadBytes: 100}, {phase: 'indexing', processedChunks: 3, totalChunks: 4}, {phase: 'indexing', processedFiles: 1, totalFiles: 8},
+    {phase: 'indexing'}, {phase: 'preparing'}, {phase: 'ready', updatedAt: '2026-10-30T09:00:00Z', indexedChunks: 12345}, {phase: 'ready'}, {phase: 'error', errorKind: 'download'},
+    {phase: 'error', errorKind: 'disk'}, {phase: 'idle'}, {phase: 'unknown'}];
+  const scene = (world, status, {pending = false, error = false, collapsed = true} = {}) => ({imports: {
+    [`${SM}#nr`]: {data: status, isSuccess: !pending && !error, isPending: pending, isError: error, error: {message: 'Daemon offline'}, isFetching: false, refetch: world.stub('spy:refetch')},
+    [`${SM}#er`]: options => ({isPending: false, mutate: world.stub('spy:mutate'), name: queryName(options)}), '*useParams': () => ({userId: '7'}),
+    './sidebar-Cj9gldy1.js#s': {sidebarState: collapsed ? 'closed' : 'open'}}});
+  await assertParity({blocksByChunk: {[MAIN]: ROUTES[MAIN]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 1000, defaults: false,
+    renamed: renamedBindings, scenes: [...statuses.map(status => world => scene(world, status)), world => scene(world, undefined, {pending: true}),
+      world => scene(world, undefined, {error: true, collapsed: false})],
+    props: [...statuses.map((status, index) => ({status, percent: index % 2 ? null : 42})), {}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: MAIN, text: textOf(MAIN), blocks: ROUTES[MAIN], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES,
+    renamed: renamedBindings});
+  for (const status of statuses) {
+    assert.equal(JSON.stringify(ours.__pair_indexProgress(status)), JSON.stringify(supplied.__pair_indexProgress(status)), status.phase);
+    for (const percent of [null, 0, 57]) assert.equal(ours.__pair_statusTitle(status, percent), supplied.__pair_statusTitle(status, percent), status.phase);
+  }
+});
+
+// Small live parts: assistant steps and the turn fold, the New Tab update banner (fresh, cached,
+// dismissed, too new for this browser, a video cover), and the copy button.
+test('the assistant steps, turn fold, update banner and copy button render like the supplied ones', async () => {
+  const chunks = ['assets/turn-fold-B4gN_g5e.js', 'assets/update-banner-C_z-hMCt.js', 'assets/copy-button-C-CFkoWv.js'];
+  const entry = {version: '1.5.0', minVersion: '1.5.0', date: '2026-10-27T00:00:00Z', coverImage: 'https://cdn.example/new.mp4',
+    content: {title: 'Spaces', description: 'Keep work apart', action: 'Open settings', actionHref: '/u/{accountId}/settings/general'}};
+  const scene = (world, {stored, browser = '1.5.2', service = '1.5.0', latest = entry, open = true, copied = false, state, accountId = 7} = {}) => ({state,
+    context: {open, setOpen: world.stub('spy:setOpen'), isCopied: copied},
+    imports: {'./newtab-CnOLQ0yu.js#o': {accountId}, './utils-BEeo4-cB.js#n': true, 'chrome.runtime.getManifest': () => ({version: service}),
+      'window.localStorage.getItem': () => (stored ? JSON.stringify(stored) : null), '*safeParse': value => ({success: Boolean(value?.requestedAt), data: value}),
+      './strip-markdown-DRcmtuJc.js#nr': options => (options?.queryKey?.[0]?.entity === 'changelog' ? {data: latest ? [latest] : []} : {data: browser}),
+      './error-tracking-B1YG2RRM.js#u': {copy: world.stub('spy:copy')}, './date-CxUVm-Dr.js#t': ms => `${ms / 1000}s`}});
+  const now = Date.UTC(2026, 9, 30, 12);
+  await assertParity({blocksByChunk: Object.fromEntries(chunks.map(chunk => [chunk, ROUTES[chunk]])), textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES,
+    minimum: 1100, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world), world => scene(world, {stored: {requestedAt: now - 1000, dismissedVersion: null, changelog: {...entry, coverImage: 'https://cdn.example/new.png?x=1'}}}),
+      world => scene(world, {stored: {requestedAt: now - 1000, dismissedVersion: '1.5.0', changelog: entry}}), world => scene(world, {browser: '1.4.9', open: false, copied: true}), world => scene(world, {accountId: null}),
+      world => scene(world, {service: '1.4', latest: {...entry, minBackgroundServiceVersion: '1.5.0', content: {title: 'T', description: 'D'}}}),
+      world => scene(world, {latest: {...entry, date: '2026-10-01T00:00:00Z'}}), world => scene(world, {latest: null, state: [undefined]})],
+    props: [world => ({icon: 'icon', title: 'Searched the web', children: 'details', className: 'probe', contentClassName: 'inner', inlineTimelineChildren: true, expandMode: 'open-when-active',
+      isActiveGroup: true, isLastItem: true, footer: 'footer', description: 'Check links', color: 'blue', model: 'Opus', time: '2m', activity: 'Reading docs', isRunning: true,
+      onClick: world.stub('spy:onClick'), open: true, defaultOpen: false, onOpenChange: world.stub('spy:onOpenChange'), loading: false, duration: 125000, working: true,
+      value: 'copied text', successMessage: 'Copied!', src: 'https://cdn.example/a.webm', alt: 'Demo'}),
+      {icon: null, title: 'Step', children: undefined, expandMode: 'manual', hideConnector: true, isLastItem: false, description: 'Idle', loading: true, disabled: true, working: false,
+        value: () => 'computed', src: 'https://cdn.example/a.jpg', alt: 'Still'},
+      {icon: undefined, title: 'Bare', children: 'body', bare: true, expandMode: 'none', duration: undefined, value: ''},
+      {icon: 'i', title: 'Forced', children: 'body', expandMode: 'force-open', isActiveGroup: false, isLastItem: true}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: chunks[1], text: textOf(chunks[1]), blocks: ROUTES[chunks[1]], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  for (const [a, b] of [['1.5.0', '1.5.0'], ['1.5', '1.5.1'], ['1.10.0', '1.9.9'], ['2', '10'], ['1.x', '1.x'], ['1.x', '1.y'], ['1.5.0', 'dev']]) {
+    assert.equal(ours.__pair_compareVersions(a, b), supplied.__pair_compareVersions(a, b), `${a} ${b}`);
+    assert.equal(ours.__pair_isAtMost(a, b), supplied.__pair_isAtMost(a, b), `${a} ${b}`);
+  }
+  for (const src of ['https://a/x.MP4', '/v/clip.webm?t=1', 'https://a/x.png', 'movie.mov', '']) assert.equal(ours.__pair_isVideo(src), supplied.__pair_isVideo(src), src);
+  for (const name of ['__pair_STORAGE_KEY', '__pair_REFRESH_MS', '__pair_SHOW_FOR_MS', '__pair_CARD_MOTION', '__pair_DEFAULT_ACTION_PATH'])
+    assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
+  assert.deepEqual([...ours.__pair_VIDEO_EXTENSIONS], [...supplied.__pair_VIDEO_EXTENSIONS]);
+});

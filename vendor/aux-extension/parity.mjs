@@ -53,10 +53,13 @@ export async function assertParity({blocksByChunk, textOf, integrate, read, chan
   // Callbacks are stubs, so every call a handler or effect makes to them is logged and compared.
   const spies = Object.fromEntries(['onClick', 'onCheckedChange', 'onOpenChange', 'onNarrowMorphHeightChange', 'onPointerDown', 'onPointerMove',
     'onPointerUp', 'onPointerCancel', 'onValueChange', 'onSessionChange', 'onQueryChange', 'onKeyDown', 'onActivate', 'onSelect', 'onInputChange',
-    'onOmniboxModeChange'].map(name => [name, world.stub(`spy:${name}`)]));
+    'onOmniboxModeChange', 'onResolve', 'onSubmit', 'onCancel'].map(name => [name, world.stub(`spy:${name}`)]));
+  // Callbacks a component awaits without catching (a prompt's onResolve or onSubmit) are always given:
+  // without them its handlers only reject after the test ends.
+  const awaited = {onResolve: spies.onResolve, onSubmit: spies.onSubmit, onCancel: spies.onCancel};
   const PROPS = [
-    {},
-    {className: 'probe', children: 'child'},
+    {...awaited},
+    {className: 'probe', children: 'child', ...awaited},
     {className: 'probe', variant: 'outline', size: 'sm', shape: 'pill', disabled: true, checked: true, showCloseButton: false, orientation: 'vertical',
       effect: false, inset: true, side: 'left', align: 'end', sideOffset: 2, narrowMorph: false, unstyled: true, open: true, forceNarrow: true,
       travel: true, placeholder: 'Pick', delay: 300, alignItemWithTrigger: false, overlayClassName: 'overlay', type: 'email', value: 'v',

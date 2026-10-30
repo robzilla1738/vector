@@ -1,0 +1,10 @@
+{
+ "Pe": "SkillIcon",
+ "g": "React",
+ "N": "SkillsRoute",
+ "Fe": "SkillGroups",
+ "S": "SkillGroup",
+ "Le": "SkillRow",
+ "Me": "SkillActions",
+ "Te": "CreateSkillDialog"
+}

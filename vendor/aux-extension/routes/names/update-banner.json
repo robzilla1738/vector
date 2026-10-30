@@ -1,0 +1,23 @@
+{
+ "g": "React",
+ "N": "ChangelogEntry",
+ "U": "Changelog",
+ "m": "fetchChangelog",
+ "E": "STORAGE_KEY",
+ "H": "REFRESH_MS",
+ "K": "SHOW_FOR_MS",
+ "z": "StoredState",
+ "G": "useUpdateBanner",
+ "J": "browserPreferences",
+ "b": "isAtMost",
+ "Q": "compareVersions",
+ "y": "versionParts",
+ "W": "readState",
+ "C": "writeState",
+ "a": "jsxRuntime",
+ "X": "DEFAULT_ACTION_PATH",
+ "Y": "VIDEO_EXTENSIONS",
+ "$": "isVideo",
+ "Z": "CoverMedia",
+ "ee": "CARD_MOTION"
+}

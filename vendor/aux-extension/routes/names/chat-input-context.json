@@ -1,0 +1,15 @@
+{
+ "it": "readPageSelection",
+ "hn": "watchPageSelection",
+ "gn": "SELECTION_NAME_MAX",
+ "yn": "selectionName",
+ "wn": "isPresent",
+ "vn": "isTab",
+ "We": "isPageSelection",
+ "ot": "sameTab",
+ "ct": "sameSelection",
+ "bn": "sameAttachment",
+ "Cn": "attachedFilesSummary",
+ "Sn": "attachmentsSummary",
+ "jn": "userMessage"
+}

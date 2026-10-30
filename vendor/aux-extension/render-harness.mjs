@@ -126,7 +126,9 @@ export function createWorld() {
   }, {get: (target, key) => (key in target ? target[key] : stub(`React.${String(key)}`))});
   let effects = [];
 
-  const cn = (...parts) => parts.flat(Infinity).filter(part => typeof part === 'string' && part).join(' ');
+  // Like clsx: strings, and an object's keys whose values are truthy.
+  const cn = (...parts) => parts.flat(Infinity).flatMap(part => (part && typeof part === 'object' && !label(part)
+    ? Object.keys(part).filter(key => part[key]) : [part])).filter(part => typeof part === 'string' && part).join(' ');
   const cva = (base, config = {}) => (props = {}) => {
     const out = [base];
     for (const [name, options] of Object.entries(config.variants ?? {})) {
@@ -251,6 +253,7 @@ export function createWorld() {
       CSS: stub('CSS'), crypto: stub('crypto'), location: stub('location'), history: stub('history'), localStorage: stub('localStorage'),
       sessionStorage: stub('sessionStorage'), fetch: stub('fetch'), chrome: stub('chrome'), self: undefined, global: undefined,
       HTMLElement: stub('HTMLElement'), Audio: stub('Audio'), FileReader: stub('FileReader'), Element: stub('Element'), Node: stub('Node'), CustomEvent: stub('CustomEvent'),
+      InputEvent: class InputEvent extends Event { constructor(type, init = {}) { super(type, init); this.data = init.data ?? null; this.inputType = init.inputType ?? ''; } },
     });
     context.globalThis = context;
     chunkIdentifiers.add(identifier);
