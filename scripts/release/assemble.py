@@ -3,6 +3,8 @@
 
     assemble.py --native <src>/out/AuxFast/Aux.app --components <candidate>/Aux.app --out DIR --build N
                 [--version 1.0.0] [--identity development|developer-id] [--daemon-profile PATH]
+                [--computer-use-helper 'apps/computer-use-helper/.build/app/Aux Computer Use.app']
+                [--memory-helper apps/memory-helper/.build/aux-memory]
 
 The native build supplies everything outside Contents/Resources/aux; the sealed candidate supplies
 the components. Package edits are exact and count-checked (package-edits.json). Nothing outside
@@ -219,6 +221,66 @@ def replace_cli(app: Path, native: Path) -> list:
     return [{'path': f'{AUX}/{CLI_EXECUTABLE}', 'why': 'CLI launcher built with this browser', 'sha256': sha256(path)}]
 
 
+# Aux's own Computer Use helper (apps/computer-use-helper/build.sh) replaces the supplied one.
+COMPUTER_USE_APP = f'{AUX}/apps/computer-use/Aux Computer Use.app'
+COMPUTER_USE_POLICY = f'{DAEMON_APP}/Contents/Resources/AuxComputerUseHelperLaunchPolicy.json'
+COMPUTER_USE_POLICY_KEYS = {'format', 'sourceSha256', 'sha256', 'bytes', 'identifier', 'team'}
+
+
+def replace_computer_use_helper(app: Path, source: Path) -> tuple[list, list]:
+    """Swap in an unsigned helper app and re-pin its launch policy (and anything else pinning the old
+    executable) to the new bytes. sourceSha256 stays: aux-daemon compares it with a compiled constant.
+    Signing later changes the executable again; step 4 re-pins that the same way."""
+    info = plistlib.loads((source / 'Contents/Info.plist').read_bytes())
+    if (info.get('CFBundleIdentifier'), info.get('CFBundleExecutable')) != ('dev.aux.browser.computer-use', 'aux-computer-use'):
+        raise SystemExit(f'{source}: not an Aux Computer Use app')
+    target, policy_path = app / COMPUTER_USE_APP, app / COMPUTER_USE_POLICY
+    executable = 'Contents/MacOS/aux-computer-use'
+    policy = json.loads(policy_path.read_text())
+    old = target / executable
+    if set(policy) != COMPUTER_USE_POLICY_KEYS or (policy['sha256'], policy['bytes']) != (sha256(old), old.stat().st_size):
+        raise SystemExit(f'{COMPUTER_USE_POLICY}: does not pin the supplied helper; review the replacement')
+    before = (policy['sha256'], policy['bytes'])
+    shutil.rmtree(target)
+    shutil.copytree(source, target, symlinks=True)
+    new = target / executable
+    new.chmod(0o755)
+    cascade = repin_cascade(app, {before[0]: (sha256(new), before[1], new.stat().st_size)})
+    pinned = json.loads(policy_path.read_text())
+    if pinned != {**policy, 'sha256': sha256(new), 'bytes': new.stat().st_size}:
+        raise SystemExit(f'{COMPUTER_USE_POLICY}: re-pin did not produce the expected record')
+    return [{'path': COMPUTER_USE_APP, 'why': "Aux's own Computer Use helper", 'sha256': sha256(new)}], cascade
+
+
+# Aux's own memory helper (apps/memory-helper/build.sh) replaces the supplied one the daemon launches.
+MEMORY_HELPER = f'{DAEMON_APP}/Contents/Resources/memory-helper/aux-memory'
+MEMORY_POLICY = f'{DAEMON_APP}/Contents/Resources/AuxMemoryHelperLaunchPolicy.json'
+# The daemon hashes this unsigned copy against a compiled constant (the policy's sourceSha256), so
+# signing must leave it exactly as supplied.
+MEMORY_DISTRIBUTION = f'{AUX}/memory-distribution'
+MEMORY_POLICY_KEYS = {'format', 'sourceSha256', 'sha256', 'bytes', 'identifier', 'team', 'modelDescriptorSha256'}
+
+
+def replace_memory_helper(app: Path, source: Path) -> tuple[list, list]:
+    """Swap in an unsigned aux-memory and re-pin its launch policy (and anything else pinning the old
+    executable). sourceSha256 and the memory-distribution runtime copy stay: aux-daemon compares
+    sourceSha256 with a compiled constant. Signing changes the executable again; step 4 re-pins it."""
+    data = source.read_bytes()
+    if data[:4] not in MACHO_MAGIC or b'__deunicode' not in data:
+        raise SystemExit(f'{source}: not an aux-memory built by apps/memory-helper/build.sh')
+    target, policy_path = app / MEMORY_HELPER, app / MEMORY_POLICY
+    policy = json.loads(policy_path.read_text())
+    if set(policy) != MEMORY_POLICY_KEYS or (policy['sha256'], policy['bytes']) != (sha256(target), target.stat().st_size):
+        raise SystemExit(f'{MEMORY_POLICY}: does not pin the supplied helper; review the replacement')
+    before = (policy['sha256'], policy['bytes'])
+    target.write_bytes(data)
+    target.chmod(0o755)
+    cascade = repin_cascade(app, {before[0]: (sha256(target), before[1], target.stat().st_size)})
+    if json.loads(policy_path.read_text()) != {**policy, 'sha256': sha256(target), 'bytes': target.stat().st_size}:
+        raise SystemExit(f'{MEMORY_POLICY}: re-pin did not produce the expected record')
+    return [{'path': MEMORY_HELPER, 'why': "Aux's own memory helper", 'sha256': sha256(target)}], cascade
+
+
 # The PDF tools and their libraries rebuilt for macOS 15 (scripts/runtime/build-pdf-runtime.py).
 PDF_RUNTIME_MANIFEST = HERE.parent / 'runtime/pdf-runtime-macos15.json'
 
@@ -369,6 +431,10 @@ def main() -> int:
     parser.add_argument('--daemon-executable', type=Path, help='relinked aux-daemon (scripts/candidate/relink_daemon.py)')
     parser.add_argument('--pdf-runtime', type=Path, nargs='?', const=HERE.parents[1] / 'out/runtime/pdf-macos15',
                         help='replace the runtime PDF tools with the macOS 15 rebuild (default out/runtime/pdf-macos15)')
+    parser.add_argument('--computer-use-helper', type=Path,
+                        help="unsigned Aux Computer Use.app from apps/computer-use-helper/build.sh; replaces the supplied helper")
+    parser.add_argument('--memory-helper', type=Path,
+                        help='unsigned aux-memory from apps/memory-helper/build.sh; replaces the helper the daemon launches')
     args = parser.parse_args()
 
     out = args.out.resolve()
@@ -392,6 +458,14 @@ def main() -> int:
     edits = apply_edits(app, json.loads((HERE / 'package-edits.json').read_text()))
     edits += replace_files(app)
     edits += replace_cli(app, args.native)
+    helper_cascade = []
+    if args.computer_use_helper:
+        helper_edits, helper_cascade = replace_computer_use_helper(app, args.computer_use_helper.resolve())
+        edits += helper_edits
+    if args.memory_helper:
+        memory_edits, memory_cascade = replace_memory_helper(app, args.memory_helper.resolve())
+        edits += memory_edits
+        helper_cascade += memory_cascade
     # Component transforms written as modules (count-checked inside, see transforms.mjs).
     transforms = json.loads(run(['node', str(HERE / 'transforms.mjs'), str(app)]).stdout or '[]')
     marker_path = app / AUX / 'bundle.json'
@@ -443,7 +517,7 @@ def main() -> int:
             shutil.copy2(args.release_addons / name, target)
             resigned.append((target, before))
     for path in sorted((app / AUX).rglob('*'), key=lambda p: -len(p.parts)):
-        if not macho(path) or path in covered:
+        if not macho(path) or path in covered or app / MEMORY_DISTRIBUTION in path.parents:
             continue
         current, identifier = signing_details(path)
         kept[current] = kept.get(current, 0) + 1
@@ -458,7 +532,7 @@ def main() -> int:
     pin_files = [pins, app / NATIVE / 'runtime-bootstrap.cjs']
     pins_before = {p: (sha256(p), p.stat().st_size) for p in pin_files}
     repinned = repin_runtime(app, [p for p, _ in resigned if runtime in p.parents])
-    cascade = repin_cascade(app, {
+    cascade = helper_cascade + repin_cascade(app, {
         **{old: (sha256(p), size, p.stat().st_size) for p, (old, size) in resigned if runtime not in p.parents},
         **{old: (sha256(p), size, p.stat().st_size) for p, (old, size) in pins_before.items() if sha256(p) != old}})
 

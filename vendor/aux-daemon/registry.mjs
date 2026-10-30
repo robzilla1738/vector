@@ -1,0 +1,30 @@
+/** tRPC namespaces Aux implements itself (root routers, or nested ones as `sessions.tabs`), each a
+ * module beside this file whose `create(bindings)` returns procedures. Every other namespace, and any procedure a module leaves out, is served by
+ * the supplied router unchanged. Add a namespace here only with a parity test against the supplied one. */
+export const NAMESPACES = Object.freeze({
+  inbox: './namespaces/inbox.mjs',
+  uiAttention: './namespaces/uiAttention.mjs',
+  fullDiskAccess: './namespaces/fullDiskAccess.mjs',
+  agentRuntime: './namespaces/agentRuntime.mjs',
+  capture: './namespaces/capture.mjs',
+  routines: './namespaces/routines.mjs',
+  projects: './namespaces/projects.mjs',
+  billing: './namespaces/billing.mjs',
+  referrals: './namespaces/referrals.mjs',
+  settings: './namespaces/settings.mjs',
+  developers: './namespaces/developers.mjs',
+  onboarding: './namespaces/onboarding.mjs',
+  meta: './namespaces/meta.mjs',
+  'sessions.tabs': './namespaces/sessions.tabs.mjs',
+  mcp: './namespaces/mcp.mjs',
+  channels: './namespaces/channels.mjs',
+  cli: './namespaces/cli.mjs',
+  memory: './namespaces/memory.mjs',
+  contextAwareness: './namespaces/contextAwareness.mjs',
+  models: './namespaces/models.mjs',
+  accounts: './namespaces/accounts.mjs',
+  sessions: './namespaces/sessions.mjs',
+  analytics: './namespaces/analytics.mjs',
+  sync: './namespaces/sync.mjs',
+  lasso: './namespaces/lasso.mjs',
+});

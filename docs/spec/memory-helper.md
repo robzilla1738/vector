@@ -1,6 +1,6 @@
 # Memory helper
 
-Status: **draft**. Groundwork for Batch 10 item 5 in [the browser excellence plan](../plans/2026-10-29-browser-excellence.md): rewrite the supplied memory helper (compiled Rust plus Core ML models) while keeping catalog format 2 and the on-disk index byte-compatible. This page is current work, not part of the historical clean-room set described in [README](README.md).
+Status: **implemented** by `apps/memory-helper` (Swift), checked against the supplied helper by `scripts/memory-helper/compare.py`; section 5 records how the open questions were answered. Groundwork for Batch 10 item 5 in [the browser excellence plan](../plans/2026-10-29-browser-excellence.md): rewrite the supplied memory helper (compiled Rust plus Core ML models) while keeping catalog format 2 and the on-disk index byte-compatible. This page is current work, not part of the historical clean-room set described in [README](README.md).
 
 Reference artifact: release build 91, `out/release/1.0.0-91/Aux.app`. Paths below are relative to `Aux.app/Contents/Resources/aux/` unless they start with `/`.
 
@@ -75,7 +75,7 @@ Methods (the helper's `Command` enum has 7 variants) [O]:
 
 - `path` is relative to `directory` and uses forward slashes.
 - `hash` = sha256(chunk text), lowercase hex. [O]
-- `id` = sha256(`` `${path}:${charOffset}:${hash}` ``). Checked on 3 chunks. [O]
+- `id` = sha256(`` `${path}:${index}:${hash}` ``), `index` being the chunk's position in the file (the spec first said `charOffset`; the two agree only for the first chunk). Context-awareness chunks use sha256(`` `${path}:${title}:${piece}:${hash}:ca2` ``). [O, fuzzed]
 - `title` is the first heading, or the file stem when there is no heading. `lineStart` and `lineEnd` are 1-based and inclusive. A YAML front-matter block stays in the chunk text. [O on the fixture]
 - `windowFrom` appears on `episodic/context-awareness-YYYY-MM-DD.md` time-window chunks (`### HH:MM – HH:MM` sections, plus a "Day overview" chunk). [I, strings and daemon rerank]
 
@@ -164,7 +164,7 @@ Transient names in strings: `.local-memory.memory-index-local.tmp`, `CURRENT.tmp
 | 24 | u64 | 256 | header size; bytes 32–255 are zero |
 | 256 + i·1552 | row | | `u64 ordinal (= i)`, `f32 L2 norm of the vector`, `u32 0`, `f32[384] vector` |
 
-Stored vectors are bitwise identical to `embed(chunk.text)` (section 4). A `sync {rebuild: true}` produced a byte-identical `index.mossvec` and a `session.json` identical apart from `generation` and `updatedAt`. [O]
+Stored vectors are bitwise identical to `embed(chunk.text)` only for chunks of at most 64 tokens. A bulk build (first sync, or `rebuild`) runs the 512-token graph with `MLComputeUnits.all` (the "rebuild accelerator"), so longer chunks differ from `embed` by about 1e-7; incremental syncs and queries run both graphs on the CPU. A `sync {rebuild: true}` produced a byte-identical `index.mossvec` and a `session.json` identical apart from `generation` and `updatedAt`. [O]
 
 For byte compatibility, a rewrite must reproduce the chunker (boundaries, `charOffset`, line numbers, titles and headings), the id and hash formulas, JSON key order and number formatting, the generation naming (`gen-` plus 10 zero-padded digits), and bitwise-identical vectors.
 
@@ -172,7 +172,7 @@ For byte compatibility, a rewrite must reproduce the chunker (boundaries, `charO
 
 - Hybrid search: a sparse lexical index (`src/sparse.rs`, with Snowball stemmers and stopword lists for many languages, plus Unicode segmentation) and dense cosine (SimSIMD).
 - `alpha` weights the two. The daemon passes it through from the caller and usually leaves it undefined.
-- Scores come back normalized so the top hit is 1.0. [O]
+- Scores are reciprocal-rank fusion scaled so rank 1 in both lists is 1.0 (section 5, item 4); the top hit is not always 1.0. [O]
 - There's a filter language (`$and`, `$or`, `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$nin`, `$near`), but the stdio protocol doesn't expose it. The sparse index isn't persisted in the files above, so it's presumably rebuilt in memory from `docs.json`.
 
 ## 3. Shipped model
@@ -297,13 +297,17 @@ Notes:
 
 A throwaway fixture from this investigation, with the three files and both generations, is in the session scratchpad at `/private/tmp/claude-502/-Users-rcourson-Documents-Vibe-Aux/c4feeb3b-f180-49a2-baa3-4c9de2bd56bf/scratchpad/fixture.w8wM/`. It is disposable and not a checked-in fixture.
 
-## 5. Open questions
+## 5. Open questions, answered (2026-10-30)
 
-1. **Tokenizer:** exact behavior. Is there pre-normalization (NFKC? space-to-▁ replacement?)? How are BOS/EOS placed? How do `lstrip` added tokens match? Is the truncation side fixed? Can be checked by black-box comparison through `embed`; the helper exposes no token ids.
-2. **Graph and compute units:** the token-count threshold for choosing the 64 or 512 graph, and which `MLComputeUnits` the normal path and the "rebuild accelerator" use. This decides whether bitwise equality is reachable on other Mac models (M1 vs later; FP16/BF16/I8MM feature checks show up in strings).
-3. **Chunker:** the full rules (maximum chunk size, how headings split, context-awareness windowing, the "Day overview" chunk, the code-fence rule). Only small single-chunk files were observed.
-4. **Sparse index:** the scoring, the meaning and default of `alpha`, and the score normalization.
-5. **Retention and legacy:** how many old generations are kept. Whether and how the helper reads a legacy `memory-index.json` (its name appears in strings next to `entries` and `formatVersion`).
-6. **`index.mossvec` details:** the meaning of the u16 at offset 6 (element type?) and the SQ8 v2 variant. Whether `docIds` are always sorted.
-7. **Native host:** `AuxMemoryHelperLaunchPolicy.json`, the model pins and `kMemorySourceSha` are compiled into the daemon's native addon. A rewritten helper needs a new launch record, a new `sourceSha256` constant and a re-signed identity. That's native host work, not helper work.
-8. **`taskHome`:** the concrete path isn't resolved here. It comes from `captureStorageRoots()` in the native layer.
+Answered by running the supplied helper (candidate `provided-candidate-completion-20261026-a1`, sha256 `1656d4b8…5a90`) on throwaway directories and fuzzing the rewrite against it. All of it is implemented in `apps/memory-helper` and checked by `scripts/memory-helper/compare.py`.
+
+1. **Tokenizer:** added tokens are split out of the raw text first (longest match, `lstrip` honored); each remaining run goes through Metaspace with prepend-always and split: spaces become `▁`, a `▁` is prepended unless the run starts with one, and each `▁`-led word is BPE-merged on its own (lowest rank first, leftmost on ties, byte fallback `bytes[b]`). No Unicode normalization. `[BOS] tokens… [EOS]`, truncated to 511 + EOS. Matched bitwise through `embed` on 50+ texts.
+2. **Graphs and compute units:** the 64 graph when the sequence (with BOS/EOS) is at most 64 tokens, else 512. Queries, `embed` and incremental syncs use `cpuOnly` for both; bulk builds load the 512 graph with `.all` (falling back to the CPU) and the 64 graph on the CPU. The host norm is a sequential f32 sum of squares, `sqrtf`, then `v / norm`; the norm stored in `index.mossvec` is the same computation on the stored vector.
+3. **Chunker:** the JavaScript chunker shown in the old Aside daemon (`splitMarkdownIntoChunks`, 1024-unit windows, 152 overlap, 256 break window, the `BREAK_PATTERNS` scores, code-fence exclusion, line-boundary snapping, `extractHeadings`/heading stack, front matter) over UTF-16 code units, except that a cut or start inside a surrogate pair moves back one unit. Context-awareness pages: `### HH:MM–HH:MM — title` windows and `## Day overview`, `Sources: ` lines and the `**Relevant prior context**` block dropped, `\n{3,}` collapsed, bodies over 1433 units re-split; header `[date range · title]` (session marker ` ⟨s:…⟩` removed), `headings` = [page title or path, window title], `windowFrom`/`windowTo` = `dateTHH:MM`.
+4. **Sparse index:** bm25-crate tokenization (deunicode with `[?]` tofu, lowercase, Unicode word bounds, NLTK English stopwords before stemming, Snowball English), BM25 k1 = 1.2, b = 0.75, avgdl and N over documents that have at least one token. **Fusion is reciprocal rank, not score blending:** each of the dense ranking (dot product, ties by document order) and the sparse ranking (positive scores only) contributes its top `2 × topK`; score = `alpha/(30 + rank) + (1 − alpha)/(30 + rank)`, divided by `1/31`, in f32. `alpha` defaults to 0.8 and is clamped to 0…1; with `alpha = 0` only sparse hits appear. Scores are not renormalized to the top hit (an empty query tops out at 0.8).
+5. **Retention and syncing:** CURRENT plus one previous generation are kept. Files are `*.md` regular files (no dot names, no symlinks) in byte order of their relative paths; files over 16 MiB are skipped with a log line and don't count in `files`. A file whose bytes this process already indexed is skipped. Each chunk is inserted (new id, appended), updated in place (same id, different record) or left alone; then the file's vanished ids, then the ids of deleted files, are removed. Each of these is a change (`rebuild` adds one), and a checkpoint generation is committed every max(256, size at the last commit / 4) changes, the rest at the end. A first sync into an empty directory still commits `gen-0000000001`. Duplicate ids within a file keep the last record and count as an update. The first `search` in a process starts a background catch-up sync (`indexing: true`); with no snapshot yet it answers `Memory index is being initialized; retry shortly`. A `rebuild` while a sync runs fails with `A memory sync is already running`; a plain sync joins the running one. `memory-index.json` is not read.
+6. **`index.mossvec`:** the u16 at offset 6 is 1 for f32 rows; the helper never wrote another value. `docIds` follow document order (sorted by path and position on a first build, appended afterward), not chunk id.
+7. **Native host:** `AuxMemoryHelperLaunchPolicy.json` pins `sha256`/`bytes` of the launched copy, which assembly re-pins (`scripts/release/assemble.py --memory-helper`). `sourceSha256` must equal `kMemorySourceSha` compiled into `aux-daemon` (`AuxAccountMemoryHelper.mm`), so it stays the supplied runtime copy's hash until that constant changes.
+8. **`taskHome`:** still unresolved here. Under the section 1.3 profile with the memory directory inside `AUX_TASK`, both helpers fail every directory request with `Operation not permitted (os error 1)`: the `file-read*` deny covers metadata reads of the ancestors between `AUX_TASK` and `AUX_MEMORY`. Allowing `file-read-metadata` there makes both work, with identical results.
+
+Still unknown: the active-account cap (`Too many active memory accounts`; the rewrite allows 8) and the waiting-sync cap (`Too many waiting sync requests`; 64). Neither is reachable through the native host, which runs one account per process.

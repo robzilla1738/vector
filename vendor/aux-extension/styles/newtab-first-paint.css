@@ -1,0 +1,51 @@
+/* New Tab first paint: the tokens and document styles newtab.html inlines so its omnibox paints
+ * before globals CSS loads (that sheet arrives deferred). Aux-owned source for the start of the
+ * page's <style>; the release puts the Geist faces from fonts.css and then this file in its place,
+ * so first paint already draws Geist instead of the fallback and the loaded page does not jump.
+ * Values are the supplied ones and match colors.css (checked by the tests); --tabs-list and
+ * --shadow-tint exist only here, for the first-frame mode tabs and omnibox card. */
+:root {
+  --background: #fff;
+  --foreground: oklch(14.5% 0 0);
+  --primary: oklch(14.5% 0 0/.95);
+  --muted: oklch(14.5% 0 0/.05);
+  --muted-foreground: oklch(14.5% 0 0/.55);
+  --border-surface: oklch(14.5% 0 0/.1);
+  --surface-primary: oklch(100% 0 0);
+  --tabs-list: oklch(70.8% 0 0/.2);
+  --shadow-tint: #0000000d;
+  --web-content-background: #fffc;
+  --font-sans: "Geist Variable", "Geist", sans-serif;
+  --font-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --lightningcss-light: initial;
+  --lightningcss-dark: ;
+  color-scheme: light;
+}
+.dark {
+  --background: oklch(20.5% 0 0);
+  --foreground: oklch(98.5% 0 0);
+  --primary: oklch(98.5% 0 0/.85);
+  --muted: oklch(98.5% 0 0/.15);
+  --muted-foreground: oklch(98.5% 0 0/.55);
+  --border-surface: oklch(98.5% 0 0/.15);
+  --surface-primary: oklch(98.5% 0 0/.08);
+  --tabs-list: oklch(20.5% 0 0/.4);
+  --shadow-tint: #0000001a;
+  --web-content-background: oklch(20.5% 0 0/.8);
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+  color-scheme: dark;
+}
+html,
+body {
+  overscroll-behavior: none;
+  margin: 0;
+  overflow: hidden;
+}
+body {
+  background: var(--web-content-background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}

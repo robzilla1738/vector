@@ -1,0 +1,9 @@
+/* The document font and overscroll, late in the sealed globals CSS (after the KaTeX and
+ * Markdown rules); the release puts this file in its place. Values are the supplied ones. */
+html,
+body {
+  font-family: var(--font-sans);
+}
+:root {
+  overscroll-behavior: none;
+}

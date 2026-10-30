@@ -6,9 +6,9 @@ Robert asked for a thorough review of the browser experience — the agent, qual
 
 **Sources:** nine read-only code reviews of build 77 and the durable checkout, plus an on-screen look at build 77 beside the running Aside and the saved Arc references (`out/acceptance/20261027/ref/`). Findings marked *(check)* were inferred from code and need one look on screen before or while fixing. File paths are under the durable checkout's `src/` unless they start with `vendor/`, `scripts/` or `docs/`; `frame/` means `chrome/browser/ui/views/frame/`.
 
-## Progress (build 95, 2026-10-29)
+## Progress (build 96, 2026-10-30)
 
-Build 95 (`out/release/1.0.0-95`) carries everything below. It is assembled from the durable checkout with the release transforms and `--pdf-runtime`. It launches, and the items marked *(seen)* were checked on screen. The rest is built and unit-tested but not yet driven by hand.
+Build 96 (`out/release/1.0.0-96`) carries everything below. It is assembled from the durable checkout with the release transforms, `--pdf-runtime`, `--computer-use-helper` and `--memory-helper`. It launches, and the items marked *(seen)* were checked on screen. The rest is built and unit-tested but not yet driven by hand.
 
 **Done**
 - **Batch 1:**
@@ -70,11 +70,19 @@ Build 95 (`out/release/1.0.0-95`) carries everything below. It is assembled from
   - Aux's own text for all 51 built-in skills (`vendor/aux-skills/`).
   - CLI `spaces`, `tabs`, `chats`, `status`, `list` and `resolve`.
   - Specs for the Computer Use helper protocol and the memory helper formats (`docs/spec/`).
+  - **Computer Use helper** (`apps/computer-use-helper/`): Aux's own Swift app on that protocol, Accessibility only, with no keyboard or pointer capture. Assembled with `--computer-use-helper`.
+  - **Memory helper** (`apps/memory-helper/`): Aux's own `aux-memory`, bit-exact with the supplied one on the fixtures (`scripts/memory-helper/compare.py`). Assembled with `--memory-helper`, and it runs under the build 96 daemon *(seen in the process list)*.
+  - **Daemon routers** (`vendor/aux-daemon/`): the root router serves 273 of 285 procedures from Aux's modules. Every input and output schema and route meta matches the supplied procedure (parity harness). remoteControl and externalPasswordManagers stay supplied, as agreed.
+  - **Extension, first two steps** (`vendor/aux-extension/`): tokens and fonts (Geist replaces the commercial display face), the New Tab page's first paint from the same tokens and fonts *(seen)*, and the 14 shared components as readable source, render-checked against the supplied ones. Dialogs, alert dialogs, popovers and the select popup use the 12px corner.
+- **Memory indexing fixed:** since at least build 55 the daemon refused the memory helper ("unsupported identity"). Assembly signed the unsigned memory-distribution copy, and the re-pin then rewrote the policy's `sourceSha256`, which the daemon checks against a compiled constant. Assembly now leaves `Contents/Resources/aux/memory-distribution` alone; the warning is gone in build 96.
 
 **Not done, and why**
-- **Batch 10 rewrites:**
-  - Not yet written: the Computer Use helper as a new Swift app, the memory helper rewrite, the daemon router-by-router replacement, the extension route-by-route rewrite and the native addons.
-  - Each is a long rewrite. The two specs are the first step; the launch records in `aux-daemon` must change with them.
+- **Batch 10 rewrites still to do:**
+  - The daemon's services under the routers (stores, agent server, model registry, auth functions, MCP and channel managers), store by store with the parity harness as the net.
+  - The extension's routes beyond the shared components.
+  - The native addons (`aux-pdf.node`, `aux-macos-utilities.node`).
+  - The memory helper under the production seatbelt needs `file-read-metadata` on the task home; that is an aux-daemon native change.
+  - The memory-distribution `aux-memory` stays unsigned, as supplied. Notarization may reject an unsigned Mach-O in the bundle; that is checked when notarization runs.
 - **Organization model unit tests:**
   - They compile, but linking a test binary needs `aux_test` outputs in `build/toolchain/apple/host-output-allowlist.json`.
   - The permission classifier refused that edit even with Robert's approval, so Robert adds it by hand.

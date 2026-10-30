@@ -162,5 +162,91 @@ class RepinCascade(unittest.TestCase):
             assemble.repin_cascade(app, {old: ('b' * 64, 1, 1)})
 
 
+class ComputerUseHelper(unittest.TestCase):
+    SOURCE = 'debc03deb3f94eb7e8b50fa88d25e617f970b75f1e515b757b131655ad3dde51'
+
+    def bundle(self, root: Path, executable: bytes) -> Path:
+        contents = root / 'Contents'
+        (contents / 'MacOS').mkdir(parents=True)
+        (contents / 'Info.plist').write_bytes(assemble.plistlib.dumps(
+            {'CFBundleIdentifier': 'dev.aux.browser.computer-use', 'CFBundleExecutable': 'aux-computer-use'}))
+        (contents / 'MacOS/aux-computer-use').write_bytes(executable)
+        return root
+
+    def setUp(self):
+        self.app = Path(tempfile.mkdtemp())
+        self.bundle(self.app / assemble.COMPUTER_USE_APP, b'supplied helper')
+        (self.app / assemble.COMPUTER_USE_APP / 'Contents/Resources').mkdir()
+        (self.app / assemble.COMPUTER_USE_APP / 'Contents/Resources/imessage.png').write_bytes(b'png')
+        self.policy = self.app / assemble.COMPUTER_USE_POLICY
+        self.policy.parent.mkdir(parents=True)
+        self.record = {'bytes': 15, 'format': 'aux.computer-use.fixed-helper-launch.v1',
+                       'identifier': 'dev.aux.browser.computer-use', 'sha256': hashlib.sha256(b'supplied helper').hexdigest(),
+                       'sourceSha256': self.SOURCE, 'team': assemble.TEAM}
+        self.policy.write_text(json.dumps(self.record, indent=2))
+        self.built = self.bundle(Path(tempfile.mkdtemp()) / 'Aux Computer Use.app', b'aux own helper, unsigned')
+
+    def test_replaces_the_app_and_repins_the_policy(self):
+        edits, cascade = assemble.replace_computer_use_helper(self.app, self.built)
+        helper = self.app / assemble.COMPUTER_USE_APP
+        self.assertEqual((helper / 'Contents/MacOS/aux-computer-use').read_bytes(), b'aux own helper, unsigned')
+        self.assertFalse((helper / 'Contents/Resources').exists(), 'nothing of the supplied app is kept')
+        self.assertEqual(json.loads(self.policy.read_text()), {
+            **self.record, 'bytes': 24, 'sha256': hashlib.sha256(b'aux own helper, unsigned').hexdigest()})
+        self.assertEqual(json.loads(self.policy.read_text())['sourceSha256'], self.SOURCE)
+        self.assertEqual(edits[0]['sha256'], hashlib.sha256(b'aux own helper, unsigned').hexdigest())
+        self.assertIn(str(self.policy.relative_to(self.app)), [entry['path'] for entry in cascade])
+
+    def test_refuses_a_policy_that_does_not_pin_the_supplied_helper(self):
+        self.policy.write_text(json.dumps({**self.record, 'bytes': 16}))
+        with self.assertRaises(SystemExit):
+            assemble.replace_computer_use_helper(self.app, self.built)
+        self.assertEqual((self.app / assemble.COMPUTER_USE_APP / 'Contents/MacOS/aux-computer-use').read_bytes(), b'supplied helper')
+
+    def test_refuses_another_bundle_identity(self):
+        (self.built / 'Contents/Info.plist').write_bytes(assemble.plistlib.dumps(
+            {'CFBundleIdentifier': 'dev.aux.browser.other', 'CFBundleExecutable': 'aux-computer-use'}))
+        with self.assertRaises(SystemExit):
+            assemble.replace_computer_use_helper(self.app, self.built)
+
+
+
+class MemoryHelper(unittest.TestCase):
+    SOURCE = 'b4c7d12efa87ed88515092527c7d1e7d9b43e605f39f03543e2b0e8e7005b3c0'
+    SUPPLIED = b'\xcf\xfa\xed\xfe supplied helper'
+    OURS = b'\xcf\xfa\xed\xfe aux own helper __deunicode'
+
+    def setUp(self):
+        self.app = Path(tempfile.mkdtemp())
+        self.target = self.app / assemble.MEMORY_HELPER
+        self.target.parent.mkdir(parents=True)
+        self.target.write_bytes(self.SUPPLIED)
+        self.policy = self.app / assemble.MEMORY_POLICY
+        self.record = {'bytes': len(self.SUPPLIED), 'format': 'aux.memory.fixed-helper-launch.v1',
+                       'identifier': 'dev.aux.browser.memory', 'modelDescriptorSha256': 'd' * 64,
+                       'sha256': hashlib.sha256(self.SUPPLIED).hexdigest(), 'sourceSha256': self.SOURCE, 'team': assemble.TEAM}
+        self.policy.write_text(json.dumps(self.record, indent=2))
+        self.built = Path(tempfile.mkdtemp()) / 'aux-memory'
+        self.built.write_bytes(self.OURS)
+
+    def test_replaces_the_helper_and_repins_the_policy(self):
+        edits, cascade = assemble.replace_memory_helper(self.app, self.built)
+        self.assertEqual(self.target.read_bytes(), self.OURS)
+        self.assertEqual(json.loads(self.policy.read_text()), {
+            **self.record, 'bytes': len(self.OURS), 'sha256': hashlib.sha256(self.OURS).hexdigest()})
+        self.assertEqual(edits[0]['sha256'], hashlib.sha256(self.OURS).hexdigest())
+        self.assertIn(str(self.policy.relative_to(self.app)), [entry['path'] for entry in cascade])
+
+    def test_refuses_a_policy_that_does_not_pin_the_supplied_helper(self):
+        self.policy.write_text(json.dumps({**self.record, 'bytes': 1}))
+        with self.assertRaises(SystemExit):
+            assemble.replace_memory_helper(self.app, self.built)
+        self.assertEqual(self.target.read_bytes(), self.SUPPLIED)
+
+    def test_refuses_a_build_without_the_transliteration_tables(self):
+        self.built.write_bytes(b'\xcf\xfa\xed\xfe plain swift build')
+        with self.assertRaises(SystemExit):
+            assemble.replace_memory_helper(self.app, self.built)
+
 if __name__ == '__main__':
     unittest.main()
