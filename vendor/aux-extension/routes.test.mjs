@@ -1321,3 +1321,48 @@ test('the Memory helpers label, filter and key like the supplied ones', async ()
   }
 });
 
+// General: preferred languages kept unique and summarized, import progress, spell check, versions
+// and the background service's lag; then the page with account, browser and service data.
+test('General settings keep languages, label versions and render like the supplied ones', async () => {
+  const chunk = 'assets/general-3dgRbrRk.js';
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  const languages = [{code: 'en-US', displayName: 'English (United States)', nativeDisplayName: 'English (United States)'},
+    {code: 'en', displayName: 'English', nativeDisplayName: 'English'}, {code: 'fr', displayName: 'French', nativeDisplayName: 'français'},
+    {code: 'fr-CA', displayName: 'French', nativeDisplayName: 'français'}, {code: 'de', displayName: 'German', nativeDisplayName: 'Deutsch'}];
+  same('__pair_uniqueLanguageCodes', ['en-US', ' EN-us ', 'fr-CA', 'fr', 'xx', 'de'], languages);
+  same('__pair_uniqueLanguages', languages);
+  for (const code of ['fr-CA', 'en', 'xx-YY', 'DE']) same('__pair_findLanguage', code, languages);
+  for (const language of languages) same('__pair_preferredVariant', language, languages);
+  for (const code of ['en-US', 'en', ' Fr-ca ']) { same('__pair_baseLanguage', code); same('__pair_normalize', code); }
+  for (const args of [[['en', 'fr'], languages, true, true], [['en', 'fr', 'de', 'xx'], languages, true, true], [['en', 'fr', 'de'], languages, true, true], [[], languages, true, true], [['en'], languages, false, true],
+    [['en'], languages, true, false]]) same('__pair_languagesSummary', ...args);
+  for (const [a, b] of [[['a', 'b'], ['a', 'b']], [['a'], ['a', 'b']], [['b', 'a'], ['a', 'b']]]) same('__pair_sameLanguages', a, b);
+  for (const [state, status] of [[{progress: 0.42}, 'running'], [{progress: 57}, 'running'], [undefined, 'succeeded'], [undefined, 'running']]) same('__pair_importPercent', state, status);
+  for (const value of [false, true, undefined, 'x']) same('__pair_captureEnabled', value);
+  for (const [available, settings] of [[false], [true], [true, {spellCheckSupported: true}], [true, {spellCheckSupported: false}]]) same('__pair_spellCheckLabel', available, settings);
+  for (const version of ['dev', 'v1.2.3', '1.2.3', undefined, '']) { same('__pair_versionLabel', version); same('__pair_cleanVersion', version && ` ${version} `); }
+  for (const name of ['__pair_IMPORT_KINDS', '__pair_CAPTURE_KEY', '__pair_LAG_KEY', '__kept_Pr', '__pair_SUPPORTED_LANGUAGES_KEY'])
+    assert.equal(JSON.stringify(ours[name] instanceof Map ? [...ours[name]] : ours[name]), JSON.stringify(supplied[name] instanceof Map ? [...supplied[name]] : supplied[name]), name);
+  const lag = side => { const store = new Map(); world.enter({imports: {'localStorage.getItem': key => store.get(key) ?? null, 'localStorage.setItem': (key, value) => store.set(key, value)}});
+    return JSON.stringify([side.__pair_isSameLag(true, 'a'), side.__pair_isSameLag(true, 'a'), side.__pair_isSameLag(true, 'b'), side.__pair_isSameLag(false, 'b'), [...store]]); };
+  assert.equal(lag(ours), lag(supplied));
+  const byKey = answers => options => { const key = (options?.queryKey ?? []).join('.') || String(options?.[STUB_PATH] ?? options);
+    return Object.entries(answers).find(([part]) => key.includes(part))?.[1] ?? {data: undefined, isLoading: true}; };
+  const scene = (world, {account = {mode: 'cloud', authStatus: 'active', email: 'r@aux.example', name: 'Robert'}, supported = true} = {}) => ({imports: {
+    './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')},
+    './strip-markdown-DRcmtuJc.js#tr': byKey({'accounts.get': {data: account}}),
+    './strip-markdown-DRcmtuJc.js#nr': byKey({languageSettings: {data: {preferredLanguages: ['en-US', 'fr'], spellCheckSupported: supported}}, supportedLanguages: {data: languages},
+      searchEngines: {data: {engines: [{id: 'g', name: 'Google'}, {id: 'd', name: 'DuckDuckGo'}], defaultId: 'd'}}, autoPipEnabled: {data: true}, defaultBrowserState: {data: {isDefault: false}},
+      version: {data: '1.4.0'}, 'capture.enabled': {data: true}, 'daemon.health': {data: {version: '1.4.0', startedAt: 'x'}}, 'accounts.get': {data: account}}),
+    './strip-markdown-DRcmtuJc.js#er': {isPending: false, mutate: world.stub('spy:mutate'), mutateAsync: world.stub('spy:mutateAsync')}}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 60, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world), world => scene(world, {account: {mode: 'local'}, supported: false}),
+      world => scene(world, {account: {mode: 'cloud', authStatus: 'paused'}}), world => ({...scene(world), state: [true]})],
+    props: [{children: 'card', className: 'probe', config: {kind: 'bookmarks', title: 'Import bookmarks'}, description: 'From Chrome', title: 'Detected browser',
+      label: 'Bookmarks', status: 'running', progress: 0.5, isSaving: false, languages, open: true, preferredLanguages: ['en-US', 'fr'], code: 'fr', index: 1, selectedCodes: ['en-US', 'fr']},
+      {status: 'succeeded', error: null, languages: [], preferredLanguages: [], code: 'xx', index: 0, open: false}]});
+});
+

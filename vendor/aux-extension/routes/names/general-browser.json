@@ -1,0 +1,17 @@
+{
+ "Xm": "LoadingRow",
+ "oo": "SEARCH_ENGINES_KEY",
+ "lo": "AUTO_PIP_KEY",
+ "Jm": "switchRow",
+ "co": "CAPTURE_QUERY_KEY",
+ "$m": "canStoreLocally",
+ "eg": "spellCheckLabel",
+ "tg": "DAEMON_HEALTH_KEY",
+ "uo": "LAG_KEY",
+ "Sl": "versionLabel",
+ "ho": "cleanVersion",
+ "ng": "readDaemonHealth",
+ "ig": "BrowserUpdates",
+ "rg": "isSameLag",
+ "sg": "BackgroundService"
+}

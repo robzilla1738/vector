@@ -265,6 +265,13 @@ export const ROUTES = Object.freeze({
     'ter text-sm",children:"Import memory"})}', '49852f9282ac7bb75a5b147483cc01f06946d0bced12bdd8b263bd2101e4524e', 175)],
   'assets/context-awareness-BocPTg31.js': [block('Memory: Context Awareness', 'context-awareness.js', 'var x=Se(ke(),1);function L(s){return s.',
     '!M,onClick:E,children:"Add"})]})]})]})};', '6fd6cfd4239350f4ae50cd0f4a819bfc945d71ed544a518dae5bd65ede768db5', 20543)],
+  // General: the Aux-facing settings code in two passes; three.js and the injected Aux code stay with their owners.
+  'assets/general-3dgRbrRk.js': [
+    block('General: account, import, capture and languages', 'general-settings.js', 'function vm({className:e,outsideSpeed:t=',
+      'jsx)(ag,{})}),(0,A.jsx)(og,{})]})]})]})}', '428eae8571f11b2e6e8e29fe23629d97e9d3b266da23ad1142716a7a192bf7e2', 21964),
+    block('General: default browser, search, New Tab, PiP, screenshots, updates and service', 'general-browser.js',
+      'var Xm=()=>(0,A.jsxs)(Pi,{children:[(0,A', 'children:"open source software"}),"."]})', '44a387aac735b8f4cf7079fcc17b3b7f4929ace0dfa542eded08e081d5275468', 9417),
+  ],
   // The composer, one area per pass; the rest of the chunk stays supplied until its pass.
   'assets/session-composer-Dc0LRfZA.js': [
     block('Composer: icons, tool summaries, prompt history, the editor, the + menu, Send and dictation', 'composer-head.js',
@@ -338,6 +345,8 @@ export const TOKEN_CHANGES = Object.freeze([
   // The channel settings dialog overrode the dialog corner with the 16px step; the required mark was a fixed orange.
   ['channels-connections.js', 'rounded-2xl', 'rounded-xl'],
   ['channels-setup.js', 'text-orange-500', 'text-destructive'],
+  // General's import summary card: the 12px card corner.
+  ['general-settings.js', 'rounded-2xl', 'rounded-xl'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');
