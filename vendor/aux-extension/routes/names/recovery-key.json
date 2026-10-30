@@ -1,0 +1,14 @@
+{
+ "te": "React",
+ "e": "jsxRuntime",
+ "oe": "RecoveryKeyPage",
+ "ae": "RecoveryKeyForm",
+ "se": "RecoveryKeyFooter",
+ "l": "WORD_COUNT",
+ "S": "WORD_INDEXES",
+ "ne": "recoverySchema",
+ "d": "normalizeWord",
+ "C": "toWordFields",
+ "x": "splitWords",
+ "ie": "joinWords"
+}

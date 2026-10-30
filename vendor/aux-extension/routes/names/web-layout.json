@@ -1,0 +1,15 @@
+{
+ "g": "React",
+ "Z": "AccountSettled",
+ "I": "createCloudChatStore",
+ "n": "jsxRuntime",
+ "ee": "CloudChatContext",
+ "te": "CloudChatProvider",
+ "h": "SIDEBAR_WIDTH",
+ "j": "NARROW_QUERY",
+ "se": "SidebarLayout",
+ "E": "SidebarAffordance",
+ "re": "useNarrowWindow",
+ "ae": "useSidebarFocus",
+ "ne": "useSidebarPanel"
+}

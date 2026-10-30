@@ -1,0 +1,13 @@
+{
+ "t": "React",
+ "a": "jsxRuntime",
+ "F": "AspectRatio",
+ "l": "TAB_PREVIEW",
+ "ie": "previewSizeSchema",
+ "ae": "previewParamsSchema",
+ "R": "PREVIEW_SIZE",
+ "q": "PREVIEW_RATIO",
+ "G": "useOnScreen",
+ "X": "previewUrl",
+ "S": "PLATFORMS"
+}

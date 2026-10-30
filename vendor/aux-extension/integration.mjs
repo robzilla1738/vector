@@ -511,6 +511,82 @@ export const ROUTES = Object.freeze({
     block('Action confirmation artifact', 'action-confirmation-artifact.js', 'var s=g(),S=({artifact:e,className:r,com',
       'xisting"} / ${r}`:"Creates a new skill"}', '8ef31d63a748efd969249bed20dca958e48f7e52907af1d89f05f1b0cd4b3295', 2921),
   ],
+  'assets/route-VV0zL3cm.js': [
+    block('Channels chat page', 'channel-chat.js', 'var f=W(G(),1),r=X();function Se({channe',
+      'atus==="suspended",client:n})}var Je=$e;', '48e167985a014bcdfc88d4539675548fde73bcb3019c3392dbfda7aca99cb2a6', 19977),
+  ],
+  'assets/ai-CzEX5E7S.js': [
+    block('Onboarding: choose an AI provider', 'onboarding-ai.js', 'var e=re(),$e=({size:s=24,ariaHidden:r=!',
+      'nslate-y-1/2",value:s.id,id:s.id})]})});', 'f172d5f594b56b2d7c5787a1d8c659ba70d9ca7cd7955762bec2800c392dbb37', 18658),
+  ],
+  'assets/experimental-Xq3YsEPK.js': [
+    block('Experimental settings', 'experimental-settings.js', 'var x=_(M(),1),e=K(),L=["experimental-we',
+      'ntal",value:{...t,auxCode:a}})}})})]})};', 'f08d528058e7ff502f9007faef606558ad93854cc34271e80911d349ebf6ead0', 9796),
+  ],
+  'assets/route-CSKkWqf5.js': [
+    block('Onboarding layout and hero animations', 'onboarding-shell.js', 'var i=y(I(),1),A="/assets/background-DmA',
+      ';return Q.some(t=>s.includes(t))?g:null}', 'b6c99c841bb3a339a874f7bacf0067b9b7b26ad97da695e9d8b4556efb2fd27f', 7694),
+  ],
+  'assets/route-BiU8pLwS.js': [
+    block('Web app layout and cloud chat store', 'web-layout.js', 'var g=P(_(),1),Z=({accountId:r,children:',
+      'Frame(c)}},[o]),{setSidebarPanelRef:t}};', 'c1811bc295397d9500a612d63e59bf3c596b1ffc721d14d4ecb4c260297a6883', 6189),
+  ],
+  'assets/communication-xjhkYtDb.js': [
+    block('Communications settings', 'communication-settings.js', 'var S=y(A(),1),e=N(),z=[{id:"gmail",labe',
+      ' way you talk."}),(0,e.jsx)(K,{})]})]})}', '05b44c36d6e3674fdbe6688fc408cd26672960979de7ffa48ede191de8c80315', 5611),
+  ],
+  'assets/recovery-DY2UC0Rx.js': [
+    block('Recovery key', 'recovery-key.js', 'var te=K(D()),e=N();function be(){const ',
+      '=d(r.value);return n?[n]:[]}).join(" ")}', '716fae410e5cd8160805bfdf8a0c1c726151b18858c34bb797dc299f3ea46959', 3909),
+  ],
+  'assets/progress-CS-jrVXz.js': [
+    block('Onboarding import progress', 'import-progress.js', 'var d=N(S(),1),e=z(),G=()=>{const r=(0,d',
+      '.currentDataKind}...`}):(0,e.jsx)(J,{});', '78869e107e74c0a0e550e0d9d448e48a1c2b7194513ec3b55fc532104ce3eaba', 7154),
+  ],
+  'assets/route-Dh145hWk.js': [
+    block('App layout', 'app-layout.js', 'var o=c(l()),e=u(),C=(0,o.lazy)(()=>p(()',
+      ')=>{window.clearInterval(r)}},[]),null};', '120f7aea4a51ddfb09b815719ab5916c9e709c1d3434c64393a704cdd81f072b', 1313),
+  ],
+  'assets/-utils-B_lbplVm.js': [
+    block('Sign out dialog', 'sign-out-dialog.js', 'var C="aux.profileMetadataSync.v2";async',
+      'e:s.name,profileUrl:i,userId:s.userId}};', '149cb725c63ec79dea4302c54b871eeac37d545756d2247c4df8b2a4b6b79e96', 1478),
+  ],
+  'assets/channel-platform-icon-Cjhdli_M.js': [
+    block('Tab preview and channel platform icon', 'channel-platform-icon.js', 'var t=M(N(),1),a=V();function F({ratio:e',
+      'ren:m}),(0,a.jsx)(U,{children:d})]}):m};', '5294c9cb7e98b5c3ae73f9b5c1b8cc4ebab411a6a33909efb96104984d71e87d', 3072),
+  ],
+  'assets/subagent-icon-B78zcDX8.js': [
+    block('Subagent icon', 'subagent-icon.js', 'var b=f(p(),1),r=v(),j=({color:t="mono",',
+      ')=>e*31+o.charCodeAt(0)>>>0,0)%s.length;', '03a96b867c1fba6b9a8ef0f9bfb6654509f9df100d75489b7ccfce744d40a87c', 1987),
+  ],
+  'assets/capture-anchor-CI2S0j85.js': [
+    block('Capture anchor', 'capture-anchor.js', 'var i=o(c()),r=m();function w(){const e=',
+      'in e)?!1:e.type==="CAPTURE_ANCHOR_SYNC"}', 'cc8d07909374b36dcae28d190a7650c385d97cf81e7e2b4ed0fb2d4633506d92', 1293),
+  ],
+  'assets/files-artifact-DHQjjsEB.js': [
+    block('File artifacts', 'files-artifact.js', 'var s=l(),x=e=>(0,s.jsxs)("div",{classNa',
+      '|!("path"in e)||!e.path?!1:c(m(e.path))}', '8b864ca93043aa09eca3e4d1934b91bb9c9fee0b2c79691e9db9d1fb12e95770', 740),
+  ],
+  'assets/radio-card-group-DhMlHjFD.js': [
+    block('Radio card group', 'radio-card-group.js', 'var a=i(),b=({className:r,...e})=>(0,a.j',
+      '.jsx)(h,{disabled:e,id:t,value:o})]})});', '100b0c2d71e118bec0db0f0e718096ce7e44d5e6bc347caf9453b61f3d36dff1', 965),
+  ],
+  'assets/selection-handle-Df1vMUiF.js': [
+    block('Selection handle', 'selection-handle.js', 'var i=m(d()),t=f();function D(){const o=',
+      't-px -ml-px":"-mr-px -mb-px")})})})})})}', '11dac7036d7b16f76db88061f3430eccdf714042c22193c7e4d15ad7d8a6c843', 1886),
+  ],
+  'assets/window-cursor-ClCFre_a.js': [
+    block('Window cursor icon', 'window-cursor.js', 'var C=t(),i=({size:r=24,ariaHidden:l=!0,',
+      '7941 14.5442Z",fill:"currentColor"})]});', 'bbd157111c40fac1aa60ec7adc503c75ad7b909ab7133fad3dc9585c07c45b80', 1509),
+  ],
+  'assets/empty-D6YJzOw0.js': [
+    block('Empty', 'empty.js', 'var n=i();function o({className:e,...t})',
+      'gap-2.5 text-sm text-balance",e),...t})}', 'b0b6e7f6d308b01c276d3b404fe64398502b2e6665fa18d2802082e28e17a4c3', 1397),
+  ],
+  'assets/error-tracking-B1YG2RRM.js': [
+    block('Error pages and reporting', 'error-tracking.js', 'T=({size:e=24,ariaHidden:t=!0,...r})=>(0',
+      'rome.extension?.inIncognitoContext===!0}', '39a8476c9cb7bb0f52a7c3d050e74cf042e8e755fd5971fb5bbff9bf04d85939', 8182),
+  ],
 });
 
 /** Supplied name → Aux name for the module bindings a route renamed (the parity tests compare them
@@ -604,6 +680,12 @@ export const TOKEN_CHANGES = Object.freeze([
   ['detect-tools.js', 'size-16 rounded-2xl', 'size-16 rounded-xl'],
   // The artifact in an action confirmation takes the 12px card corner, like the frame around it.
   ['action-confirmation-artifact.js', 'bg-surface-primary w-full overflow-hidden rounded-lg', 'bg-surface-primary w-full overflow-hidden rounded-xl'],
+  // The onboarding provider list and plan placeholders: the 12px card corner.
+  ['onboarding-ai.js', 'rounded-2xl', 'rounded-xl'],
+  // The sign out dialog's footer follows the dialog's 12px corner.
+  ['sign-out-dialog.js', 'rounded-b-3xl', 'rounded-b-xl'],
+  // A checked radio card was a fixed zinc-100 in light mode; --muted follows the Space tint.
+  ['radio-card-group.js', 'has-data-checked:bg-zinc-100!', 'has-data-checked:bg-muted'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');

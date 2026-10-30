@@ -1,0 +1,17 @@
+{
+ "U": "WarningIcon",
+ "K": "ACCOUNT_PATH",
+ "W": "ACCOUNT_SEGMENT",
+ "$": "accountFromSearch",
+ "z": "resolveAccountId",
+ "b": "reportedErrors",
+ "h": "recoveries",
+ "E": "installed",
+ "C": "surfaceName",
+ "Y": "alreadyReported",
+ "ee": "describeError",
+ "te": "accountForReport",
+ "re": "currentRoute",
+ "M": "currentUrl",
+ "ne": "isIncognito"
+}

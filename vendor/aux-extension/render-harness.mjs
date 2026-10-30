@@ -24,7 +24,8 @@ function ignoreChunkRejections() {
   });
 }
 
-export function createWorld() {
+/** `constants` gives imports that are plain values: {'./chunk.js#name': value}. */
+export function createWorld(constants = {}) {
   ignoreChunkRejections();
   const log = [];
   const proxies = new Map();
@@ -58,7 +59,7 @@ export function createWorld() {
         }
         return stub(named);
       },
-      construct: (_, args) => stub(`new ${path}(${signature(args)})`),
+      construct: (_, args) => (scenario.imports?.[`new ${path}`]?.(...args) ?? stub(`new ${path}(${signature(args)})`)),
       has: () => false,
       // Spreading a stub ({...trpc.x.queryOptions(), retry: false}) keeps its path under STUB_PATH,
       // so a scene can still tell which query it is.
@@ -99,13 +100,17 @@ export function createWorld() {
     useContext: () => scenario.context,
     use: () => scenario.context,
     // A scene's `state` sets every useState: one value, or a list taken in call order, where an
-    // undefined entry keeps the component's own initial value.
+    // undefined entry keeps the component's own initial value. `onSetState(slot, next)` hears every
+    // write, so a test can apply them; `timers` collects setTimeout's [callback, delay]; `socket`
+    // builds what `new WebSocket` returns.
     useState: init => {
-      const value = Array.isArray(scenario.state) ? scenario.state[stateCalls++ % scenario.state.length] : scenario.state;
-      return [value === undefined ? typeof init === 'function' ? init() : init : value, next => log.push(['setState', describe(next)])];
+      const slot = stateCalls++;
+      const value = Array.isArray(scenario.state) ? scenario.state[slot % scenario.state.length] : scenario.state;
+      return [value === undefined ? typeof init === 'function' ? init() : init : value, next => { log.push(['setState', describe(next)]); scenario.onSetState?.(slot, next); }];
     },
     useReducer: (_, init) => [init, value => log.push(['dispatch', describe(value)])],
-    useRef: value => ({current: value}),
+    // `domRef` stands in for the element a ref (initially null) is attached to.
+    useRef: value => ({current: value === null && scenario.domRef ? scenario.domRef : value}),
     useId: () => ':r0:',
     useMemo: make => make(),
     useCallback: fn => fn,
@@ -201,7 +206,8 @@ export function createWorld() {
 
   /** Sets the scene that stubs answer by, for calls made outside a render (a helper called directly). */
   function enter(scene = {}) {
-    Object.assign(scenario, {context: undefined, state: undefined, event: undefined, renderProps: undefined, renderState: undefined, imports: undefined, frames: false, window: undefined, args: undefined}, scene);
+    Object.assign(scenario, {context: undefined, state: undefined, event: undefined, renderProps: undefined, renderState: undefined, imports: undefined, frames: false, window: undefined, args: undefined,
+      onSetState: undefined, timers: undefined, socket: undefined, liveEffects: false, domRef: undefined, chrome: undefined}, scene);
   }
 
   /** Renders `component` with `props` under `scene`, then runs the effects it registered. */
@@ -212,7 +218,8 @@ export function createWorld() {
     seed = 1;
     effects = [];
     const tree = describe(component.$forwardRef ? {$element: true, type: component, props} : {$element: true, type: component, props});
-    const ran = effects.map(run => { const before = log.length; const cleanup = call(run); return {cleanup, log: log.splice(before)}; });
+    // An effect's cleanup is a function in its result, so comparing it runs it; `liveEffects` leaves effects running.
+    const ran = effects.map(run => { const before = log.length; const cleanup = scenario.liveEffects ? void run() : call(run); return {cleanup, log: log.splice(before)}; });
     return {tree, effects: ran, log: log.splice(0)};
   }
 
@@ -247,17 +254,20 @@ export function createWorld() {
       window: new Proxy(stub('window'), {get: (target, key) => (scenario.window && key in scenario.window ? scenario.window[key] : target[key])}),
       document, navigator: stub('navigator'), globalThis: undefined,
       requestAnimationFrame: fn => (log.push(['requestAnimationFrame']), scenario.frames && fn(NOW), 1), cancelAnimationFrame: () => log.push(['cancelAnimationFrame']),
-      setTimeout: () => (log.push(['setTimeout']), 1), clearTimeout: () => log.push(['clearTimeout']),
+      setTimeout: (fn, delay) => (log.push(['setTimeout', delay]), scenario.timers?.push([fn, delay]), 1), clearTimeout: () => log.push(['clearTimeout']),
+      setInterval: (fn, delay) => (log.push(['setInterval', delay]), scenario.timers?.push([fn, delay]), 1), clearInterval: () => log.push(['clearInterval']),
       ResizeObserver: stub('ResizeObserver'), MutationObserver: stub('MutationObserver'), matchMedia: stub('matchMedia'),
       getComputedStyle: stub('getComputedStyle'), queueMicrotask: () => {}, console, Math: seededMath, JSON, Object, Array, Map, Set, WeakMap, WeakSet,
       Symbol, Promise, Error, TypeError, Number, String, Boolean, RegExp, Date: FixedDate, Reflect, Proxy, URL, parseFloat, parseInt, isNaN, Infinity, NaN,
       File, Blob, FormData, URLSearchParams, Intl, TextEncoder, TextDecoder, AbortController, Event, EventTarget, structuredClone, atob, btoa,
       encodeURIComponent, decodeURIComponent, isFinite, Uint8Array, Uint8ClampedArray, ArrayBuffer, DataView, BigInt, WeakRef,
       CSS: stub('CSS'), crypto: stub('crypto'), location: stub('location'), history: stub('history'), localStorage: stub('localStorage'),
-      sessionStorage: stub('sessionStorage'), fetch: stub('fetch'), chrome: stub('chrome'), self: undefined, global: undefined,
+      sessionStorage: stub('sessionStorage'), fetch: stub('fetch'), self: undefined,
+      // A scene can give the extension API's values too.
+      chrome: new Proxy(stub('chrome'), {get: (target, key) => (scenario.chrome && key in scenario.chrome ? scenario.chrome[key] : target[key])}), global: undefined,
       HTMLElement: stub('HTMLElement'), Audio: stub('Audio'), FileReader: stub('FileReader'), Element: stub('Element'), Node: stub('Node'), CustomEvent: stub('CustomEvent'),
       performance: {now: () => NOW}, IntersectionObserver: stub('IntersectionObserver'), customElements: stub('customElements'), CSSStyleSheet: stub('CSSStyleSheet'),
-      Worker: stub('Worker'), SVGElement: stub('SVGElement'), DOMParser: stub('DOMParser'),
+      ClipboardItem: stub('ClipboardItem'), WebSocket: Object.assign(function WebSocket(url, protocols) { return scenario.socket(url, protocols); }, {OPEN: 1}), Worker: stub('Worker'), SVGElement: stub('SVGElement'), DOMParser: stub('DOMParser'),
       InputEvent: class InputEvent extends Event { constructor(type, init = {}) { super(type, init); this.data = init.data ?? null; this.inputType = init.inputType ?? ''; } },
     });
     context.globalThis = context;
@@ -270,7 +280,7 @@ export function createWorld() {
       const synthetic = new vm.SyntheticModule(exports, function () {
         for (const name of exports) {
           const modelled = specifier.startsWith('./browser-color-scheme-') && MODELLED[name];
-          this.setExport(name, modelled || stub(`${specifier}#${name}`));
+          this.setExport(name, modelled || constants[`${specifier}#${name}`] || stub(`${specifier}#${name}`));
         }
       }, {identifier: specifier, context});
       return synthetic;

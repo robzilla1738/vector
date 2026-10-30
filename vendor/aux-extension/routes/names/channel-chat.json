@@ -1,0 +1,16 @@
+{
+ "f": "React",
+ "r": "jsxRuntime",
+ "Se": "ChannelRail",
+ "we": "feedMessages",
+ "K": "isIncoming",
+ "Ne": "unreadMarker",
+ "Ie": "useChannelReads",
+ "E": "upsertById",
+ "Re": "applyChannelEvent",
+ "qe": "useChannelSocket",
+ "Te": "useChannelChat",
+ "$e": "ChannelChatRoute",
+ "Me": "ChannelChatPage",
+ "Pe": "CloudTaskProvider"
+}

@@ -1,0 +1,19 @@
+{
+ "x": "React",
+ "e": "jsxRuntime",
+ "L": "LIVE_TABS_KEY",
+ "de": "ExperimentalLayout",
+ "me": "LiveTabLayout",
+ "ue": "LiveTabView",
+ "he": "DetectToolsRow",
+ "xe": "DEFAULT_SETTINGS",
+ "v": "useExperimental",
+ "pe": "SyncRow",
+ "ge": "OnboardingRow",
+ "be": "ONBOARDING_MODEL",
+ "fe": "ONBOARDING_PROMPT",
+ "je": "StartOnboardingRow",
+ "ve": "KakaoTalkRow",
+ "ye": "CompactionLimitsRow",
+ "we": "AuxCodeRow"
+}

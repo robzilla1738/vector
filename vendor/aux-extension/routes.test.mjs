@@ -264,8 +264,12 @@ const composerProps = [
     defaultDraftState: {draftModelOverride: {provider: 'gone', modelId: 'x'}, draftPermissionMode: 'auto'}},
 ];
 
+// Under bare stubs these two start async work that can only reject (sign out, and an error report
+// with no URL), after the test has ended; their own tests below run them on real fixtures.
+const stubbableRoutes = Object.fromEntries(Object.entries(ROUTES).filter(([chunk]) => !['assets/-utils-B_lbplVm.js', 'assets/error-tracking-B1YG2RRM.js'].includes(chunk)));
+
 test('every Aux-owned route renders, runs its effects and handles events like the one it replaces', async () => {
-  await assertParity({blocksByChunk: ROUTES, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 600, scenes: [...routeScenes, ...conversationScenes],
+  await assertParity({blocksByChunk: stubbableRoutes, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 600, scenes: [...routeScenes, ...conversationScenes],
     props: conversationProps, renamed: renamedBindings});
 });
 
@@ -2788,7 +2792,7 @@ test('the Done step applies appearance drafts and finishes onboarding like the s
     './strip-markdown-DRcmtuJc.js#nr': options => ({data: settings[options.queryKey?.[1]], isError: false, isLoading: false, ...query}),
     './strip-markdown-DRcmtuJc.js#pr': {setQueryData: note('setQueryData'), invalidateQueries: note('invalidate'), query: async () => ({accountId: 7, browserProfile: {profilePath: '/p'}}), fetchQuery: async () => ({mode: 'cloud'})},
     '*.mutationOptions': options => options, './strip-markdown-DRcmtuJc.js#er': options => ({isPending: false, isError: false, mutate: () => { world.stub('spy:mutate')(); options?.onSuccess?.({installed: true}); options?.onError?.({message: 'Denied'}); options?.onSettled?.(); }, mutateAsync: async (...args) => note('mutateAsync')(...args), ...mutation}),
-    './strip-markdown-DRcmtuJc.js#Ut': {track: note('track')}, './tag-icon-DeMC7uIN.js#f': {handleSubmit: run => run, watch: id => id === 'defaultBrowser', setValue: note('setValue')},
+    './strip-markdown-DRcmtuJc.js#Ut': {track: (...args) => calls.push(['track', args])}, './tag-icon-DeMC7uIN.js#f': {handleSubmit: run => run, watch: id => id === 'defaultBrowser', setValue: note('setValue')},
     './use-update-settings-ahXnGzre.js#t': () => {}, './extension-main-Dz1-AsCT.js#R.useLoaderData': {skipDone}, './extension-main-Dz1-AsCT.js#R.useSearch': {completionTarget: target}, './platform-CX_yPATJ.js#o': false,
     './sign-in-popup-CzjJFAuC.js#t': async () => true, './error-content-CCom8r6s.js#t': async (error, title) => ({title, description: String(error?.message)}), './recommended-filters-gA0HHZVC.js#t': async () => { throw Error('filters'); },
     './dist-LyKrHgST.js#n.error': note('toast.error'), './dist-LyKrHgST.js#n.success': note('toast.success')});
@@ -2927,4 +2931,903 @@ test('an action confirmation shows its artifact like the supplied one', async ()
     props: [{artifact: {type: 'screenshot', path: 'shots/a.png', alt: 'Page'}, sessionId: 's1', className: 'probe', compact: true}, {artifact: {type: 'screenshot', path: 'https://x/a.png', caption: 'Page'}}, {artifact: {type: 'screenshot', path: 'a.png'}}, {artifact: {type: 'screenshot', path: 'data:image/png;base64,AA'}, sessionId: 's1'}, {data: {operation: 'customize', existingSkillName: 'Planner', existingSkillCreator: 'builtin'}},
       {artifact: {type: 'skill-draft', data: skill}, compact: true, data: skill, label: 'Keywords', values: ['a', 'b']}, {artifact: {type: 'skill-draft', data: {operation: 'customize', existingSkillName: 'Planner'}}, data: {operation: 'customize', existingSkillName: 'Planner', existingSkillCreator: 'user'}},
       {artifact: {type: 'skill-draft', data: {operation: 'create'}}, data: {}}, {artifact: {type: 'gmail-draft', data: {to: 'a'}}, sessionId: 's1'}, {artifact: {type: 'tweet', data: {text: 'hi'}}}]});
+});
+
+/** Both sides of a chunk, for calling its helpers directly. */
+const bothSides = async (chunk, constants) => {
+  const world = createWorld(constants);
+  const pair = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  return {world, ...pair};
+};
+const parityOf = (chunk, options) => assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, defaults: false, renamed: renamedBindings, ...options});
+/** Compares what a chunk returned (from the VM's realm) by value. */
+const same = (actual, wanted) => assert.deepEqual(actual === undefined ? actual : JSON.parse(JSON.stringify(actual)), wanted);
+/** Applies the writes a scene's useState hears, in the order they came. */
+const stateHeap = initial => {
+  const values = [...initial];
+  return {values, onSetState: (slot, next) => { values[slot] = typeof next === 'function' ? next(values[slot]) : next; }};
+};
+
+const CHANNEL_CHAT = 'assets/route-VV0zL3cm.js';
+const stored = (id, sequence, role, extra = {}) => ({id, sequence, stream_state: 'complete', reactions: [], message: {role, content: `${id} text`, timestamp: 1000 + sequence}, ...extra});
+const channelFeed = [
+  stored('u1', 1, 'user', {author_user_id: 'viewer-00', agent_read_at: 1500, message: {role: 'user', content: 'Hi', timestamp: 1, metadata: {attachments: [{id: 'a'}]}}}),
+  stored('u2', 2, 'user', {author_user_id: 'member-12345678', reply_to: 'u1'}),
+  stored('p1', 3, 'published-message', {response_id: 'r1', message: {role: 'published-message', content: 'Done', timestamp: 3, presentation: {widget: {prompt: 'Pick one'}}}, reactions: [{emoji: '+1'}]}),
+  stored('p0', 4, 'published-message', {response_id: 'r1', stream_state: 'streaming'}),
+  stored('prog', 5, 'published-message', {response_id: 'r2', message: {role: 'published-message', kind: 'progress', content: 'Working', timestamp: 5}}),
+  stored('s1', 6, 'published-message', {response_id: 'r3', stream_state: 'streaming'}),
+  stored('s2', 7, 'published-message', {response_id: 'r3', stream_state: 'streaming'}),
+  stored('i1', 8, 'published-message', {response_id: 'r4', stream_state: 'interrupted'}),
+  stored('i2', 9, 'published-message', {response_id: 'r5', stream_state: 'interrupted'}),
+  stored('u3', 10, 'user', {reply_to: 'i2'}),
+  stored('sys', 11, 'system'),
+];
+const channelStreams = {s2: {id: 's2', responseId: 'r3', content: 'partial', timestamp: 2000, attemptId: 1, revision: 4}, live: {id: 'live', responseId: 'r6', content: 'new', timestamp: 2100}, stale: {id: 'stale', responseId: 'r6', content: 'old', timestamp: 2050}, gone: {id: 'gone', responseId: 'r1', content: 'late', timestamp: 2200}};
+
+test('the Channels chat builds its feed and unread line like the supplied one', async () => {
+  const {supplied, ours} = await bothSides(CHANNEL_CHAT);
+  const rows = side => side.__pair_feedMessages(channelFeed, channelStreams, 'viewer-00');
+  assert.equal(JSON.stringify(rows(ours)), JSON.stringify(rows(supplied)));
+  same(rows(ours).map(row => row.id), ['u1', 'u2', 'p1', 'prog', 's2', 'i1', 'u3', 'live']);
+  const [own, other, published, , streaming, interrupted, , live] = rows(ours);
+  same([own.isOwn, own.delivery, own.readAt, own.attachments], [true, 'read', 1500, [{id: 'a'}]]);
+  same([other.isOwn, other.authorLabel, other.delivery, other.replyTo], [false, 'Member member-1', 'sent', 'u1']);
+  same([published.message, published.reaction], [{role: 'assistant', content: 'Pick one', timestamp: 3}, {emoji: '+1'}]);
+  same([streaming.isStreaming, streaming.message.content, interrupted.isInterrupted, interrupted.message.content], [true, 'partial', true, '']);
+  same([live.isStreaming, live.message.content], [true, 'new']);
+
+  const incoming = side => channelFeed.map(message => side.__pair_isIncoming(message, 'viewer-00'));
+  same(incoming(ours), incoming(supplied));
+  same(incoming(ours).slice(0, 3), [false, true, true]);
+  const marker = (side, ...args) => JSON.stringify(side.__pair_unreadMarker(...args));
+  const cases = [[undefined, 'main', 0, channelFeed, 'viewer-00', false], [undefined, 'main', 1, channelFeed, 'viewer-00', true], [{channelId: 'main', sequence: 11, markerId: 'u2'}, 'main', 1, channelFeed, 'viewer-00', true],
+    [{channelId: 'main', sequence: 11}, 'main', 1, channelFeed, 'viewer-00', false], [{channelId: 'main', sequence: 2}, 'main', 1, channelFeed, 'viewer-00', false], [{channelId: 'main', sequence: 2}, 'main', 1, channelFeed, 'viewer-00', true], [{channelId: 'other', sequence: 9, markerId: 'x'}, 'main', 3, [], 'viewer-00', false]];
+  for (const args of cases) assert.equal(marker(ours, ...args), marker(supplied, ...args));
+  same(ours.__pair_unreadMarker(...cases[0]), {channelId: 'main', sequence: 11, markerId: 'u2'});
+  same(ours.__pair_unreadMarker(...cases[1]), {channelId: 'main', sequence: 11, markerId: 'u2'});
+  same(ours.__pair_unreadMarker(...cases[4]), {channelId: 'main', sequence: 11, markerId: 'p1'});
+  same(ours.__pair_unreadMarker(...cases[5]), {channelId: 'main', sequence: 11});
+});
+
+test('the Channels chat applies socket events like the supplied one', async () => {
+  const {supplied, ours} = await bothSides(CHANNEL_CHAT);
+  const snapshot = {cursor: '7', channel: {id: 'main', name: 'Main'}, messages: [stored('b', 2, 'user'), stored('a', 1, 'user')], tasks: [{id: 't1', status: 'running', preview: {id: 't1', text: 'kept'}}], commands: [{id: 'c1', status: 'pending'}], responses: [{id: 'r1', status: 'queued'}],
+    members: [{user_id: 'u', role: 'owner'}], reactions: [{message_id: 'a', user_id: 'u', emoji: '+1'}, {message_id: 'a', user_id: 'v', emoji: '+1'}]};
+  const events = [{type: 'channel.updated', data: {id: 'main', name: 'Renamed'}}, {type: 'reaction.updated', data: {message_id: 'a', user_id: 'u', emoji: '+1', deleted: true}}, {type: 'reaction.updated', data: {message_id: 'b', user_id: 'u', emoji: '🎉'}},
+    {type: 'message.updated', data: stored('c', 0, 'user')}, {type: 'message.updated', data: {id: 'a', deleted: true}}, {type: 'task.updated', data: {id: 't1', status: 'completed'}}, {type: 'task.updated', data: {id: 't2', status: 'running'}},
+    {type: 'command.updated', data: {id: 'c1', status: 'delivered'}}, {type: 'command.updated', data: {id: 'c2', status: 'failed', error: 'No'}}, {type: 'response.updated', data: {id: 'r2', status: 'preparing'}}, {type: 'member.updated', data: {user_id: 'n', role: 'member'}}, {type: 'member.updated', data: {user_id: 'u', deleted: true}}, {type: 'other', data: {}}];
+  for (const event of events) assert.equal(JSON.stringify(ours.__pair_applyChannelEvent(snapshot, {...event, cursor: '8'})), JSON.stringify(supplied.__pair_applyChannelEvent(snapshot, {...event, cursor: '8'})), event.type);
+  const apply = index => ours.__pair_applyChannelEvent(snapshot, {...events[index], cursor: '8'});
+  assert.equal(apply(0).cursor, '8');
+  same(apply(1).reactions.map(reaction => reaction.user_id), ['v']);
+  same(apply(3).messages.map(message => message.id), ['c', 'a', 'b']);
+  same(apply(5).tasks, [{id: 't1', status: 'completed', preview: {id: 't1', text: 'kept'}}]);
+  same(apply(7).commands, []);
+  same(apply(11).members, []);
+  same(ours.__pair_upsertById([{id: 'x'}, {id: 'y'}], {id: 'x', deleted: true}), [{id: 'y'}]);
+});
+
+test('the Channels socket connects, resyncs and reconnects like the supplied one', async () => {
+  const {world, supplied, ours} = await bothSides(CHANNEL_CHAT, {'./strip-markdown-DRcmtuJc.js#Mn': 'https://api.aux.test'});
+  const snapshot = {cursor: '1', channel: {id: 'main'}, messages: Array.from({length: 60}, (_, index) => stored(`m${index}`, index + 5, 'user')), tasks: [{id: 't1'}], commands: [], responses: [], members: [], reactions: []};
+  const frames = [{type: 'snapshot', snapshot, streaming: [{id: 's1', responseId: 'r', attemptId: 1, revision: 2}], viewerId: 'me'}, {type: 'ready'},
+    {type: 'event', event: {cursor: '1', type: 'channel.updated', data: {id: 'stale'}}}, {type: 'event', event: {cursor: '3', type: 'channel.updated', data: {id: 'gap'}}},
+    {type: 'event', event: {cursor: '2', type: 'message.updated', data: {...stored('s1', 70, 'user')}}}, {type: 'input.failed', id: 'f1'}, {type: 'event', event: {cursor: '3', type: 'message.updated', data: {...stored('f1', 71, 'user')}}},
+    {type: 'model.read', ids: ['m1', 'x'], at: 99}, {type: 'task.preview', preview: {id: 't1', text: 'Reading'}}, {type: 'streaming', streaming: {id: 's2', attemptId: 1, revision: 2}}, {type: 'streaming', streaming: {id: 's2', attemptId: 1, revision: 1}}, {type: 'streaming', streaming: {id: 's3', attemptId: 1, revision: 1}}, {type: 'streaming.removed', id: 's3'},
+    {type: 'presence', userIds: ['me', 'them']}, {type: 'typing', userId: 'them', active: true, expiresAt: Date.UTC(2026, 9, 30, 12, 1)}, {type: 'typing', userId: 'gone', active: false, expiresAt: 5}];
+  const run = async side => {
+    const sockets = [];
+    const timers = [];
+    const heap = stateHeap([undefined, {}, {}, [], '', undefined, false, [], {}]);
+    let hook;
+    const Probe = () => (hook = side.__pair_useChannelSocket(7, 'main/1'), null);
+    const scene = {timers, ...heap, liveEffects: true, imports: {'./strip-markdown-DRcmtuJc.js#An': () => 'token'}, socket: (url, protocols) => { const socket = {url: String(url), protocols, sent: [], closes: [], readyState: 1, send: text => socket.sent.push(text), close: (...args) => { socket.closes.push(args); }}; sockets.push(socket); return socket; }};
+    const {effects} = world.render(Probe, {}, scene);
+    await new Promise(resolve => setImmediate(resolve));
+    for (const frame of frames) sockets[0].onmessage({data: JSON.stringify({version: 2, ...frame})});
+    sockets[0].onmessage({data: JSON.stringify({version: 1, type: 'ready'})});
+    const socket = sockets[0];
+    socket.onerror();
+    hook.typing(true);
+    hook.appendHistory([stored('m5', 1, 'user'), stored('old', 0, 'user')]);
+    const beforeClose = {nextBefore: hook.nextBefore.current, cursor: heap.values[0]?.cursor, responses: heap.values[0]?.responses, messages: heap.values[0]?.messages.length};
+    socket.onclose({code: 1006});
+    const delays = timers.map(([, delay]) => delay);
+    await timers.at(-1)[0]();
+    await new Promise(resolve => setImmediate(resolve));
+    const reconnected = sockets.length;
+    sockets.at(-1).onclose({code: 1006});
+    delays.push(timers.at(-1)[1]);
+    sockets[0].onclose({code: 1006});
+    sockets.at(-1).onmessage({data: JSON.stringify({version: 2, type: 'ready'})});
+    sockets.at(-1).onclose({code: 1008});
+    const {values} = heap;
+    return {connected: socket.url, protocols: socket.protocols, sent: socket.sent, closes: socket.closes, delays, reconnected, beforeClose, snapshot: values[0], streaming: values[1], receipts: values[2], failed: values[3], viewer: values[4], error: String(values[5]), online: values[7], typers: values[8], effects: effects.length};
+  };
+  const [mine, theirs] = [await run(ours), await run(supplied)];
+  assert.equal(JSON.stringify(mine), JSON.stringify(theirs));
+  assert.equal(mine.connected, 'wss://' + mine.connected.slice(6));
+  assert.ok(mine.connected.endsWith('/channel-chat/channels/main%2F1/ws'), mine.connected);
+  same(mine.protocols, ['aux-channel-v2', 'bearer.token']);
+  same(mine.sent.map(text => JSON.parse(text)), [{type: 'resync'}, {type: 'typing', active: true}]);
+  same(mine.closes, [[1002, 'Unsupported protocol'], []]);
+  same(mine.delays, [1000, 2000]);
+  assert.equal(mine.reconnected, 2);
+  same(mine.beforeClose, {nextBefore: 5, cursor: '3', responses: [{id: 'm1', status: 'preparing'}, {id: 'x', status: 'preparing'}], messages: 63});
+  assert.equal(mine.snapshot, undefined);
+  assert.equal(mine.error, 'Error: Channel access was revoked.');
+  same([mine.failed, Object.keys(mine.receipts), mine.online, mine.viewer], [[], ['m1', 'x'], ['me', 'them'], 'me']);
+  same(Object.keys(mine.typers), ['them', 'gone']);
+});
+
+const channelSnapshot = {cursor: '5', channel: {id: 'main', name: 'Launch', cloudSessionId: 'cs1'}, messages: channelFeed.slice(0, 3), tasks: [{id: 't1', status: 'running', environment: {type: 'cloud'}}, {id: 't2', status: 'completed', environment: {type: 'cloud'}}, {id: 't3', status: 'pending', environment: {type: 'local'}}, {id: 't4', status: 'suspended', environment: {type: 'cloud'}}],
+  commands: [{id: 'c1', status: 'failed', error: 'Could not start'}, {id: 'c2', status: 'running'}], responses: [{id: 'u1', status: 'preparing'}, {id: 'u2', status: 'queued'}, {id: 'p1', status: 'done'}],
+  members: [{user_id: 'viewer-00', role: 'owner'}], reactions: [{message_id: 'u1', user_id: 'viewer-00', emoji: '+1'}]};
+const channelList = [{id: 'side', name: 'Side', icon: 'star', color: 'red'}, {id: 'main', name: 'Launch', isMain: true, icon: 'tag', color: 'blue'}, {id: 'third', name: 'Third'}];
+const channelState = ({snapshot = channelSnapshot, streaming = {}, receipts = {u2: 9}, failed = [], viewer = 'viewer-00', error, connected = true, presence = ['viewer-00', 'them'], typers = {them: Date.UTC(2026, 9, 30, 13), me: 1}, pending = [], marker} = {}) =>
+  [snapshot, streaming, receipts, failed, viewer, error, connected, presence, typers, false, pending, true, marker];
+const channelImports = (world, {calls = [], channels = {data: channelList}, status = 200} = {}) => ({
+  './strip-markdown-DRcmtuJc.js#An': () => 'token',
+  './strip-markdown-DRcmtuJc.js#nr': options => (String(options.queryKey.at(-1)) === 'read-state' ? {data: [{channel_id: 'main', read_sequence: 1, unread_count: 2}, {channel_id: 'side', read_sequence: 0, unread_count: 150}]} : channels),
+  './strip-markdown-DRcmtuJc.js#er': options => ({isPending: false, mutate: (value, handlers) => { calls.push(['mutate', value, Boolean(handlers?.onError)]); handlers?.onError?.({message: 'Denied'}); }, mutateAsync: async value => { const result = await options.mutationFn(value); options.onSuccess?.(result); return result; }}),
+  './strip-markdown-DRcmtuJc.js#pr': {setQueryData: (key, update) => calls.push(['setQueryData', key, update([{channel_id: 'main', read_sequence: 1, unread_count: 2}, {channel_id: 'side', read_sequence: 0}])]), invalidateQueries: filter => calls.push(['invalidate', filter]), fetchQuery: options => (calls.push(['fetchQuery', options.queryKey, options.staleTime, options.retry]), options.queryFn())},
+  fetch: async (url, init) => { calls.push(['fetch', String(url), init?.method, init?.body, init?.headers]); return {ok: status < 400, status, json: async () => (status < 400 ? {nextBefore: 3, messages: [], read_sequence: 2, unread_count: 0} : {error: 'Bad channel'})}; },
+  './link-q1zvRKtc.js#r': () => ({userId: '7', channelId: 'main'}),
+  './Match-OymXmaXz.js#o': () => world.stub('spy:navigate'),
+  matchMedia: () => ({matches: true}),
+  'window.matchMedia': () => ({matches: true}),
+  'document.getElementById': () => ({scrollIntoView: world.stub('spy:scrollIntoView')}),
+});
+
+test('the Channels rail and page render like the supplied ones', async () => {
+  const cases = [{}, {receipts: {}, typers: {}, presence: ['viewer-00'], viewer: 'x'}, {snapshot: {...channelSnapshot, channel: {id: 'main', name: 'Launch'}, tasks: [], commands: []}}, {snapshot: undefined, error: new Error('Reconnecting to channel…'), connected: false}];
+  await parityOf(CHANNEL_CHAT, {minimum: 30,
+    scenes: [...cases.map(options => world => ({state: channelState(options), imports: channelImports(world), event: {target: {value: 'side'}}})),
+      world => ({state: channelState({snapshot: undefined}), imports: channelImports(world, {channels: {data: undefined}})}),
+      ...[[undefined, false, false], [{id: 'n', name: '', icon: 'tag', color: 'blue', instructions: ''}, false, false], [{id: 'main', name: ' Launch ', isMain: true, instructions: 'Be brief'}, false, true], [{id: 'x', name: 'Edit me', instructions: 'Hi'}, true, false]].map(state => world => ({state, imports: channelImports(world), event: {preventDefault: world.stub('spy:preventDefault'), target: {value: 'typed'}}}))],
+    props: [{channels: channelList, unreadCounts: {side: 150, third: 99}, selected: 'main', onSelect: () => {}, onSave: async () => {}, onArchive: async () => {}, accountId: 7, channelId: 'main'},
+      {channels: [channelList[0]], selected: 'side', onSelect: () => {}, onSave: async () => { throw new Error('Taken'); }, onArchive: async () => { throw 'offline'; }, accountId: 7, channelId: 'gone', task: channelSnapshot.tasks[0], clientFactory: id => `client:${id}`}]});
+});
+
+test('the Channels chat sends, retries and marks read like the supplied one', async () => {
+  const {world, supplied, ours} = await bothSides(CHANNEL_CHAT, {'./strip-markdown-DRcmtuJc.js#Mn': 'https://api.aux.test'});
+  const flow = async (side, options) => {
+    const calls = [];
+    const heap = stateHeap(channelState(options));
+    let chat;
+    const Probe = () => (chat = side.__pair_useChannelChat(7, 'main/1'), null);
+    world.render(Probe, {}, {state: heap.values, ...heap, imports: channelImports(world, {calls, ...options}), timers: []});
+    const settled = async work => { try { calls.push(['result', await work()]); } catch (error) { calls.push(['threw', String(error.message)]); } };
+    const shown = {messages: chat.messages, typing: chat.typing, isOwner: chat.isOwner, online: chat.online, humanTypers: chat.humanTypers, unreadCounts: chat.unreadCounts, firstUnreadId: chat.firstUnreadId, feed: {isPending: chat.feed.isPending, hasNextPage: chat.feed.hasNextPage}};
+    await settled(() => chat.send('Hello', 'u1', [{id: 'f'}], 'keyboard'));
+    await settled(() => chat.saveChannel.mutateAsync({id: 'a b', name: 'New'}));
+    await settled(() => chat.archiveChannel.mutateAsync('a b'));
+    await settled(() => chat.react.mutateAsync({id: 'u1', emoji: '+1'}));
+    await settled(() => chat.react.mutateAsync({id: 'u2', emoji: '+1'}));
+    await settled(() => chat.retryCommand.mutateAsync('c 1'));
+    await settled(() => chat.feed.fetchNextPage());
+    await settled(() => chat.warm());
+    chat.markRead('u2');
+    chat.markRead('u2');
+    chat.markRead('u1');
+    chat.markRead('missing');
+    chat.dismissUnread();
+    await new Promise(resolve => setImmediate(resolve));
+    chat.retry('p1');
+    chat.retry('none');
+    chat.retry('i9');
+    await new Promise(resolve => setImmediate(resolve));
+    return {shown, calls, pending: heap.values[10], marker: heap.values[12], loading: heap.values[9]};
+  };
+  for (const options of [{}, {status: 500}, {snapshot: {...channelSnapshot, messages: [...channelFeed.slice(0, 2), stored('i9', 3, 'published-message', {stream_state: 'interrupted', response_id: 'r9'})], responses: []}, failed: ['local'], pending: [{id: 'local', message: {role: 'user', content: 'x'}}, {id: 'read', message: {role: 'user', content: 'y'}}, {id: 'u1', message: {role: 'user', content: 'dup'}}], receipts: {read: 5}}])
+    assert.equal(JSON.stringify(await flow(ours, options)), JSON.stringify(await flow(supplied, options)));
+  const ok = await flow(ours, {});
+  same(ok.shown.messages.map(message => message.id), ['u1', 'u2', 'p1']);
+  same([ok.shown.typing, ok.shown.isOwner, ok.shown.online, ok.shown.humanTypers, ok.shown.unreadCounts, ok.shown.feed], [true, true, 2, ['Member them'], {main: 2, side: 150}, {isPending: false, hasNextPage: false}]);
+  const fetches = ok.calls.filter(([kind]) => kind === 'fetch');
+  same(fetches.find(([, url]) => url.endsWith('/messages')).slice(1), ['https://api.aux.test/channel-chat/channels/main%2F1/messages', 'POST', '{"text":"Hello","replyTo":"u1","attachments":[{"id":"f"}]}', {'content-type': 'application/json', authorization: 'Bearer token'}]);
+  same(fetches.slice(2, 7).map(([, url, method, body]) => [url.split('/channel-chat')[1], method, body]), [['/channels/a%20b', 'PUT', '{"id":"a b","name":"New"}'], ['/channels/a%20b', 'PATCH', '{"archived":true}'],
+    ['/channels/main%2F1/messages/u1/reactions', 'PUT', '{"emoji":"+1","selected":false}'], ['/channels/main%2F1/messages/u2/reactions', 'PUT', '{"emoji":"+1","selected":true}'], ['/channels/main%2F1/retry/c%201', 'POST', '{}']]);
+  assert.ok(fetches.some(([, url]) => url.endsWith('/channels/main%2F1/warm')));
+  same(fetches.filter(([, url]) => url.endsWith('/channels/main/read')).map(([, , , body]) => JSON.parse(body).sequence), [3, 2, 3]);
+  same(ok.calls.find(([kind]) => kind === 'setQueryData')[2], [{channel_id: 'main', read_sequence: 2, unread_count: 1, nextBefore: 3, messages: []}, {channel_id: 'side', read_sequence: 0}]);
+  same(ok.pending.map(item => item.delivery), ['sent']);
+  const interrupted = await flow(ours, {snapshot: {...channelSnapshot, messages: [stored('i9', 3, 'published-message', {stream_state: 'interrupted', response_id: 'r9'})], responses: []}});
+  assert.ok(interrupted.calls.some(([kind, , , body]) => kind === 'fetch' && body?.includes('Please finish your previous reply.') && body.includes('"replyTo":"i9"')));
+  const failed = await flow(ours, {status: 500});
+  same(failed.calls.filter(([kind]) => kind === 'threw')[0], ['threw', 'Bad channel']);
+  same(failed.pending.map(item => item.delivery), ['failed']);
+});
+
+const ONBOARDING_AI = 'assets/ai-CzEX5E7S.js';
+const onboardingPlans = [{id: 'free', name: 'Aux Free', prices: {monthly: {amount: '$0', lookupKey: null}}, features: [{text: 'Basic chat', icon: 'check'}, {text: 'Routines · 3 a day', icon: 'plus', muted: true, badge: 'New'}]},
+  {id: 'pro', name: 'Aux Pro', prices: {monthly: {amount: '$20', lookupKey: 'pro_monthly'}}, features: [{text: 'Deep research', icon: 'check'}]}, {id: 'team', name: 'Aux Team', prices: {monthly: {amount: '$40', lookupKey: 'team'}}, features: []}];
+const onboardingProviders = [{id: 'aux', name: 'Aux', type: 'subscription'}, {id: 'github-copilot', name: 'Copilot', type: 'subscription', description: 'Your plan'}, {id: 'claude-code', name: 'Claude', type: 'subscription'}, {id: 'openai-codex', name: 'Codex', type: 'subscription'}, {id: 'gemini', name: 'Google', type: 'manual'}, {id: 'openrouter', name: 'OpenRouter', type: 'manual'}, {id: 'custom-json', name: 'Custom', type: 'manual'}];
+const paid = {plan: {slug: 'pro'}, status: 'active'};
+const onboardingImports = (world, {calls = [], subscription = paid, connected = new Set(['claude-code']), search = {}, form = {}} = {}) => {
+  const note = name => (...args) => { calls.push([name, args[0]]); };
+  return {
+    './strip-markdown-DRcmtuJc.js#St': options => options, './strip-markdown-DRcmtuJc.js#bt': inventory => inventory, './strip-markdown-DRcmtuJc.js#Ot': (selection, id) => selection.modelsByProvider[id]?.[0]?.id,
+    './strip-markdown-DRcmtuJc.js#tr': options => (String(options[STUB_PATH]).includes('getSubscription') ? {data: {subscription}} : {data: {plans: onboardingPlans}}),
+    './strip-markdown-DRcmtuJc.js#er': () => ({isPending: false, mutateAsync: async input => { calls.push(['checkout', input.lookupKey, input.returnUrl]); return {clientSecret: 'sec', publishableKey: 'pk'}; }}),
+    './strip-markdown-DRcmtuJc.js#pr': {fetchQuery: async () => (calls.push(['fetchQuery']), {modelsByProvider: {gemini: [{id: 'g-1', provider: 'gemini', availableThinkingLevels: ['low']}]}}), setQueryData: (key, update) => calls.push(['setQueryData', update({theme: 'dark'}), update(undefined)]), query: async () => ({subscription})},
+    './strip-markdown-DRcmtuJc.js#Ut': {track: (...args) => calls.push(['track', args])}, './strip-markdown-DRcmtuJc.js#En': {broadcastBillingChanged: note('broadcast')},
+    './queries-ldd77hNk.js#g.settings.set.mutate': async input => (calls.push(['setDefault', input]), {warnings: ['Model is new']}),
+    './use-agent-settings-DiedG0R1.js#s': levels => levels[0], './use-agent-settings-DiedG0R1.js#r': (...args) => calls.push(['remember', args]), './use-agent-settings-DiedG0R1.js#c': id => id === 'openrouter',
+    './pricing-table-shared-BWz9Ewvm.js#s': plans => plans, './pricing-table-shared-BWz9Ewvm.js#o': text => text.split(' · '), './pricing-table-shared-BWz9Ewvm.js#r': id => `Choose ${id}`, './pricing-table-shared-BWz9Ewvm.js#i': (plan, price) => `${plan}/${price.amount}`,
+    './provider-context-A_wu0fRN.js#n': {modelCatalog: {providerOptions: onboardingProviders}, connected, setCurrentProvider: note('setCurrentProvider'), completeConnection: async id => calls.push(['completeConnection', id])},
+    './tag-icon-DeMC7uIN.js#f': () => ({formState: {}}), './tag-icon-DeMC7uIN.js#p': () => ({watch: () => 'byok', setValue: (...args) => calls.push(['setValue', args]), handleSubmit: handler => () => handler(form), ...form.overrides}),
+    './extension-main-Dz1-AsCT.js#z.useLoaderData': {accountId: 7}, './extension-main-Dz1-AsCT.js#z.useSearch': search,
+    './Match-OymXmaXz.js#o': () => note('navigate'), './dist-LyKrHgST.js#n.error': note('toast.error'), './dist-LyKrHgST.js#n.warning': note('toast.warning'),
+  };
+};
+
+test('onboarding lists its providers and plans like the supplied page', async () => {
+  const props = [{}, {accountId: 7}, {accountId: 7, onCheckoutComplete: async () => {}, onConnectAux: async () => {}}, {plans: onboardingPlans, isActionPending: false, onPlanSelect: () => {}, plan: onboardingPlans[1], disabled: false, feature: onboardingPlans[0].features[1], price: onboardingPlans[1].prices.monthly},
+    {plan: onboardingPlans[0], price: onboardingPlans[0].prices.monthly, feature: onboardingPlans[0].features[0], onPlanSelect: () => {}, disabled: true, isActionPending: true, plans: []}, {plan: {...onboardingPlans[1], prices: {monthly: {amount: '$20'}}}, price: onboardingPlans[1].prices.monthly},
+    {open: true, providers: onboardingProviders.slice(1, 3), onOpenChange: () => {}, onSelect: () => {}}, {provider: onboardingProviders[0]}, {provider: {id: 'aux', name: 'Aux', description: 'x'}, icon: 'icon'}, {provider: onboardingProviders[1]},
+    {clientSecret: 'sec', publishableKey: 'pk', isCompleting: true, onComplete: () => {}, children: 'x'}, {clientSecret: 'sec', publishableKey: 'pk', isCompleting: false, onComplete: () => {}}];
+  const awaited = {onConnectAux: async () => {}, onCheckoutComplete: async () => {}, onComplete: () => {}, onPlanSelect: () => {}};
+  await parityOf(ONBOARDING_AI, {minimum: 60, props: props.map(entry => ({...awaited, ...entry})),
+    scenes: [world => ({imports: onboardingImports(world), state: [null, false], event: {key: 'x', target: {}}}), world => ({imports: onboardingImports(world, {subscription: null}), state: ['more', false]}), world => ({imports: onboardingImports(world), state: ['byok', true]}),
+      world => ({imports: onboardingImports(world), state: [{clientSecret: 's', publishableKey: 'pk'}, true], window: {location: {protocol: 'chrome-extension:'}}}), world => ({imports: onboardingImports(world), state: [{clientSecret: 's', publishableKey: 'pk'}, false], window: {location: {protocol: 'https:'}}}), world => ({imports: onboardingImports(world), state: ['Could not load', true]})]});
+});
+
+test('onboarding sets the default model and submits a provider like the supplied page', async () => {
+  const {world, supplied, ours} = await bothSides(ONBOARDING_AI, {'./queries-ldd77hNk.js#S': 'https://app.aux.test/'});
+  const trpc = {models: {listSettingsInventory: {queryOptions: input => input}}, settings: {getAll: {queryKey: input => ['settings', input]}}};
+  const setDefault = async (side, providerId) => {
+    const calls = [];
+    const imports = onboardingImports(world, {calls});
+    world.enter({imports});
+    await side.__pair_setDefaultModel({accountId: 7, providerId, queryClient: imports['./strip-markdown-DRcmtuJc.js#pr'], trpc});
+    return calls;
+  };
+  for (const id of ['gemini', 'none']) assert.equal(JSON.stringify(await setDefault(ours, id)), JSON.stringify(await setDefault(supplied, id)));
+  same((await setDefault(ours, 'gemini')).filter(([name]) => name === 'setDefault' || name === 'remember' || name === 'setQueryData'), [['setDefault', {accountId: 7, key: 'defaultModel', value: {provider: 'gemini', modelId: 'g-1', thinkingLevel: 'low', fastMode: false}}], ['remember', [7, 'gemini', 'g-1', 'low', false]],
+    ['setQueryData', {theme: 'dark', defaultModel: {provider: 'gemini', modelId: 'g-1', thinkingLevel: 'low', fastMode: false}}, null]]);
+  assert.ok(JSON.stringify(await setDefault(ours, 'gemini')).includes('Model is new'));
+  same(await setDefault(ours, 'none'), [['fetchQuery']]);
+
+  const picker = async (side, provider, event) => {
+    const calls = [];
+    let tree;
+    const scene = {imports: onboardingImports(world, {calls, form: {provider}}), state: [null], event: event ?? {key: 'x'}};
+    tree = world.render(side.__pair_ProviderPicker, {accountId: 7}, scene);
+    await new Promise(resolve => setImmediate(resolve));
+    return JSON.stringify([tree, calls]);
+  };
+  for (const provider of ['claude-code', 'github-copilot', 'aux', 'byok']) assert.equal(await picker(ours, provider), await picker(supplied, provider));
+  const keys = {key: 'Enter', defaultPrevented: false, repeat: false, nativeEvent: {isComposing: false}, preventDefault: () => {}, stopPropagation: () => {}};
+  for (const event of [keys, {...keys, repeat: true}, {...keys, defaultPrevented: true}, {...keys, nativeEvent: {isComposing: true}}, {...keys, metaKey: true}, {...keys, ctrlKey: true}, {...keys, altKey: true}, {...keys, shiftKey: true}, {...keys, key: 'a'}])
+    assert.equal(await picker(ours, 'claude-code', event), await picker(supplied, 'claude-code', event));
+  const route = async (side, provider, failing) => {
+    const calls = [];
+    const imports = onboardingImports(world, {calls});
+    if (failing) imports['./strip-markdown-DRcmtuJc.js#pr'] = {...imports['./strip-markdown-DRcmtuJc.js#pr'], fetchQuery: async () => { throw new Error('offline'); }};
+    world.render(side.component, {}, {imports, args: [provider]});
+    await new Promise(resolve => setImmediate(resolve));
+    return JSON.stringify(calls);
+  };
+  for (const [provider, failing] of [['claude-code'], ['github-copilot'], ['gemini', true], ['aux'], ['custom']]) assert.equal(await route(ours, provider, failing), await route(supplied, provider, failing));
+  const offline = await route(ours, 'gemini', true);
+  assert.ok(offline.includes('Failed to set the default model for this provider.') && offline.includes('/onboarding/done'));
+});
+
+test('onboarding checkout helpers read real values like the supplied ones', async () => {
+  const {world, supplied, ours} = await bothSides(ONBOARDING_AI, {'./queries-ldd77hNk.js#S': 'https://app.aux.test/'});
+  const check = (name, ...args) => { assert.equal(JSON.stringify(ours[`__pair_${name}`](...args)), JSON.stringify(supplied[`__pair_${name}`](...args)), name); return ours[`__pair_${name}`](...args); };
+  const message = {type: 'aux:billing-embedded-checkout', status: 'complete'};
+  same([message, {...message, status: 'error', error: 'No'}, {...message, status: 'error', error: 3}, {...message, status: 'open'}, {...message, type: 'x'}, null, 'text'].map(value => check('isCheckoutMessage', value)), [true, true, false, false, false, false, false]);
+  same([paid, {plan: {slug: 'free'}, status: 'active'}, {plan: {slug: 'pro'}, status: 'trialing'}, {plan: {slug: 'pro'}, status: 'canceled'}, null].map(value => check('hasPaidPlan', value)), [true, false, true, false, false]);
+  same(['free', 'pro', 'team'].map(id => check('isOnboardingPlan', {id})), [true, true, false]);
+  assert.equal(check('hostedCheckoutUrl', {clientSecret: 'a&b', publishableKey: 'pk_1'}), 'https://app.aux.test/billing/embedded-checkout#client_secret=a%26b&publishable_key=pk_1');
+  world.enter({imports: {'./route-context-BT2HpiwG.js#r': async () => ({profileId: 'p 1', windowId: 4})}});
+  const url = await ours.__pair_checkoutReturnUrl(7);
+  assert.equal(url, await supplied.__pair_checkoutReturnUrl(7));
+  assert.equal(url, 'https://app.aux.test/billing/return?accountId=7&target=onboarding-ai&checkout=success&session_id={CHECKOUT_SESSION_ID}&profileId=p+1&windowId=4');
+  world.enter({imports: {'./route-context-BT2HpiwG.js#r': async () => ({profileId: 'p'})}});
+  assert.ok(!(await ours.__pair_checkoutReturnUrl(7)).includes('windowId'));
+  const wait = async (side, answers) => {
+    let asked = 0;
+    const timers = [];
+    world.enter({timers});
+    const done = side.__pair_waitForPaidPlan({accountId: 7, queryClient: {query: async () => ({subscription: answers(asked++)})}, trpc: {billing: {getSubscription: {queryOptions: () => ({})}}}});
+    for (;;) {
+      await new Promise(resolve => setImmediate(resolve));
+      if (!timers.length) break;
+      timers.shift()[0]();
+    }
+    return [await done, asked];
+  };
+  same(await wait(ours, () => null), [false, 10]);
+  same(await wait(ours, count => (count === 2 ? paid : null)), [true, 3]);
+  same(await wait(supplied, () => null), [false, 10]);
+});
+
+const EXPERIMENTAL = 'assets/experimental-Xq3YsEPK.js';
+const experimentalImports = (world, {calls = [], email = 'dev@aux.invalid', experimental = {sync: true, kakaotalk: false, onboarding: true, format: 'aux.experimental.v2', auxCode: true, compactionLimits: false}, tabs = [{id: 3, title: 'Docs', url: 'https://docs.example'}, {id: 4, title: '', url: 'https://x.example'}], fetching = false, error, pending = false, skills = [], create} = {}) => ({
+  './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7},
+  './strip-markdown-DRcmtuJc.js#nr': options => (Array.isArray(options.queryKey) ? {data: tabs, isFetching: fetching, error, refetch: world.stub('spy:refetch')} : String(options[STUB_PATH]).includes('accounts') ? {data: {email}} : {data: experimental ?? undefined}),
+  './strip-markdown-DRcmtuJc.js#pr': {invalidateQueries: filter => { calls.push(['invalidate', filter]); }, query: async () => { if (skills === null) throw new Error('offline'); return skills; }, setQueryData: (key, value) => { calls.push(['setQueryData', value]); }},
+  './strip-markdown-DRcmtuJc.js#er': () => ({isPending: pending, mutateAsync: create ?? (async input => (calls.push(['create', input]), {id: 'task-1'}))}),
+  './use-update-settings-ahXnGzre.js#t': () => ({isPending: pending, mutate: input => { calls.push(['mutate', input]); }}),
+  './extension-main-Dz1-AsCT.js#m.useParams': {userId: '7'}, './Match-OymXmaXz.js#o': () => async target => calls.push(['navigate', target]),
+  './browser-binding-CzDmxQNA.js#n': async () => 'binding-1', './error-content-CCom8r6s.js#t': async (failure, fallback) => ({title: fallback, description: String(failure.message)}),
+  './utils-Cl9zfMcr.js#f': mention => `[[${mention.skillPath}]]`, './draft-storage-ixLojjZ5.js#c': (id, message, options) => { calls.push(['draft', id, message.content, options]); },
+  './dist-LyKrHgST.js#n.error': (title, options) => { calls.push(['toast.error', title, options.description]); },
+  'customElements.get': true,
+});
+
+test('Settings › Experimental renders and saves like the supplied page', async () => {
+  const scenes = [{}, {email: 'Robert@AUX.invalid ', tabs: [], error: {message: 'No tabs'}}, {email: 'person@example.com', pending: true}, {fetching: true, tabs: [], experimental: null}, {experimental: {sync: false, onboarding: false}}];
+  await parityOf(EXPERIMENTAL, {minimum: 60, props: [{children: 'Page'}, {tabId: 3, onAttached: () => {}, onDetached: () => {}, onError: () => {}}],
+    scenes: [...scenes.flatMap(options => [[null, null, false, null], [3, {id: 3, title: 'Docs'}, true, 'Could not attach'], [4, {id: 4, title: 'x'}, false, null]].map(state => world => ({imports: experimentalImports(world, options), state, args: [true]}))),
+      world => ({imports: {...experimentalImports(world), 'customElements.get': false}, state: [null, null, false, null]})]});
+  const {world, supplied, ours} = await bothSides(EXPERIMENTAL);
+  const save = (side, row) => {
+    const calls = [];
+    world.render(side[`__pair_${row}`], {}, {imports: experimentalImports(world, {calls}), args: [true]});
+    return calls;
+  };
+  const failure = async side => {
+    const calls = [];
+    let onError;
+    world.render(side.__pair_useExperimental, {}, {imports: {...experimentalImports(world, {calls}), './use-update-settings-ahXnGzre.js#t': options => (onError = options.onError, {})}});
+    await onError(new Error('Offline'));
+    return calls;
+  };
+  same(await failure(ours), await failure(supplied));
+  same(await failure(ours), [['toast.error', 'Failed to update experimental settings.', 'Offline']]);
+  const rows = {SyncRow: 'sync', KakaoTalkRow: 'kakaotalk', OnboardingRow: 'onboarding', AuxCodeRow: 'auxCode', CompactionLimitsRow: 'compactionLimits'};
+  for (const [row, key] of Object.entries(rows)) {
+    assert.equal(JSON.stringify(save(ours, row)), JSON.stringify(save(supplied, row)));
+    same(save(ours, row)[0][1].value[key], true);
+    same([save(ours, row)[0][1].key, save(ours, row)[0][1].value.format], ['experimental', 'aux.experimental.v2']);
+  }
+});
+
+test('Start onboarding opens a task like the supplied row', async () => {
+  const {world, supplied, ours} = await bothSides(EXPERIMENTAL);
+  const start = async (side, options) => {
+    const calls = [];
+    world.render(side.__pair_StartOnboardingRow, {}, {imports: experimentalImports(world, {calls, ...options})});
+    await new Promise(resolve => setImmediate(resolve));
+    return calls;
+  };
+  const skill = {absolutePath: 'C:\\aux\\builtin\\onboarding\\SKILL.md'};
+  for (const options of [{skills: [{absolutePath: '/other/SKILL.md'}, skill]}, {skills: []}, {skills: null}, {create: async () => { throw new Error('Quota'); }}])
+    assert.equal(JSON.stringify(await start(ours, options)), JSON.stringify(await start(supplied, options)));
+  const [[, created], ...rest] = await start(ours, {skills: [skill]});
+  same(created.message.content.startsWith(`[[${skill.absolutePath}]] Hi! I'm new to Aux.`), true);
+  same([created.title, created.trigger, created.model, created.runtimeConfig, created.browserBinding], ['Welcome to Aux', {type: 'user', source: 'onboarding'}, {provider: 'aux', modelId: 'grok-4.6', thinkingLevel: 'medium', fastMode: false}, {strictModelSelection: true, memoryExtractionDisabled: true}, 'binding-1']);
+  same(rest.at(-1), ['navigate', {to: '/u/$userId/tasks/$sessionId', params: {userId: '7', sessionId: 'task-1'}}]);
+  same((await start(ours, {skills: []}))[0][1].message.content.startsWith('Hi!'), true);
+  same((await start(ours, {create: async () => { throw new Error('Quota'); }})).at(-1), ['toast.error', 'Failed to start onboarding.', 'Quota']);
+});
+
+test('the live tab webview attaches and detaches like the supplied one', async () => {
+  const {world, supplied, ours} = await bothSides(EXPERIMENTAL);
+  const openTabs = [{id: 1, url: 'https://a.example', title: 'A'}, {id: 2, url: 'https://b.example', active: true}, {id: 3, url: 'https://c.example', discarded: true}, {id: 4, url: 'chrome://settings'}, {id: 5}, {url: 'https://none'}, {id: 6, url: 'http://plain.example'}, {id: 9, url: 'http://self.example'}];
+  const list = async side => {
+    let run;
+    const imports = {...experimentalImports(world), './strip-markdown-DRcmtuJc.js#nr': options => { if (Array.isArray(options.queryKey)) run = options.queryFn; return {data: []}; }, 'chrome.tabs.query': async () => openTabs, 'chrome.tabs.getCurrent': async () => ({id: 9})};
+    world.render(side.__pair_LiveTabLayout, {}, {imports, state: [null, null, false, null]});
+    world.enter({imports});
+    return (await run()).map(tab => tab.id);
+  };
+  same(await list(ours), [1, 6]);
+  same(await list(supplied), [1, 6]);
+  const attach = async (side, attachTab) => {
+    const calls = [];
+    const note = name => (...args) => { calls.push([name, ...args]); };
+    const imports = {'document.createElement(webview).attachTab': attachTab, 'document.createElement(webview).setAttribute': note('setAttribute'), 'document.createElement(webview).addEventListener': note('listen'), 'document.createElement(webview).remove': note('remove'), 'container.append': note('append')};
+    world.render(side.__pair_LiveTabView, {tabId: 3, onAttached: note('attached'), onDetached: note('detached'), onError: note('failed')}, {imports, domRef: world.stub('container'), liveEffects: true});
+    await new Promise(resolve => setImmediate(resolve));
+    return calls.filter(([name]) => name !== 'listen');
+  };
+  for (const attachTab of [async () => {}, async () => { throw new Error('Tab closed'); }]) assert.equal(JSON.stringify(await attach(ours, attachTab)), JSON.stringify(await attach(supplied, attachTab)));
+  const shown = await attach(ours, async id => { assert.equal(id, 3); });
+  same(shown.map(([name]) => name), ['setAttribute', 'append', 'attached']);
+  same(shown[0], ['setAttribute', 'aria-label', 'Live tab content']);
+  same((await attach(ours, async () => { throw new Error('Tab closed'); })).at(-1), ['failed', 'Tab closed']);
+});
+
+test('the onboarding layout and its heroes render like the supplied ones', async () => {
+  const chunk = 'assets/route-CSKkWqf5.js';
+  const scene = (path, {reduced = false, choice = 'external', state, video} = {}) => world => ({state, frames: true, imports: {'./strip-markdown-DRcmtuJc.js#mr': ({select}) => select({pathname: path}), './strip-markdown-DRcmtuJc.js#Xt': reduced,
+    './strip-markdown-DRcmtuJc.js#Ut': {track: world.stub('spy:track')}, './-context-CnivYB_B.js#n': {passwordManagerChoice: choice}, 'window.setTimeout': (fn, delay) => (world.stub('spy:timer')(delay), 11)}});
+  const paths = ['/onboarding/glance/', '/onboarding/import-password', '/onboarding/import-browser/progress', '/onboarding/ai', '/onboarding/done', '/onboarding/splash///', '/elsewhere'];
+  await parityOf(chunk, {minimum: 100, props: [{}, {paused: true, width: '400px', active: true, children: 'x', choice: 'external', delay: 0.4}, {paused: false, active: false, width: null, choice: 'builtin', className: 'bg-black text-white', children: ['a', 'b'], delay: 0, src: '/row.webp', direction: 'left', duration: 28}, {direction: 'right', src: '/row.webp', duration: 32, paused: true}],
+    scenes: [...paths.map(path => scene(path)), scene('/onboarding/glance', {reduced: true, choice: 'builtin'}), scene('/onboarding/import-password', {choice: 'builtin', state: [true, true, true]}), scene('/onboarding/import-password', {reduced: true, state: [new Set(['glance']), false, false]})]});
+  const {world, supplied, ours} = await bothSides(chunk);
+  for (const path of [...paths, '/onboarding/glance///']) assert.equal(ours.__pair_panelForPath(path), supplied.__pair_panelForPath(path));
+  same(paths.map(path => ours.__pair_panelForPath(path)), ['glance', 'import-password', null, null, null, null, null]);
+  same(paths.map(path => ours.__pair_panelWidth(path)), [null, '400px', null, null, null, null, null]);
+  same(['/onboarding/import-password/', '/x'].map(path => supplied.__pair_panelWidth(path)), ['400px', null]);
+  same(ours.__pair_rotateSlots(ours.__pair_rotateSlots({0: 0, 1: 1, 2: 2})), {0: 1, 1: 2, 2: 0});
+  same(supplied.__pair_rotateSlots({0: 0, 1: 1, 2: 2}), {0: 2, 1: 0, 2: 1});
+  same([0, 1, 2].map(slot => ours.__pair_nextSlot(slot)), [2, 0, 1]);
+  same(ours.__pair_STEP_NAMES.size, 7);
+  const timers = [];
+  const tracked = [];
+  world.render(ours.__pair_PromptStack, {paused: false}, {timers, state: [{0: 0, 1: 1, 2: 2}]});
+  same(timers.map(([, delay]) => delay), [2800]);
+  world.render(ours.component, {}, {imports: {'./strip-markdown-DRcmtuJc.js#mr': ({select}) => select({pathname: '/onboarding/import-browser/progress/'}), './strip-markdown-DRcmtuJc.js#Ut': {track: (...args) => tracked.push(args)}}});
+  same(tracked, [['onboarding.step.reach', {value: 'import-browser-progress'}]]);
+});
+
+const WEB_LAYOUT = 'assets/route-BiU8pLwS.js';
+/** A small zustand: `create()(init)` and `create(init)`. */
+const zustand = () => {
+  const stores = [];
+  const create = init => {
+    if (!init) return create;
+    let state = init();
+    const listeners = new Set();
+    const store = {getState: () => state, setState: patch => { const before = state; state = {...state, ...patch}; for (const listener of listeners) listener(state, before); }, subscribe: listener => (listeners.add(listener), () => listeners.delete(listener))};
+    stores.push(store);
+    return store;
+  };
+  return create;
+};
+
+test('the cloud chat store keeps one client per session like the supplied one', async () => {
+  const {world, supplied, ours} = await bothSides(WEB_LAYOUT);
+  const textMessage = (role, text, extra) => ({role, content: [{type: 'text', text}], ...extra});
+  const hello = {role: 'user', content: 'Hi', metadata: {}};
+  const recall = {role: 'user', content: 'Memory', metadata: {contextRecall: true}};
+  const answer = textMessage('assistant', 'Sure');
+  const blank = textMessage('assistant', '');
+  const tools = {role: 'assistant', content: [{type: 'tool', name: 'x'}]};
+  const metadata = {role: 'user-message-metadata', metadata: {}};
+  const brief = textMessage('assistant', 'k');
+  const run = async (side, script) => {
+    const calls = [];
+    const clients = [];
+    let racing = false;
+    const imports = {'./provider-Cw0zhujt.js#it': zustand(), 'new ./provider-Cw0zhujt.js#et': options => {
+      const clientStore = zustand()(() => ({messageOrder: 0, messagesByKey: 1, streamingMessage: null, status: 'idle', error: null, messages: [hello, recall, blank, tools, answer, metadata, brief]}));
+      const client = {options, store: clientStore, getStore: () => clientStore, getState: () => clientStore.getState(), reconnectToStream: async () => { calls.push(['reconnect', options.sessionId]); if (script.failReconnect) throw new Error('Network'); }, hydrateMessages: messages => { calls.push(['hydrate', messages.length]); clientStore.setState({messages}); }, dispose: () => calls.push(['dispose', options.sessionId])};
+      clients.push(client);
+      return client;
+    }};
+    world.enter({imports});
+    const chat = side.__pair_createCloudChatStore({endpoint: id => `https://cloud/${id}`, createSocket: async () => 'socket', readSession: async id => { calls.push(['read', id]); if (racing) clients[0].options.onEvent({type: 'text_delta'}); return {messages: script.history ?? [hello, answer, metadata, brief], status: script.status ?? 'idle'}; }});
+    const outcomes = [];
+    for (let time = 0; time < 2; time++) await chat.connect('s1').then(() => outcomes.push('ok'), error => outcomes.push(error.message));
+    const snapshot = () => ({view: chat.store.getState(), execution: chat.executionStore.getState()});
+    const steps = [snapshot()];
+    const client = clients[0];
+    if (client) {
+      client.options.onEvent({type: 'agent_start'});
+      steps.push(snapshot());
+      racing = true;
+      await chat.refresh('s1');
+      racing = false;
+      steps.push(snapshot());
+      client.store.setState({streamingMessage: textMessage('assistant', 'Typing')});
+      steps.push(snapshot());
+      client.store.setState({status: 'streaming', streamingMessage: null});
+      client.store.setState({status: 'error', error: 'Lost'});
+      steps.push(snapshot());
+      client.store.setState({status: 'idle', error: null});
+      client.options.onEvent({type: 'tool_call'});
+      client.options.onEvent({type: 'agent_end'});
+      await new Promise(resolve => setImmediate(resolve));
+      steps.push(snapshot());
+      steps.push(await client.options.resync());
+      steps.push(await chat.refresh('none'));
+    }
+    chat.dispose();
+    calls.push(['disposed']);
+    return {calls, steps, outcomes, clients: clients.length, options: Object.keys(clients[0]?.options ?? {})};
+  };
+  for (const script of [{}, {status: 'running'}, {failReconnect: true}, {history: [recall, blank]}])
+    assert.equal(JSON.stringify(await run(ours, script)), JSON.stringify(await run(supplied, script)));
+  const shown = await run(ours, {});
+  same(shown.clients, 1);
+  same(shown.steps[0].view.s1.messages, [hello, answer, metadata, brief]);
+  same(shown.steps[1].view.s1.status, 'running');
+  same(shown.steps[2].view.s1.status, 'running');
+  same(shown.steps[3].execution.s1.at(-1), textMessage('assistant', 'Typing'));
+  same([shown.steps[4].view.s1.status, shown.steps[4].view.s1.error], ['errored', 'Lost']);
+  same(shown.steps[5].view.s1.status, 'idle');
+  same(shown.steps[6], {live: false});
+  same((await run(ours, {status: 'running'})).steps[6], {live: true});
+  same(shown.calls.slice(-2), [['dispose', 's1'], ['disposed']]);
+  const failed = await run(ours, {failReconnect: true});
+  same([failed.outcomes, failed.clients, failed.calls.filter(([name]) => name === 'dispose').length >= 2], [['Network', 'Network'], 2, true]);
+  same(failed.steps[0].view.s1.error, 'Network');
+});
+
+test('the web layout gates on the account and arranges the sidebar like the supplied one', async () => {
+  const base = (world, {sidebar = 'open', pathname = '/u/7/tasks/s1', enabled = true, narrow = true, focused = true, extension = false, browserProfile = 'p', accountId = 7, collapsed = true} = {}) => ({frames: true, imports: {
+    './strip-markdown-DRcmtuJc.js#mr': options => (options?.select ? options.select({pathname}) : {pathname}), './utils-DCBm67_n.js#y': enabled, './sidebar-Cj9gldy1.js#s': {sidebarState: sidebar, setSidebarState: world.stub('spy:setSidebarState')},
+    './provider-Cw0zhujt.js#Q': focused, './extension-page-url-BH3pfT7h.js#i': extension, './extension-main-Dz1-AsCT.js#j.useRouteContext': {accountId: 7}, './queries-ldd77hNk.js#i': async () => ({browserProfile, accountId}), 'window.matchMedia': () => ({matches: narrow, addEventListener: world.stub('spy:listen'), removeEventListener: world.stub('spy:unlisten')}),
+    'window.requestAnimationFrame': run => (run(), 1), 'argument.isCollapsed': collapsed, './queries-ldd77hNk.js#a': 7}});
+  const cases = [{}, {sidebar: 'closed'}, {narrow: false}, {enabled: false}, {extension: true}, {pathname: '/u/7/experimental/v2/channels/main'}, {pathname: '/u/7/experimental/v20'}, {pathname: '/u/7/projects/p1'}, {pathname: '/u/7/settings'}, {pathname: '/u/7/tasks'}, {sidebar: 'closed', focused: false}, {collapsed: false}];
+  await parityOf(WEB_LAYOUT, {minimum: 40, props: [{}, {accountId: 7, children: 'Page'}, {visible: true}],
+    scenes: [...cases.map(options => world => base(world, options)), world => ({...base(world), state: [4]})]});
+  const {world, supplied, ours} = await bothSides(WEB_LAYOUT);
+  const settle = async (side, account) => {
+    const calls = [];
+    const imports = {'./queries-ldd77hNk.js#a': 7, './error-tracking-B1YG2RRM.js#h': {invalidate: async () => { calls.push(['invalidate']); }}, './queries-ldd77hNk.js#i': async () => { if (!account) throw new Error('offline'); return account; }};
+    const heap = stateHeap([3]);
+    world.render(side.__pair_AccountSettled, {accountId: 7, children: 'Page'}, {imports, state: heap.values, onSetState: heap.onSetState, liveEffects: true});
+    await new Promise(resolve => setImmediate(resolve));
+    return {calls, settled: heap.values[0]};
+  };
+  for (const account of [{browserProfile: 'p', accountId: 7}, {browserProfile: 'p', accountId: 8}, {browserProfile: null, accountId: 8}, null]) assert.equal(JSON.stringify(await settle(ours, account)), JSON.stringify(await settle(supplied, account)));
+  same((await settle(ours, {browserProfile: 'p', accountId: 8})).calls, [['invalidate']]);
+  same((await settle(ours, null)).calls, [['invalidate']]);
+  same((await settle(ours, {browserProfile: 'p', accountId: 7})).calls, []);
+});
+
+const COMMUNICATION = 'assets/communication-xjhkYtDb.js';
+const communicationValue = {enabled: true, beforeSending: 'auto', apps: {gmail: true, imessage: true, slack: false, linkedin: true, x: true, discord: false, telegram: true, whatsapp: true}, watchReplies: {enabled: true, duration: '7d'}, matchTone: {enabled: true, customInstructions: 'Short, no emoji.'}, identities: {agentPhone: {enabled: false, number: ''}, agentMail: {enabled: false, address: '', forwardReplies: true}}};
+const communicationImports = (world, {value = communicationValue, pending = false, granted = true, mac = true, setUp = async () => true, calls = []} = {}) => ({
+  './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#nr': {data: value ?? undefined}, './full-disk-access-BmnWkbG2.js#r': {isGranted: granted, isMac: mac, setUp},
+  './use-update-settings-ahXnGzre.js#t': () => ({isPending: pending, mutate: input => { calls.push(input); }})});
+
+test('Settings › Communications renders and saves like the supplied page', async () => {
+  const scenes = [{}, {value: null}, {value: {...communicationValue, enabled: false, watchReplies: {enabled: false, duration: '3d'}, matchTone: {enabled: false, customInstructions: ''}}}, {granted: false}, {mac: false, granted: false}, {pending: true}, {value: {...communicationValue, apps: {...communicationValue.apps, imessage: false}}, granted: false}];
+  await parityOf(COMMUNICATION, {minimum: 40, props: [{}, {value: communicationValue, disabled: false, onChange: () => {}, title: 'Detected Apps', description: 'Turn on'}, {value: communicationValue, disabled: true, onChange: () => {}, title: 'Apps'}],
+    scenes: scenes.flatMap(options => [undefined, 'Longer instructions '].map(typed => world => ({imports: communicationImports(world, options), state: [typed], event: {target: {value: 'New'}}, args: ['3d']})))});
+  const {world, supplied, ours} = await bothSides(COMMUNICATION);
+  // Each onValueChange and onCheckedChange fires with the scene's value; the saves show what each builds.
+  const saves = (side, value, options) => {
+    const calls = [];
+    world.render(side.__pair_CommunicationSettings, {}, {imports: communicationImports(world, {calls, ...options}), args: [value]});
+    return calls.map(call => ({key: call.key, ...call.value}));
+  };
+  for (const value of ['ask', 'auto', '24h', '3d', '7d', 'until-off', 'never', true, false]) same(saves(ours, value), JSON.parse(JSON.stringify(saves(supplied, value))));
+  same(saves(ours, 'ask').every(value => value.key === 'communication'), true);
+  same(saves(ours, 'ask').some(value => value.beforeSending === 'ask'), true);
+  same(saves(ours, 'never').every(value => value.beforeSending === 'auto' && value.watchReplies.duration === '7d'), true);
+  same(saves(ours, 'until-off').some(value => value.watchReplies.duration === 'until-off'), true);
+  const defaults = (side, options) => { let value; world.render(() => (value = side.__pair_useCommunication(), null), {}, {imports: communicationImports(world, {value: null, ...options})}); return value.value; };
+  same(defaults(ours), JSON.parse(JSON.stringify(defaults(supplied))));
+  same([defaults(ours).enabled, defaults(ours).beforeSending, defaults(ours).watchReplies, defaults(ours).identities.agentMail.forwardReplies], [false, 'ask', {enabled: false, duration: '3d'}, true]);
+
+  const toggle = async (side, id, options, value = communicationValue) => {
+    const changes = [];
+    const tree = world.render(side.__pair_DetectedApps, {disabled: false, value, onChange: next => { changes.push(next.apps[id]); }}, {imports: communicationImports(world, options), event: {}});
+    await new Promise(resolve => setImmediate(resolve));
+    return {changes, needs: JSON.stringify(tree).includes('Need to connect')};
+  };
+  for (const [id, options, value] of [['imessage', {granted: false}], ['imessage', {granted: false, setUp: async () => false}], ['imessage', {granted: false}, {...communicationValue, apps: {...communicationValue.apps, imessage: false}}], ['imessage', {}], ['imessage', {granted: false, mac: false}]])
+    same(await toggle(ours, id, options, value), JSON.parse(JSON.stringify(await toggle(supplied, id, options, value))));
+  const instructions = (side, typed, saved) => {
+    const changes = [];
+    world.render(side.__pair_CustomInstructions, {disabled: false, value: {...communicationValue, matchTone: {enabled: true, customInstructions: saved}}, onChange: next => { changes.push(next.matchTone.customInstructions); }}, {state: [typed], event: {target: {value: 'x'}}});
+    return changes;
+  };
+  same(instructions(ours, '  Keep it brief  ', 'old'), ['Keep it brief']);
+  same(instructions(ours, ' old ', 'old'), []);
+  same(instructions(supplied, '  Keep it brief  ', 'old'), ['Keep it brief']);
+});
+
+const RECOVERY = 'assets/recovery-DY2UC0Rx.js';
+const recoveryWords = 'apple bread cider dough eagle fable grape honey ivory jolly koala lemon'.split(' ');
+const recoveryImports = (world, {calls = [], parse = async text => ({phrase: text.toLowerCase(), entropyB64: 'ZW50cm9weQ=='}), recover = async input => { calls.push(['recover', input]); }, fields = recoveryWords.map(value => ({value})), submitting = false, errors = {}} = {}) => {
+  const values = {recoveryWords: fields};
+  const form = {setValue: (name, value, options) => { calls.push(['setValue', name, value, options]); values[name] = value; }, getValues: name => values[name], register: name => ({name}), formState: {isSubmitting: submitting, errors}, control: 'control', handleSubmit: (valid, invalid) => async () => { calls.push(['handleSubmit']); return invalid && !values.recoveryWords.every(field => field.value) ? invalid() : valid({recoveryWords: values.recoveryWords}); }};
+  return {
+    './tag-icon-DeMC7uIN.js#p': form, './tag-icon-DeMC7uIN.js#f': () => form, './tag-icon-DeMC7uIN.js#m': fields, './strip-markdown-DRcmtuJc.js#er': () => ({mutateAsync: recover}),
+    './recovery-key-CPOQuYx2.js#a': parse, './queries-ldd77hNk.js#m.query': async () => ({accountId: 7}), './queries-ldd77hNk.js#t': () => calls.push(['clearKeyState']), './queries-ldd77hNk.js#m.invalidateQueries': filter => (calls.push(['invalidate', String(filter[STUB_PATH]).replace(/\(.*/, '')]), filter),
+    './dist-LyKrHgST.js#n.error': (title, options) => { calls.push(['toast.error', title, options?.description]); }, './dist-LyKrHgST.js#n.success': title => { calls.push(['toast.success', title]); },
+    './error-content-CCom8r6s.js#t': async (failure, fallback) => ({title: fallback, description: failure.message}), './queries-ldd77hNk.js#i': async () => ({accountId: 7}), './Match-OymXmaXz.js#o': () => target => { calls.push(['navigate', target]); },
+  };
+};
+
+test('the recovery key page normalizes words and recovers like the supplied one', async () => {
+  const imports = recoveryImports;
+  const paste = text => ({clipboardData: {getData: () => text}, preventDefault: () => {}, currentTarget: {files: [{text: async () => text}], value: 'x'}});
+  await parityOf(RECOVERY, {minimum: 12, props: [{}, {onRecoveryKeyVerified: () => {}}],
+    scenes: [world => ({imports: imports(world), event: paste('one')}), world => ({imports: imports(world, {submitting: true, fields: []}), event: paste('')}), world => ({imports: imports(world, {errors: {recoveryWords: {}}, fields: [{value: ''}]})}), world => ({imports: imports(world, {errors: {recoveryWords: {}}})})]});
+  const {world, supplied, ours} = await bothSides(RECOVERY);
+  for (const side of [ours, supplied]) {
+    same(side.__pair_normalizeWord('  Ápple-1 '), 'pple');
+    same(side.__pair_splitWords('  One\ntwo\t 3 Three! '), ['one', 'two', 'three']);
+    same(side.__pair_toWordFields(['Apple']).map(field => field.value), ['apple', ...Array(11).fill('')]);
+    same(side.__pair_toWordFields(recoveryWords).length, 12);
+    same(side.__pair_joinWords([{value: ' Apple'}, {value: '12'}, {value: 'Bread'}]), 'apple bread');
+    same(side.__pair_recoverySchema !== undefined, true);
+  }
+  const form = async (side, event, options) => {
+    const calls = [];
+    const scene = {imports: imports(world, {calls, ...options}), event};
+    world.render(side.__pair_RecoveryKeyForm, {onRecoveryKeyVerified: () => calls.push(['verified'])}, scene);
+    await new Promise(resolve => setImmediate(resolve));
+    return JSON.stringify([calls, event.currentTarget.value]);
+  };
+  const phrase = recoveryWords.join(' ');
+  for (const [event, options] of [[paste(phrase), {}], [paste('single'), {}], [paste('   '), {}], [paste('a b c'), {parse: async () => { throw new Error('Not a key'); }}], [paste(phrase), {recover: async () => { throw new Error('Wrong key'); }}], [paste('A b ' + phrase), {parse: async () => { throw new Error('Not a key'); }}], [paste(phrase), {fields: [{value: ''}]}]])
+    assert.equal(await form(ours, event, options), await form(supplied, event, options));
+  const calls = JSON.parse(await form(ours, paste(phrase), {}))[0];
+  const filled = calls.find(([name]) => name === 'setValue');
+  same(filled[2].map(field => field.value), recoveryWords);
+  same(filled[3], {shouldDirty: true, shouldTouch: true, shouldValidate: true});
+  same(calls.find(([name]) => name === 'recover')[1], {accountId: 7, recoveryEntropyB64: 'ZW50cm9weQ=='});
+  same(calls.filter(([name]) => name === 'invalidate').slice(0, 3).map(([, query]) => query.replace(/.*#h\.|\.queryFilter$/g, '')), ['accounts.get', 'accounts.auth.me', 'accounts.auth.syncKeyStatus']);
+  same(JSON.parse(await form(ours, paste(phrase), {}))[1], '');
+  assert.ok(calls.some(([name]) => name === 'verified'));
+  const wrong = JSON.parse(await form(ours, paste(phrase), {recover: async () => { throw new Error('Wrong key'); }}))[0];
+  assert.ok(wrong.some(([name, title, description]) => name === 'toast.error' && title === 'Could not verify your recovery key.' && description === 'Wrong key'));
+  assert.ok(!wrong.some(([name]) => name === 'verified'));
+  const partial = JSON.parse(await form(ours, paste('a b c'), {parse: async () => { throw new Error('Not a key'); }}))[0];
+  same(partial.filter(([name]) => name === 'setValue').flatMap(([, , value]) => value.map(field => field.value)).slice(0, 4), ['a', 'b', 'c', 'dough']);
+  const verified = [];
+  world.render(ours.component, {}, {imports: {...imports(world, {calls: verified})}});
+  await new Promise(resolve => setImmediate(resolve));
+  same(verified.filter(([name]) => name === 'toast.success' || name === 'navigate'), [['toast.success', 'Encrypted browser data recovered.'], ['navigate', {to: '/u/$userId/settings/account', params: {userId: '7'}, replace: true}]]);
+});
+
+const IMPORT_PROGRESS = 'assets/progress-CS-jrVXz.js';
+const importImports = (world, {calls = [], pending = {sourceId: 'chrome', sourceName: 'Chrome', dataKinds: ['history', 'cookies']}, run, updates = []} = {}) => ({
+  './extension-main-Dz1-AsCT.js#E.useSearch': {browser: 'chrome'}, './extension-main-Dz1-AsCT.js#N': pending, './extension-main-Dz1-AsCT.js#D.get': id => `${id} (known)`, './extension-main-Dz1-AsCT.js#I': value => { calls.push(['setPending', value]); },
+  './extension-main-Dz1-AsCT.js#M': () => { calls.push(['clearPending']); }, './extension-main-Dz1-AsCT.js#L': run ?? (async (input, options) => { calls.push(['run', input.sourceId]); for (const update of updates) options.onProgress(update); }),
+  './Match-OymXmaXz.js#o': () => target => { calls.push(['navigate', target]); }, 'window.setTimeout': (fn, delay) => { calls.push(['timer', delay]); fn(); return 5; }, 'window.clearTimeout': id => { calls.push(['clearTimer', id]); },
+});
+
+test('the onboarding import shows its progress like the supplied page', async () => {
+  const progressStates = [null, {state: 'running', currentDataKind: 'bookmarks'}, {state: 'running', currentDataKind: 'paymentCards'}, {state: 'running', currentDataKind: 'spaces'}, {state: 'running', currentDataKind: 'unknown-kind'}, {state: 'failed', errorMessage: 'Locked'}, {state: 'failed'}, {state: 'cancelled'}, {state: 'succeeded'}, {state: 'succeeded', skippedDataKinds: ['cookies'], skippedMessage: 'Quit Chrome and retry.'}, {state: 'succeeded', skippedDataKinds: ['cookies']}];
+  await parityOf(IMPORT_PROGRESS, {minimum: 60, props: [{}, {browser: 'comet', error: null, progress: {state: 'running'}, attempt: 1, onError: () => {}, onProgress: () => {}}, {browser: 'chatgpt-atlas'}, {browser: 'helium'}, {browser: 'firefox'}, ...progressStates.map(progress => ({progress, error: null})), {error: 'Disk full', progress: null}],
+    scenes: [...progressStates.map(progress => world => ({imports: importImports(world), state: [undefined, null, false, progress], args: [false]})), world => ({imports: importImports(world), state: [2, 'Disk full', false, null]}), world => ({imports: importImports(world), state: [2, 'Disk full', true, null]}), world => ({imports: importImports(world, {pending: {sourceId: 'edge', sourceName: 'Edge'}})})]});
+  const {world, supplied, ours} = await bothSides(IMPORT_PROGRESS);
+  const run = async (side, options, chrome) => {
+    const calls = [];
+    const errors = [];
+    const seen = [];
+    world.render(side.__pair_ImportRunner, {attempt: 0, browser: 'chrome', onError: value => errors.push(value), onProgress: value => seen.push(value.state)}, {imports: importImports(world, {calls, ...options}), chrome});
+    await new Promise(resolve => setImmediate(resolve));
+    return {calls, errors, seen};
+  };
+  const done = {state: 'succeeded'};
+  const cases = [[{updates: [{state: 'running'}, done, done]}], [{updates: [{state: 'succeeded', skippedDataKinds: ['cookies']}]}], [{pending: null}], [{pending: {sourceId: 'edge'}}], [{run: async () => { throw new Error('No access'); }}], [{}, {auxBrowserImport: undefined}]];
+  for (const [options, chrome] of cases) same(await run(ours, options, chrome), JSON.parse(JSON.stringify(await run(supplied, options, chrome))));
+  // The render above has already torn its effect down, so nothing moves on; running it live does.
+  const live = async (side, options) => {
+    const calls = [];
+    world.render(side.__pair_ImportRunner, {attempt: 0, browser: 'chrome', onError: () => {}, onProgress: () => {}}, {imports: importImports(world, {calls, ...options}), liveEffects: true});
+    await new Promise(resolve => setImmediate(resolve));
+    return calls;
+  };
+  for (const options of [{updates: [done, done]}, {updates: [{state: 'succeeded', skippedDataKinds: ['cookies']}]}, {pending: null}]) same(await live(ours, options), JSON.parse(JSON.stringify(await live(supplied, options))));
+  same(await live(ours, {updates: [done, done]}), [['run', 'chrome'], ['clearPending'], ['timer', 800], ['navigate', {to: '/onboarding/import-password', replace: true}]]);
+  same(await live(ours, {updates: [{state: 'succeeded', skippedDataKinds: ['cookies']}]}), [['run', 'chrome'], ['clearPending']]);
+  same(await live(ours, {pending: null}), [['navigate', {to: '/onboarding/import-browser', replace: true}]]);
+  same((await run(ours, {}, {auxBrowserImport: undefined})).errors, ['Browser import is unavailable in this version of Aux.']);
+  same((await run(ours, {run: async () => { throw new Error('No access'); }})).errors, []);
+  const cycle = side => {
+    const timers = [];
+    const heap = stateHeap([4]);
+    world.render(side.__pair_CyclingStatus, {}, {timers, state: heap.values, onSetState: heap.onSetState, liveEffects: true});
+    timers[0][0]();
+    return [timers[0][1], heap.values[0]];
+  };
+  same(cycle(ours), [6000, 0]);
+  same(cycle(supplied), [6000, 0]);
+  const retried = [];
+  world.render(ours.component, {}, {imports: importImports(world, {calls: retried}), state: [0, null, false, {state: 'succeeded', skippedDataKinds: ['cookies']}]});
+  same(retried.filter(([name]) => name === 'setPending')[0], ['setPending', {sourceId: 'chrome', sourceName: 'Chrome', dataKinds: ['cookies']}]);
+});
+
+test('the app layout redirects accounts and pings the bridge like the supplied one', async () => {
+  const chunk = 'assets/route-Dh145hWk.js';
+  const scene = (world, {pathname = '/u/3/tasks', accountId = 7, loading = false, calls = [], chrome} = {}) => ({chrome, imports: {'./useRouterState-vMU34Fpy.js#t': ({select}) => select({isLoading: loading}), './strip-markdown-DRcmtuJc.js#mr': {pathname, href: `${pathname}?tab=1`}, './strip-markdown-DRcmtuJc.js#nr': {data: {accountId}},
+    './Match-OymXmaXz.js#o': () => target => { calls.push(['navigate', target]); }, './error-tracking-B1YG2RRM.js#c': (href, id) => `${href}#${id}`, 'chrome.runtime.sendMessage': (message, done) => { calls.push(['send', message]); done(); }, 'window.setInterval': (fn, delay) => { calls.push(['interval', delay]); return 3; }, 'window.clearInterval': id => { calls.push(['clearInterval', id]); }}});
+  await parityOf(chunk, {minimum: 12, props: [{}], scenes: [world => scene(world), world => scene(world, {pathname: '/u/7/tasks'}), world => scene(world, {pathname: '/settings'}), world => scene(world, {accountId: undefined}), world => scene(world, {loading: true}), world => scene(world, {chrome: {runtime: {id: undefined}}})]});
+  const {world, supplied, ours} = await bothSides(chunk);
+  const redirect = (side, options) => { const calls = []; world.render(side.__pair_AccountRedirect, {}, scene(world, {calls, ...options})); return calls; };
+  for (const options of [{}, {pathname: '/u/7'}, {pathname: '/u/7/x'}, {pathname: '/u/70'}, {pathname: '/u/3abc'}, {pathname: '/u/abc'}, {accountId: undefined}, {loading: true}]) same(redirect(ours, options), JSON.parse(JSON.stringify(redirect(supplied, options))));
+  same(redirect(ours, {}), [['navigate', {href: '/u/3/tasks?tab=1#7', replace: true}]]);
+  same(redirect(ours, {pathname: '/u/7/x'}), []);
+  same(redirect(ours, {pathname: '/u/70'}), [['navigate', {href: '/u/70?tab=1#7', replace: true}]]);
+  const bridge = side => { const calls = []; world.render(side.__pair_ExtensionBridgeKeepAlive, {}, {...scene(world, {calls}), liveEffects: true}); return calls; };
+  same(bridge(ours), JSON.parse(JSON.stringify(bridge(supplied))));
+  same(bridge(ours), [['send', {type: 'extension-bridge:ensure'}], ['interval', 5000]]);
+  let refetch;
+  world.render(ours.__pair_AccountRedirect, {}, {imports: {...scene(world).imports, './strip-markdown-DRcmtuJc.js#nr': options => (refetch = options.refetchInterval, {data: {}})}});
+  same([refetch({state: {data: {reconnecting: true}}}), refetch({state: {data: {}}})], [5000, false]);
+});
+
+test('the sign out dialog signs out and updates a profile like the supplied one', async () => {
+  const chunk = 'assets/-utils-B_lbplVm.js';
+  const imports = (world, {calls = [], failing = false, error, pending = false} = {}) => ({'./strip-markdown-DRcmtuJc.js#Ht': {capture: name => { calls.push(['capture', name]); }}, './strip-markdown-DRcmtuJc.js#er': () => ({isPending: pending, error, mutateAsync: async input => { calls.push(['signOut', input]); if (failing) throw new Error('Offline'); }}),
+    './strip-markdown-DRcmtuJc.js#pr': {invalidateQueries: filter => { calls.push(['invalidate', String(filter[STUB_PATH]).replace(/.*#_\(\)\.|\.queryFilter.*/g, '')]); }}, './queries-ldd77hNk.js#t': () => { calls.push(['clearAccountState']); }, 'chrome.storage.local.remove': async key => { calls.push(['remove', key]); }});
+  await parityOf(chunk, {minimum: 8, props: [{accountId: 7, open: true, onOpenChange: () => {}}, {accountId: 7, open: false}], scenes: [world => ({imports: imports(world)}), world => ({imports: imports(world, {pending: true, error: {message: 'Offline'}})})]});
+  const {world, supplied, ours} = await bothSides(chunk);
+  const signOut = async (side, options) => {
+    const calls = [];
+    world.render(side.n, {accountId: 7, open: true, onOpenChange: value => { if (value === false) calls.push(['open', value]); }}, {imports: imports(world, {calls, ...options})});
+    await new Promise(resolve => setImmediate(resolve));
+    return calls;
+  };
+  same(await signOut(ours, {}), JSON.parse(JSON.stringify(await signOut(supplied, {}))));
+  same(await signOut(ours, {}), [['signOut', {accountId: 7}], ['remove', 'aux.profileMetadataSync.v2'], ['capture', 'logout'], ['open', false], ['clearAccountState'], ['invalidate', 'accounts.get'], ['invalidate', 'accounts.auth.devices'], ['invalidate', 'accounts.auth.me']]);
+  same(await signOut(ours, {failing: true}), [['signOut', {accountId: 7}]]);
+  const profile = {email: 'a@example.com', name: 'Ada', profileUrl: 'https://p', userId: 'u1', theme: 'dark'};
+  const account = {email: 'a@example.com', name: 'Ada', profileUrl: 'https://p', userId: 'u1'};
+  assert.equal(ours.t(profile, account), profile);
+  assert.equal(supplied.t(profile, account), profile);
+  for (const change of [{email: 'b@example.com'}, {name: 'Bea'}, {profileUrl: null}, {userId: 'u2'}]) same(ours.t(profile, {...account, ...change}), JSON.parse(JSON.stringify(supplied.t(profile, {...account, ...change}))));
+  same(ours.t(profile, {...account, profileUrl: null}), {email: 'a@example.com', name: 'Ada', userId: 'u1', theme: 'dark'});
+});
+
+test('the tab preview and channel icon behave like the supplied ones', async () => {
+  const chunk = 'assets/channel-platform-icon-Cjhdli_M.js';
+  const runtime = {runtime: {getURL: path => `https://player.test/${path}`}};
+  const scene = (world, {visible = true, active = true, state} = {}) => ({state, chrome: runtime, imports: {'./strip-markdown-DRcmtuJc.js#en': active, './search-params-DwFnFOOw.js#n': params => new URLSearchParams(params).toString(), 'new IntersectionObserver': (update, options) => ({observe: () => update([{isIntersecting: visible, intersectionRatio: 0.1}], options), disconnect: () => {}})}, window: {IntersectionObserver: true, location: {origin: 'chrome-extension://self'}}});
+  await parityOf(chunk, {minimum: 24, props: [{targetId: 't1', title: 'Docs', className: 'probe', onTopToneChange: () => {}}, {targetId: 't2', enabled: false}, {platform: 'slack', channelName: 'launch'}, {platform: 'telegram', showTooltip: false, className: 'probe'}, {platform: 'discord'}, {platform: 'email'}, {ratio: 1.6, className: 'x'}],
+    scenes: [world => scene(world), world => scene(world, {visible: false}), world => scene(world, {active: false}), world => scene(world, {state: [{id: 'el'}, true]})]});
+  const {world, supplied, ours} = await bothSides(chunk, {'./extension-ids-BPbqTbQi.js#t': 'ext-id'});
+  const frame = (side, active) => {
+    const tones = [];
+    const sent = [];
+    const listeners = [];
+    const contentWindow = {postMessage: (value, target) => sent.push([value, target])};
+    const base = scene(world, {active});
+    const heap = stateHeap(['element', false, true]);
+    world.render(side.n, {targetId: 't1', onTopToneChange: tone => tones.push(tone)}, {...base, state: heap.values, onSetState: heap.onSetState, liveEffects: true, domRef: {contentWindow}, imports: {...base.imports, 'window.addEventListener': (name, handler) => listeners.push(handler)}});
+    const source = {source: contentWindow, origin: 'https://player.test'};
+    tones.length = sent.length = 0;
+    for (const event of [{...source, data: {type: 'aux.tab-preview.ready'}}, {source: contentWindow, origin: 'https://evil.example', data: {type: 'aux.tab-preview.ready'}}, {source: {}, ...{origin: source.origin}, data: {type: 'aux.tab-preview.render-state', visible: true, topTone: 'dark'}},
+      {...source, data: {type: 'aux.tab-preview.render-state', visible: true, topTone: 'dark'}}, {...source, data: {type: 'aux.tab-preview.render-state', visible: 'yes', topTone: 'sepia'}}, {...source, data: {type: 'other'}}]) listeners[0](event);
+    return {tones, sent, painted: heap.values[1]};
+  };
+  same(frame(ours, true), {tones: ['dark', null], sent: [[{type: 'aux.tab-preview.visibility', live: true}, '*']], painted: false});
+  same(frame(ours, false).sent, [[{type: 'aux.tab-preview.visibility', live: false}, '*']]);
+  same(frame(ours, true), JSON.parse(JSON.stringify(frame(supplied, true))));
+  const url = (side, chrome) => { world.enter({chrome, imports: scene(world).imports}); return side.__pair_previewUrl({targetId: 't1'}); };
+  assert.equal(url(ours, runtime), 'https://player.test/tab-preview-player.html?data=targetId=t1');
+  assert.equal(url(ours, {runtime: {}}), 'chrome-extension://ext-id/tab-preview-player.html?data=targetId=t1');
+  assert.equal(url(supplied, {runtime: {}}), 'chrome-extension://ext-id/tab-preview-player.html?data=targetId=t1');
+  assert.equal(ours.__pair_PREVIEW_RATIO, 1.6);
+});
+
+test('subagent colors stay stable and distinct like the supplied ones', async () => {
+  const chunk = 'assets/subagent-icon-B78zcDX8.js';
+  await parityOf(chunk, {minimum: 16, props: [{}, {color: 'violet', className: 'probe', style: {top: 1}}, {color: 'teal'}, {from: 'a', id: 'g', to: 'b'}], scenes: [{}, {imports: {'React.useId': ':r9:'}}]});
+  const {supplied, ours} = await bothSides(chunk);
+  const ids = ['session-a', 'session-b', 'sess-3', 'x', 'y', 'z', 'q', 'w', 'e', 'r', 't'];
+  const colors = side => [...side.n(ids.map(sessionId => ({sessionId}))).entries()];
+  same(colors(ours), JSON.parse(JSON.stringify(colors(supplied))));
+  const firstEight = colors(ours).slice(0, 8).map(([, color]) => color);
+  assert.equal(new Set(firstEight).size, 8);
+  same(colors(ours).length, ids.length);
+  for (const id of ids) assert.equal(ours.__pair_colorIndex(id), supplied.__pair_colorIndex(id));
+  assert.equal(ours.__pair_colorIndex('ab'), (97 * 31 + 98) % 8);
+  same(ours.__pair_pickColor('ab', new Set(['violet'])), supplied.__pair_pickColor('ab', new Set(['violet'])));
+  same(ours.__pair_pickColor('ab', new Set(ours.__pair_SUBAGENT_COLORS)), ours.__pair_SUBAGENT_COLORS[(97 * 31 + 98) % 8]);
+});
+
+test('the capture anchor and selection handle talk to the page like the supplied ones', async () => {
+  const anchor = 'assets/capture-anchor-CI2S0j85.js';
+  const handle = 'assets/selection-handle-Df1vMUiF.js';
+  const route = textOf(anchor).match(/import\{l as u,s as p\}from"(\.\/translate-status-[\w-]+\.js)"/)[1];
+  const messaging = textOf(anchor).match(/from"(\.\/use-messaging-[\w-]+\.js)"/)[1];
+  const scene = (world, search, {calls = [], incoming} = {}) => ({event: {key: 'Escape', button: 0, preventDefault: world.stub('spy:prevent'), stopPropagation: world.stub('spy:stop')}, imports: {[`${route}#s.useSearch`]: search, [`${route}#r.useSearch`]: search, [`${route}#l`]: (frameId, type) => ({ref: {current: null}, sendMessage: message => { calls.push(['send', frameId, type, message]); }}),
+    [`${messaging}#n`]: handler => { for (const message of incoming ?? []) handler(message); }, [`${messaging}#r`]: () => message => { calls.push(['click', message]); }, 'window.addEventListener': (name, handler) => { calls.push(['listen', name]); handler({key: 'Escape'}); handler({key: 'a'}); }}});
+  await parityOf(anchor, {minimum: 12, props: [{}, {placement: 'top-left', initialPlacement: 'top-left'}, {placement: 'bottom-right', initialPlacement: 'bottom-right'}], scenes: [world => scene(world, {frameId: 'f1', placement: 'top-left'}), world => scene(world, {frameId: 'f2', placement: 'bottom-right'}, {incoming: [{type: 'CAPTURE_ANCHOR_SYNC', placement: 'bottom-right'}, {type: 'OTHER'}, null, 'text']})]});
+  await parityOf(handle, {minimum: 8, props: [{}, {handlePlacement: 'top-left'}, {handlePlacement: 'bottom-right'}], scenes: [world => scene(world, {frameId: 'f1', handlePlacement: 'top-left'}), world => scene(world, {frameId: 'f1', handlePlacement: 'bottom-right'}, {incoming: [{type: 'SELECTION_HANDLE_SYNC', handlePlacement: 'top-left', requestKey: 'k1'}, {type: 'OTHER'}, null]})]});
+  const {world, supplied, ours} = await bothSides(anchor);
+  same(['x', {type: 'CAPTURE_ANCHOR_SYNC'}, {type: 'y'}, null, {}].map(value => ours.__pair_isSyncMessage(value)), [false, true, false, false, false]);
+  same(['x', {type: 'CAPTURE_ANCHOR_SYNC'}, null].map(value => supplied.__pair_isSyncMessage(value)), [false, true, false]);
+  const run = side => { const calls = []; world.render(side.component, {}, {...scene(world, {frameId: 'f1', placement: 'top-left'}, {calls})}); return calls.filter(([name, , , message]) => name === 'send' && typeof message?.type === 'string'); };
+  same(run(ours), [['send', 'f1', 'CAPTURE_ANCHOR_READY', {type: 'CAPTURE_ANCHOR_ESCAPE'}]]);
+  same(run(ours), JSON.parse(JSON.stringify(run(supplied))));
+  const pair = await bothSides(handle);
+  const sync = side => { const calls = []; const heap = stateHeap(['top-left', null]); const base = scene(pair.world, {frameId: 'f1', handlePlacement: 'top-left'}, {calls, incoming: [{type: 'SELECTION_HANDLE_SYNC', handlePlacement: 'bottom-right', requestKey: 'k1'}, {type: 'OTHER'}]}); pair.world.render(side.component, {}, {...base, state: heap.values, onSetState: heap.onSetState}); return {heap: heap.values, sent: calls.filter(([name, , , message]) => name === 'send' && typeof message?.type === 'string').map(([, , , message]) => message)}; };
+  same(sync(pair.ours), {heap: ['bottom-right', 'k1'], sent: [{type: 'SELECTION_HANDLE_SYNCED', requestKey: null, handlePlacement: 'top-left'}]});
+  same(sync(pair.ours), JSON.parse(JSON.stringify(sync(pair.supplied))));
+  const click = (side, button) => { const calls = []; pair.world.render(side.__pair_SelectionHandle, {handlePlacement: 'top-left'}, {...scene(pair.world, {}, {calls}), event: {button, preventDefault: () => {}, stopPropagation: () => {}}}); return calls.filter(([name]) => name === 'click'); };
+  same(click(pair.ours, 0), [['click', {type: 'SELECTION_HANDLE_CLICK'}]]);
+  same(click(pair.ours, 2), []);
+  same(click(pair.supplied, 2), []);
+});
+
+test('file artifacts, radio cards, Empty and the window icon render like the supplied ones', async () => {
+  const files = 'assets/files-artifact-DHQjjsEB.js';
+  const previews = {'./strip-markdown-DRcmtuJc.js#dt': type => type === 'image', './strip-markdown-DRcmtuJc.js#ht': path => (path.endsWith('.png') ? 'image' : 'other'), './strip-markdown-DRcmtuJc.js#ct': path => path.split('/').at(-1)};
+  const artifacts = [{source: 'tool', path: 'out/chart.png'}, {source: 'tool', path: 'out/data.csv'}, {source: 'draft', kind: 'draft-block', path: 'draft.png'}, {source: 'tool', kind: 'url'}, {source: 'tool', path: ''}];
+  await parityOf(files, {minimum: 6, scenes: [{imports: previews}], props: [{path: 'out/chart.png', sessionId: 's1'}, {artifacts, className: 'probe', sessionId: 's1'}, {artifacts: artifacts.slice(1), sessionId: 's1'}, {artifacts: []}]});
+  const {world, ours, supplied} = await bothSides(files);
+  world.enter({imports: previews});
+  same(artifacts.map(artifact => ours.__pair_hasPreview(artifact)), [true, false, false, false, false]);
+  same(artifacts.map(artifact => supplied.__pair_hasPreview(artifact)), [true, false, false, false, false]);
+  await parityOf('assets/radio-card-group-DhMlHjFD.js', {minimum: 4, scenes: [{}], props: [{className: 'probe', value: 'a', children: 'x'}, {id: 'plan-a', title: 'Plan', description: 'Details', value: 'a', disabled: true}, {id: 'plan-b', title: 'Plan', value: 'b'}, {description: ''}]});
+  await parityOf('assets/empty-D6YJzOw0.js', {minimum: 10, scenes: [{}], props: [{className: 'probe', id: 'e'}, {variant: 'icon', children: 'x'}, {variant: 'default', className: 'y'}]});
+  await parityOf('assets/window-cursor-ClCFre_a.js', {minimum: 3, scenes: [{}], props: [{}, {size: 16, ariaHidden: false, className: 'probe'}, {'aria-label': 'Window'}]});
+});
+
+test('the error page and reporting behave like the supplied ones', async () => {
+  const chunk = 'assets/error-tracking-B1YG2RRM.js';
+  await parityOf(chunk, {minimum: 20, props: [{}, {className: 'probe', size: 16, ariaHidden: false}, {error: new Error('Boom'), reset: () => {}, data: {}}, {error: undefined}], scenes: [{imports: {'./queries-ldd77hNk.js#L': false, './queries-ldd77hNk.js#m.getQueryCache': {getAll: () => []}}, window: {location: {href: 'https://aux.test/u/7', hash: '', origin: 'https://aux.test'}}, context: {subscribe: () => () => {}, state: {location: {href: 'a'}, matches: []}, reset: () => {}, clearReset: () => {}}, state: [false]},
+    {imports: {'./queries-ldd77hNk.js#L': true, './queries-ldd77hNk.js#m.getQueryCache': {getAll: () => []}}, window: {location: {href: 'https://aux.test/u/7', hash: '', origin: 'https://aux.test'}}, context: {subscribe: () => () => {}, state: {location: {href: 'a'}, matches: []}, reset: () => {}, clearReset: () => {}}, state: [false]}]});
+  const {world, supplied, ours} = await bothSides(chunk);
+  const both = (name, ...args) => { const value = ours[name](...args); same(value, JSON.parse(JSON.stringify(supplied[name](...args)) ?? 'null') ?? undefined); return value; };
+  for (const [path, search, wanted] of [['/u/7/tasks', '', 7], ['/u/0', '', 0], ['/u/7x', '?accountId=3', 3], ['/settings', '?accountId=12', 12], ['/settings', '?accountId=0', 0], ['/settings', '?accountId=-1', null], ['/settings', '?accountId=1.5', null], ['/settings', '?accountId=%20', null], [undefined, undefined, null]]) same(ours.s(path, search), wanted);
+  same(both('s', '/u/9', '?accountId=3'), 9);
+  same(both('c', '/u/7/tasks?x=1', 12), '/u/12/tasks?x=1');
+  same(both('c', '/u/abc#top', 12), '/u/12#top');
+  same(both('c', '/settings', 12), '/settings');
+  same(ours.__pair_describeError(new TypeError('Bad')).name, 'TypeError');
+  same([ours.__pair_describeError('text'), supplied.__pair_describeError(3)], [{name: 'Error', message: 'text'}, {name: 'UnhandledRejection', message: '3'}]);
+  const seen = {};
+  same([ours.__pair_alreadyReported(seen), ours.__pair_alreadyReported(seen), ours.__pair_alreadyReported('text'), ours.__pair_alreadyReported(null)], [false, true, false, false]);
+  const capture = async (side, {href = 'https://aux.test/u/7/tasks', hash = '', incognito, error = new Error('Boom'), reject} = {}) => {
+    const sent = [];
+    world.enter({chrome: {extension: {inIncognitoContext: incognito}}, window: {location: {href, hash, origin: 'https://aux.test'}}, imports: {'./queries-ldd77hNk.js#g.analytics.captureException.mutate': async input => { if (reject) throw new Error('down'); sent.push({...input, stack: undefined}); }, './queries-ldd77hNk.js#i': async () => ({accountId: 7, browserProfile: 'p'})}});
+    await side.i(error, {source: 'window_error', handled: false, properties: {extra: 1}});
+    return sent;
+  };
+  for (const options of [{}, {href: 'https://aux.test/settings'}, {hash: '#top'}, {hash: '#/u/9/tasks?accountId=2'}, {incognito: true}, {reject: true}, {error: 'text'}]) same(await capture(ours, options), JSON.parse(JSON.stringify(await capture(supplied, options))));
+  const [report] = await capture(ours);
+  same(report, {accountId: 7, name: 'Error', message: 'Boom', properties: {source: 'window_error', handled: false, route: '/u/7/tasks', surface: 'agent-manager', extra: 1}});
+  same((await capture(ours, {hash: '#/u/9/tasks'}))[0].properties.route, '/u/9/tasks');
+  same((await capture(ours, {hash: '#top'}))[0].properties.route, '/u/7/tasks');
+  const reports = async (side, trigger) => {
+    const sent = [];
+    const scene = {window: {location: {href: 'https://aux.test/u/7', hash: '', origin: 'https://aux.test'}}, imports: {'./queries-ldd77hNk.js#g.analytics.captureException.mutate': async input => { sent.push(input.properties); }}};
+    world.enter(scene);
+    trigger(scene);
+    await new Promise(resolve => setImmediate(resolve));
+    return sent;
+  };
+  same(await reports(ours, scene => world.render(ours.n, {error: new Error('Route')}, scene)), [{source: 'router_boundary', handled: true, route: '/u/7', surface: 'agent-manager'}]);
+  same(await reports(ours, () => ours.t.prototype.componentDidCatch.call({props: {surface: 'panel'}}, new Error('React'))), [{source: 'react_boundary', handled: true, route: '/u/7', surface: 'panel'}]);
+  same(await capture(ours, {incognito: true}), []);
+  const twice = new Error('Twice');
+  same([(await capture(ours, {error: twice})).length, (await capture(ours, {error: twice})).length], [1, 0]);
+
+  const copied = [];
+  const copy = async (side, content) => {
+    copied.length = 0;
+    let hook;
+    world.render(() => (hook = side.u(), null), {}, {imports: {'navigator.clipboard.writeText': async text => { copied.push(text); }, 'navigator.clipboard.write': async ([item]) => { copied.push(item['text/plain'].type); }, 'new ClipboardItem': items => items}});
+    const result = await hook.copy(content);
+    return [result, ...copied];
+  };
+  same(await copy(ours, 'text'), [true, 'text']);
+  same(await copy(ours, {'text/plain': 'x'}), [true, 'text/plain']);
+  same(await copy(supplied, 'text'), [true, 'text']);
+
+  // Recovery: a query that failed, retried with growing delays, three times, then the error page.
+  const recover = async side => {
+    const timers = [];
+    const calls = [];
+    const error = new Error('Offline');
+    const query = {queryKey: ['tasks'], options: {queryFn: 'tasks'}, state: {error}};
+    const router = {state: {location: {href: 'https://aux.test/u/7'}, matches: [{status: 'error', error}]}, subscribe: name => (calls.push(['subscribe', name]), () => calls.push(['unsubscribe'])), invalidate: () => calls.push(['invalidate']), reset: () => calls.push(['reset']), clearReset: () => calls.push(['clearReset'])};
+    const heap = stateHeap([false, undefined]);
+    const imports = {'./queries-ldd77hNk.js#L': true, './queries-ldd77hNk.js#m.getQueryCache': {getAll: () => [query, {state: {error: new Error('Other')}}]}, './queries-ldd77hNk.js#m.getQueryState': () => ({status: 'error'}), './queries-ldd77hNk.js#m.fetchQuery': async options => { calls.push(['fetch', options.queryKey, options.staleTime]); }, 'window.setTimeout': (fn, delay) => (timers.push([fn, delay]), timers.length), 'window.clearTimeout': () => {}};
+    world.render(side.r, {error}, {context: router, imports, state: heap.values, onSetState: heap.onSetState, liveEffects: true});
+    const delays = [];
+    for (let round = 0; round < 6; round++) {
+      await new Promise(resolve => setImmediate(resolve));
+      const next = timers.shift();
+      if (!next) break;
+      delays.push(next[1]);
+      await next[0]();
+    }
+    await new Promise(resolve => setImmediate(resolve));
+    return {delays, calls, gaveUp: heap.values[0]};
+  };
+  const [mine, theirs] = [await recover(ours), await recover(supplied)];
+  same(mine, JSON.parse(JSON.stringify(theirs)));
+  same([mine.delays, mine.gaveUp], [[5000, 10000, 15000], true]);
+  same(mine.calls.filter(([name]) => name === 'fetch'), [['fetch', ['tasks'], 0], ['fetch', ['tasks'], 0], ['fetch', ['tasks'], 0]]);
+  const listeners = [];
+  const sent = [];
+  world.enter({window: {location: {href: 'https://aux.test/u/7', hash: '', origin: 'https://aux.test'}}, imports: {'window.addEventListener': (name, handler) => listeners.push([name, handler]), './queries-ldd77hNk.js#g.analytics.captureException.mutate': async input => { sent.push([input.name, input.message, input.properties]); }}});
+  ours.o('side-panel');
+  ours.o('other');
+  same(listeners.map(([name]) => name), ['error', 'unhandledrejection']);
+  listeners[0][1]({message: 'Script error'});
+  listeners[1][1]({reason: new Error('Rejected')});
+  await new Promise(resolve => setImmediate(resolve));
+  same(sent, [['Error', 'Script error', {source: 'window_error', handled: false, route: '/u/7', surface: 'other'}], ['Error', 'Rejected', {source: 'unhandled_rejection', handled: false, route: '/u/7', surface: 'other'}]]);
 });
