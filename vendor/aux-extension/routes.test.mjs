@@ -61,6 +61,13 @@ const conversationProps = [
   world => ({messages: [], allMessages: [], loading: true, prefix: 'replies', accountId: 7, task: {...task, preview: undefined, status: 'errored', model: null}, canOpen: false,
     reply: true, onSubmit: world.stub('spy:onSubmit')}),
   {messages: [], allMessages: [], loading: false, suspended: true, sessionId: 's1', prompt: 'Unlock'},
+  // Composer attachments and file previews.
+  {attachment: {id: 'a1', type: 'file', name: 'report.csv', mimeType: 'text/csv', path: 'out/report.csv', pastedText: {preview: 'x,y', characterCount: 1200}},
+    sessionId: 's1', path: 'out/report.csv', fileUrl: 'https://files/report.csv', textContent: 'a,b\n"1,2",3\n', position: 'left',
+    metadata: {kind: 'text', name: 'report.csv', extension: '.csv', mimeType: 'text/csv', path: 'out/report.csv'},
+    metadataState: {isLoading: false, isError: false}, textState: {isLoading: false, isError: false}, badges: 'badge', agent: {id: 'g', title: 'Fix', cwd: '/w/aux/', model: 'm'}},
+  world => ({attachment: {id: 't1', type: 'tab', name: 'Docs', url: 'https://docs.example/a', faviconUrl: 'f.png'}, isUploading: true, onRemove: world.stub('spy:onRemove'),
+    preview: {fileUrl: 'https://files/p.pdf', metadata: {kind: 'pdf', name: 'p.pdf', path: 'p.pdf', mimeType: 'application/pdf'}}}),
 ];
 const conversationScenes = [
   world => ({context: {accountId: 7, tasks: [task], canOpen: true}, imports: {'./strip-markdown-DRcmtuJc.js#Xt': false}, state: [undefined, undefined]}),
@@ -89,7 +96,7 @@ test('the token changes use compiled, theme-following classes', () => {
   for (const [file, from, to] of TOKEN_CHANGES) {
     for (const name of to.split(' ')) {
       const selector = name.replace(/:/g, '\\:');
-      assert.ok(css.includes(`.${selector}:hover`) || new RegExp(`\\.${selector.replace(/\\/g, '\\\\')}[{,]`).test(css), `${file}: .${name} is not compiled`);
+      assert.ok(css.includes(`.${selector}:hover`) || new RegExp(`\\.${selector.replace(/\\/g, '\\\\')}[{,[]`).test(css), `${file}: .${name} is not compiled`);
     }
     assert.ok(readRoute(file).includes(to) && !readRoute(file).includes(from), file);
   }
@@ -144,4 +151,37 @@ test('the command bar builds and filters results like the supplied one', async (
     same('browserSections', sources, query);
     same('flattenSections', supplied.__pair_browserSections(sources, query));
   }
+});
+
+// The composer's attachment and preview helpers, called with real inputs on both sides.
+test('the composer attachment and preview helpers match the supplied ones', async () => {
+  const chunk = 'assets/session-composer-Dc0LRfZA.js';
+  const {supplied, ours} = await evaluatePair({world: createWorld(), chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes,
+    read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[`__pair_${name}`](...args)), JSON.stringify(supplied[`__pair_${name}`](...args)),
+    `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  const attachments = [
+    {type: 'tab', url: 'https://docs.example/a'}, {type: 'tab', url: 'not a url'},
+    {type: 'selection', sourceKind: 'chat'}, {type: 'selection', selectionKind: 'region'}, {type: 'selection'},
+    {type: 'directory', path: '/w/aux'}, {type: 'file', name: 'notes.md', mimeType: 'text/markdown'},
+    {type: 'file', name: 'blob', mimeType: 'image/png'}, {type: 'file', name: 'x', mimeType: ''},
+    {type: 'file', name: 'p', path: 'p.txt', mimeType: 'text/plain', pastedText: {characterCount: 12345}},
+  ];
+  for (const attachment of attachments) same('attachmentDetail', attachment);
+  for (const attachment of [{type: 'selection', previewImage: 'data:x'}, {type: 'file', mimeType: 'image/png', data: 'AA'}, {type: 'file', mimeType: 'text/plain'}])
+    same('imagePreviewUrl', attachment, undefined);
+  for (const path of ['/w/aux/', 'single', '']) same('folderName', path);
+  for (const metadata of [{kind: 'binary'}, {kind: 'directory'}, {kind: 'text'}, undefined]) same('openModeFor', metadata);
+  same('parseDelimited', 'a,b\n"1,""2""",3\r\n,\n', ',');
+  same('parseDelimited', 'x\ty', '\t');
+  const wide = Array.from({length: 120}, (_, row) => Array.from({length: 14}, (__, column) => `${row}.${column}`).join(',')).join('\n');
+  for (const [metadata, text] of [[{extension: '.csv', mimeType: 'text/csv'}, wide], [{extension: '.tsv', mimeType: 'text/tab-separated-values'}, 'a\tb\n1\t2'],
+    [{extension: '.csv', mimeType: 'text/csv'}, '\n \n'], [{extension: '.md', mimeType: 'text/plain'}, '# hi'], [{mimeType: 'text/markdown'}, 'x'],
+    [{extension: '.js', mimeType: 'text/javascript'}, 'let a'], [{extension: '.txt', mimeType: 'text/plain'}, 'plain']])
+    same('textPreviewFor', metadata, text);
+  for (const message of [{content: 'plain'}, {content: [{type: 'text', text: 'a'}, {type: 'image'}, {type: 'text', text: 'b'}]}]) same('messagePlainText', message);
+  const turn = (id, ordinal, key) => ({id, ordinal, input: [{key}]});
+  const overview = {turns: [turn('t3', 3, 'k3')], transcriptRevision: 'r', nextCursor: 'c'};
+  for (const cached of [undefined, {pages: [{turns: [turn('t1', 1, 'k1'), turn('t2', 2, 'k2')]}], pageParams: [null]}])
+    for (const key of ['k2', 'missing']) same('pagesAfterEdit', cached, overview, key);
 });

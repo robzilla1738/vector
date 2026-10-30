@@ -209,6 +209,13 @@ export const ROUTES = Object.freeze({
     "lassName:'text-sm text-red-500'},error));\n}\n", '8ae7d91888ce3513b630c9b8232250400d0048ceb78f81afd8edf9bffda45d14', 35297)],
   'assets/appearance-C03x8vQf.js': [block('Appearance route and Shortcuts page', 'appearance-route.js', 'var P=T(A(),1),e=_(),re=()=>{c',
     'space-y-8",children:(0,e.jsx)(re,{})})})]})}', 'f38ed06eb5f422fbd5debc82ebc9441a97c5ee7b09f545890a841310e175d6af', 11883)],
+  // The composer, one area per pass; the rest of the chunk stays supplied until its pass.
+  'assets/session-composer-Dc0LRfZA.js': [
+    block('Composer: attachments, input layout, file previews, context usage', 'composer-attachments.js', 'var Xn=({attachment:e,classNam',
+      '5 hours",monthly:"Monthly",weekly:"Weekly"};', '810d4c63beaea8510613ea7917b742870e7f6f08c78ccba72960ab594ba82db2', 18914),
+    block('Composer: sending, the queue and message editing', 'composer-send-queue-edit.js', 'var Vh=({sendMessage:e,stop:t,',
+      ',children:p?(0,a.jsx)(kt,{}):"Send"})]})]})}', '3beec8b2e49addc82fd299f3982189bebcc78a09433c57a753c21a84b0857537', 7493),
+  ],
 });
 
 /** Supplied name → Aux name for the module bindings a route renamed (the parity tests compare them
@@ -232,6 +239,9 @@ export const TOKEN_CHANGES = Object.freeze([
   // step (16.8px with the squircle, so it looks the same and now follows the scale).
   ['minipopup.js', 'rounded-[16px]', 'rounded-xl'],
   ['appearance-settings.js', 'text-sm text-red-500', 'text-destructive text-sm'],
+  // The file preview's Open with buttons were fixed white with neutral hovers and no dark mode.
+  ['composer-attachments.js', 'border-neutral-200 bg-white hover:bg-neutral-100', 'border-border bg-background hover:bg-muted'],
+  ['composer-attachments.js', 'aria-expanded:bg-neutral-100', 'aria-expanded:bg-muted'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');
