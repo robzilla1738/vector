@@ -124531,7 +124531,7 @@ index 4a178fc76a14d7fe6550ef2332dd610648ce3d93..7b780eae06915e3e467dc3263b10c92a
             &BuildHelpMenu,
         }) {
 diff --git a/chrome/browser/ui/color/chrome_color_mixers.cc b/chrome/browser/ui/color/chrome_color_mixers.cc
-index 8432f4946834648a5f63ddee567ee63174e26b0f..92a44c7714e7fe47c76ee45fb7261a7cbc478c32 100644
+index 8432f4946834648a5f63ddee567ee63174e26b0f..f28ea28c380e2ebbba11850bec46a65981015a20 100644
 --- a/chrome/browser/ui/color/chrome_color_mixers.cc
 +++ b/chrome/browser/ui/color/chrome_color_mixers.cc
 @@ -10,6 +10,7 @@
@@ -124552,7 +124552,7 @@ index 8432f4946834648a5f63ddee567ee63174e26b0f..92a44c7714e7fe47c76ee45fb7261a7c
  #include "ui/color/color_provider_utils.h"
  
  namespace {
-@@ -88,6 +92,55 @@ void AddChromeColorMixers(ui::ColorProvider* provider,
+@@ -88,6 +92,51 @@ void AddChromeColorMixers(ui::ColorProvider* provider,
    // Must be the last one in order to override other mixer colors.
    AddNativeChromeColorMixer(provider, key);
  
@@ -124564,10 +124564,6 @@ index 8432f4946834648a5f63ddee567ee63174e26b0f..92a44c7714e7fe47c76ee45fb7261a7c
 +    const bool dark = key.color_mode == ui::ColorProviderKey::ColorMode::kDark;
 +    ui::ColorMixer& mixer = provider->AddMixer();
 +    mixer[kColorToolbar] = {dark ? 0xff171717u : 0xffffffffu};
-+    // A split's panes keep the page card's quiet edge; the active pane is a
-+    // step clearer, never a bright ring.
-+    mixer[kColorMultiContentsViewActiveContentOutline] = {dark ? 0x40ffffffu : 0x40000000u};
-+    mixer[kColorMultiContentsViewInactiveContentOutline] = {dark ? 0x1fffffffu : 0x1f000000u};
 +    mixer[kColorToolbarBackgroundSubtleEmphasis] = {dark ? 0xff171717u : 0xffffffffu};
 +    mixer[kColorToolbarBackgroundSubtleEmphasisHovered] = {dark ? 0xff171717u : 0xffffffffu};
 +    mixer[kColorToolbarButtonIcon] = {dark ? 0xffb3b3b3u : 0xff000000u};
@@ -139632,7 +139628,7 @@ index 9c2cff0e0f5c0aaae10c5e4e4f0b740b2b582b42..bfa83d652ad04e070d5704dfed063d7b
  
    canvas->DrawPath(path, flags);
 diff --git a/chrome/browser/ui/views/frame/contents_container_outline.cc b/chrome/browser/ui/views/frame/contents_container_outline.cc
-index d4cf5067cc380b29ff81ae2e6bc3efeb862b13a6..dfac283b36c4056550a6ce709d63a1280011bc09 100644
+index d4cf5067cc380b29ff81ae2e6bc3efeb862b13a6..d2bc74f4c6845a0e2689085367037c8caa22e00f 100644
 --- a/chrome/browser/ui/views/frame/contents_container_outline.cc
 +++ b/chrome/browser/ui/views/frame/contents_container_outline.cc
 @@ -8,6 +8,9 @@
@@ -139645,7 +139641,36 @@ index d4cf5067cc380b29ff81ae2e6bc3efeb862b13a6..dfac283b36c4056550a6ce709d63a128
  #include "ui/base/metadata/metadata_impl_macros.h"
  #include "ui/color/color_provider.h"
  #include "ui/compositor/layer.h"
-@@ -136,7 +139,7 @@ void ContentsContainerOutline::OnPaint(gfx::Canvas* canvas) {
+@@ -16,6 +19,9 @@
+ #include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/border.h"
+ #include "ui/views/view_class_properties.h"
++#include "third_party/skia/include/core/SkColor.h"
++#include "ui/color/color_provider_key.h"
++#include "ui/views/widget/widget.h"
+ 
+ ContentsContainerOutline::ContentsContainerOutline(views::View* mini_toolbar)
+     : mini_toolbar_(mini_toolbar) {
+@@ -128,15 +134,24 @@ void ContentsContainerOutline::OnPaint(gfx::Canvas* canvas) {
+   // Draw the bordering stroke.
+   cc::PaintFlags flags;
+   flags.setStrokeWidth(GetThickness(is_highlighted_));
+-  flags.setColor(
+-      GetColorProvider()->GetColor(GetColor(is_active_, is_highlighted_)));
++  SkColor outline = GetColorProvider()->GetColor(GetColor(is_active_, is_highlighted_));
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // A split's panes keep the page card's quiet edge; the active pane is a step
++  // clearer than the other, never a bright ring.
++  if (is_active_ && !is_highlighted_) {
++    const bool dark =
++        GetWidget()->GetColorMode() == ui::ColorProviderKey::ColorMode::kDark;
++    outline = SkColorSetA(dark ? SK_ColorWHITE : SK_ColorBLACK, 0x40);
++  }
++#endif
++  flags.setColor(outline);
+   flags.setStyle(cc::PaintFlags::kStroke_Style);
+   flags.setAntiAlias(true);
+ 
    gfx::RectF local_bounds(GetLocalBounds());
    const float half_thickness = GetThickness(is_highlighted_) / 2.0f;
    local_bounds.Inset(half_thickness);
@@ -139654,7 +139679,7 @@ index d4cf5067cc380b29ff81ae2e6bc3efeb862b13a6..dfac283b36c4056550a6ce709d63a128
  
    // Get the mini toolbar size if it's visible.
    gfx::SizeF mini_toolbar_size;
-@@ -145,9 +148,13 @@ void ContentsContainerOutline::OnPaint(gfx::Canvas* canvas) {
+@@ -145,9 +160,13 @@ void ContentsContainerOutline::OnPaint(gfx::Canvas* canvas) {
      CHECK(mini_toolbar_.get());
      mini_toolbar_size = gfx::SizeF(mini_toolbar_->size());
    }
@@ -139669,7 +139694,7 @@ index d4cf5067cc380b29ff81ae2e6bc3efeb862b13a6..dfac283b36c4056550a6ce709d63a128
  
    canvas->DrawPath(path, flags);
  }
-@@ -167,10 +174,16 @@ void ContentsContainerOutline::OnViewIsDeleting(views::View* observed_view) {
+@@ -167,10 +186,16 @@ void ContentsContainerOutline::OnViewIsDeleting(views::View* observed_view) {
  void ContentsContainerOutline::SetClipPath() {
    // Set clip path on the mini toolbar view, it uses half thickness less corner
    // radius than the outline. This path needs to match the outline path.
@@ -139687,7 +139712,7 @@ index d4cf5067cc380b29ff81ae2e6bc3efeb862b13a6..dfac283b36c4056550a6ce709d63a128
  
    SkPathBuilder clip_path;
    clip_path.moveTo(mini_toolbar_rect.right(), mini_toolbar_rect.y());
-@@ -202,6 +215,7 @@ void ContentsContainerOutline::SetClipPath() {
+@@ -202,6 +227,7 @@ void ContentsContainerOutline::SetClipPath() {
    }
  
    mini_toolbar_->SetClipPath(clip_path.detach());

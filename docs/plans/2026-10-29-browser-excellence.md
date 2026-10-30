@@ -6,9 +6,9 @@ Robert asked for a thorough review of the browser experience — the agent, qual
 
 **Sources:** nine read-only code reviews of build 77 and the durable checkout, plus an on-screen look at build 77 beside the running Aside and the saved Arc references (`out/acceptance/20261027/ref/`). Findings marked *(check)* were inferred from code and need one look on screen before or while fixing. File paths are under the durable checkout's `src/` unless they start with `vendor/`, `scripts/` or `docs/`; `frame/` means `chrome/browser/ui/views/frame/`.
 
-## Progress (build 110, 2026-10-30)
+## Progress (build 112, 2026-10-30)
 
-Build 110 (`out/release/1.0.0-110`) carries everything below. It is assembled from the durable checkout with the release transforms, `--pdf-runtime`, `--computer-use-helper` and `--memory-helper`. It launches, and the items marked *(seen)* were checked on screen. The rest is built and unit-tested but not yet driven by hand.
+Build 112 (`out/release/1.0.0-112`) carries everything below. It is assembled from the durable checkout with the release transforms, `--pdf-runtime`, `--computer-use-helper` and `--memory-helper`. It launches, and the items marked *(seen)* were checked on screen. The rest is built and unit-tested but not yet driven by hand.
 
 **Done**
 - **Batch 1:**

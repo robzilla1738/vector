@@ -2,7 +2,7 @@
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
   "signedInventorySha256": "b606bf7ca0d48c85707685b9a3eeefb24631f81c4c60632962f21234814dc1db",
-  "chromiumTreeManifestSha256": "0d8cba7a90c7071460e656831907782ab9a587691f649739ca2f80195316e64c",
+  "chromiumTreeManifestSha256": "cd4c68ea5946e33cc4992691089cf85a43ec5d14ed3564dc9729cd2bb2d66900",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
