@@ -74,42 +74,15 @@ function re() {
     ],
   });
 }
-var /** My routines: each routine with its switch and menu, then Create (held at the Free plan’s limit when payments are on). */
+var /** My routines: each routine with its switch and menu, then Create. */
   MyRoutines = () => {
     const {userId} = p.useParams(),
       r = Number(userId),
       l = y(),
-      {data: u} = g(l.routines.list.queryOptions({accountId: r})),
-      {data} = g(l.accounts.get.queryOptions({accountId: r})),
-      h = AUX_LAUNCH_POLICY.paymentsEnabled && (data?.subscriptionPlan ?? 'free') === 'free',
-      v = h && u.filter(s => s.status === 'active').length >= 3;
+      {data: u} = g(l.routines.list.queryOptions({accountId: r}));
     return (0, jsxRuntime.jsxs)(A, {
       title: 'My routines',
       children: [
-        false &&
-          (0, jsxRuntime.jsxs)('div', {
-            className:
-              'inner-curved-shape-top bg-muted text-muted-foreground relative z-10 -mx-3.5 flex items-center justify-between gap-1 border border-transparent px-4 pt-1.5 text-[13px] font-medium',
-            children: [
-              (0, jsxRuntime.jsx)(w, {className: '-ml-0.5 size-4'}),
-              (0, jsxRuntime.jsx)('p', {
-                className: 'grow',
-                children: v
-                  ? "You've reached the Free plan limit. Pause a routine or upgrade."
-                  : 'You can keep up to 3 routines active on the Free plan.',
-              }),
-              (0, jsxRuntime.jsx)(F, {
-                size: 'xs',
-                variant: 'secondary',
-                render: (0, jsxRuntime.jsx)(m, {
-                  to: '/u/$userId/settings/billing',
-                  params: {userId},
-                  search: {change_plan: 1},
-                }),
-                children: 'Upgrade',
-              }),
-            ],
-          }),
         (0, jsxRuntime.jsxs)(z, {
           className: 'z-1',
           children: [
@@ -153,18 +126,12 @@ var /** My routines: each routine with its switch and menu, then Create (held at
             (0, jsxRuntime.jsxs)(f, {
               variant: 'action',
               className: 'h-12 w-full',
-              render: v
-                ? (0, jsxRuntime.jsx)('button', {
-                    type: 'button',
-                    className: 'pointer-events-none *:opacity-50',
-                    disabled: true,
-                  })
-                : (0, jsxRuntime.jsx)(m, {
-                    to: '/u/$userId/settings/routines',
-                    params: {userId},
-                    search: {mode: 'create'},
-                    replace: true,
-                  }),
+render: (0, jsxRuntime.jsx)(m, {
+                to: '/u/$userId/settings/routines',
+                params: {userId},
+                search: {mode: 'create'},
+                replace: true,
+              }),
               children: [(0, jsxRuntime.jsx)(I, {className: 'size-4'}), (0, jsxRuntime.jsx)(x, {title: 'Create'})],
             }),
           ],

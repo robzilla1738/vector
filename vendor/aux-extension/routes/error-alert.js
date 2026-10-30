@@ -146,8 +146,8 @@ function RetryButton({children = 'Try again'}) {
   const {actions} = useErrorAlert();
   return (0, t.jsx)(ActionButton, {onClick: actions.retry, children});
 }
-/** Opens the model settings to reconnect the provider. */
-function ReconnectButton() {
+/** Opens the model settings: to reconnect the provider, or to choose another model. */
+function ReconnectButton({children = 'Reconnect'}) {
   const account = p();
   return account
     ? (0, t.jsx)(y, {
@@ -156,19 +156,9 @@ function ReconnectButton() {
         onClick: event => {
           N(event);
         },
-        children: 'Reconnect',
+        children,
       })
     : null;
-}
-/** Adds credits. */
-function AddCreditsButton({primary = false}) {
-  const {actions} = useErrorAlert();
-  return (0, t.jsx)(ActionButton, {primary, onClick: actions.addCredits, children: 'Add credits'});
-}
-/** Upgrades the plan. */
-function UpgradeButton({primary = false}) {
-  const {actions} = useErrorAlert();
-  return (0, t.jsx)(ActionButton, {primary, onClick: actions.upgrade, children: 'Upgrade plan'});
 }
 /** Reports a bug. */
 function ReportButton() {
@@ -192,26 +182,18 @@ function $() {
     icon =
       error.kind === 'aborted'
         ? 'abort'
-        : error.kind === 'credits-aux-v2'
-          ? 'brand'
-          : error.kind === 'credits-other'
-            ? void 0
-            : 'warning';
+        : error.kind === 'credits-other'
+          ? void 0
+          : 'warning';
   return (0, t.jsxs)(ErrorAlertCard, {
-    actionsBelow: error.kind === 'credits-aux-v2',
     title: error.title,
     description: error.description,
     icon,
     tone,
     children: [
       error.kind === 'auth' && (0, t.jsx)(ReconnectButton, {}),
-      error.kind === 'credits-aux-v2' &&
-        error.actions.map((action, index) =>
-          action === 'addCredits'
-            ? (0, t.jsx)(AddCreditsButton, {primary: index === 0}, action)
-            : (0, t.jsx)(UpgradeButton, {primary: index === 0}, action),
-        ),
-      ['aborted', 'auth', 'generic', 'overloaded', 'provider-server', 'rate-limit'].includes(error.kind) &&
+      error.kind === 'credits-other' && (0, t.jsx)(ReconnectButton, {children: 'Open Models'}),
+      ['aborted', 'auth', 'credits-other', 'generic', 'network', 'offline', 'overloaded', 'provider-server', 'rate-limit'].includes(error.kind) &&
         (0, t.jsx)(RetryButton, {children: error.kind === 'aborted' ? 'Retry' : 'Try again'}),
       error.kind === 'generic' && error.reportable && (0, t.jsx)(ReportButton, {}),
     ],

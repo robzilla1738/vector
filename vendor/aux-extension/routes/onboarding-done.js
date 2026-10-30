@@ -441,9 +441,10 @@ var /** The appearance and Aux CLI rows. */
       trpc = z(),
       queryClient = N(),
       started = (0, React.useRef)(false),
+      cleanupHours = (0, React.useRef)(0),
       form = de({
         resolver: ce(optionsSchema),
-        defaultValues: {defaultBrowser: true, addToDock: false, keepTasksRunning: true, helpImproveAux: false},
+        defaultValues: {defaultBrowser: true, addToDock: false, helpImproveAux: false},
       }),
       updateSettings = Ue(),
       capture = B(trpc.analytics.capture.mutationOptions()),
@@ -460,6 +461,7 @@ var /** The appearance and Aux CLI rows. */
             [, browserResult] = await Promise.all([
               globalThis.chrome?.auxBrowserPreferences?.setCrashReports?.(values.helpImproveAux).catch(() => {}),
               applyBrowserOptions(values),
+              applyTabCleanup(cleanupHours.current).catch(() => {}),
             ]),
             events = [];
           if (
@@ -477,14 +479,11 @@ var /** The appearance and Aux CLI rows. */
               properties: {place: 'onboarding', value: isAdded, supported, isAdded},
             });
           }
-          (events.push({event: 'onboarding.done.keep-tasks-running', properties: {value: values.keepTasksRunning}}),
-            values.helpImproveAux &&
-              (events.push({event: 'settings.analytics.enable', properties: {place: 'onboarding', value: true}}),
-              await Promise.all(
-                events.map(({event, properties}) =>
-                  capture.mutateAsync({accountId, event, properties}).catch(() => {}),
-                ),
-              )));
+          values.helpImproveAux &&
+            (events.push({event: 'settings.analytics.enable', properties: {place: 'onboarding', value: true}}),
+            await Promise.all(
+              events.map(({event, properties}) => capture.mutateAsync({accountId, event, properties}).catch(() => {})),
+            ));
           const adblock = typeof chrome > 'u' ? void 0 : chrome.auxAdblock;
           (adblock &&
             (await Ve(adblock, queryClient).catch(error => {
@@ -527,7 +526,7 @@ var /** The appearance and Aux CLI rows. */
               onSubmit: form.handleSubmit(finish),
               children: (0, jsxRuntime.jsx)(H, {
                 className: 'w-110 rounded-xl',
-                children: OPTIONS.map(option =>
+                children: [...OPTIONS.map(option =>
                   (0, jsxRuntime.jsxs)(
                     ae,
                     {
@@ -554,7 +553,7 @@ var /** The appearance and Aux CLI rows. */
                     },
                     option.id,
                   ),
-                ),
+                ), (0, jsxRuntime.jsx)(TabCleanupRow, {hours: cleanupHours}, 'tab-cleanup')],
               }),
             }),
           })
@@ -597,11 +596,44 @@ var /** The appearance and Aux CLI rows. */
     }
     return result;
   },
+  TAB_CLEANUP = [[0, 'Never'], [12, '12 hours'], [24, '24 hours'], [168, '7 days']],
+  /** Turns on tab cleanup through the call Settings uses, for every Space. */
+  applyTabCleanup = async hours => {
+    const preferences = globalThis.chrome?.auxBrowserPreferences;
+    if (!hours || typeof preferences?.setOrganizationCleanupPolicy !== 'function') return;
+    const settings = await preferences.getOrganizationSettings();
+    if (settings?.success)
+      await preferences.setOrganizationCleanupPolicy({ownerGeneration: settings.ownerGeneration, expectedRevision: settings.revision,
+        enabled: true, inactivityHours: hours, spaceIds: settings.cleanup.spaceIds});
+  },
+  /** The Tab cleanup row. */
+  TabCleanupRow = ({hours}) =>
+    (0, jsxRuntime.jsxs)(ae, {
+      orientation: 'horizontal',
+      className: `${F} p-3 py-2.5`,
+      children: [
+        (0, jsxRuntime.jsxs)(oe, {
+          className: 'leading-none',
+          children: [
+            (0, jsxRuntime.jsx)(se, {htmlFor: 'tab-cleanup', children: 'Tab cleanup'}),
+            (0, jsxRuntime.jsx)(re, {className: 'text-muted-foreground text-xs', children: 'Archive tabs you haven’t used for a while'}),
+          ],
+        }),
+        (0, jsxRuntime.jsx)('select', {
+          id: 'tab-cleanup',
+          defaultValue: 0,
+          className: 'bg-surface-primary border-border rounded-lg border px-2 py-1 text-sm',
+          onChange: event => {
+            hours.current = Number(event.target.value);
+          },
+          children: TAB_CLEANUP.map(([value, label]) => (0, jsxRuntime.jsx)('option', {value, children: label}, value)),
+        }),
+      ],
+    }),
   /** The options. */
   optionsSchema = K({
     defaultBrowser: T(),
     addToDock: T(),
-    keepTasksRunning: T(),
     helpImproveAux: T(),
   }),
   /** The option rows. */

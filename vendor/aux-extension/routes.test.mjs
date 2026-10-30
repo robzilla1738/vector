@@ -8,6 +8,7 @@ import {GLOBALS_CSS, ROUTES, TOKEN_CHANGES, integrateRoutes, integrateStyles, re
 import {assertFreeNames, assertParity, createWorld, evaluatePair} from './parity.mjs';
 import {STUB_PATH} from './render-harness.mjs';
 import {stagedText} from './staged.mjs';
+import {EDITS} from '../provided/polish/integration.mjs';
 
 const candidate = requireInput('candidateApp');
 const textOf = chunk => stagedText(candidate, chunk);
@@ -424,7 +425,7 @@ test('the token changes use compiled, theme-following classes', () => {
       // A class as compiled CSS escapes it: every character but letters, digits, - and _.
       const selector = name.replace(/[^\w-]/g, '\\$&');
       const pattern = selector.replace(/[\\[\]().*+?^${}|]/g, '\\$&');
-      assert.ok(new RegExp(`\\.${pattern}\\s*[{,[:>*)]`).test(css), `${file}: .${name} is not compiled`);
+      assert.ok(new RegExp(`\\.${pattern}(?:\\s*[{,[:>*)]|\\s+\\w)`).test(css), `${file}: .${name} is not compiled`);
     }
     // A change that adds a class keeps the supplied one; any other leaves none of it.
     assert.ok(readRoute(file).includes(to) && (to.includes(from) || !readRoute(file).includes(from)), file);
@@ -687,7 +688,7 @@ test('the message list measures, windows, follows and reads activity like the su
     same('__pair_currentThinkingHeader', rows);
 });
 
-// The chat commands: feedback, new, clear (confirmed, then failing) and compact (failing).
+// The chat commands: new, clear (confirmed, then failing) and compact (failing).
 test('the chat commands run like the supplied ones', async () => {
   const world = createWorld();
   const {supplied, ours} = await evaluatePair({world, chunk: COMPOSER, text: textOf(COMPOSER), blocks: ROUTES[COMPOSER], integrate: integrateRoutes,
@@ -703,7 +704,7 @@ test('the chat commands run like the supplied ones', async () => {
       './dist-LyKrHgST.js#n.loading': record('loading'), './dist-LyKrHgST.js#n.error': record('error'), './dist-LyKrHgST.js#n.success': record('success'),
       './strip-markdown-DRcmtuJc.js#er': options => ({mutateAsync: async input => { calls.push(['mutate', String(options), input]); throw String(options).includes(plain) ? 'not an Error' : new Error('boom'); }})}});
     const command = side.__kept_Ga({sessionId: 's1'});
-    for (const [name, detail] of [['feedback', 'Nice'], ['new'], ['clear'], ['compact', 'Keep the plan'], ['other']]) calls.push([name, command(name, detail)]);
+    for (const [name, detail] of [['new'], ['clear'], ['compact', 'Keep the plan'], ['other']]) calls.push([name, command(name, detail)]);
     await new Promise(resolve => setTimeout(resolve, 0));
     return JSON.stringify(calls);
   };
@@ -1149,33 +1150,27 @@ test('the Tasks page renders like the supplied one with chats, filters and pagin
     props: [{session: items[0], userId: '7', style: {height: 40}, children: 'list', projectId: 'p1', projectIdLocked: true}, {session: items[1], userId: '7'}]});
 });
 
-// Onboarding: the New Tab helper folded, expanded and by task count, in Ask and Search mode; the
+// Onboarding: the New Tab chip row (deliberately no fold) in Ask and Search mode; the
 // layout parts and the field group with their props; Continue pressing on Enter.
 test('the onboarding helper, layout parts and field group render like the supplied ones', async () => {
-  const scene = (world, {fold = null, mode = 'ask', key = 'Enter', target = {}} = {}) => ({event: {key, target, currentTarget: {scrollIntoView: world.stub('spy:scroll')},
+  const scene = (world, {mode = 'ask', key = 'Enter', target = {}} = {}) => ({event: {key, target, currentTarget: {scrollIntoView: world.stub('spy:scroll')},
     preventDefault: world.stub('spy:preventDefault')}, imports: {
-    'window.localStorage.getItem': () => fold, './newtab-CnOLQ0yu.js#o': {omniboxMode: mode}, './newtab-CnOLQ0yu.js#s': {accountId: 7},
+    './newtab-CnOLQ0yu.js#o': {omniboxMode: mode}, './newtab-CnOLQ0yu.js#s': {accountId: 7},
     './strip-markdown-DRcmtuJc.js#N': {broadcast: world.stub('spy:broadcast')}, './extension-page-url-BH3pfT7h.js#a': world.stub('spy:openPage'),
     './strip-markdown-DRcmtuJc.js#dn': () => false}});
   const blocksByChunk = Object.fromEntries(['assets/onboarding-helper-BVYyPOep.js', 'assets/onboarding-layout-MxuCwWDr.js', 'assets/onboarding-field-group-BpfduoJC.js']
     .map(chunk => [chunk, ROUTES[chunk]]));
   await assertParity({blocksByChunk, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 30, defaults: false, renamed: renamedBindings,
-    scenes: [world => scene(world), world => scene(world, {fold: 'folded', mode: 'search'}), world => scene(world, {fold: 'expanded'}),
-      world => scene(world, {key: 'Escape'}), world => ({...scene(world), state: [false]})],
-    props: [{taskCount: 0, children: 'Step', className: 'probe', variant: 'default', size: 'lg', id: 'x'}, {taskCount: 4, children: ['a', 'b'], variant: 'outline'}, {}]});
+    scenes: [world => scene(world), world => scene(world, {mode: 'search'}), world => scene(world, {key: 'Escape'})],
+    props: [{children: 'Step', className: 'probe', variant: 'default', size: 'lg', id: 'x'}, {children: ['a', 'b'], variant: 'outline'}, {}]});
 });
 
-test('the onboarding helpers read the fold and spot controls like the supplied ones', async () => {
+test('the onboarding suggestions and controls match the supplied ones', async () => {
   const world = createWorld();
   const pair = async chunk => evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
     changes: TOKEN_CHANGES, renamed: renamedBindings});
   const helper = await pair('assets/onboarding-helper-BVYyPOep.js');
-  for (const fold of ['folded', 'expanded', 'other', null]) {
-    world.enter({imports: {'window.localStorage.getItem': () => fold}});
-    assert.equal(helper.ours.__pair_readFold(), helper.supplied.__pair_readFold(), String(fold));
-  }
   assert.equal(JSON.stringify(helper.ours.__pair_SUGGESTIONS), JSON.stringify(helper.supplied.__pair_SUGGESTIONS));
-  for (const name of ['__pair_FOLD_KEY', '__pair_SUGGESTIONS_SHOWN', '__pair_ILLUSTRATIONS']) assert.equal(JSON.stringify(helper.ours[name]), JSON.stringify(helper.supplied[name]), name);
   const layout = await pair('assets/onboarding-layout-MxuCwWDr.js');
   const field = await pair('assets/onboarding-field-group-BpfduoJC.js');
   assert.equal(field.ours.__pair_FIELD_GROUP, field.supplied.__pair_FIELD_GROUP);
@@ -1262,7 +1257,7 @@ test('the Channels platform fields and setup match the supplied ones', async () 
   const {supplied, ours} = await evaluatePair({world: createWorld(), chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
     changes: TOKEN_CHANGES, renamed: renamedBindings});
   const json = value => JSON.stringify(value, (_, item) => (Object.prototype.toString.call(item) === '[object Map]' ? [...item] : typeof item === 'function' ? 'fn' : item));
-  for (const name of ['__kept_le', '__kept_E', '__pair_PLATFORM_SETUP', '__pair_NO_PROJECT', '__pair_CREDENTIALS_FORM_ID', '__pair_COVER', '__pair_REMOTE_MESSENGERS']) assert.equal(json(ours[name]), json(supplied[name]), name);
+  for (const name of ['__kept_le', '__kept_E', '__pair_PLATFORM_SETUP', '__pair_NO_PROJECT', '__pair_CREDENTIALS_FORM_ID', '__pair_COVER']) assert.equal(json(ours[name]), json(supplied[name]), name);
   for (const platform of ['slack', 'telegram', 'discord']) assert.equal(ours.__pair_guideUrl(platform), supplied.__pair_guideUrl(platform));
 });
 
@@ -1707,7 +1702,7 @@ test('the connect provider dialog indents JSON and checks values like the suppli
 });
 
 // Model select: several providers (one signed out), models with thinking levels and fast mode,
-// searching, the default option, loading, empty and error states, and Ultrabrowse on and off.
+// searching, the default option, loading, empty and error states.
 const MODEL_SELECT = 'assets/model-select-BvZsM1Kl.js';
 test('the model and thinking menus render like the supplied ones', async () => {
   const catalog = {anthropic: [{provider: 'anthropic', id: 'opus', name: 'Claude Opus', shortName: 'Opus', availableThinkingLevels: ['off', 'low', 'high', 'max'], supportsFastMode: true},
@@ -1718,7 +1713,7 @@ test('the model and thinking menus render like the supplied ones', async () => {
   const context = (world, extra = {}) => ({allowDefaultOption: true, isAvailableModelsLoading: false, isAvailableModelsError: false, retryAvailableModels: world.stub('spy:retry'),
     isUsingDefaultValue: false, isOpen: true, defaultOptionLabel: 'Default model', selectableProviders: selectable, selectedModel: selected, unavailableValueLabel: undefined,
     getModels: id => catalog[id] ?? [], isModelSelected: (provider, id) => provider === 'anthropic' && id === 'opus', onOpenChange: world.stub('spy:openChange'),
-    onChange: world.stub('spy:change'), enableUltrabrowse: true, canUseUltrabrowse: true, proactiveMode: true, isThinkingOpen: true, onThinkingOpenChange: world.stub('spy:thinkingOpen'), ...extra});
+    onChange: world.stub('spy:change'), isThinkingOpen: true, onThinkingOpenChange: world.stub('spy:thinkingOpen'), ...extra});
   const providerOptions = [...selectable, {id: 'aux', name: 'Aux', state: 'active'}];
   const modelsByProvider = {...catalog, aux: [{provider: 'aux', id: 'free', shortName: 'Free', availableThinkingLevels: [], supportsFastMode: false}],
     grok: [{provider: 'grok', id: 'grok-4', shortName: 'Grok', availableThinkingLevels: [], supportsFastMode: false}]};
@@ -1733,7 +1728,7 @@ test('the model and thinking menus render like the supplied ones', async () => {
       world => scene(world, {selectableProviders: selectable.slice(0, 1), selectedModel: null, isUsingDefaultValue: true, proactiveMode: false}),
       world => scene(world, {selectableProviders: selectable.slice(2)}), world => scene(world, {isAvailableModelsLoading: true}),
       world => scene(world, {selectableProviders: [], isAvailableModelsError: true}), world => scene(world, {selectableProviders: [], allowDefaultOption: false, selectedModel: null, unavailableValueLabel: 'Gone'}),
-      world => scene(world, {canUseUltrabrowse: false, isOpen: false, isThinkingOpen: false, selectedModel: {...selected, thinkingLevel: 'max', fastMode: false}}),
+      world => scene(world, {isOpen: false, isThinkingOpen: false, selectedModel: {...selected, thinkingLevel: 'max', fastMode: false}}),
       world => scene(world, {selectedModel: {...selected, supportsFastMode: false, availableThinkingLevels: []}}),
       world => scene(world, {}, {event: {key: '2', defaultPrevented: false, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, preventDefault: world.stub('spy:prevent'),
         stopPropagation: world.stub('spy:stop'), target: {value: 'gp'}, currentTarget: {closest: () => null}}})],
@@ -1741,7 +1736,7 @@ test('the model and thinking menus render like the supplied ones', async () => {
       children: 'child', menuSize: 'sm', submenu: true, provider: selectable[2], onRetry: world.stub('spy:retry')}),
       world => ({checked: false, disabled: true, compact: true, tooltipAlign: 'start', thinking: false, shortcut: 'thinking', submenu: false, onCheckedChange: world.stub('spy:checked')}),
       {disabled: true, animated: false},
-      world => ({value: {provider: 'anthropic', modelId: 'opus', thinkingLevel: 'max', fastMode: true}, allowDefaultOption: true, enableUltrabrowse: true, proactiveMode: true,
+      world => ({value: {provider: 'anthropic', modelId: 'opus', thinkingLevel: 'max', fastMode: true}, allowDefaultOption: true, proactiveMode: false,
         children: 'menus', onChange: world.stub('spy:onChange'), onInvalidProactiveMode: world.stub('spy:invalidProactive')}),
       world => ({value: null, fallbackValue: {provider: 'openai', modelId: 'gpt', thinkingLevel: 'medium'}, requireVision: true, unavailableValueLabel: 'Gone', proactiveMode: true,
         onChange: world.stub('spy:onChange'), modelCatalog: {providerOptions: providerOptions.slice(1), modelsByProvider, models: allModels}}),
@@ -1766,7 +1761,6 @@ test('the model select helpers label, match and pick like the supplied ones', as
   for (const args of [[null, 'b', false], [undefined, undefined, true], ['a', 'b', true], [null, null, true]]) same('__kept_Je', ...args);
   for (const [model, fast] of [[{provider: 'p', id: 'm', availableThinkingLevels: ['low'], supportsFastMode: true}, true], [{provider: 'p', id: 'm', supportsFastMode: false}, true],
     [{provider: 'p', id: 'm', supportsFastMode: true}, undefined]]) same('__kept_Se', model, fast);
-  for (const name of ['__pair_ULTRABROWSE_LETTERS', '__pair_ULTRABROWSE_COLORS', '__pair_ULTRABROWSE_GRADIENT']) assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
   // A shortcut opens its menu once, remembering focus, and only when that menu is there and enabled.
   const press = (side, key, {disabled = false, thinking = true} = {}) => {
     const calls = [];
@@ -2796,7 +2790,7 @@ test('the Done step applies appearance drafts and finishes onboarding like the s
     './use-update-settings-ahXnGzre.js#t': () => {}, './extension-main-Dz1-AsCT.js#R.useLoaderData': {skipDone}, './extension-main-Dz1-AsCT.js#R.useSearch': {completionTarget: target}, './platform-CX_yPATJ.js#o': false,
     './sign-in-popup-CzjJFAuC.js#t': async () => true, './error-content-CCom8r6s.js#t': async (error, title) => ({title, description: String(error?.message)}), './recommended-filters-gA0HHZVC.js#t': async () => { throw Error('filters'); },
     './dist-LyKrHgST.js#n.error': note('toast.error'), './dist-LyKrHgST.js#n.success': note('toast.success')});
-  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 60, defaults: false, renamed: renamedBindings,
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 30, defaults: false, renamed: renamedBindings,
     scenes: [world => ({imports: imports(world)}), world => ({imports: imports(world, {os: 'windows', skipDone: true, mutation: {isPending: true}}), state: [true]}), world => ({imports: imports(world, {query: {isError: true}, browserPreferences: {}})}), world => ({imports: imports(world, {mutation: {isError: true, error: {message: 'Some settings'}}})}),
       world => ({imports: imports(world, {query: {isLoading: true, data: undefined}}), state: [false]}), world => ({imports: imports(world, {mutation: {isPending: true}, query: {data: undefined}})})],
     props: [{open: true, onOpenChange: () => {}, onClose: () => {}, onSavingChange: () => {}, children: 'child', autoComplete: false, onAutoCompleteError: () => {}}, {open: false, autoComplete: true}, {queryKey: ['x', 'tabStyle'], available: true, read: () => 'a', write: () => {}}]});
@@ -3830,4 +3824,34 @@ test('the error page and reporting behave like the supplied ones', async () => {
   listeners[1][1]({reason: new Error('Rejected')});
   await new Promise(resolve => setImmediate(resolve));
   same(sent, [['Error', 'Script error', {source: 'window_error', handled: false, route: '/u/7', surface: 'other'}], ['Error', 'Rejected', {source: 'unhandled_rejection', handled: false, route: '/u/7', surface: 'other'}]]);
+});
+
+// Owner decisions (2026-10-30), which the parity tests can't speak to.
+test('New Tab has no task cards, whatever chats exist', () => {
+  assert.ok(!readRoute('new-tab-island.js').includes('tasks-CtF0WxoJ'));
+  const helper = readRoute('onboarding-helper.js');
+  for (const gone of ['Show suggestions', 'localStorage', 'taskCount']) assert.ok(!helper.includes(gone), gone);
+});
+
+test('onboarding reaches local users, and each finished profile only once', () => {
+  const guard = EDITS['assets/-types-Wy38XkNB.js'][0].replace;
+  const K = done => new Function('localStorage', `${guard};return K`)({getItem: () => (done ? '1' : null)});
+  assert.equal(K(false)({mode: 'local'}), '/onboarding/glance');
+  assert.equal(K(false)({mode: 'cloud', onboardingCompletedAt: null}), '/onboarding/glance');
+  assert.equal(K(false)({mode: 'cloud', onboardingCompletedAt: 5}), null);
+  assert.equal(K(true)({mode: 'local'}), null);
+  assert.equal(K(false)(null), null);
+  const steps = EDITS['assets/route-CSKkWqf5.js'][0].replace;
+  assert.ok(steps.includes('make-it-yours') && steps.includes('import-password') && readRoute('onboarding-shell.js').includes("'/onboarding/make-it-yours'"));
+  const done = readRoute('onboarding-done.js');
+  assert.ok(!done.includes('keepTasksRunning') && done.includes('setOrganizationCleanupPolicy') && done.includes('aux.onboarding.completed.v1'));
+});
+
+test('an import sends what was chosen, and only sign-ins raise the Keychain explainer', () => {
+  const dialog = readRoute('import-browser.js');
+  assert.ok(dialog.includes('onImport(target, {dataKinds: chosen, destination});'));
+  assert.ok(dialog.includes("['passwords', 'Passwords']") && dialog.includes('Passwords stay in your password manager.'));
+  const importer = readRoute('use-browser-importer.js');
+  assert.ok(importer.includes('destination: request.destination,') && importer.includes("!options.dataKinds.includes('cookies')"));
+  assert.ok(importer.includes('Choose Always Allow.') && !importer.includes('Safari passwords ZIP'));
 });

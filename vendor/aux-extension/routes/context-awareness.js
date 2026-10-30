@@ -341,9 +341,6 @@ function st() {
 function ContextAwarenessSettings({accountId, contextAwareness}) {
   const {capture} = ue(),
     o = k(),
-    {data: d} = te(o.accounts.get.queryOptions({accountId})),
-    {data = false} = F(o.analytics.isExperimentalEligible.queryOptions({accountId})),
-    m = !Ze(d, {experimentalEligible: data}) && !contextAwareness.enabled,
     {confirm} = me(),
     u = ns({accountId, syncGetAllCache: true, scope: {id: `context-awareness-settings:${accountId}`}}),
     [w, p] = (0, React.useState)(() => Date.now()),
@@ -473,22 +470,15 @@ function ContextAwarenessSettings({accountId, contextAwareness}) {
                         children: [
                           (0, jsxRuntime.jsx)(Ve, {
                             render: (0, jsxRuntime.jsx)('div', {}),
-                            children: (0, jsxRuntime.jsxs)('div', {
+                            children: (0, jsxRuntime.jsx)('div', {
                               className: 'relative',
-                              children: [
-                                (0, jsxRuntime.jsx)(J, {
-                                  checked: enabled,
-                                  disabled: u.isPending || m,
-                                  onCheckedChange: Ae,
-                                }),
-                                m &&
-                                  (0, jsxRuntime.jsx)('span', {
-                                    className: 'bg-background absolute inset-0 rounded-full opacity-50',
-                                  }),
-                              ],
+                              children: (0, jsxRuntime.jsx)(J, {
+                                checked: enabled,
+                                disabled: u.isPending,
+                                onCheckedChange: Ae,
+                              }),
                             }),
                           }),
-                          m && (0, jsxRuntime.jsx)(We, {children: 'Context Awareness requires the Max plan'}),
                         ],
                       }),
                     }),

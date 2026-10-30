@@ -1035,7 +1035,7 @@ function Gg() {
                       type: 'button',
                       className: Ui('w-full cursor-pointer gap-1 text-left', className),
                       onClick: () =>
-                        chrome.tabs.create({url: chrome.runtime.getURL('main.html#/onboarding/import-browser')}),
+                        chrome.tabs.create({url: chrome.runtime.getURL('main.html#/onboarding/glance')}),
                     }),
                   children: [
                     (0, A.jsx)(qt, {

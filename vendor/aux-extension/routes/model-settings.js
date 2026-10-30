@@ -808,7 +808,6 @@ var PLAN_NAMES = {free: 'Free', max: 'Max', pro: 'Pro'},
     (0, jsxRuntime.jsxs)(jsxRuntime.Fragment, {
       children: [
         (0, jsxRuntime.jsx)(ConnectedProviders, {}),
-        (0, jsxRuntime.jsx)(AuxSignIn, {}),
         (0, jsxRuntime.jsx)(ConnectProviders, {}),
       ],
     }) /** Connected providers with their plan or method, usage and actions. */,
@@ -917,35 +916,8 @@ var /** A provider’s line: reauthentication, the Aux plan, subscription or API
       : t.id === 'aux'
         ? `${PLAN_NAMES[s]}`
         : t.type === 'subscription'
-          ? 'Subscription'
-          : 'API' /** Signing in for the Aux plan’s models, when the account is local or paused. */,
-  AuxSignIn = () => {
-    const {accountId} = F(),
-      s = R(),
-      {data} = U(s.accounts.get.queryOptions({accountId}));
-    if (!AUX_LAUNCH_POLICY.hostedAiEnabled || (data?.mode === 'cloud' && data.authStatus !== 'paused')) return null;
-    const n = data?.mode === 'cloud' && data.authStatus === 'paused';
-    return (0, jsxRuntime.jsxs)(Qe, {
-      className: 'gap-1',
-      render: (0, jsxRuntime.jsx)(Ce, {to: '/auth/sign-in'}),
-      children: [
-        (0, jsxRuntime.jsx)(W, {provider: 'aux', className: 'text-foreground mx-0.5 size-5 opacity-55'}),
-        (0, jsxRuntime.jsx)(H, {
-          title: n ? 'Aux needs sign-in again' : 'Aux requires sign-in',
-          description: n
-            ? 'Your session is paused, so Aux plan models are unavailable for Ask AI.'
-            : 'Please sign-in to use Built-in Aux models',
-        }),
-        (0, jsxRuntime.jsx)(ye, {
-          className: 'pr-1',
-          children: (0, jsxRuntime.jsxs)('span', {
-            className: 'text-muted-foreground inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap',
-            children: [n ? 'Sign in again' : 'Sign in', (0, jsxRuntime.jsx)(lt, {className: 'size-3.5'})],
-          }),
-        }),
-      ],
-    });
-  },
+          ? 'Local agent'
+          : 'API key',
   EditProvider = ({provider, icon, label = 'Edit'}) => {
     const {setCurrentProvider} = N(),
       a = () => {
@@ -1042,9 +1014,8 @@ var /** A provider’s line: reauthentication, the Aux plan, subscription or API
       g = disconnected.get('custom-json'),
       M = Ze(y.filter(d => d.id !== 'custom-json')),
       p = [
-        {type: 'subscription', label: 'Subscription', providers: M.filter(d => d.type === 'subscription')},
-        {type: 'manual', label: 'API', providers: M.filter(d => d.type === 'manual' && !te(d.id))},
-        {type: 'local', label: 'Local', providers: M.filter(d => te(d.id))},
+        {type: 'local', label: 'Local agents', providers: M.filter(d => d.type === 'subscription' || te(d.id))},
+        {type: 'manual', label: 'API keys', providers: M.filter(d => d.type === 'manual' && !te(d.id))},
       ].filter(d => d.providers.length),
       c = a.trim().toLowerCase(),
       x = p

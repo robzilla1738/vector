@@ -13,7 +13,7 @@
  * Button, $s the copy icon, Bs useCopy, Di toasts, Xr/Zr/Jr the tooltip root, trigger and popup, Yr
  * ScrollArea, oe Skeleton, eo/ga/Qr/io the favicon avatar, to the external link, no the URL host,
  * Ks the relative time, ta the notification icon, pn motion, Gs reduced motion, and the earlier
- * passes' W, pi, He, rn, ot, Ga, Ne, Bt, gi, mo, vi and Ke. */
+ * passes' W, pi, He, rn, ot, Ga, Ne, Bt, gi, vi and Ke. */
 var /** How tool diffs render: unified, no file header, scrolling sideways. */
   DIFF_OPTIONS = {
     theme: {dark: 'pierre-dark', light: 'pierre-light'},
@@ -487,16 +487,5 @@ var /** A REPL script and its output, with its time and token count on hover. */
     standalone: isGeneratingImage,
     summaryKind: ({call: step}) => (vi(step.arguments) === 'code' ? 'command' : 'browser'),
   },
-  /** The routine limit notice under a failed routine step. */
-  RoutineLimitNotice = step =>
-    Ne(step.state) && mo(step.resultText ?? '')
-      ? (0, p.jsx)(W, {
-          className: 'px-2.5 py-2',
-          children: (0, p.jsx)('p', {
-            className: 'text-muted-foreground text-sm',
-            children: 'You’ve reached the routine limit. Pause or remove a routine to run another.',
-          }),
-        })
-      : null,
   /** The routine_update tool. */
-  qr = {expandedContent: null, expandMode: 'none', footer: RoutineLimitNotice, standalone: true}
+  qr = {expandedContent: null, expandMode: 'none', standalone: true}

@@ -12,6 +12,16 @@ const edit = (name, find, replace, count = 1) => Object.freeze({name, find, repl
 const NEW_ROWS = ['cursor-cli', 'grok-cli', 'opencode-cli', 'copilot-cli', 'gemini-cli'];
 
 export const DAEMON_EDITS = Object.freeze([
+  // A second download waits its turn for a filename instead of failing (plan 8.23).
+  edit('filename suggestions queue per account',
+    "if(auxDownloadNameRequests.has(accountId))throw Error('A filename suggestion is already running.');",
+    "while(auxDownloadNameRequests.has(accountId))await auxDownloadNameRequests.get(accountId).settled;"),
+  edit('a filename request says when it is settled',
+    "const entry={requestId:input.requestId,controller,guard};auxDownloadNameRequests.set(accountId,entry);",
+    "let auxSettle;const entry={requestId:input.requestId,controller,guard,settled:new Promise(done=>{auxSettle=done})};auxDownloadNameRequests.set(accountId,entry);"),
+  edit('a settled filename request lets the next one go',
+    "if(auxDownloadNameRequests.get(accountId)===entry)auxDownloadNameRequests.delete(accountId)}",
+    "if(auxDownloadNameRequests.get(accountId)===entry)auxDownloadNameRequests.delete(accountId);auxSettle()}"),
   // The Computer Use app picker leaves out Aux itself; the Canary's bundle ID has a dot.
   edit('the app picker leaves out Aux Canary',
     'new Set([`dev.aux.browser`,`dev.aux.browserCanary`])',
@@ -42,10 +52,10 @@ export const DAEMON_EDITS = Object.freeze([
     'ti=/* @__PURE__ */ new Set([...this.credentials.list(),...this.modelsJson.listProviderAuthIds(),...auxProviderCli.providerIds()])'),
   edit('chat turns on a CLI provider run the CLI with the session browser tools',
     'Ci=new Agent$1({streamFn:async(Cn,ni,ri)=>{let ai=Cn.provider===`aux`?',
-    'Ci=new Agent$1({streamFn:async(Cn,ni,ri)=>{if(auxProviderCli.owns(Cn.provider))return modelRuntime.streamSimple(Cn,ni,{...ri,auxProviderCli:{tools:()=>Ci.state.tools,context:()=>({systemPrompt:ti.systemPrompt,messages:Ci.state.messages,tools:Ci.state.tools}),prepareArguments:(Cn,ei)=>validateToolArguments(Cn,prepareToolCallArguments(Cn,ei)),beforeToolCall:(Cn,ei)=>Ci.beforeToolCall?.(Cn,ei),afterToolCall:(Cn,ei)=>Ci.afterToolCall?.(Cn,ei),execute:auxExecuteRegisteredBrowserTool,emit:Cn=>Ci.processEvents(Cn)}});let ai=Cn.provider===`aux`?'),
+    'Ci=new Agent$1({streamFn:async(Cn,ni,ri)=>{if(auxProviderCli.owns(Cn.provider))return modelRuntime.streamSimple(Cn,ni,{...ri,auxProviderCli:{tools:()=>Ci.state.tools,context:()=>({systemPrompt:ti.systemPrompt,messages:Ci.state.messages,tools:Ci.state.tools}),prepareArguments:(Cn,ei)=>validateToolArguments(Cn,prepareToolCallArguments(Cn,ei)),beforeToolCall:(Cn,ei)=>Ci.beforeToolCall?.(Cn,ei),afterToolCall:(Cn,ei)=>Ci.afterToolCall?.(Cn,ei),execute:auxExecuteRegisteredBrowserTool,emit:Cn=>Ci.processEvents(Cn),folders:()=>[...new Set([...(ti.permission?.files?.readableRoots??[]),...(ti.permission?.files?.writableRoots??[])])]}});let ai=Cn.provider===`aux`?'),
   edit('provider CLI status procedures',
     'getSubscriptionUsage:accountProcedure.input(object({providerId:_enum([`aux`,`claude-code`,`kimi-code`,`openai-codex`,`xai-grok-oauth`])})).query(',
-    'providerCliStatus:accountProcedure.query(()=>auxProviderCli.status()),providerCliRefresh:accountProcedure.mutation(()=>auxProviderCli.status({refresh:!0})),getSubscriptionUsage:accountProcedure.input(object({providerId:_enum([`aux`,`claude-code`,`kimi-code`,`openai-codex`,`xai-grok-oauth`])})).query('),
+    'providerCliStatus:accountProcedure.query(()=>auxProviderCli.status()),providerCliRefresh:accountProcedure.mutation(()=>auxProviderCli.status({refresh:!0})),providerCliOpenTerminal:accountProcedure.mutation(()=>auxProviderCli.openTerminal()),getSubscriptionUsage:accountProcedure.input(object({providerId:_enum([`aux`,`claude-code`,`kimi-code`,`openai-codex`,`xai-grok-oauth`])})).query('),
   edit('per-turn MCP endpoint: loopback, no browser origin, turn token',
     'daemonAuthMiddleware=()=>async(Cn,ei)=>{let ti=new URL(Cn.req.url).pathname,',
     'daemonAuthMiddleware=()=>async(Cn,ei)=>{if(auxProviderCli.isMcpPath(new URL(Cn.req.url).pathname))return!isConnectedFromLocalhost(Cn)||!isLoopbackHost(Cn.req.header(`host`))||Cn.req.header(`origin`)||Cn.req.header(`sec-fetch-site`)?Cn.json({error:{code:`FORBIDDEN`,message:`Local provider CLI connections only.`}},403):await auxProviderCli.handleMcp(Cn.req.raw);let ti=new URL(Cn.req.url).pathname,'),
@@ -99,7 +109,7 @@ export const AGENT_LIST_EDITS = Object.freeze([
 const CLI_DIALOG = 'auxCliDialog=({provider:t})=>{'
   + 'const{accountId:n,currentProvider:s,completeConnection:o,refetch:r}=b(),a=W(),'
   + 'l=st({...a.models.providerCliStatus.queryOptions({accountId:n}),enabled:s===t,refetchOnWindowFocus:!0,retry:!1}),'
-  + 'i=z(a.models.providerCliRefresh.mutationOptions()),u=l.data?.rows?.[t],'
+  + 'i=z(a.models.providerCliRefresh.mutationOptions()),terminal=z(a.models.providerCliOpenTerminal.mutationOptions()),u=l.data?.rows?.[t],'
   + 'h=async()=>{try{await i.mutateAsync({accountId:n}),await l.refetch(),await r()}catch(c){console.error(c),S.error("Could not check the CLI")}},'
   + 'c=x=>{navigator.clipboard.writeText(x).then(()=>S.success("Copied"),()=>S.error("Could not copy"))},'
   + 'x=u?.account?Object.values(u.account).flatMap(y=>Array.isArray(y)?[`${y.length} stored sign-in${y.length===1?"":"s"}`]:typeof y=="string"&&y?[y]:[]).join(" · "):"";'
@@ -109,7 +119,7 @@ const CLI_DIALOG = 'auxCliDialog=({provider:t})=>{'
   + '!u&&(0,e.jsx)(D,{}),'
   + 'u?.version&&(0,e.jsxs)("p",{className:"text-muted-foreground",children:["Version ",u.version,x?` · ${x}`:""]}),'
   + '(u?.actions??[]).map((y,g)=>y.kind==="link"?(0,e.jsx)("p",{children:(0,e.jsx)(v,{to:y.url,children:y.label})},g)'
-  + ':y.kind==="copy"?(0,e.jsxs)("div",{className:"flex items-center justify-between gap-2 rounded-lg border p-2",children:[(0,e.jsx)("code",{className:"font-mono text-xs break-all",children:y.command}),(0,e.jsx)(re,{type:"button",variant:"outline",onClick:()=>c(y.command),children:y.label})]},g)'
+  + ':y.kind==="copy"?(0,e.jsxs)("div",{className:"flex items-center justify-between gap-2 rounded-lg border p-2",children:[(0,e.jsx)("code",{className:"font-mono text-xs break-all",children:y.command}),(0,e.jsxs)("div",{className:"flex shrink-0 gap-2",children:[(0,e.jsx)(re,{type:"button",variant:"outline",onClick:()=>c(y.command),children:y.label}),(0,e.jsx)(re,{type:"button",variant:"outline",onClick:()=>terminal.mutate({accountId:n}),children:"Open Terminal"})]})]},g)'
   + ':y.kind==="explain"?(0,e.jsx)("p",{className:"text-muted-foreground",children:y.text},g):null)]}),'
   + '(0,e.jsxs)(w,{children:[(0,e.jsx)(_,{children:"Close"}),'
   + 'u?.state==="ready"?(0,e.jsx)(re,{type:"button",onClick:()=>o(t),children:"Done"})'

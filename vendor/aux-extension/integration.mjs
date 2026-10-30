@@ -104,7 +104,7 @@ function replaceBlocks(text, blocks, label, replacement) {
 export const UTILITIES = 'utilities.css';
 const ADDED_UTILITIES = ['.rounded-b-xl{', '.bg-card{', '.-mt-\\[var\\(--radius-xl\\)\\]{', '.\\[--_r\\:var\\(--radius-xl\\)\\]{',
   '.group-hover\\/routine\\:bg-muted:', ':is(.\\*\\:data-model-select-shortcuts\\:px-2 > *)',
-  ':is(.\\*\\*\\:data-\\[agent-session-ui\\=\\"chat\\"\\]\\:px-2 *)'];
+  ':is(.\\*\\*\\:data-\\[agent-session-ui\\=\\"chat\\"\\]\\:px-2 *)', '.dark\\:bg-background:is('];
 
 export function integrateStyles(text) {
   for (const selector of ADDED_UTILITIES)
@@ -124,8 +124,11 @@ export const NEWTAB_BLOCKS = Object.freeze([
 export const geistFaces = () => shipped(readSource('fonts.css')).split(/(?=@font-face)/)
   .filter(face => face.startsWith('@font-face {font-family: Geist Variable;')).join('');
 
+/** Aux's own New Tab rules: the centered layout and the Space tint on the search box. */
+export const NEWTAB_RULES = 'newtab-page.css';
+
 export const integrateNewTab = text =>
-  replaceBlocks(text, NEWTAB_BLOCKS, 'New Tab first paint', ({file}) => geistFaces() + shipped(readSource(file)));
+  replaceBlocks(text, NEWTAB_BLOCKS, 'New Tab first paint', ({file}) => geistFaces() + shipped(readSource(file)) + shipped(readSource(NEWTAB_RULES)));
 
 /** Shared components, chunk → its blocks in file order. Each source in components/ replaces one
  * block verbatim; the exported bindings and the names the rest of the chunk uses keep their
@@ -200,7 +203,10 @@ export const ROUTES = Object.freeze({
     ':(0,s.jsx)(e==="windows"?ce:ee,{})})})};', '751383ec0b97c0872a530eaca39a6a1ded8687a940eb63b996ce6664918e2f82', 1567)],
   'assets/-layouts-CcApOQbE.js': [block('Settings page kit', 'settings-layout.js', 'var s=l(),p=', '"flex max-w-40 min-w-0 shrink justify-end",e.className)});',
     '6a3f086ae431b181c598eafa4eee750d0dc396e9b1260d9c42748ab8bf1c3978', 2299)],
-  'assets/route-TQyeTEXE.js': [block('Settings shell', 'settings-shell.js', 'te=[{label:"Extensions",icon:T1,kind:"chrome",to:"chrome://extensions"}]',
+  'assets/glance-BfAlmExy.js': [block('Onboarding: Welcome and Make it yours', 'onboarding-welcome.js', 'var r=C(G(),1),$="/assets/icons-BJUd505g.webp"',
+    'to:"/onboarding/ai",replace:!0}),children:"Next"})]})]})}', '099131be2d2fd9ed4698f4b6b856a497ee0e072aa25b8ec230a94aae6e599b55', 4896)],
+  'assets/route-TQyeTEXE.js': [block('Settings: the unmounted feedback dialog', 'settings-feedback-removed.js', 'L=5,G2=3145728',
+    'or??"Failed to send feedback.")}},', '4feae993b106655e11ff39c204d5375b2c8d31cf2288974601d9c7e865c71b4c', 5316), block('Settings shell', 'settings-shell.js', 'te=[{label:"Extensions",icon:T1,kind:"chrome",to:"chrome://extensions"}]',
     '(0,t.jsx)(t1,{})})]})]})}', 'c0e43460db70c7d079b14069c2d29c3c4d89797ba8f92b0d9afd00313c5dd93b', 9554)],
   'assets/conversation-D9Q3VEsl.js': [block('Channel chat view', 'conversation.js', 'var t=Ze(),kt=({size:e=24,aria',
     'dren:(0,t.jsx)(kt,{className:"size-4"})})]})}', '215f89a711a4eb699b3e3b686037a11c2c4246e47a14d97b0741d2e55a877684', 54873)],
@@ -272,7 +278,7 @@ export const ROUTES = Object.freeze({
   // General: the Aux-facing settings code in two passes; three.js and the injected Aux code stay with their owners.
   'assets/general-3dgRbrRk.js': [
     block('General: account, import, capture and languages', 'general-settings.js', 'function vm({className:e,outsideSpeed:t=',
-      'jsx)(ag,{})}),(0,A.jsx)(og,{})]})]})]})}', '428eae8571f11b2e6e8e29fe23629d97e9d3b266da23ad1142716a7a192bf7e2', 21964),
+      'jsx)(ag,{})}),(0,A.jsx)(og,{})]})]})]})}', 'ce649d0715577c43cf3babbf873d2f6095d25d8d837d1dac775e838e92651b2c', 21956),
     block('General: default browser, search, New Tab, PiP, screenshots, updates and service', 'general-browser.js',
       'var Xm=()=>(0,A.jsxs)(Pi,{children:[(0,A', 'children:"open source software"}),"."]})', '44a387aac735b8f4cf7079fcc17b3b7f4929ace0dfa542eded08e081d5275468', 9417),
   ],
@@ -337,8 +343,8 @@ export const ROUTES = Object.freeze({
   // Model select in three passes; the launch policy at the top of the chunk belongs to
   // vendor/provided/provider-funded-launch.mjs (the provider reads it).
   'assets/model-select-BvZsM1Kl.js': [
-    block('Model select: the Ultrabrowse switch and label', 'model-select-ultrabrowse.js', 'Ve=({checked:r,disabled:o,onCheckedChange:',
-      'Me=(0,d.createContext)(null),se=new WeakMap', '1b0c38aae840534eb8bed3d311911a3627692060e0b6e9f4d07b9bbd3fad24d5', 3420),
+    block('Model select: the select context', 'model-select-context.js', 'Ve=({checked:r,disabled:o,onCheckedChange:',
+      'Me=(0,d.createContext)(null),se=new WeakMap', '0a2781dd4156baae7b609897289e5c9b73d5254fef9ae26350277c4b4a4a19a1', 3871),
     block('Model select: the provider', 'model-select-provider.js', 'vr=({value:r,fallbackValue:o,modelCatalog:',
       'kingOpenChange:B,onChange:k},children:N})}', 'd67a5b1ae77b50a6a8b3487a0e94577355e1cb147f1212bf136dbe74b1489bdb', 2885),
     block('Model select: shortcuts, the model menu and the thinking menu', 'model-select-menus.js', 'br=({thinking:r=!0})=>{const o=(0,d.useRef)',
@@ -517,7 +523,7 @@ export const ROUTES = Object.freeze({
   ],
   'assets/ai-CzEX5E7S.js': [
     block('Onboarding: choose an AI provider', 'onboarding-ai.js', 'var e=re(),$e=({size:s=24,ariaHidden:r=!',
-      'nslate-y-1/2",value:s.id,id:s.id})]})});', 'f172d5f594b56b2d7c5787a1d8c659ba70d9ca7cd7955762bec2800c392dbb37', 18658),
+      'nslate-y-1/2",value:s.id,id:s.id})]})});', '1e5bfa7db987b228ce0b7ea51c5c6fdfe6a48c750035b906c6b84cce3cf92d47', 18656),
   ],
   'assets/experimental-Xq3YsEPK.js': [
     block('Experimental settings', 'experimental-settings.js', 'var x=_(M(),1),e=K(),L=["experimental-we',
@@ -525,7 +531,7 @@ export const ROUTES = Object.freeze({
   ],
   'assets/route-CSKkWqf5.js': [
     block('Onboarding layout and hero animations', 'onboarding-shell.js', 'var i=y(I(),1),A="/assets/background-DmA',
-      ';return Q.some(t=>s.includes(t))?g:null}', 'b6c99c841bb3a339a874f7bacf0067b9b7b26ad97da695e9d8b4556efb2fd27f', 7694),
+      ';return Q.some(t=>s.includes(t))?g:null}', '603839e9da447f34d0610a243d57e338dcb6164d6e3985eba1e978f00524dd7b', 7743),
   ],
   'assets/route-BiU8pLwS.js': [
     block('Web app layout and cloud chat store', 'web-layout.js', 'var g=P(_(),1),Z=({accountId:r,children:',
@@ -622,8 +628,6 @@ export const TOKEN_CHANGES = Object.freeze([
   ['composer-notices.js', 'inner-curved-shape-bottom', 'inner-curved-shape-bottom [--_r:var(--radius-xl)]'],
   // The conversation's error row: the 12px step too.
   ['composer-conversation.js', 'rounded-2xl', 'rounded-xl'],
-  // The remote-control status box on the Developers page used a fixed neutral-100 in light mode.
-  ['developers-settings.js', 'bg-neutral-100', 'bg-muted'],
   // A hovered routine row used a fixed neutral-100 in light mode, unlike every other settings row.
   ['routines-settings.js', 'group-hover/routine:bg-neutral-100', 'group-hover/routine:bg-muted'],
   // The New Tab confirmation card took the 16px step; the task cards beside it use the 12px one.
@@ -684,8 +688,95 @@ export const TOKEN_CHANGES = Object.freeze([
   ['onboarding-ai.js', 'rounded-2xl', 'rounded-xl'],
   // The sign out dialog's footer follows the dialog's 12px corner.
   ['sign-out-dialog.js', 'rounded-b-3xl', 'rounded-b-xl'],
+  // The Search/Ask track was a fixed neutral; it takes the Space tint. Its active segment does too,
+  // through --surface-primary in styles/newtab-page.css (the indicator isn't reachable by class).
+  ['new-tab-context.js', '[&_button]:w-16', '[&_button]:w-16 bg-accent dark:bg-background'],
   // A checked radio card was a fixed zinc-100 in light mode; --muted follows the Space tint.
   ['radio-card-group.js', 'has-data-checked:bg-zinc-100!', 'has-data-checked:bg-muted'],
+]);
+
+/** Route blocks that are Aux's own design rather than the supplied screen with edits: parity has
+ * nothing to compare, so routes.test.mjs covers what each must do. */
+export const REWRITTEN = Object.freeze(['onboarding-welcome.js', 'import-browser.js', 'onboarding-done.js']);
+
+const behavior = (file, name, find, replace) => Object.freeze({file, name, find, replace});
+
+/** Deliberate behavior changes from the supplied code, each the owner's decision. The parity tests
+ * make exactly these edits to the supplied side, inside the file's block, so everything else must
+ * still match. `find` is exact text, or [first, last] for the span between them; it must match once. */
+export const BEHAVIOR_CHANGES = Object.freeze([
+  // New Tab is always the logo, search box and chips: no task cards, no fold (owner, 2026-10-30).
+  // Send feedback is hidden everywhere (owner, 2026-10-30).
+  behavior('settings-feedback-removed.js', 'the unmounted Settings dialog is gone', ['L=5,G2=3145728', 'or??"Failed to send feedback.")}},'], ''),
+  behavior('task-session.js', 'no Send feedback in the chat menu',
+    '(0,e.jsxs)(F,{onClick:O,children:[(0,e.jsx)(nt,{className:"text-muted-foreground"}),(0,e.jsx)("span",{children:"Send feedback"})]}),', ''),
+  behavior('task-session.js', 'no feedback dialog on the task page', '(0,e.jsx)(Qt,{}),', ''),
+  behavior('agent-panel.js', 'no feedback dialog in the panel', '(0,e.jsx)(Z,{}),', ''),
+  behavior('composer-message-list.js', 'no /feedback', 'case"feedback":return r(da,{sessionId:e,comment:d}),!0;', ''),
+  // Ultrabrowse and the Pro, Max and credit leftovers are gone (owner, 2026-10-30).
+  behavior('model-select-context.js', 'the Ultrabrowse switch and label are gone', ['Ve=({checked:r', 'Me=(0,d.createContext)(null)'], 'Me=(0,d.createContext)(null)'),
+  behavior('model-select-menus.js', 'no Ultrabrowse level', ['m=ye(k),j=!!(', 't.thinkingLevel===m),'], 'j=!1,'),
+  behavior('model-select-menus.js', 'no Ultrabrowse row in the thinking menu', ',c&&m&&(0,e.jsx)(Ve,{checked:j,disabled:!u,onCheckedChange:I})', ''),
+  behavior('model-select-provider.js', 'a saved proactive mode is always invalid', ['H=w?je(', 'w.thinkingLevel===U),'], 'A=!M||!w,'),
+  behavior('model-select-provider.js', 'the context has no Ultrabrowse flags', 'enableUltrabrowse:u,canUseUltrabrowse:G,', ''),
+  behavior('composer-toolbar-model.js', 'the composer has no Ultrabrowse', 'enableUltrabrowse:!0,', ''),
+  behavior('composer-toolbar-model.js', 'the thinking label is always the level', 'label:I?(0,a.jsx)(wl,{}):(0,a.jsx)("span",', 'label:(0,a.jsx)("span",'),
+  behavior('composer-toolbar-model.js', 'no Ultrabrowse row in the level menu', [',w&&(0,a.jsx)(Il,{compact:!0', 'tooltipSide:t==="mini-popup"?"top":"right"})'], ''),
+  behavior('composer-toolbar-model.js', 'no Ultrabrowse level', 'w=M.at(-1),I=!!(l&&e.thinkingLevel===w),', ''),
+  behavior('composer-toolbar-model.js', 'number keys pick levels only',
+    'const ee=Number(E.key)-1,F=M[ee],fe=ee===M.length&&w&&y!=="free";!F&&!fe||(E.preventDefault(),E.stopPropagation(),ne(F??w,!!fe))',
+    'const F=M[Number(E.key)-1];F&&(E.preventDefault(),E.stopPropagation(),ne(F))'),
+  behavior('composer-toolbar-model.js', 'a level is checked by itself', 'checked:!I&&e.thinkingLevel===E', 'checked:e.thinkingLevel===E'),
+  behavior('context-awareness.js', 'no plan gate on the switch', 
+    '(0,e.jsxs)("div",{className:"relative",children:[(0,e.jsx)(J,{checked:g,disabled:u.isPending||m,onCheckedChange:Ae}),m&&(0,e.jsx)("span",{className:"bg-background absolute inset-0 rounded-full opacity-50"})]})}),m&&(0,e.jsx)(We,{children:"Context Awareness requires the Max plan"})',
+    '(0,e.jsx)("div",{className:"relative",children:(0,e.jsx)(J,{checked:g,disabled:u.isPending,onCheckedChange:Ae})})})'),
+  behavior('context-awareness.js', 'no plan queries', '{data:d}=te(o.accounts.get.queryOptions({accountId:s})),{data:r=!1}=F(o.analytics.isExperimentalEligible.queryOptions({accountId:s})),m=!Ze(d,{experimentalEligible:r})&&!n.enabled,', ''),
+  behavior('routines-settings.js', 'no Free plan banner', ['!1&&(0,e.jsxs)("div",{className:"inner-curved-shape-top', 'children:"Upgrade"})]}),'], ''),
+  behavior('routines-settings.js', 'no plan lookup',
+    ',{data:j}=g(l.accounts.get.queryOptions({accountId:r})),h=AUX_LAUNCH_POLICY.paymentsEnabled&&(j?.subscriptionPlan??"free")==="free",v=h&&u.filter(s=>s.status==="active").length>=3;', ';'),
+  behavior('routines-settings.js', 'Create is never held at a plan limit', 'render:v?(0,e.jsx)("button",{type:"button",className:"pointer-events-none *:opacity-50",disabled:!0}):(0,e.jsx)(m,', 'render:(0,e.jsx)(m,'),
+  behavior('tool-summaries.js', 'no plan-limit detail', 'mo(e.resultText)?"Routine limit reached.":"Routine update failed"', '"Routine update failed"'),
+  behavior('tool-cards.js', 'no plan-limit notice', 'expandMode:"none",footer:Ep,standalone:!0}', 'expandMode:"none",standalone:!0}'),
+  // The Keychain explainer says what macOS will ask, and only sign-ins raise it; Safari's copy names the real menu.
+  behavior('use-browser-importer.js', 'the explainer title', '"Please grant permission"', '"macOS will ask about Chrome Safe Storage"'),
+  behavior('use-browser-importer.js', 'the explainer body', '"Your system may ask for permission to read browser data."', '"macOS will ask to let Aux read Chrome Safe Storage, so your sign-ins come over."'),
+  behavior('use-browser-importer.js', 'the explainer action', '"Approve the prompt to continue."', '"Choose Always Allow."'),
+  behavior('use-browser-importer.js', 'Safari is capitalized', '"Export your safari data first"', '"Export your Safari data first"'),
+  behavior('use-browser-importer.js', 'the real Safari menu',
+    '"In safari, click ",(0,e.jsx)("span",{children:"File > Export"}),", then import the ZIP file that Safari creates."',
+    '"In Safari, choose ",(0,e.jsx)("span",{children:"File › Export Browsing Data to File…"}),", then import the ZIP file Safari creates."'),
+  behavior('use-browser-importer.js', 'the image says the same', `alt:'In safari, click "File > Export", then import the ZIP file that Safari creates.'`, 'alt:"In Safari, choose File › Export Browsing Data to File…, then import the ZIP file Safari creates."'),
+  behavior('use-browser-importer.js', 'the file field names what it takes', '"Safari passwords ZIP file"', '"Safari browsing data ZIP file"'),
+  behavior('use-browser-importer.js', 'the destination reaches the import', 'dataKinds:t.dataKinds,sourceProfileId:t.sourceProfileId', 'dataKinds:t.dataKinds,destination:t.destination,sourceProfileId:t.sourceProfileId'),
+  behavior('use-browser-importer.js', 'an import asks only for sign-ins', 'dataKinds:u?.dataKinds,sourceProfileId:t.kind==="profile"?t.profileId:void 0,navigateToProgress:g};if(i==="windows"){', 'dataKinds:u?.dataKinds,destination:u?.destination,sourceProfileId:t.kind==="profile"?t.profileId:void 0,navigateToProgress:g};if(i==="windows"||u?.dataKinds&&!u.dataKinds.includes("cookies")){'),
+  // The Models step is about local agents and API keys, not subscriptions (plan Batch 8).
+  behavior('onboarding-ai.js', 'the step title', '"Choose your AI subscription"', '"Connect a model"'),
+  behavior('onboarding-ai.js', 'the step text', '"Connect a subscription you already have, or use your own API key."', '"Use an agent CLI already signed in on this Mac, or your own API key."'),
+  behavior('onboarding-ai.js', 'More options', '"Connect another subscription or use your own API key."', '"Use another local agent or your own API key."'),
+  // Settings says what the build is, and Models has Local agents and API keys, no hosted sign-in (plan Batches 7, 8).
+  behavior('general-browser.js', 'a build without updates says so', '"Updates are disabled for this build."', '`Aux ${ho(e)??""} · local build`'),
+  behavior('general-browser.js', 'the service row takes the Aux version', 'sg=(e,t,n)=>', 'sg=(e,t,n,n2)=>'),
+  behavior('general-browser.js', 'the Aux version goes to the service row', 'd=sg(l,i,c)', 'd=sg(l,i,c,r)'),
+  behavior('general-browser.js', 'the service row has the Aux version', '"Restart Aux to finish updating the background service.":"Running normally."', '"Restart Aux to finish updating the background service.":n2?`Aux ${ho(n2)}. Running normally.`:"Running normally."'),
+  behavior('model-settings.js', 'no hosted sign-in row', '(0,e.jsx)(rs,{}),(0,e.jsx)(cs,{}),(0,e.jsx)(ms,{})', '(0,e.jsx)(rs,{}),(0,e.jsx)(ms,{})'),
+  behavior('model-settings.js', 'the groups are Local agents and API keys',
+    '{type:"subscription",label:"Subscription",providers:M.filter(d=>d.type==="subscription")},{type:"manual",label:"API",providers:M.filter(d=>d.type==="manual"&&!te(d.id))},{type:"local",label:"Local",providers:M.filter(d=>te(d.id))}',
+    '{type:"local",label:"Local agents",providers:M.filter(d=>d.type==="subscription"||te(d.id))},{type:"manual",label:"API keys",providers:M.filter(d=>d.type==="manual"&&!te(d.id))}'),
+  behavior('model-settings.js', 'a row names its kind', '"Subscription":"API",cs=', '"Local agent":"API key",cs='),
+  // Errors: offline and network kinds; out of credits offers a retry and Models; no plan actions (plan 8.25).
+  behavior('error-alert.js', 'no plan buttons', ['function z({primary:r=!1})', 'children:"Upgrade plan"})}'], ''),
+  behavior('error-alert.js', 'Reconnect takes a label', 'function R(){const r=p();', 'function R({children:n="Reconnect"}){const r=p();'),
+  behavior('error-alert.js', 'the label is used', 'children:"Reconnect"}):null}', 'children:n}):null}'),
+  behavior('error-alert.js', 'no plan icon', 'e.kind==="credits-aux-v2"?"brand":', ''),
+  behavior('error-alert.js', 'no plan layout', 'actionsBelow:e.kind==="credits-aux-v2",', ''),
+  behavior('error-alert.js', 'out of credits offers Models, and the new kinds retry',
+    'e.kind==="credits-aux-v2"&&e.actions.map((i,a)=>i==="addCredits"?(0,t.jsx)(z,{primary:a===0},i):(0,t.jsx)(D,{primary:a===0},i)),["aborted","auth","generic","overloaded","provider-server","rate-limit"]',
+    'e.kind==="credits-other"&&(0,t.jsx)(R,{children:"Open Models"}),["aborted","auth","credits-other","generic","network","offline","overloaded","provider-server","rate-limit"]'),
+  behavior('new-tab-island.js', 'New Tab mounts the suggestions without the task cards',
+    '(0,e.jsx)(ye,{children:({taskCount:f})=>(0,e.jsx)(_e,{taskCount:f})})', '(0,e.jsx)(_e,{})'),
+  behavior('onboarding-helper.js', 'the suggestions are a plain chip row: no fold, no Close or Show suggestions',
+    ['X=({taskCount:t})=>{', 'children:"Close"})]})})})]})},'],
+    'X=()=>{const o=I(),{omniboxMode:auxMode}=auxNewTab(),{broadcast:a}=y(),g=r=>()=>{if(r.action.type==="prompt"){a(A,{prompt:r.action.prompt});return}if(r.action.type==="redirect"){N(r.action.getPath(o));return}};return(0,e.jsx)("section",{className:"mx-auto w-full max-w-200 px-8 pb-6",style:{marginTop:auxMode==="ask"?"-1.5rem":"-4.5rem",transition:"margin-top .15s ease-out"},children:(0,e.jsx)("div",{className:"flex flex-wrap justify-center gap-2",children:T.map(r=>(0,e.jsxs)("button",{type:"button",title:r.description,onClick:g(r),className:"bg-secondary hover:bg-accent text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-sm font-medium outline-none transition-colors select-none focus-visible:ring-[3px] [&_svg]:size-4 [&_svg]:shrink-0",children:[r.type==="task"&&(0,e.jsx)(O,{}),r.type==="routine"&&(0,e.jsx)(_,{}),r.type==="etc"&&(0,e.jsx)(b,{}),(0,e.jsx)("span",{children:r.title})]},r.id??r.title))})})},'),
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');

@@ -345,7 +345,7 @@ var /** The step dots. */
     });
   },
   /** The steps the dots count. */
-  STEPS = ['/onboarding/import-browser', '/onboarding/import-password', '/onboarding/ai'],
+  STEPS = ['/onboarding/glance', '/onboarding/import-browser', '/onboarding/import-password', '/onboarding/make-it-yours', '/onboarding/ai'],
   /** The steps that open the right panel. */
   PANEL_STEPS = ['/onboarding/import-password'];
 function oe() {

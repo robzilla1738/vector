@@ -1,5 +1,5 @@
 /* Aux-owned source, the task session page (assets/_sessionId-ClN_BWh5.js, the whole module body;
- * Ga exported as component): the header with its breadcrumbs, Share and the chat menu (rename, feedback,
+ * Ga exported as component): the header with its breadcrumbs, Share and the chat menu (rename,
  * copy ID, project, archive, delete), the chat and its composer, and the pinned summary beside it
  * (routine details, the session's routines, outputs and the agent's tabs), docked on wide windows and
  * floating under its toggle on narrow ones; the side-panel layout and the browser tab controls
@@ -1298,7 +1298,6 @@ var /** The task page: session, layout and pinned summary providers around the h
             children: (0, jsxRuntime.jsxs)(PinnedSummaryProvider, {
               children: [
                 (0, jsxRuntime.jsx)(PinnedSummaryAutoOpen, {filesOverride: void 0}),
-                (0, jsxRuntime.jsx)(Qt, {}),
                 (0, jsxRuntime.jsx)(TaskDocumentTitle, {}),
                 (0, jsxRuntime.jsx)(Es, {
                   children: (0, jsxRuntime.jsxs)('div', {
@@ -1688,7 +1687,7 @@ var TaskDocumentTitle = () => {
       placeholder: s ? 'Reply, @ for context' : void 0,
     });
   },
-  useSessionReady = s => Ot({resetKey: s}) /** The chat menu: rename, feedback, copy ID, project, archive, delete. */,
+  useSessionReady = s => Ot({resetKey: s}) /** The chat menu: rename, copy ID, project, archive, delete. */,
   TaskMenu = () => {
     const {confirm} = Xe(),
       {copy} = we(),
@@ -1742,9 +1741,6 @@ var TaskDocumentTitle = () => {
       q = () => {
         f(true);
       },
-      O = () => {
-        broadcast(Ys, {sessionId: currentSession.id});
-      },
       U = () => {
         (copy(currentSession.id), L.success('Copied!'));
       },
@@ -1768,13 +1764,6 @@ var TaskDocumentTitle = () => {
                   children: [
                     (0, jsxRuntime.jsx)(ht, {className: 'text-muted-foreground'}),
                     (0, jsxRuntime.jsx)('span', {children: 'Rename'}),
-                  ],
-                }),
-                (0, jsxRuntime.jsxs)(F, {
-                  onClick: O,
-                  children: [
-                    (0, jsxRuntime.jsx)(nt, {className: 'text-muted-foreground'}),
-                    (0, jsxRuntime.jsx)('span', {children: 'Send feedback'}),
                   ],
                 }),
                 (0, jsxRuntime.jsxs)(F, {

@@ -46,6 +46,7 @@ var f = B(K(), 1),
           sourceId: request.source.id,
           sourceName: request.source.name,
           dataKinds: request.dataKinds,
+          destination: request.destination,
           sourceProfileId: request.sourceProfileId,
         }),
           resolve('completed'),
@@ -76,10 +77,12 @@ var f = B(K(), 1),
             type: 'grant-permission',
             source: target.source,
             dataKinds: options?.dataKinds,
+            destination: options?.destination,
             sourceProfileId: target.kind === 'profile' ? target.profileId : void 0,
             navigateToProgress,
           };
-          if (os === 'windows') {
+          // Only sign-ins touch the Keychain, so only they need the explainer.
+          if (os === 'windows' || (options?.dataKinds && !options.dataKinds.includes('cookies'))) {
             proceed(request);
             return;
           }
@@ -174,12 +177,12 @@ var f = B(K(), 1),
           (0, jsxRuntime.jsxs)(k, {
             className: 'text-center',
             children: [
-              (0, jsxRuntime.jsx)(D, {className: 'font-display text-xl', children: 'Please grant permission'}),
+              (0, jsxRuntime.jsx)(D, {className: 'font-display text-xl', children: 'macOS will ask about Chrome Safe Storage'}),
               (0, jsxRuntime.jsxs)(C, {
                 children: [
-                  'Your system may ask for permission to read browser data.',
+                  'macOS will ask to let Aux read Chrome Safe Storage, so your sign-ins come over.',
                   (0, jsxRuntime.jsx)('br', {}),
-                  'Approve the prompt to continue.',
+                  'Choose Always Allow.',
                 ],
               }),
             ],
@@ -324,12 +327,12 @@ var f = B(K(), 1),
         children: [
           (0, jsxRuntime.jsxs)(k, {
             children: [
-              (0, jsxRuntime.jsx)(D, {className: 'font-display text-xl', children: 'Export your safari data first'}),
+              (0, jsxRuntime.jsx)(D, {className: 'font-display text-xl', children: 'Export your Safari data first'}),
               (0, jsxRuntime.jsxs)(C, {
                 children: [
-                  'In safari, click ',
-                  (0, jsxRuntime.jsx)('span', {children: 'File > Export'}),
-                  ', then import the ZIP file that Safari creates.',
+                  'In Safari, choose ',
+                  (0, jsxRuntime.jsx)('span', {children: 'File › Export Browsing Data to File…'}),
+                  ', then import the ZIP file Safari creates.',
                 ],
               }),
             ],
@@ -339,7 +342,7 @@ var f = B(K(), 1),
             children: (0, jsxRuntime.jsx)('img', {
               src: SAFARI_EXPORT_IMAGE,
               className: 'pointer-events-none w-full select-none',
-              alt: 'In safari, click "File > Export", then import the ZIP file that Safari creates.',
+              alt: 'In Safari, choose File › Export Browsing Data to File…, then import the ZIP file Safari creates.',
             }),
           }),
           (0, jsxRuntime.jsxs)(P, {
@@ -354,7 +357,7 @@ var f = B(K(), 1),
           }),
           (0, jsxRuntime.jsx)('input', {
             ref: inputRef,
-            'aria-label': 'Safari passwords ZIP file',
+            'aria-label': 'Safari browsing data ZIP file',
             className: 'sr-only',
             type: 'file',
             accept: '.zip',

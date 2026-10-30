@@ -3,16 +3,31 @@
 // the same props and scenes, and what it renders, what its effects and handlers do, and which stubs
 // it calls must match. The supplied side gets only the listed class changes, inside the blocks.
 import assert from 'node:assert/strict';
-import {locateBlocks} from './integration.mjs';
+import {BEHAVIOR_CHANGES, REWRITTEN, locateBlocks, readRoute} from './integration.mjs';
 import {createWorld} from './render-harness.mjs';
 export {createWorld};
 
-/** `text` with only the intended class changes made, inside the replaced blocks. */
+/** One named behavior change made to a supplied block; it has to match exactly once. */
+function applyBehavior(block, {name, find, replace}) {
+  const [first, last] = Array.isArray(find) ? find : [find, find];
+  const at = block.indexOf(first);
+  if (at < 0 || block.indexOf(first, at + 1) >= 0) throw Error(`Behavior change "${name}" no longer matches the supplied block`);
+  const stop = block.indexOf(last, at);
+  if (stop < 0) throw Error(`Behavior change "${name}" has no end in the supplied block`);
+  return block.slice(0, at) + replace + block.slice(stop + last.length);
+}
+
+/** `text` with only the intended class and behavior changes made, inside the replaced blocks. */
 export function expectedText(text, blocks, changes, label) {
   let output = '';
   let cursor = 0;
   locateBlocks(text, blocks, label).forEach(([at, stop], index) => {
-    let block = text.slice(at, stop);
+    if (REWRITTEN.includes(blocks[index].file)) {
+      output += text.slice(cursor, at) + readRoute(blocks[index].file);
+      cursor = stop;
+      return;
+    }
+    let block = BEHAVIOR_CHANGES.filter(({file}) => file === blocks[index].file).reduce(applyBehavior, text.slice(at, stop));
     for (const [file, from, to] of changes)
       if (file === blocks[index].file) block = block.replace(new RegExp(`(?<![\\w-])${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`, 'g'), to);
     output += text.slice(cursor, at) + block;
@@ -38,8 +53,9 @@ function keptNames(text, blocks, read, label) {
 export async function evaluatePair({world, chunk, text, blocks, integrate, read, changes, renamed = () => ({})}) {
   const kept = [...new Set(keptNames(text, blocks, read, chunk))];
   const pairs = Object.entries(renamed(chunk));
+  const rewritten = blocks.some(({file}) => REWRITTEN.includes(file));
   const exposed = (source, side) => `${source}\nexport {${[...kept.map(name => `${name} as __kept_${name}`),
-    ...pairs.map(([before, after]) => `${side === 'supplied' ? before : after} as __pair_${after}`)].join(',')}};`;
+    ...pairs.map(([before, after]) => `${side === 'supplied' && !rewritten ? before : after} as __pair_${after}`)].join(',')}};`;
   const supplied = await world.evaluate(exposed(expectedText(text, blocks, changes, chunk), 'supplied'), `supplied:${chunk}`);
   const ours = await world.evaluate(exposed(integrate(chunk, text), 'aux'), `aux:${chunk}`);
   return {supplied, ours, kept, pairs};

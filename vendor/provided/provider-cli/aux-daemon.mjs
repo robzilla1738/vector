@@ -3,6 +3,7 @@
  * manager, model runtime, tRPC router, auth middleware and shutdown (integration.mjs). It reads
  * no credential: detection runs --version, the CLI's own status command and Codex's model list,
  * and a turn runs the CLI with the user's own login, its own actions asked through Aux's approvals. */
+import {execFile} from 'node:child_process';
 import {createHash, randomBytes, randomUUID, timingSafeEqual} from 'node:crypto';
 import {modelSpecs, providerById, settingsRow} from './catalog.mjs';
 import {detectAll, childEnvironment} from './detect.mjs';
@@ -320,7 +321,8 @@ export function createAuxProviderCli({detect = detectAll, run = runTurn, env = (
         const request = {provider: entry.id, file: found.path, cwd: turn.cwd, env: childEnvironment(env(), snapshot.directories),
           systemPrompt: systemPromptOf(context), model: model.id === 'default' ? undefined : model.id,
           effort: efforts(spec).includes(options.reasoning) ? options.reasoning : undefined, keep: !!session,
-          mcp: turn.mcp, signal: options.signal, clientVersion: config.version, approve: turn.approve, paused: turn.paused};
+          mcp: turn.mcp, signal: options.signal, clientVersion: config.version, approve: turn.approve, paused: turn.paused,
+          folders: scope?.folders?.() ?? []};
         const attempt = resume => {
           const unseen = resume ? messages.slice(session.sent) : messages;
           return run({...request, resume, prompt: buildPrompt({messages: unseen}, {attached: entry.images}),
@@ -446,6 +448,8 @@ export function createAuxProviderCli({detect = detectAll, run = runTurn, env = (
 
   return Object.freeze({
     owns, providerIds: () => Object.keys(DAEMON_PROVIDERS),
+    /** Opens Terminal for a login command the person copied; Aux never runs it for them. */
+    openTerminal: () => new Promise(resolve => execFile('/usr/bin/open', ['-a', 'Terminal'], error => resolve({opened: !error}))),
     refresh, status: async ({refresh: force = false} = {}) => {
       await refresh({force, maxAge: settled() ? cacheMs : RECHECK_MS});
       return {checkedAt: snapshot.checkedAt, rows: rows()};

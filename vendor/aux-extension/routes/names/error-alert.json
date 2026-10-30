@@ -6,7 +6,5 @@
  "m": "ActionButton",
  "O": "RetryButton",
  "R": "ReconnectButton",
- "z": "AddCreditsButton",
- "D": "UpgradeButton",
  "T": "ReportButton"
 }

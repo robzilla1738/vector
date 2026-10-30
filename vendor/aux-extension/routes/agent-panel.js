@@ -9,7 +9,7 @@
  * O action confirmation, y approval; provider M hasMessages, L composer extensions; -components
  * R panel header, W usePanelSession, N tabScopeKey, Q rememberSessionTab; context T useSession;
  * draft-storage _ readDraft, k writeDraft, z readDraftState, J writeDraftState; X useTabContext;
- * Y back-to-parent button; P DocumentTitle; Z feedback dialog.
+ * Y back-to-parent button; P DocumentTitle.
  * Aux change: the panel's horizontal geometry mirrors the sidebar's (see ComposerClasses). */
 var React = F(E(), 1),
   jsxRuntime = q(),
@@ -34,7 +34,6 @@ var React = F(E(), 1),
     return (0, jsxRuntime.jsxs)(jsxRuntime.Fragment, {
       children: [
         (0, jsxRuntime.jsx)(SessionTitle, {}),
-        (0, jsxRuntime.jsx)(Z, {}),
         (0, jsxRuntime.jsx)(R, {leading: (0, jsxRuntime.jsx)(Y, {className: 'no-drag rounded-full'})}),
         (0, jsxRuntime.jsx)(h, {className: ConversationClasses, isSidepanel: true}),
         (0, jsxRuntime.jsx)(H, {

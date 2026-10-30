@@ -310,7 +310,7 @@ var LoadingRow = () =>
       case 'disabled_by_admin':
         return 'Updates are disabled by your administrator.';
       case 'disabled':
-        return 'Updates are disabled for this build.';
+        return `Aux ${cleanVersion(e) ?? ''} · local build`;
       case 'deferred':
         return (0, A.jsxs)(A.Fragment, {children: [i, '. Update is deferred.']});
       case 'failed':
@@ -338,7 +338,7 @@ var LoadingRow = () =>
       return true;
     }
   } /** The background service: running, lagging or stopped. */,
-  BackgroundService = (e, t, n) => {
+  BackgroundService = (e, t, n, browserVersion) => {
     if (n) return 'Checking background service version.';
     if (!e?.version) return 'Background service is not responding. Restart Aux.';
     const i = versionLabel(e.version),
@@ -346,7 +346,9 @@ var LoadingRow = () =>
       s = cleanVersion(t);
     return r && s && r !== s && isSameLag(`${r}->${s}`, e.startedAt)
       ? 'Restart Aux to finish updating the background service.'
-      : 'Running normally.';
+      : browserVersion
+        ? `Aux ${cleanVersion(browserVersion)}. Running normally.`
+        : 'Running normally.';
   },
   ag = () => {
     const e = (0, at.useRef)(false),
@@ -364,7 +366,7 @@ var LoadingRow = () =>
       !t || e.current || ((e.current = true), mutate());
     }, [t, mutate]);
     const h = BrowserUpdates(r, s, t),
-      d = BackgroundService(data, i, isLoading);
+      d = BackgroundService(data, i, isLoading, r);
     return (0, A.jsxs)(A.Fragment, {
       children: [
         (0, A.jsxs)(Bt, {

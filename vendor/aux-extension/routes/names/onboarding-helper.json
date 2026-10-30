@@ -3,18 +3,5 @@
  "_": "RoutineIcon",
  "O": "TaskIcon",
  "d": "React",
- "R": "ILLUSTRATION_1",
- "S": "ILLUSTRATION_2",
- "L": "ILLUSTRATION_3",
- "u": "FOLD_KEY",
- "E": "SUGGESTIONS_SHOWN",
- "c": "readFold",
- "B": "ILLUSTRATIONS",
- "T": "SUGGESTIONS",
- "H": "SuggestionCard",
- "z": "SuggestionImage",
- "M": "SuggestionBody",
- "D": "SuggestionTitle",
- "P": "SuggestionText",
- "G": "SuggestionAction"
+ "T": "SUGGESTIONS"
 }

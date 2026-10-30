@@ -1,0 +1,33 @@
+/* New Tab page rules Aux adds after the first-paint tokens. Aux-owned source (owner, 2026-10-30).
+ * Layout: the page is the logo, the search box and the suggestion chips, centered top to bottom,
+ * whatever chats exist; it beats the supplied rule further down the same <style>.
+ * Theme: the page tint (aux_page_tint.cc) sets --card, --accent and --background inline on <html>
+ * but not --surface-primary or --tabs-list, which read neutral gray in a themed Space. Here the
+ * search box and the Search/Ask switch take the tinted tokens: on the card, the track is one step
+ * stronger and the active segment returns to the card; dark mode mirrors it, as the supplied one did.
+ * --card and --accent are repeated for the frame before globals CSS arrives; the values are colors.css's. */
+html #new-tab-main {
+  margin: auto;
+  padding: 2rem;
+}
+html {
+  --card: #fff;
+  --accent: oklch(14.5% 0 0/.1);
+}
+.dark {
+  --card: oklch(26.9% 0 0);
+  --accent: oklch(98.5% 0 0/.1);
+}
+:root {
+  --tabs-list: var(--accent);
+}
+.dark {
+  --tabs-list: var(--background);
+}
+#new-tab-omnibox-card {
+  --surface-primary: var(--card);
+}
+.dark #new-tab-mode-tabs,
+.dark #new-tab-react-mode-tabs {
+  --surface-primary: var(--accent);
+}

@@ -162,7 +162,7 @@ const GENERAL_ROWS = [
     '?"Restart Aux to finish updating the background service.":"Running normally."'),
   edit('Run setup again, beside Import',
     '(0,A.jsx)(Pi,{title:"Import",children:(0,A.jsxs)(un,{children:[(0,A.jsx)(Am,{}),(0,A.jsx)(wm,{})]})})',
-    '(0,A.jsx)(Pi,{title:"Import",children:(0,A.jsxs)(un,{children:[(0,A.jsx)(Am,{}),(0,A.jsx)(wm,{}),(0,A.jsxs)(Ac,{className:"cursor-pointer gap-1",render:({className:_,...y})=>(0,A.jsx)("button",{...y,type:"button",className:Ui("w-full cursor-pointer gap-1 text-left",_),onClick:()=>chrome.tabs.create({url:chrome.runtime.getURL("main.html#/onboarding/import-browser")})}),children:[(0,A.jsx)(qt,{title:"Run setup again",description:"Import from another browser, connect your password manager and models, and choose the finishing touches."}),(0,A.jsx)(Pl,{className:"text-muted-foreground size-4 shrink-0"})]})]})})'),
+    '(0,A.jsx)(Pi,{title:"Import",children:(0,A.jsxs)(un,{children:[(0,A.jsx)(Am,{}),(0,A.jsx)(wm,{}),(0,A.jsxs)(Ac,{className:"cursor-pointer gap-1",render:({className:_,...y})=>(0,A.jsx)("button",{...y,type:"button",className:Ui("w-full cursor-pointer gap-1 text-left",_),onClick:()=>chrome.tabs.create({url:chrome.runtime.getURL("main.html#/onboarding/glance")})}),children:[(0,A.jsx)(qt,{title:"Run setup again",description:"Import from another browser, connect your password manager and models, and choose the finishing touches."}),(0,A.jsx)(Pl,{className:"text-muted-foreground size-4 shrink-0"})]})]})})'),
   // Settings › Import: a job that skipped site sign-ins (cookies Aux couldn't read) says so.
   edit('a partial import says what it skipped',
     'i==="succeeded"?(0,A.jsx)("span",{children:"Import complete."})',
@@ -178,14 +178,6 @@ const LASSO = [
 
 // The Settings shell: its menu, search index and feedback dialog.
 const SETTINGS_SHELL = [
-  // Feedback went to a hosted route that doesn't exist. It now opens a mail
-  // to Aux with the message filled in, sent from the person's own mail app.
-  edit('feedback opens a ready-to-send mail',
-    "ee=async e=>{const s=new FormData,i=await J2();if(e.user.email&&s.append(\"email\",e.user.email),e.user.id&&s.append(\"userId\",e.user.id),e.user.name&&s.append(\"name\",e.user.name),i&&s.append(\"platform\",i),e.message&&s.append(\"message\",e.message),e.files)for(const o of e.files)s.append(\"images\",o);const a=await m1(Q1(\"/voc/feedback\"),{method:\"POST\",body:s});if(!a.ok){const o=await a.json().catch(()=>null);throw new Error(o?.error??\"Failed to send feedback.\")}}",
-    "ee=async e=>{const i=await J2(),b=(e.message??\"\")+(i?`\\n\\n${i}`:\"\"),u=`mailto:hello@getaux.co?subject=${encodeURIComponent(\"Aux feedback\")}&body=${encodeURIComponent(b)}`;if(globalThis.chrome?.tabs?.create)await chrome.tabs.create({url:u});else window.open(u,\"_blank\")}"),
-  edit('feedback says where it went',
-    'w.success("Feedback sent. Thank you!")',
-    'w.success("Your mail app has your feedback, ready to send. Thank you!")'),
   edit('search has no Sync rows (sync isn’t available)',
     'sections:["Sync","Profile","Danger zone","Devices"],fields:[{title:"Delete account",description:"Permanently delete your account and all associated data"},{title:"Browser data recovery"},',
     'sections:["Profile","Danger zone","Devices"],fields:[{title:"Delete account",description:"Permanently delete your account and all associated data"},'),
@@ -298,9 +290,9 @@ const IMPORT_BROWSER = [
 
 // Aux has no plans or credits. Billing prompts go; limits read as limits.
 const BILLING_MODEL_SELECT = [
-  edit('Ultrabrowse has no upgrade prompt',
-    'children:t?(0,e.jsx)("p",{children:"Upgrade to Pro and unlock Ultrabrowse"}):(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)("p",{children:"Upgrade to Pro and unlock Ultrabrowse for deep research and complex tasks."}),(0,e.jsxs)(be,{className:"text-brand-content decoration-brand/50 hover:decoration-brand inline-flex items-center gap-0.5 font-medium underline decoration-dotted underline-offset-2",to:xe(`/u/${M}/settings/billing?change_plan=1`),children:[(0,e.jsx)("span",{children:"Upgrade"}),(0,e.jsx)(Be,{className:"size-3"})]})]})',
-    'children:(0,e.jsx)("p",{children:"Ultrabrowse isn’t available for this model."})'),
+  edit('nothing exports the removed Ultrabrowse switch and label',
+    'export{kr as a,ke as c,we as d,Mr as i,ne as l,br as n,Se as o,wr as r,je as s,vr as t,Ve as u}',
+    'export{kr as a,ke as c,Mr as i,ne as l,br as n,Se as o,wr as r,je as s,vr as t}'),
 ];
 const BILLING_CHANNELS = [
   edit('Channels has no Upgrade to Pro button',
@@ -327,6 +319,11 @@ const BILLING_REFERRAL = [
     '!1&&(0,e.jsxs)(u,{className:"flex items-center gap-1",children:[(0,e.jsx)(c,{title:"Share Aux with friends"'),
 ];
 const BILLING_ERRORS = [
+  edit('no Aux plan limit error', 'jf(t)?n==="aux"?{kind:"credits-aux-v2",title:"You\'ve hit your usage limit.",...xp(o)}:{kind:"credits-other"', 'jf(t)?{kind:"credits-other"'),
+  // Connection failures name themselves instead of reading as a provider bug (plan 8.25).
+  edit('offline and network errors have their own kinds',
+    'description:"Free up disk space, then try again."};if(n&&Of(t,r))',
+    'description:"Free up disk space, then try again."};if(typeof navigator<"u"&&navigator.onLine===!1)return{kind:"offline",title:"You’re offline",description:"Check your connection, then try again."};if(/\b(?:ECONNREFUSED|ECONNRESET|ENOTFOUND|ETIMEDOUT|EAI_AGAIN)\b|fetch failed|network error|socket hang up|ERR_INTERNET_DISCONNECTED|ERR_NETWORK/i.test(t))return{kind:"network",title:"Couldn’t reach the model",description:"The connection dropped. Check your network, then try again."};if(n&&Of(t,r))'),
   // Out of credits is the model provider's balance, never an Aux plan.
   edit('out of credits points at the provider, with no plan or credit actions',
     '{if(!e)return{description:"Check your plan and credits to keep going.",actions:[]};const r=e==="free",o=r?"Upgrade your plan to keep going":"Add credits to keep going",s=r?["upgrade"]:e==="max"?["addCredits"]:["addCredits","upgrade"],a=t?ma(new Date(t),n):null;return a?{description:`${o}, or wait until your credits reset ${a}.`,actions:s}:{description:`${o}.`,actions:s}}',
@@ -342,8 +339,8 @@ const ACCOUNT = [
 ];
 
 // Onboarding for every new profile, local or signed in (docs/plans/2026-10-29-browser-excellence.md,
-// Batch 6): Import → Password manager → Models → Done. The cloud sign-in splash and the
-// marketing page are skipped; the password-manager step (bring your own) is back.
+// Batch 6): Welcome → Import → Password manager → Make it yours → Models → Done. The cloud sign-in
+// splash is skipped; the password-manager step (bring your own) is back.
 const ONBOARDING_IMPORT = [
   edit('Import skips to the password manager step',
     'to:"/onboarding/glance",replace:!0,onClick:()=>{l("onboarding.import-browser.skip")}',
@@ -380,7 +377,19 @@ const ONBOARDING_PROGRESS = [
     't?.state==="succeeded"?t.skippedDataKinds?.length?(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)("span",{className:"block",children:"Imported everything except site sign-ins."}),t.skippedMessage&&(0,e.jsx)("span",{className:"text-muted-foreground block",children:t.skippedMessage})]}):(0,e.jsx)("span",{children:"Import complete."})'),
   SPACES_KIND,
 ];
+const ONBOARDING_WELCOME = [
+  edit('the glance chunk also has Make it yours', 'export{ae as component};', 'export{ae as component,auxMakeItYours as yours};'),
+];
+const ONBOARDING_GUARD = [
+  // Stored on this device, so local users get the flow and nobody gets it twice.
+  edit('onboarding follows the local record first',
+    'function K(o){if(!o||o.mode!=="cloud"||o.authStatus==="paused")return null;if(o.onboardingCompletedAt!==void 0)return o.onboardingCompletedAt===null?"/onboarding/import-browser":null}',
+    'function K(o){try{if(localStorage.getItem("aux.onboarding.completed.v1")==="1")return null}catch{}if(!o||o.authStatus==="paused")return null;if(o.mode!=="cloud")return"/onboarding/glance";if(o.onboardingCompletedAt!==void 0)return o.onboardingCompletedAt===null?"/onboarding/glance":null}'),
+];
 const ONBOARDING_PASSWORD = [
+  edit('after the password manager comes Make it yours', 'f=()=>{l({to:"/onboarding/ai",replace:!0})}', 'f=()=>{l({to:"/onboarding/make-it-yours",replace:!0})}'),
+  edit('the Skip tip says where password managers live',
+    '"You can set it up later in ",(0,e.jsxs)("span",{className:"font-medium",children:["Settings ",">"," Password"]}),"."', '"You can add one later from Extensions."'),
   edit('the password manager step goes back to Import',
     'render:(0,e.jsx)(X,{to:"/onboarding/glance",replace:!0}),children:[(0,e.jsx)(se,{"data-icon":"inline-start"}),(0,e.jsx)("span",{children:"Back"})]',
     'render:(0,e.jsx)(X,{to:"/onboarding/import-browser",replace:!0}),children:[(0,e.jsx)(se,{"data-icon":"inline-start"}),(0,e.jsx)("span",{children:"Back"})]'),
@@ -391,12 +400,12 @@ const ONBOARDING_PASSWORD = [
 const ONBOARDING_MODELS = [
   edit('Models goes back to the password manager step',
     'render:(0,e.jsx)(ne,{to:"/onboarding/glance",replace:!0}),children:[(0,e.jsx)(de,{"data-icon":"inline-start"}),(0,e.jsx)("span",{children:"Back"})]',
-    'render:(0,e.jsx)(ne,{to:"/onboarding/import-password",replace:!0}),children:[(0,e.jsx)(de,{"data-icon":"inline-start"}),(0,e.jsx)("span",{children:"Back"})]'),
+    'render:(0,e.jsx)(ne,{to:"/onboarding/make-it-yours",replace:!0}),children:[(0,e.jsx)(de,{"data-icon":"inline-start"}),(0,e.jsx)("span",{children:"Back"})]'),
 ];
 const ONBOARDING_STEPS = [
   edit('the step dots follow Import, Password manager and Models',
     'f=["/onboarding/import-browser","/onboarding/glance","/onboarding/ai"]',
-    'f=["/onboarding/import-browser","/onboarding/import-password","/onboarding/ai"]'),
+    'f=["/onboarding/glance","/onboarding/import-browser","/onboarding/import-password","/onboarding/make-it-yours","/onboarding/ai"]'),
 ];
 const ONBOARDING_DONE = [
   // Default browser yes; the Dock and crash reports are the person's call.
@@ -414,16 +423,56 @@ const ONBOARDING_DONE = [
     'await S.mutateAsync({accountId:d}),',
     'await(async()=>{try{localStorage.setItem("aux.onboarding.completed.v1","1")}catch{}if((await r.fetchQuery(n.accounts.get.queryOptions({accountId:d})))?.mode==="cloud")await S.mutateAsync({accountId:d})})(),'),
 ];
+// Test and playground routes, and the Context Awareness route (no one can reach it, and it isn't real yet).
+const REMOVED_ROUTES = [
+  edit('no liquid glass playground route',
+    'Xt=()=>s(()=>import("./liquid-glass-playground-DkwgfDqY.js"),__vite__mapDeps([117,2,86,50,10,11,1,3,4,5,6,7,118,119])),er=n("/liquid-glass-playground/")({beforeLoad:()=>{throw c({to:"/",replace:!0})},component:a(Xt,"component")}),', ''),
+  edit('the playground route is out of the tree',
+    'Bn=er.update({id:"/liquid-glass-playground/",path:"/liquid-glass-playground/",getParentRoute:()=>R}),', ''),
+  edit('the playground route is out of the root',
+    'LiquidGlassPlaygroundIndexRoute:Bn,', ''),
+  edit('no Context Awareness route',
+    'Rn=()=>s(()=>import("./context-awareness-BocPTg31.js"),__vite__mapDeps([323,2,1,3,4,5,6,7,13,11,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,51,324,138,94,139,213,222,223,91,92,93,95,82,54,112,136,142,226,145,305,196,146,126,149,148,80,150,86,50,10,187,188,314,123,124,125,127,128,129,130,151,52,65,147,69,158,159])),_n=n("/_web/(settings)/u/$userId/settings/memories/context-awareness/")({component:a(Rn,"component"),beforeLoad:async({context:{trpc:e,queryClient:t},params:{userId:r}})=>{const o=Number.parseInt(r,10);await t.query({...e.settings.getAll.queryOptions({accountId:o}),staleTime:"static"})}}),', ''),
+  edit('nothing exports the Context Awareness route', ',_n as c,', ','),
+  edit('the Context Awareness route is out of the tree',
+    'Qa=_n.update({id:"/context-awareness/",path:"/context-awareness/",getParentRoute:()=>E}),', ''),
+  edit('the Context Awareness route is out of Memory',
+    'WebsettingsUUserIdSettingsMemoriesContextAwarenessIndexRoute:Qa,', ''),
+];
+const NEW_TAB = [
+  // Aux has no Lens: dropping an image only attaches it, in Ask.
+  edit('a drag only counts in Ask', '(t==="ask"||E.type.startsWith("image/"))', 't==="ask"'),
+  edit('a drop only counts in Ask', 't==="search"&&!E.some(q=>q.type.startsWith("image/"))', 't==="search"'),
+  edit('the drop hint names no Lens', 't==="ask"?"Drop to attach":"Drag an image to search with Google Lens"', '"Drop to attach"'),
+];
 const ONBOARDING_ROUTES = [
-  edit('the password manager step is back (bring your own, through its extension)',
+  edit('Make it yours has a route',
     'wr=n("/_public/onboarding/import-password/")({beforeLoad:()=>{throw c({to:"/onboarding/ai",replace:!0})},component:a(Pr,"component")})',
-    'wr=n("/_public/onboarding/import-password/")({component:a(Pr,"component")})'),
+    'wr=n("/_public/onboarding/import-password/")({component:a(Pr,"component")}),auxYoursRoute=n("/_public/onboarding/make-it-yours/")({component:a(gr,"yours")})'),
+  edit('Make it yours sits under onboarding',
+    'ea=hr.update({id:"/glance/",path:"/glance/",getParentRoute:()=>y}),',
+    'ea=hr.update({id:"/glance/",path:"/glance/",getParentRoute:()=>y}),auxYoursIndex=auxYoursRoute.update({id:"/make-it-yours/",path:"/make-it-yours/",getParentRoute:()=>y}),'),
+  edit('Make it yours is in the tree',
+    'PublicOnboardingGlanceIndexRoute:ea,', 'PublicOnboardingGlanceIndexRoute:ea,AuxOnboardingMakeItYoursIndexRoute:auxYoursIndex,'),
+  // Local users reach setup through any page of the app, not only a first-install tab.
+  edit('the app sends a first run to setup',
+    'if(!t&&e.pathname.startsWith("/u/")&&ee(e.pathname)!==u)throw c({href:V(e.href,u),replace:!0});return{accountId:u}',
+    'if(!t&&auxOnboardingDue())throw c({to:"/onboarding/glance",replace:!0});if(!t&&e.pathname.startsWith("/u/")&&ee(e.pathname)!==u)throw c({href:V(e.href,u),replace:!0});return{accountId:u}'),
+  // Steps that need the daemon wait for it inline; Welcome and Make it yours don't need it.
+  edit('onboarding opens before the daemon is ready',
+    'Qt=n("/_public/onboarding")({beforeLoad:async({context:e,location:t})=>{if(await te(),Ht(t.pathname)||Y)return;',
+    'Qt=n("/_public/onboarding")({pendingMs:0,pendingComponent:auxAgentReady,beforeLoad:async({context:e,location:t})=>{if(/\\/onboarding\\/(?:glance|make-it-yours)\\/?$/.test(t.pathname))return;if(await te(),Ht(t.pathname)||Y)return;'),
+  edit('Import waits inline', 'n("/_public/onboarding/import-browser/")({component:a(fr,"component"),', 'n("/_public/onboarding/import-browser/")({pendingMs:0,pendingComponent:auxAgentReady,component:a(fr,"component"),'),
+  edit('Models waits inline', 'n("/_public/onboarding/ai/")({validateSearch:', 'n("/_public/onboarding/ai/")({pendingMs:0,pendingComponent:auxAgentReady,validateSearch:'),
+  edit('the local record of finishing setup',
+    'function Ht(e){return e.replace(/\\/+$/,"")===Mt}',
+    'function Ht(e){return e.replace(/\\/+$/,"")===Mt}function auxAgentReady(){return(0,i.jsx)("div",{className:"text-muted-foreground flex h-screen items-center justify-center text-sm",children:"Getting your agent ready…"})}function auxOnboardingDue(){try{return!chrome.extension?.inIncognitoContext&&localStorage.getItem("aux.onboarding.completed.v1")!=="1"}catch{return!1}}'),
 ];
 const BACKGROUND = [
   // A new profile starts with setup; updates and restarts don't.
   edit('a new profile opens onboarding',
     'onInstalled.addListener(() => Vt(!0))',
-    'onInstalled.addListener((details) => { Vt(!0); if (details?.reason === "install") chrome.tabs.create({ url: chrome.runtime.getURL("main.html#/onboarding/import-browser") }); })'),
+    'onInstalled.addListener((details) => { Vt(!0); if (details?.reason === "install") chrome.tabs.create({ url: chrome.runtime.getURL("main.html#/onboarding/glance") }); })'),
   // The agent panel listens for this and goes back to the home thread.
   edit('the agent button returns the panel to the home thread',
     'chrome.action.onClicked.addListener(async (e) => {\n  e.windowId && await chrome.sidePanel.open({ windowId: e.windowId });\n});',
@@ -452,6 +501,9 @@ const auxDictationHook = 'auxDictation=insert=>{'
   + 'return{supported:typeof api?.startDictation=="function",status,stream:listening||null,error,start,'
   + 'cancel:()=>finish(!1),confirm:()=>finish(!0),warmMic:()=>{}}},';
 const COMPOSER = [
+  edit('the composer imports no Ultrabrowse parts',
+    'import{c as Gr,d as wl,i as Sl,l as Ta,n as Pl,o as kl,s as Ml,t as jl,u as Il}from"./model-select-BvZsM1Kl.js"',
+    'import{c as Gr,i as Sl,l as Ta,n as Pl,o as kl,s as Ml,t as jl}from"./model-select-BvZsM1Kl.js"'),
   edit('the Dictate button uses on-device dictation',
     'xn=(0,g.createContext)(null),Su=({children:e})=>{',
     `xn=(0,g.createContext)(null),${auxDictationHook}Su=({children:e})=>{`),
@@ -542,8 +594,11 @@ export const EDITS = Object.freeze({
   'assets/import-password-mvM-KsU6.js': Object.freeze(ONBOARDING_PASSWORD),
   'assets/ai-CzEX5E7S.js': Object.freeze(ONBOARDING_MODELS),
   'assets/route-CSKkWqf5.js': Object.freeze(ONBOARDING_STEPS),
+  'assets/glance-BfAlmExy.js': Object.freeze(ONBOARDING_WELCOME),
+  'assets/-types-Wy38XkNB.js': Object.freeze(ONBOARDING_GUARD),
   'assets/done-DPzI9pFd.js': Object.freeze(ONBOARDING_DONE),
-  'assets/extension-main-Dz1-AsCT.js': Object.freeze([...ONBOARDING_ROUTES, ...SHORTCUTS_ROUTE]),
+  'assets/extension-main-Dz1-AsCT.js': Object.freeze([...ONBOARDING_ROUTES, ...SHORTCUTS_ROUTE, ...REMOVED_ROUTES]),
+  'assets/newtab-CnOLQ0yu.js': Object.freeze(NEW_TAB),
   'background.js': Object.freeze(BACKGROUND),
   'assets/session-composer-Dc0LRfZA.js': Object.freeze(COMPOSER),
   'assets/conversation-D9Q3VEsl.js': Object.freeze(CONVERSATION),

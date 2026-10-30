@@ -27,8 +27,6 @@ function Ga({sessionId}) {
     u = ve(c.sessions.compact.mutationOptions());
   return (h, d) => {
     switch (h) {
-      case 'feedback':
-        return (broadcast(da, {sessionId, comment: d}), true);
       case 'new':
         return (navigate(null), true);
       case 'clear':

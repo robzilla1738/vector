@@ -1,9 +1,8 @@
-/* Aux-owned source, model select pass 3 (assets/model-select-BvZsM1Kl.js, between the Ultrabrowse
- * label and the menus): the model select provider. It groups the catalog's models by provider
+/* Aux-owned source, model select pass 3 (assets/model-select-BvZsM1Kl.js, between the select's
+ * context and the menus): the model select provider. It groups the catalog's models by provider
  * (skipping signed-out ones, optionally only vision models, and the free Aux provider when another is
  * signed in), resolves the selected model, picks the first available one when nothing is chosen, and
- * reports a proactive mode the model cannot use. Its paid-plan check reads AUX_LAUNCH_POLICY, which
- * vendor/provided/provider-funded-launch.mjs defines at the top of the chunk and edits in here.
+ * reports a saved proactive mode, which Aux no longer offers, so the caller clears it.
  * Names the rest of the chunk uses keep their chunk names: vr ModelSelect (exported as t).
  * Chunk names used: d React, e JSX runtime, Ue the model catalog hook, ge the nearest level, and Me,
  * Je, je, ye, Se from the other passes. */
@@ -13,7 +12,6 @@ vr = ({
   modelCatalog,
   allowDefaultOption = false,
   defaultOptionLabel = 'Default model',
-  enableUltrabrowse = false,
   hideFreeAuxProvider = true,
   proactiveMode = false,
   unavailableValueLabel,
@@ -93,10 +91,7 @@ vr = ({
           };
     }, [models, effectiveValue, modelsByProvider, requireVision, O]),
     D = models.find(n => O.some(l => l.id === n.provider) && R[n.provider]?.some(l => l.id === n.id)),
-    H = w ? je(w.availableThinkingLevels) : [],
-    U = ye(H),
-    G = !AUX_LAUNCH_POLICY.paymentsEnabled || g.subscriptionPlan !== 'free',
-    A = !!(!proactiveMode || !w || (enableUltrabrowse && G && U && w.thinkingLevel === U)),
+    A = !proactiveMode || !w,
     s = w ? `${w.provider}:${w.modelId}:${w.thinkingLevel}:${proactiveMode}` : `none:${proactiveMode}`,
     x = n => {
       (F(n), n && !modelCatalog && g.refetchModelCatalog());
@@ -130,8 +125,6 @@ vr = ({
         isOpen: j,
         isThinkingOpen: C,
         defaultOptionLabel,
-        enableUltrabrowse,
-        canUseUltrabrowse: G,
         selectableProviders: O,
         selectedModel: w,
         unavailableValueLabel,

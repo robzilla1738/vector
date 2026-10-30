@@ -7,13 +7,9 @@
  "gt": "PairingLoading",
  "Ke": "SenderAvatar",
  "jt": "ConnectionSettingsDialog",
- "ft": "RemoteMessengerDialog",
- "vt": "RemoteMessengerInstructions",
  "yt": "PLATFORM_ICONS",
  "bt": "ConnectionList",
  "Ct": "ConnectionRow",
  "Nt": "AddPlatformItem",
- "St": "REMOTE_MESSENGERS",
- "wt": "RemoteMessengerItem",
  "kt": "AddMessengerMenu"
 }

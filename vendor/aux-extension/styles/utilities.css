@@ -34,4 +34,8 @@
   :is(.\*\:data-model-select-shortcuts\:px-2 > *)[data-model-select-shortcuts] {
     padding-inline: calc(var(--spacing) * 2);
   }
+  /* The New Tab Search/Ask track sits one step below the search box in dark mode. */
+  .dark\:bg-background:is(.dark, .dark *):not(:is(.light, .light *)) {
+    background-color: var(--background);
+  }
 }

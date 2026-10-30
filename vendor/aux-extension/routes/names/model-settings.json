@@ -38,7 +38,6 @@
  "is": "usesModelsJson",
  "as": "canReauthenticate",
  "ls": "providerDescription",
- "cs": "AuxSignIn",
  "be": "EditProvider",
  "ds": "DisconnectProvider",
  "us": "DeleteProvider",

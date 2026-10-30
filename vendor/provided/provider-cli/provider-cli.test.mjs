@@ -315,3 +315,10 @@ test('a CLI dies with the daemon: closing fd 3 kills its whole process group', a
   assert.ok(await waitFor(() => !alive(grandchild)), 'the grandchild went too');
   assert.ok(await waitFor(() => child.exitCode !== null || child.signalCode !== null));
 });
+
+import {buildArgs} from './drivers.mjs';
+
+test('folders granted in Settings › Agent reach Claude Code', () => {
+  const {args} = buildArgs('claude-stream-json', {prompt: 'p', cwd: '/run', folders: ['/a', '/b']}, {args: []});
+  assert.deepEqual(args.filter((arg, index) => arg === '--add-dir' || args[index - 1] === '--add-dir'), ['--add-dir', '/a', '--add-dir', '/b']);
+});

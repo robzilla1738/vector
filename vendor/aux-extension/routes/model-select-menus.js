@@ -1,7 +1,7 @@
 /* Aux-owned source, model select pass 2 (assets/model-select-BvZsM1Kl.js, from the keyboard shortcuts to
  * the end of the module): the keyboard shortcuts (⌘⇧M model, ⌘⇧. thinking), the
  * model menu (search, providers as groups or submenus, expired sign-ins, the default option, loading,
- * empty and error states) and the thinking menu (reasoning levels, Ultrabrowse, speed).
+ * empty and error states) and the thinking menu (reasoning levels, speed).
  * Names the rest of the chunk uses keep their chunk names: br ModelShortcuts, wr ShortcutTooltip, Mr
  * ModelSelector, kr ThinkingSelector, Je effectiveValue, ne useModelSelect, ke restoreFocus, je
  * thinkingLevels, ye maxLevel, Se selectionFor.
@@ -271,29 +271,17 @@ br = ({thinking = true}) => {
           }),
       ],
     });
-  } /** The thinking menu: reasoning level, Ultrabrowse and speed. */,
+  } /** The thinking menu: reasoning level and speed. */,
   kr = ({render, menuSize = 'md', ...a}) => {
     const {
         selectedModel,
-        enableUltrabrowse,
-        canUseUltrabrowse,
-        proactiveMode,
         isThinkingOpen,
         onThinkingOpenChange,
         onChange,
       } = ne(),
       N = (0, d.useRef)(null),
       k = selectedModel ? je(selectedModel.availableThinkingLevels) : [],
-      m = ye(k),
-      j = !!(
-        enableUltrabrowse &&
-        canUseUltrabrowse &&
-        proactiveMode &&
-        selectedModel &&
-        m &&
-        selectedModel.thinkingLevel === m
-      ),
-      F = selectedModel ? (j ? 'Ultrabrowse' : ie[selectedModel.thinkingLevel]) : 'Thinking level',
+      F = selectedModel ? ie[selectedModel.thinkingLevel] : 'Thinking level',
       C = k.length > 0,
       B = ve({
         defaultTagName: 'button',
@@ -302,9 +290,7 @@ br = ({thinking = true}) => {
             ref: N,
             children: (0, e.jsxs)(e.Fragment, {
               children: [
-                j
-                  ? (0, e.jsx)(we, {className: 'min-w-0 grow truncate'})
-                  : (0, e.jsx)('span', {className: 'grow truncate', children: F}),
+                (0, e.jsx)('span', {className: 'grow truncate', children: F}),
                 selectedModel?.fastMode && (0, e.jsx)('span', {className: 'opacity-50', children: 'Fast'}),
                 (0, e.jsx)(fe, {className: 'text-muted-foreground size-3.5! opacity-50', 'data-icon': 'inline-end'}),
               ],
@@ -323,23 +309,8 @@ br = ({thinking = true}) => {
             modelId: selectedModel.modelId,
             thinkingLevel: i,
             fastMode: selectedModel.fastMode,
-            ...(enableUltrabrowse ? {proactiveMode: false} : {}),
           }),
           onThinkingOpenChange(false));
-      },
-      I = i => {
-        !selectedModel ||
-          !m ||
-          !canUseUltrabrowse ||
-          (i &&
-            (onChange({
-              provider: selectedModel.provider,
-              modelId: selectedModel.modelId,
-              thinkingLevel: m,
-              fastMode: selectedModel.fastMode,
-              proactiveMode: true,
-            }),
-            onThinkingOpenChange(false)));
       },
       g = i => {
         selectedModel &&
@@ -348,7 +319,6 @@ br = ({thinking = true}) => {
             modelId: selectedModel.modelId,
             thinkingLevel: selectedModel.thinkingLevel,
             fastMode: i === 'fast',
-            ...(enableUltrabrowse ? {proactiveMode: j} : {}),
           });
       },
       T = i => {
@@ -356,16 +326,8 @@ br = ({thinking = true}) => {
       },
       P = i => {
         if (i.defaultPrevented || i.metaKey || i.ctrlKey || i.altKey || i.shiftKey || !C) return;
-        const f = Number(i.key) - 1,
-          b = k[f],
-          E = enableUltrabrowse && canUseUltrabrowse && m && f === k.length;
-        if (!(!b && !E)) {
-          if ((i.preventDefault(), i.stopPropagation(), b)) {
-            L(b)(true);
-            return;
-          }
-          I(true);
-        }
+        const b = k[Number(i.key) - 1];
+        b && (i.preventDefault(), i.stopPropagation(), L(b)(true));
       };
     return (
       (0, d.useEffect)(() => {
@@ -398,16 +360,13 @@ br = ({thinking = true}) => {
                           (0, e.jsx)(
                             V,
                             {
-                              checked: !j && selectedModel.thinkingLevel === i,
+                              checked: selectedModel.thinkingLevel === i,
                               onCheckedChange: L(i),
                               children: (0, e.jsx)('span', {children: ie[i]}),
                             },
                             i,
                           ),
                         ),
-                        enableUltrabrowse &&
-                          m &&
-                          (0, e.jsx)(Ve, {checked: j, disabled: !canUseUltrabrowse, onCheckedChange: I}),
                       ],
                     }),
                   selectedModel.supportsFastMode &&

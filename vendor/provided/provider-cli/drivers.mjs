@@ -67,12 +67,13 @@ const claudeInput = (prompt, images = []) => JSON.stringify({type: 'user', messa
   ...images.map(image => ({type: 'image', source: {type: 'base64', media_type: image.mimeType, data: image.data}}))]}}) + '\n';
 
 /** argv for the line-oriented drivers. Returns {args, stdin, files} (stdin text or null). */
-export function buildArgs(driver, {prompt, images, model, effort, cwd, systemPrompt, resume, keep}, mcp = {args: []}) {
+export function buildArgs(driver, {prompt, images, model, effort, cwd, systemPrompt, resume, keep, folders = []}, mcp = {args: []}) {
   const optional = (flag, value) => value ? [flag, value] : [];
   switch (driver) {
     case 'claude-stream-json':
       return {stdin: claudeInput(prompt, images), files: [], args: ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
         '--include-partial-messages', ...(keep ? [] : ['--no-session-persistence']), '--permission-mode', 'manual', ...mcp.args,
+        ...folders.flatMap(folder => ['--add-dir', folder]),
         ...optional('--model', model), ...optional('--effort', effort), ...optional('--resume', resume), ...optional('--append-system-prompt', systemPrompt)]};
     case 'cursor-stream-json': {
       // Cursor reads always-applied project rules; --mode ask keeps its own tools read-only.

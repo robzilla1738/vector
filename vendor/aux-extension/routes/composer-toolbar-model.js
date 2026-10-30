@@ -317,11 +317,9 @@ var /** Where the mini popup opens a menu window: beside its anchor, kept on scr
       [x, b] = (0, g.useState)(null),
       v = (0, g.useRef)(null),
       C = (0, g.useRef)(null),
-      {availableModels, subscriptionPlan} = on(),
+      {availableModels} = on(),
       k = availableModels.find(E => E.provider === model.provider && E.id === model.modelId),
       M = k ? Ml(k.availableThinkingLevels) : [],
-      w = M.at(-1),
-      I = !!(proactiveMode && model.thinkingLevel === w),
       R = (0, g.useMemo)(() => {
         const E = selectableProviders
             .map(F => ({id: F.id, name: F.name, models: getModels(F.id)}))
@@ -364,10 +362,8 @@ var /** Where the mini popup opens a menu window: beside its anchor, kept on scr
         },
       X = E => {
         if (E.defaultPrevented || E.metaKey || E.ctrlKey || E.altKey || E.shiftKey) return;
-        const ee = Number(E.key) - 1,
-          F = M[ee],
-          fe = ee === M.length && w && subscriptionPlan !== 'free';
-        (!F && !fe) || (E.preventDefault(), E.stopPropagation(), ne(F ?? w, !!fe));
+        const F = M[Number(E.key) - 1];
+        F && (E.preventDefault(), E.stopPropagation(), ne(F));
       };
     ((0, g.useLayoutEffect)(() => {
       const E = C.current,
@@ -529,9 +525,7 @@ var /** Where the mini popup opens a menu window: beside its anchor, kept on scr
                 children: (0, a.jsx)(Ss, {
                   render: (0, a.jsx)(ic, {
                     ref: p,
-                    label: I
-                      ? (0, a.jsx)(wl, {})
-                      : (0, a.jsx)('span', {className: 'opacity-80', children: zr[model.thinkingLevel]}),
+                    label: (0, a.jsx)('span', {className: 'opacity-80', children: zr[model.thinkingLevel]}),
                   }),
                 }),
               }),
@@ -546,21 +540,10 @@ var /** Where the mini popup opens a menu window: beside its anchor, kept on scr
                           M.map(E =>
                             (0, a.jsx)(
                               Us,
-                              {checked: !I && model.thinkingLevel === E, onCheckedChange: he(E), children: zr[E]},
+                              {checked: model.thinkingLevel === E, onCheckedChange: he(E), children: zr[E]},
                               E,
                             ),
                           ),
-                          w &&
-                            (0, a.jsx)(Il, {
-                              compact: true,
-                              checked: I,
-                              disabled: AUX_LAUNCH_POLICY.paymentsEnabled && subscriptionPlan === 'free',
-                              onCheckedChange: he(w, true),
-                              tooltipAlign: variant === 'mini-popup' ? 'start' : void 0,
-                              tooltipClassName:
-                                variant === 'mini-popup' ? 'w-[calc(100vw-0.625rem)] text-pretty' : void 0,
-                              tooltipSide: variant === 'mini-popup' ? 'top' : 'right',
-                            }),
                         ],
                       })
                     : null,
@@ -742,7 +725,6 @@ var /** Where the mini popup opens a menu window: beside its anchor, kept on scr
       }, [p, m, onValueChange, persistDefaultOnChange, f, updateRuntimeConfig]);
     return (0, a.jsx)(jl, {
       value: m,
-      enableUltrabrowse: true,
       proactiveMode: p,
       onChange: x,
       onInvalidProactiveMode: v,

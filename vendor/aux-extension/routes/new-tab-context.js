@@ -4,7 +4,8 @@
  * Ut NewTabProvider, Ve useNewTab, Hn useNewTabAccountId, Ft IncognitoNotice, qn the onboarding
  * prompt event, Ce react-dom, zt ModeTabs.
  * Chunk names used: n React, f JSX runtime, rt interop, At react-dom; imports _t Tabs, Ot TabsList,
- * et TabsTrigger, Y the omnibox handle (the editor newtab.html painted). */
+ * et TabsTrigger, Y the omnibox handle (the editor newtab.html painted).
+ * Aux change: the Search/Ask track follows the Space tint (styles/newtab-page.css has the segment). */
 NewTabContext = (0, n.createContext)(null),
   BROWSER_MODE = typeof chrome < 'u' && chrome.extension?.inIncognitoContext === true ? 'incognito' : 'default',
   Ut = ({children, omniboxMode, onOmniboxModeChange}) => {
@@ -50,7 +51,7 @@ NewTabContext = (0, n.createContext)(null),
           omnibox?.setMode(next), omnibox?.editor.view.focus();
         },
         children: (0, f.jsxs)(Ot, {
-          className: '[&_button]:w-16',
+          className: '[&_button]:w-16 bg-accent dark:bg-background',
           children: [(0, f.jsx)(et, {value: 'search', children: 'Search'}), (0, f.jsx)(et, {value: 'ask', children: 'Ask'})],
         }),
       }), slot)

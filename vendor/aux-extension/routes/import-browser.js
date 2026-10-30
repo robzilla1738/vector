@@ -8,15 +8,36 @@
  * _ RelativeTime, v Tooltip wrapper parts, M Skeleton, q useBrowserImporter, N pickDefaultTarget,
  * F the checked badge, U Return arrow, E check, R/H/L the import dialog parts, b Button, Y/G/J the
  * tooltip parts, W/X/Z/$/S/K the onboarding layout parts, Q motion, y BrowserIcon.
- * Aux change: the browser tiles and their placeholders take the 12px card corner (rounded-xl). */
+ * Aux changes: the browser tiles and their placeholders take the 12px card corner (rounded-xl); the
+ * dialog gained the what-to-bring-over step (data kinds, and own Space group or merge), so every
+ * import goes through it; dataKinds and destination travel to chrome.auxBrowserImport.startImport. */
 var h = A(z(), 1),
   jsxRuntime = O(),
+  /** What an import can bring, in display order; a source lists what it supports. */
+  DATA_KINDS = [
+    ['spaces', 'Spaces and pins'],
+    ['bookmarks', 'Bookmarks'],
+    ['history', 'History'],
+    ['cookies', 'Stay signed in to sites'],
+    ['extensions', 'Extensions'],
+    ['passwords', 'Passwords'],
+  ],
+  /** Each profile can stay its own group of Spaces, with its sign-ins apart, or join Default. */
+  DESTINATIONS = [
+    ['merge', 'Merge into your Spaces', 'Sign-ins join the ones you already have.'],
+    ['group', 'Keep as its own Space group', 'Its sign-ins and extensions stay separate.'],
+  ],
   /** The dialog: pick a browser, then a profile when it has several. */
   ImportDialog = ({browsers, initialBrowserId, initialStep, onCancel, onImport}) => {
     const [step, setStep] = (0, h.useState)(initialStep),
       [browserId, setBrowserId] = (0, h.useState)(initialBrowserId),
       [targetId, setTargetId] = (0, h.useState)(''),
+      [unchecked, setUnchecked] = (0, h.useState)([]),
+      [destination, setDestination] = (0, h.useState)('merge'),
       browser = browsers.find(item => item.source.id === browserId),
+      supported = browser?.source.supportedDataKinds ?? [],
+      kinds = DATA_KINDS.filter(([kind]) => supported.includes(kind)),
+      chosen = kinds.map(([kind]) => kind).filter(kind => !unchecked.includes(kind)),
       target =
         browser?.targets.find(item => item.id === targetId && !item.alreadyImported) ?? N(browser?.targets ?? []),
       selectBrowser = item => () => {
@@ -26,8 +47,12 @@ var h = A(z(), 1),
       onOpenChange = open => {
         open || onCancel();
       },
+      toggleKind = kind => () =>
+        setUnchecked(kinds => (kinds.includes(kind) ? kinds.filter(item => item !== kind) : [...kinds, kind])),
       back = () => {
-        initialStep === 'browser' ? setStep('browser') : onCancel();
+        if (step === initialStep) onCancel();
+        else if (step === 'data' && browser?.requiresProfileSelection) setStep('profile');
+        else setStep('browser');
       },
       next = () => {
         if (!(!browser || !target || target.alreadyImported)) {
@@ -35,7 +60,11 @@ var h = A(z(), 1),
             setStep('profile');
             return;
           }
-          onImport(target);
+          if (step !== 'data') {
+            setStep('data');
+            return;
+          }
+          onImport(target, {dataKinds: chosen, destination});
         }
       };
     return (0, jsxRuntime.jsxs)(R, {
@@ -45,18 +74,32 @@ var h = A(z(), 1),
         (0, jsxRuntime.jsx)(
           H,
           {
-            title: step === 'browser' ? 'Import from your browser' : 'Which profile to import?',
+            title: {browser: 'Import from your browser', profile: 'Which profile to import?', data: 'What to bring over'}[step],
             description:
               step === 'browser'
                 ? 'Choose a browser to import from'
-                : `Choose a profile from ${browser?.source.name} to import`,
+                : step === 'profile'
+                  ? `Choose a profile from ${browser?.source.name} to import`
+                  : `Choose what comes over from ${browser?.source.name}`,
             icon:
-              step === 'profile' && browser && (0, jsxRuntime.jsx)(y, {value: browser.source.id, className: 'size-12'}),
+              step !== 'browser' && browser && (0, jsxRuntime.jsx)(y, {value: browser.source.id, className: 'size-12'}),
             children: (0, jsxRuntime.jsx)('div', {
               className:
                 'bg-border space-y-hairline border-hairline shrink-0 overflow-hidden rounded-xl dark:space-y-px dark:border-transparent dark:bg-transparent',
               children:
-                step === 'browser'
+                step === 'data'
+                  ? kinds.map(([kind, label]) =>
+                      (0, jsxRuntime.jsx)(
+                        ImportDialogRow,
+                        {
+                          selected: chosen.includes(kind),
+                          onClick: toggleKind(kind),
+                          children: (0, jsxRuntime.jsx)('span', {className: 'min-w-0 grow truncate', children: label}),
+                        },
+                        kind,
+                      ),
+                    )
+                  : step === 'browser'
                   ? browsers.map(item =>
                       (0, jsxRuntime.jsxs)(
                         ImportDialogRow,
@@ -107,9 +150,41 @@ var h = A(z(), 1),
           },
           step,
         ),
+        step === 'data' &&
+          (0, jsxRuntime.jsxs)('div', {
+            className: 'space-y-3 px-1',
+            children: [
+              target?.kind === 'profile' &&
+                (0, jsxRuntime.jsx)('div', {
+                  className: 'bg-border space-y-hairline overflow-hidden rounded-xl',
+                  children: DESTINATIONS.map(([value, label, description]) =>
+                    (0, jsxRuntime.jsxs)(
+                      ImportDialogRow,
+                      {
+                        selected: destination === value,
+                        onClick: () => setDestination(value),
+                        children: [
+                          (0, jsxRuntime.jsx)('span', {className: 'min-w-0 truncate', children: label}),
+                          (0, jsxRuntime.jsx)('span', {
+                            className: 'text-muted-foreground min-w-0 grow truncate text-xs',
+                            children: description,
+                          }),
+                        ],
+                      },
+                      value,
+                    ),
+                  ),
+                }),
+              !supported.includes('passwords') &&
+                (0, jsxRuntime.jsx)('p', {
+                  className: 'text-muted-foreground text-xs',
+                  children: 'Passwords stay in your password manager.',
+                }),
+            ],
+          }),
         (0, jsxRuntime.jsxs)(L, {
           children: [
-            step === 'profile' &&
+            step !== initialStep &&
               (0, jsxRuntime.jsx)(b, {variant: 'outline', size: 'lg', onClick: back, children: 'Back'}),
             (0, jsxRuntime.jsxs)('div', {
               className: 'ml-auto flex gap-2',
@@ -118,10 +193,10 @@ var h = A(z(), 1),
                 (0, jsxRuntime.jsxs)(b, {
                   size: 'lg',
                   'data-dialog-enter-action': 'true',
-                  disabled: !target || target.alreadyImported,
+                  disabled: !target || target.alreadyImported || (step === 'data' && !chosen.length),
                   onClick: next,
                   children: [
-                    (0, jsxRuntime.jsx)('span', {children: step === 'browser' ? 'Next' : 'Import'}),
+                    (0, jsxRuntime.jsx)('span', {children: step === 'data' ? 'Import' : 'Next'}),
                     (0, jsxRuntime.jsx)(U, {className: 'size-4 opacity-50'}),
                   ],
                 }),
@@ -156,7 +231,7 @@ function he() {
           (0, jsxRuntime.jsx)($, {children: 'Import from your browser'}),
           (0, jsxRuntime.jsxs)(W, {
             children: [
-              'Bring your browser history, cookies, and bookmarks',
+              'Bring your Spaces, bookmarks, history and sign-ins',
               (0, jsxRuntime.jsx)('br', {}),
               'so you don’t have to configure Aux from scratch.',
             ],
@@ -213,18 +288,14 @@ var ImportPlaceholder = () =>
       },
       closeDialog = () => setDialogStep(null),
       openOthers = () => setDialogStep('browser'),
-      startImport = target => {
-        (setSelectedId(target.source.id), setDialogStep(null), importer.importTarget(target));
+      startImport = (target, options) => {
+        (setSelectedId(target.source.id), setDialogStep(null), importer.importTarget(target, options));
       },
       importSelected = () => {
         if (!selected) return;
         const target = N(selected.targets);
         if (!(!target || target.alreadyImported)) {
-          if (selected.requiresProfileSelection) {
-            setDialogStep('profile');
-            return;
-          }
-          startImport(target);
+          setDialogStep(selected.requiresProfileSelection ? 'profile' : 'data');
         }
       };
     return (0, jsxRuntime.jsxs)(jsxRuntime.Fragment, {

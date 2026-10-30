@@ -1,4 +1,4 @@
-/* Aux-owned source: onboarding › Choose your AI subscription (assets/ai-CzEX5E7S.js, the module body):
+/* Aux-owned source: onboarding › Connect a model (assets/ai-CzEX5E7S.js, the module body):
  * the provider list and its keyboard submit, More options and the API key dialog, setting the default
  * model, and the hosted plan paths (plans, checkout in a frame or embedded, waiting for billing), which
  * stay behind AUX_LAUNCH_POLICY (added above the chunk's imports by vendor/provided).
@@ -243,8 +243,8 @@ function qs() {
       (0, jsxRuntime.jsxs)(_e, {
         className: 'pb-0',
         children: [
-          (0, jsxRuntime.jsx)(Ae, {children: 'Choose your AI subscription'}),
-          (0, jsxRuntime.jsx)(De, {children: 'Connect a subscription you already have, or use your own API key.'}),
+          (0, jsxRuntime.jsx)(Ae, {children: 'Connect a model'}),
+          (0, jsxRuntime.jsx)(De, {children: 'Use an agent CLI already signed in on this Mac, or your own API key.'}),
         ],
       }),
       (0, jsxRuntime.jsx)(Te, {
@@ -266,7 +266,7 @@ function qs() {
             variant: 'secondary',
             size: 'lg',
             nativeButton: false,
-            render: (0, jsxRuntime.jsx)(ne, {to: '/onboarding/import-password', replace: true}),
+            render: (0, jsxRuntime.jsx)(ne, {to: '/onboarding/make-it-yours', replace: true}),
             children: [
               (0, jsxRuntime.jsx)(de, {'data-icon': 'inline-start'}),
               (0, jsxRuntime.jsx)('span', {children: 'Back'}),
@@ -721,7 +721,7 @@ var /** More subscriptions, and the API key option. */
           (0, jsxRuntime.jsxs)(H, {
             children: [
               (0, jsxRuntime.jsx)(U, {children: 'More options'}),
-              (0, jsxRuntime.jsx)(Z, {children: 'Connect another subscription or use your own API key.'}),
+              (0, jsxRuntime.jsx)(Z, {children: 'Use another local agent or your own API key.'}),
             ],
           }),
           (0, jsxRuntime.jsxs)(q, {

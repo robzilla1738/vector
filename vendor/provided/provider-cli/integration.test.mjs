@@ -47,7 +47,7 @@ test('daemon: borrowed identities gone, every hook in place, still parses', () =
   check('entry', output.daemon);
   for (const marker of FORBIDDEN) assert.equal(count(output.daemon, marker), 0, marker);
   for (const rule of DAEMON_EDITS) assert.equal(count(output.daemon, rule.replace), 1, rule.name);
-  assert.equal(count(output.daemon, 'auxProviderCli'), 17);
+  assert.equal(count(output.daemon, 'auxProviderCli'), 18);
   // The loader runs before any use and resolves beside the entry.
   assert.ok(output.daemon.indexOf('const auxProviderCli=') < output.daemon.indexOf('auxProviderCli.'));
   assert.equal(count(output.daemon, 'new URL("./provider-cli/aux-daemon.mjs",import.meta.url)'), 1);

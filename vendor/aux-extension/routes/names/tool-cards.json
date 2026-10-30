@@ -25,6 +25,5 @@
  "bp": "redactTypedText",
  "yp": "ReplCard",
  "Gr": "isGeneratingImage",
- "Cp": "ImageGenerationPlaceholder",
- "Ep": "RoutineLimitNotice"
+ "Cp": "ImageGenerationPlaceholder"
 }

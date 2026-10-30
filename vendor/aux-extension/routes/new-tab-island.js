@@ -1,7 +1,8 @@
 /* Aux-owned source: the New Tab page body (assets/island-C0ouZ54e.js, exported as NewTabIsland).
  * newtab.html paints the omnibox itself; this island mounts the rest into the page's slots through
  * portals: the Spaces sidebar (#new-tab-sidebar), the sidebar-mode toggle (#new-tab-header), the
- * task list and setup helper (#new-tab-tasks), nudges (#new-tab-content) and the update banner.
+ * suggestion chips (#new-tab-tasks), nudges (#new-tab-content) and the update banner.
+ * Aux change: no task cards on New Tab (owner, 2026-10-30); the page is always logo, search, chips.
  * The supplied profile and billing menu was already removed by a package edit (Aux has no
  * accounts or payments), so its unreachable code is gone here.
  *
@@ -73,7 +74,6 @@ var jsxRuntime = E(),
   },
   Nudges = (0, React.lazy)(() => u(() => import('./nudges-7TFAp4B-.js').then(module => ({default: module.NewTabPageNudges})), __vite__mapDeps([44,1,3,4,5,6,7,8,9,2,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,43,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,42,113]))),
   OnboardingHelper = (0, React.lazy)(() => u(() => import('./onboarding-helper-BVYyPOep.js').then(module => ({default: module.OnboardingHelper})), __vite__mapDeps([114,1,9,2,3,4,5,6,7,8,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,84,68,43,115,116,54,117,118,96,119]))),
-  Tasks = (0, React.lazy)(() => u(() => import('./tasks-CtF0WxoJ.js').then(module => ({default: module.NewTabTasks})), __vite__mapDeps([120,1,9,2,3,4,5,6,7,8,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,121,122,60,61,62,63,64,65,66,67,68,69,70,71,72,73,50,74,75,76,77,78,79,80,81,82,83,123,46,47,48,53,54,55,56,45,49,57,58,59,84,85,86,87,88,89,90,91,43,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,42,113,124,125,126,127,128,129,130,131,132,133,134,118,135,136,115,116,117,119,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,41,160,161,162,163,164]))),
   Toaster = (0, React.lazy)(() => u(() => import('./sonner-B6vOp_bX.js').then(module => module.n).then(module => ({default: () => (0, jsxRuntime.jsx)(module.Toaster, {position: 'top-center'})})), __vite__mapDeps([165,1,10,11,12,13,14,15,4,8,16,7,17,18,19,20,66,50,26]))),
   UpdateBanner = (0, React.lazy)(() => u(() => import('./update-banner-C_z-hMCt.js').then(module => ({default: module.UpdateBanner})), __vite__mapDeps([166,1,9,2,3,4,5,6,7,8,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,50,71,72,73,66,74,43,115,116,54,117,118,96,119,51])));
 te();
@@ -119,7 +119,7 @@ var Ge = () => (0, jsxRuntime.jsx)(A, {
           root: '#new-tab-tasks',
           children: (0, jsxRuntime.jsx)(React.Suspense, {
             fallback: null,
-            children: (0, jsxRuntime.jsx)(Tasks, {children: ({taskCount}) => (0, jsxRuntime.jsx)(OnboardingHelper, {taskCount})}),
+            children: (0, jsxRuntime.jsx)(OnboardingHelper, {}),
           }),
         }),
         !incognito && ready && (0, jsxRuntime.jsx)(x, {

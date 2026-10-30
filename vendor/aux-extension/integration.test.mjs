@@ -78,7 +78,7 @@ const pageAfter = integrateNewTab(page);
 
 test('New Tab first paint: the block is replaced once with the Geist faces and the tokens, nothing else moves', () => {
   const [[at, stop]] = locateBlocks(page, NEWTAB_BLOCKS, 'New Tab');
-  const replacement = geistFaces() + shipped(readSource('newtab-first-paint.css'));
+  const replacement = geistFaces() + shipped(readSource('newtab-first-paint.css')) + shipped(readSource('newtab-page.css'));
   assert.equal(pageAfter, page.slice(0, at) + replacement + page.slice(stop));
   assert.deepEqual(asSupplied(declarations(readSource('newtab-first-paint.css'))), declarations(page.slice(at, stop)));
   assert.throws(() => integrateNewTab(pageAfter), /drift/);

@@ -12,7 +12,7 @@
  * pi useStickToBottom, He OutputPre, rn TruncatedOutput, Ua/Ba the terminal tool definitions, Ga
  * MemorySearchResults, yg FILE_LINK_CLASS, ot OutputSection, Ka/Ya the action review and question
  * tool definitions, tl scheduleLabel, dl plainSummary, ho summarizeStep, cl skillFromRead, Bt/gi diff
- * stats, mo isRoutineLimitError, jn APP_PATTERNS, vi replIcon, po stripStringsAndComments.
+ * stats, jn APP_PATTERNS, vi replIcon, po stripStringsAndComments.
  * Chunk names used: p JSX runtime, j React, qe cn, Kr markdown, Ii file icon, bt Button, Xr/Zr/Jr
  * the hover card root, trigger and popup, Yr ScrollArea, zt dayjs, ro the answer arrow icon, oo
  * isPlainObject, Na stripAnsi, and pass 3's fl/ml/gl/_l/bl routine helpers and Cl skillName. */
@@ -1039,7 +1039,7 @@ function routineSummary(step) {
     schedule = gl(routine),
     icon = {type: 'symbol', name: 'routine'};
   if (step.result?.isError)
-    return {detail: mo(step.resultText) ? 'Routine limit reached.' : 'Routine update failed', icon};
+    return {detail: 'Routine update failed', icon};
   const link = name ? (routine.id ? markdownLink(name, 'routine', routine.id) : escapeMarkdown(name)) : 'routine';
   return mode === 'update' && (step.args.status === 'paused' || step.args.status === 'active')
     ? {
@@ -1058,9 +1058,7 @@ function routineSummary(step) {
         }
       : {action: step.isStreaming ? _l(mode) : mode[0].toUpperCase() + mode.slice(1), detail: 'routine', icon};
 }
-var /** The routine limit error. */
-  mo = text => text.includes('Free plan can create up to') || text.includes('Free plan can run up to'),
-  /** Apps a REPL script uses, by the calls in it. */
+var /** Apps a REPL script uses, by the calls in it. */
   jn = [
     {icon: 'user', target: 'iMessage', pattern: /\bimessage\.contacts\b/},
     {icon: 'message', target: 'iMessage', pattern: /\bimessage\./},
