@@ -11,7 +11,9 @@ enum Permission: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .accessibility: "Accessibility"
+        // macOS 27 renamed the Privacy & Security pane.
+        case .accessibility:
+            if #available(macOS 27, *) { "Device Control and Data Access" } else { "Accessibility" }
         case .screenRecording: "Screen Recording"
         }
     }
