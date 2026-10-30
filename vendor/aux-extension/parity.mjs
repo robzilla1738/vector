@@ -45,7 +45,10 @@ export async function evaluatePair({world, chunk, text, blocks, integrate, read,
   return {supplied, ours, kept, pairs};
 }
 
-export async function assertParity({blocksByChunk, textOf, integrate, read, changes, minimum, scenes: extraScenes = [], props: extraProps = [], renamed = () => ({})}) {
+/** `defaults: false` renders only the given props and scenes: fixtures that need each other (a queue's
+ * real text and its real attachments) are not crossed with the stub-only defaults. */
+export async function assertParity({blocksByChunk, textOf, integrate, read, changes, minimum, scenes: extraScenes = [], props: extraProps = [], renamed = () => ({}),
+  defaults = true}) {
   const world = createWorld();
   // Callbacks are stubs, so every call a handler or effect makes to them is logged and compared.
   const spies = Object.fromEntries(['onClick', 'onCheckedChange', 'onOpenChange', 'onNarrowMorphHeightChange', 'onPointerDown', 'onPointerMove',
@@ -81,6 +84,7 @@ export async function assertParity({blocksByChunk, textOf, integrate, read, chan
     // Settings search with a query and a selection; other components read these as their own state.
     {context: {accountId: 7, mode: 'default'}, state: ['mem', 1, true, null], renderState: {checked: true}},
   ];
+  if (!defaults) PROPS.length = scenes.length = 0;
   scenes.push(...extraScenes.map(scene => (typeof scene === 'function' ? scene(world) : scene)));
   PROPS.push(...extraProps.map(props => ({...(typeof props === 'function' ? props(world) : props), ...spies})));
   let compared = 0;
@@ -114,7 +118,7 @@ export async function assertParity({blocksByChunk, textOf, integrate, read, chan
   return {compared, world};
 }
 
-/** Module-scope names each Aux block binds are not declared again in the rest of its chunk. */
+/** Module-scope names each Aux block binds are not declared again in the rest of its chunk, nor in another of its blocks. */
 export function assertFreeNames({blocksByChunk, textOf, read}) {
   for (const [chunk, blocks] of Object.entries(blocksByChunk)) {
     const text = textOf(chunk);
@@ -124,8 +128,12 @@ export function assertFreeNames({blocksByChunk, textOf, read}) {
     rest += text.slice(cursor);
     const bound = name => new RegExp(`(?:^|[;,{(\\s])(?:var|let|const|function|class)?\\s*${name.replace(/\$/g, '\\$')}\\s*=|function\\s+${name.replace(/\$/g, '\\$')}\\b`).test(rest);
     const exported = new Set([...rest.matchAll(/export\{([^}]*)\}/g)].flatMap(([, list]) => list.split(',').map(entry => entry.split(' as ')[0].trim())));
+    const owner = new Map();
     for (const {file} of blocks)
-      for (const name of new Set(moduleNames(read(file))))
+      for (const name of new Set(moduleNames(read(file)))) {
         if (!exported.has(name)) assert.ok(!bound(name), `${file}: ${name} is already bound in ${chunk}`);
+        assert.ok(!owner.has(name), `${file}: ${name} is also bound in ${owner.get(name)}`);
+        owner.set(name, file);
+      }
   }
 }

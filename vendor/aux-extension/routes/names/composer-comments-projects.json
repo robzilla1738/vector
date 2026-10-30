@@ -1,0 +1,19 @@
+{
+ "Do": "RangeOverlay",
+ "Cp": "CommentPopover",
+ "bp": "inCommentPopover",
+ "wp": "CommentBadge",
+ "Sp": "SelectionActions",
+ "Pp": "SELECTION_UI",
+ "kp": "useTranscriptSelection",
+ "ys": "readTranscriptSelection",
+ "vs": "onSelectionUi",
+ "Cs": "DEFAULT_RUNTIME_CONFIG",
+ "jp": "resolveDraftMode",
+ "Gt": "findModel",
+ "bs": "draftModelFor",
+ "Hn": "initialDraft",
+ "Ap": "ProjectMenuItem",
+ "Tp": "projectNameFromPath",
+ "Np": "uniqueProjectId"
+}

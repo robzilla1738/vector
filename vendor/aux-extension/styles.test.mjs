@@ -60,6 +60,7 @@ test('New Tab first paint defines light and dark alike and draws Geist from the 
 
 test('the added utilities live in the utilities layer and only add what the components need', () => {
   const rows = declarations(readSource(UTILITIES));
-  assert.deepEqual([...new Set(rows.map(([at]) => at))], ['@layer utilities > .rounded-b-xl', '@layer utilities > .bg-card']);
-  assert.deepEqual(rows.map(([, , value]) => value), ['var(--radius-xl)', 'var(--radius-xl)', 'var(--card)']);
+  assert.deepEqual([...new Set(rows.map(([at]) => at))], ['@layer utilities > .rounded-b-xl', '@layer utilities > .bg-card',
+    '@layer utilities > .-mt-\\[var\\(--radius-xl\\)\\]', '@layer utilities > .\\[--_r\\:var\\(--radius-xl\\)\\]']);
+  assert.deepEqual(rows.map(([, , value]) => value), ['var(--radius-xl)', 'var(--radius-xl)', 'var(--card)', 'calc(var(--radius-xl) * -1)', 'var(--radius-xl)']);
 });

@@ -12,4 +12,11 @@
   .bg-card {
     background-color: var(--card);
   }
+  /* The notice under the composer card tucks under and curves around the card's 12px corner. */
+  .-mt-\[var\(--radius-xl\)\] {
+    margin-top: calc(var(--radius-xl) * -1);
+  }
+  .\[--_r\:var\(--radius-xl\)\] {
+    --_r: var(--radius-xl);
+  }
 }

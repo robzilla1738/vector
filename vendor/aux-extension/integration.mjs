@@ -102,7 +102,7 @@ function replaceBlocks(text, blocks, label, replacement) {
 
 /** Utilities the components need that the sealed build lacks, appended inside the utilities layer. */
 export const UTILITIES = 'utilities.css';
-const ADDED_UTILITIES = ['.rounded-b-xl{', '.bg-card{'];
+const ADDED_UTILITIES = ['.rounded-b-xl{', '.bg-card{', '.-mt-\\[var\\(--radius-xl\\)\\]{', '.\\[--_r\\:var\\(--radius-xl\\)\\]{'];
 
 export function integrateStyles(text) {
   for (const selector of ADDED_UTILITIES)
@@ -213,8 +213,16 @@ export const ROUTES = Object.freeze({
   'assets/session-composer-Dc0LRfZA.js': [
     block('Composer: attachments, input layout, file previews, context usage', 'composer-attachments.js', 'var Xn=({attachment:e,classNam',
       '5 hours",monthly:"Monthly",weekly:"Weekly"};', '810d4c63beaea8510613ea7917b742870e7f6f08c78ccba72960ab594ba82db2', 18914),
+    block('Composer: notices (provider, sign-in, usage limit, connection) and status pills', 'composer-notices.js', 'Nr=({selectedProvider:e})=>{co',
+      'Er=e=>e.type==="file";', '33758bd60d24a5cdec6c07510bd9dca715e2a74125fc385b0d693da21f92b1c3', 12812),
     block('Composer: sending, the queue and message editing', 'composer-send-queue-edit.js', 'var Vh=({sendMessage:e,stop:t,',
       ',children:p?(0,a.jsx)(kt,{}):"Send"})]})]})}', '3beec8b2e49addc82fd299f3982189bebcc78a09433c57a753c21a84b0857537', 7493),
+    block('Composer: the side panel, side chats and subagents', 'composer-side-panel.js', 'var Ro=rp,sp=({tab:e})=>{const',
+      'SERVE_PX)}px`}', '1286bf2581df09410d2211a4fd1799e4b83bb3a58c3dafb87ff6f5b823a02686', 12328),
+    block('Composer: comments on selected text, the new-session draft and the Projects menu', 'composer-comments-projects.js', 'Do=({range:e,children:t,classNam',
+      'retryAt:il().finite()})]);', '437b4bb959073c4c2772c2fbce0fd75895af641b965a61777b31a74f06afc3df', 16807),
+    block('Composer: toolbar, model menu, queued messages and composer shell', 'composer-toolbar-model.js', 'function Ep(e){const t=e.diagn',
+      'p-1 first:shrink-0 first:grow",children:e});', '3bbd99658e6f6b7f84fdeaf0abbbaaab9ef12c3762b978c361674885579e04ad', 30866),
   ],
 });
 
@@ -242,6 +250,13 @@ export const TOKEN_CHANGES = Object.freeze([
   // The file preview's Open with buttons were fixed white with neutral hovers and no dark mode.
   ['composer-attachments.js', 'border-neutral-200 bg-white hover:bg-neutral-100', 'border-border bg-background hover:bg-muted'],
   ['composer-attachments.js', 'aria-expanded:bg-neutral-100', 'aria-expanded:bg-muted'],
+  // The composer card and its queue, question and drop surfaces: the 12px step, like the mini popup composer.
+  ['composer-toolbar-model.js', 'rounded-2xl', 'rounded-xl'],
+  // The usage warning takes the same step; the notice drawn under the composer card tucked under and
+  // curved around the card's old 16px corner, so it follows the card to 12px.
+  ['composer-notices.js', 'rounded-2xl', 'rounded-xl'],
+  ['composer-notices.js', '-mt-[var(--radius-2xl)]', '-mt-[var(--radius-xl)]'],
+  ['composer-notices.js', 'inner-curved-shape-bottom', 'inner-curved-shape-bottom [--_r:var(--radius-xl)]'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');

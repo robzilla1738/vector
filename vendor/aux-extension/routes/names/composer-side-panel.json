@@ -1,0 +1,20 @@
+{
+ "sp": "SideChat",
+ "ap": "SideSessionComposer",
+ "Br": "SideComposer",
+ "op": "SeedAttachments",
+ "ip": "ignoreSessionChange",
+ "cp": "SubagentsTab",
+ "lp": "SubagentList",
+ "On": "SubagentSection",
+ "up": "SubagentListItem",
+ "dp": "SubagentDetail",
+ "hp": "SubagentTranscript",
+ "mp": "SidePanelControls",
+ "fp": "SidePanelTabs",
+ "gp": "SidePanelTab",
+ "Ot": "SIDE_PANEL_SIZE",
+ "xp": "SidePanel",
+ "yp": "SidePanelEmpty",
+ "xs": "maxSidePanelWidth"
+}

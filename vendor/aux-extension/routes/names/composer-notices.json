@@ -1,0 +1,19 @@
+{
+ "Sh": "ConnectionPill",
+ "Ph": "ConnectionNotice",
+ "ro": "connectionMessage",
+ "kh": "UsageBanner",
+ "Mh": "resetsIn",
+ "so": "ProviderNotice",
+ "ao": "useSubscriptionNudge",
+ "Ah": "SubscriptionNudge",
+ "Th": "SignInNotice",
+ "Rh": "SessionProviderNotice",
+ "Rr": "PILL_MOTION",
+ "Eh": "ScrollToBottomButton",
+ "Dh": "ActivityPills",
+ "Fh": "TodosPill",
+ "Lh": "SubagentsPill",
+ "is": "SubagentGroup",
+ "Bh": "SubagentRow"
+}

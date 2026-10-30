@@ -46,9 +46,12 @@ export function createWorld() {
       apply: (_, __, args) => {
         const named = `${path}(${signature(args)})`;
         log.push(['call', named]);
-        // A scene can say what an import returns, to drive the branches a component takes.
-        if (scenario.imports && path in scenario.imports) {
-          const value = scenario.imports[path];
+        // A scene can say what an import returns, to drive the branches a component takes. A key
+        // that starts with * matches by suffix, for values a chunk builds at load (a schema's safeParse).
+        const imports = scenario.imports;
+        const key = imports && (path in imports ? path : Object.keys(imports).find(name => name.startsWith('*') && path.endsWith(name.slice(1))));
+        if (key) {
+          const value = imports[key];
           return typeof value === 'function' && !label(value) ? value(...args) : value;
         }
         return stub(named);
@@ -88,10 +91,12 @@ export function createWorld() {
     createContext: value => ({$context: true, Provider: 'Context.Provider', Consumer: 'Context.Consumer', value}),
     useContext: () => scenario.context,
     use: () => scenario.context,
-    // A scene's `state` sets every useState: one value, or a list taken in call order.
-    useState: init => [scenario.state === undefined ? typeof init === 'function' ? init() : init
-      : Array.isArray(scenario.state) ? scenario.state[stateCalls++ % scenario.state.length] : scenario.state,
-      value => log.push(['setState', describe(value)])],
+    // A scene's `state` sets every useState: one value, or a list taken in call order, where an
+    // undefined entry keeps the component's own initial value.
+    useState: init => {
+      const value = Array.isArray(scenario.state) ? scenario.state[stateCalls++ % scenario.state.length] : scenario.state;
+      return [value === undefined ? typeof init === 'function' ? init() : init : value, next => log.push(['setState', describe(next)])];
+    },
     useReducer: (_, init) => [init, value => log.push(['dispatch', describe(value)])],
     useRef: value => ({current: value}),
     useId: () => ':r0:',
@@ -173,7 +178,7 @@ export function createWorld() {
   // Render props are called with stub arguments; handlers are fired with a stub event and their log kept.
   function describeProp(prop, value, depth) {
     if (typeof value !== 'function' || label(value)) return describe(value, depth + 1);
-    if (prop === 'render' || prop === 'children') return {renderProp: call(value, stub('renderProps'), scenario.renderState ?? stub('renderState'))};
+    if (prop === 'render' || prop === 'children') return {renderProp: call(value, scenario.renderProps ?? stub('renderProps'), scenario.renderState ?? stub('renderState'))};
     if (/^on[A-Z]/.test(prop)) {
       const before = log.length;
       const result = call(value, scenario.event ?? stub(`event:${prop}`));
@@ -184,7 +189,7 @@ export function createWorld() {
 
   /** Renders `component` with `props` under `scene`, then runs the effects it registered. */
   function render(component, props, scene = {}) {
-    Object.assign(scenario, {context: undefined, state: undefined, event: undefined, renderState: undefined, imports: undefined}, scene);
+    Object.assign(scenario, {context: undefined, state: undefined, event: undefined, renderProps: undefined, renderState: undefined, imports: undefined}, scene);
     log.length = 0;
     stateCalls = 0;
     seed = 1;
