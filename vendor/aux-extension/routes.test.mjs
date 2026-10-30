@@ -512,3 +512,230 @@ test('the composer attachment and preview helpers match the supplied ones', asyn
   same('fastModeDetails', {diagnostics: []});
   same('fastModeDetails', {});
 });
+
+// The transcript row model, called with a real session snapshot on both sides: a question, a run
+// with thinking, web search and a bash session continued by bash_interact, a steer that landed
+// mid-run, a routine row and a hidden system row, compaction, an interrupt, a branch, an error.
+test('the transcript row model builds, keeps and groups rows like the supplied one', async () => {
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: COMPOSER, text: textOf(COMPOSER), blocks: ROUTES[COMPOSER], integrate: integrateRoutes,
+    read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  world.enter({imports: {...sessionConversationImports(world),
+    './strip-markdown-DRcmtuJc.js#It': message => /interrupt/i.test(message),
+    './strip-markdown-DRcmtuJc.js#Ft': message => !message.metadata?.hidden,
+    './strip-markdown-DRcmtuJc.js#Pt': message => !(message.role === 'user' && message.content === ''),
+    './strip-markdown-DRcmtuJc.js#Lt': part => part.type !== 'image',
+    './strip-markdown-DRcmtuJc.js#Mt': message => /disk is full/.test(message),
+    './strip-markdown-DRcmtuJc.js#zt': result => result.content?.map(part => part.text).join('') ?? result.text ?? ''}});
+  const json = value => JSON.stringify(value, (_, item) => (Object.prototype.toString.call(item) === '[object Map]' ? [...item]
+    : Object.prototype.toString.call(item) === '[object Set]' ? [...item] : item));
+  const same = (name, ...args) => assert.equal(json(ours[name](...args)), json(supplied[name](...args)), `${name}(${json(args).slice(0, 80)})`);
+  const text = value => [{type: 'text', text: value}];
+  const messagesByKey = {
+    k0: {role: 'user-message-metadata', attachments: [{type: 'tab', url: 'https://a.example'}]},
+    k1: {role: 'user', content: 'Find the docs', timestamp: 1000},
+    k2: {role: 'assistant', timestamp: 1100, stopReason: 'toolUse', responseId: 'resp1', content: [{type: 'thinking', thinking: 'plan it'},
+      {type: 'thinking', thinking: '  '}, {type: 'text', text: 'Looking <system-message>hidden</system-message>'}, {type: 'image'},
+      {type: 'toolCall', id: 'tc1', name: 'websearch', arguments: {}}, {type: 'toolCall', id: 'tc2', name: 'bash', arguments: {}}]},
+    k3: {role: 'toolResult', toolCallId: 'tc1', timestamp: 1200, content: text('found'), details: {sources: [{id: 's1', url: 'https://a.example'}]}},
+    k3b: {role: 'toolResult', toolCallId: 'tc2', timestamp: 1210, content: text('out 1'), details: {execSessionId: 7}},
+    k4: {role: 'steering', id: 'st1', timestamp: 1250, after: {timestamp: 1100, contentIndex: 2}},
+    k15: {role: 'user', content: 'steer', timestamp: 1260, metadata: {steer: true, steeringMessageId: 'st1'}},
+    k5: {role: 'assistant', timestamp: 1300, stopReason: 'toolUse', content: [{type: 'toolCall', id: 'tc3', name: 'bash_interact', arguments: {exec_session_id: 7}}]},
+    k5r: {role: 'toolResult', toolCallId: 'tc3', timestamp: 1310, content: text('out 2'), isError: false},
+    k6: {role: 'assistant', timestamp: 1400, stopReason: 'stop', content: text('Done')},
+    k7: {role: 'system-message', kind: 'routine_trigger', content: 'Daily run', metadata: {routineId: 'r1'}},
+    k8: {role: 'system-message', kind: 'internal', content: 'hidden'},
+    k9: {role: 'compaction', summary: 'Kept the plan', timestamp: 1500},
+    k10: {role: 'user', content: 'Stop', timestamp: 1600, metadata: {interruptSteer: true}},
+    k11: {role: 'assistant', stopReason: 'aborted', content: [], errorMessage: 'Interrupted by user', timestamp: 1650},
+    k12: {role: 'session-branch', parentSession: {id: 'p1', title: 'Parent'}, timestamp: 1660},
+    k13: {role: 'assistant', stopReason: 'error', errorMessage: 'Overloaded', content: text('partial'), timestamp: 1700},
+    k14: {role: 'turn-lifecycle', timestamp: 1710},
+    k16: {role: 'toolResult', toolCallId: 'tc9', timestamp: 1720, isError: true, content: text('database or disk is full')},
+    k17: {role: 'assistant', stopReason: 'toolUse', timestamp: 1730, content: [{type: 'toolCall', id: 'tc9', name: 'write', arguments: {}}]},
+    // An interrupted run the user then redirected, an aborted run followed by an ordinary message,
+    // a steer whose steering message is gone, a steer anchored at the run's first part, and a
+    // message with no text.
+    k18: {role: 'assistant', stopReason: 'aborted', errorMessage: 'Interrupted', content: text('half'), timestamp: 1740},
+    k19: {role: 'user', content: 'Redo it', timestamp: 1750, metadata: {interruptSteer: true}},
+    k20: {role: 'assistant', stopReason: 'aborted', errorMessage: 'Interrupted', content: text('half again'), timestamp: 1760},
+    k21: {role: 'user', content: 'Next', timestamp: 1770},
+    k22: {role: 'user', content: 'orphan steer', timestamp: 1780, metadata: {steer: true, steeringMessageId: 'gone'}},
+    k23: {role: 'steering', id: 'st2', timestamp: 1255, after: {timestamp: 1100, contentIndex: 0}},
+    k24: {role: 'user', content: [{type: 'image'}], timestamp: 1900},
+    k25: {role: 'assistant', stopReason: 'stop', content: text('ok'), timestamp: 1910},
+  };
+  const messageOrder = ['k0', 'k1', 'k2', 'k3', 'k3b', 'k4', 'k15', 'k5', 'k5r', 'k6', 'k7', 'k8', 'k9', 'k10', 'k11', 'k12', 'k13', 'k14', 'k16', 'k17', 'k23', 'k18', 'k19', 'k20', 'k21',
+    'k22', 'k24', 'k25'];
+  const snapshot = {messagesByKey};
+  for (const messageStartTimestamp of [undefined, 1250]) {
+    same('__pair_visibleMessages', {messageOrder, messageStartTimestamp, snapshot});
+    same('__pair_persistedRows', {messageOrder, messageStartTimestamp, snapshot});
+  }
+  const persisted = supplied.__pair_persistedRows({messageOrder, snapshot});
+  const streaming = {role: 'assistant', timestamp: 1800, content: [{type: 'text', text: 'Live'}, {type: 'toolCall', id: 'tc10', name: 'read', arguments: {}}]};
+  const live = {autoCompactionStatus: 'idle', autoRetry: {phase: 'idle'}, error: null, streamingMessage: streaming, persistedRowsState: persisted,
+    reconnect: {phase: 'idle'}, status: 'streaming'};
+  const variants = [{}, {status: 'idle', streamingMessage: undefined}, {autoCompactionStatus: 'running'}, {autoRetry: {phase: 'waiting', attempt: 2, maxAttempts: 5}},
+    {reconnect: {phase: 'connecting', noticeDue: true, error: null}}, {reconnect: {phase: 'connecting', noticeDue: false}}, {status: 'error', error: 'Boom'},
+    {status: 'error', error: 'Boom', reconnect: {phase: 'connecting', noticeDue: false}}];
+  for (const variant of variants) same('__pair_liveRows', {...live, ...variant});
+  const rows = supplied.__pair_liveRows(live);
+  const idleRows = supplied.__pair_liveRows({...live, status: 'idle', streamingMessage: undefined});
+  same('__pair_joinBashInteract', rows);
+  for (const [a, b] of rows.flatMap(row => idleRows.map(other => [row, other]))) same('__pair_sameRow', a, b);
+  same('__pair_keepRows', rows, idleRows);
+  same('__pair_keepRows', idleRows, rows);
+  // A row near the end that changed is redrawn; one further back keeps its identity.
+  for (const back of [1, 3, 5, 7, 9]) {
+    const at = idleRows.length - back;
+    const changed = idleRows.map((row, index) => (index === at && row.type !== 'assistant-activity' ? {...row, metadataKey: 'changed', summary: 'changed'} : row));
+    same('__pair_keepRows', idleRows, changed);
+  }
+  // A run whose cited sources shrank keeps its new sources.
+  const cited = sourceList => idleRows.map(row => (row.type === 'assistant-activity'
+    ? {...row, metadata: {citationSourcesById: new Map(sourceList.map(source => [source.id, source]))}} : row));
+  same('__pair_keepRows', cited(sources), cited(sources.slice(0, 1)));
+  same('__pair_keepRows', cited(sources), cited(sources));
+  // While a run waits on a question the user has not been asked, the rows are not held.
+  const asking = supplied.__pair_liveRows({...live, streamingMessage: {...streaming, content: [{type: 'toolCall', id: 'q1', name: 'ask_user_question', arguments: {}}]}});
+  for (const suspension of ['tc10', 'q1'])
+    same('__pair_nextRows', {activeSuspensionToolCallId: suspension, previousRows: asking, nextRows: asking.filter(row => row.type !== 'assistant-activity'),
+      lastVisibleConversationMessageKey: 'k6', reconnect: {phase: 'idle'}, status: 'streaming'});
+  same('__kept_rn', rows);
+  for (const next of [idleRows, rows]) for (const [status, phase] of [['streaming', 'idle'], ['error', 'idle'], ['streaming', 'connecting']])
+    same('__pair_nextRows', {activeSuspensionToolCallId: 'tc10', previousRows: rows, nextRows: next, lastVisibleConversationMessageKey: 'k6', reconnect: {phase}, status});
+  const runs = [{finishedAt: 1, jsonlReadOffset: 0, jsonlReadSize: 100, filesChanged: [{path: 'a.md', type: 'created'}], memoryExtraction: {summary: 'Saved'}},
+    {finishedAt: null, filesChanged: [], jsonlReadOffset: 0, jsonlReadSize: 0}];
+  same('__pair_withRunFiles', rows, runs, messageOrder.map((key, index) => ({id: String(index), key})));
+  same('__pair_withRunFiles', rows, [], []);
+  const turned = rows.map(row => (row.type === 'assistant-activity' ? {...row, turn: {id: 'turn1', ordinal: 1, finishedAt: 2, finalMessage: [messagesByKey.k6]}} : row));
+  same('__pair_withTurnResults', turned, [{createdRoutine: {id: 'rt1', turnId: 'turn1'}}, {createdRoutine: null}], [{id: 1, filesChanged: [{path: 'b.md'}]}]);
+  const getMessage = key => messagesByKey[key];
+  for (const options of [{getMessage, isStreaming: true, pendingToolCallId: 'tc10'}, {getMessage, hideUserInterruptedAbortMessage: true}])
+    same('__pair_chatTurns', rows, options);
+  for (const key of ['k11', 'k13', 'k6']) {
+    same('__kept_nn', messagesByKey[key]);
+    same('__pair_isInterruptAborted', messagesByKey[key]);
+  }
+  same('__pair_turnIdFor', {messageKey: 'k1'}, [{id: 'turn1', messageKey: 'k1'}]);
+  same('__pair_isStorageErrorRun', {type: 'assistant-activity', runId: 'x', items: [{type: 'error', errorMessage: 'database or disk is full'}]}, 'y');
+});
+
+// The message list's layout, windowing, scroll-following and run-activity helpers, with real inputs.
+test('the message list measures, windows, follows and reads activity like the supplied one', async () => {
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: COMPOSER, text: textOf(COMPOSER), blocks: ROUTES[COMPOSER], integrate: integrateRoutes,
+    read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  world.enter({imports: {'./strip-markdown-DRcmtuJc.js#Mt': message => /disk is full/.test(message)}});
+  const json = value => JSON.stringify(value, (_, item) => (Object.prototype.toString.call(item) === '[object Map]' ? [...item] : item));
+  const same = (name, ...args) => assert.equal(json(ours[name](...args)), json(supplied[name](...args)), `${name}(${json(args).slice(0, 80)})`);
+  for (const heights of [[], [100], [50, 700, 200, 90], [300, 100, 200], [50, 60], [900, 1000, 950]]) same('__pair_medianHeight', heights);
+  const measured = new Map([['a', 140], ['c', 0], ['e', 900]]);
+  const entries = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((key, index) => ({key, estimatedHeightPx: index % 3 ? 60 + index * 10 : undefined}));
+  for (const entry of entries) for (const options of [{rollingMedianPx: 110}, undefined]) same('__pair_rowHeight', entry, measured, options);
+  for (const options of [undefined, {gapPx: 8, rollingMedianPx: 100}]) same('__pair_measureLayout', entries, measured, options);
+  const layout = supplied.__pair_measureLayout(entries, measured, {gapPx: 8, rollingMedianPx: 100});
+  const shifted = supplied.__pair_measureLayout(entries.slice(1), new Map([...measured, ['d', 400]]), {gapPx: 8});
+  for (const [distance, viewport] of [[0, 300], [450, 200], [2000, 500], [-5, 0], [450, 0], [700, 10]]) {
+    same('__pair_visibleRange', layout, distance, viewport);
+    same('__pair_viewportAnchor', layout, distance, viewport, ['c', 'd', 'e']);
+    same('__pair_viewportAnchor', layout, distance, viewport, ['zz']);
+  }
+  same('__pair_visibleRange', layout, 100, 200, {keysChanged: true, previousRange: {startIndex: 0, endIndex: 6, firstKey: 'b'}});
+  same('__pair_visibleRange', supplied.__pair_measureLayout([], measured), 0, 100);
+  for (const key of ['d', 'a', 'zz']) same('__pair_bottomShift', layout, shifted, key);
+  for (const distance of [-3, 0, 24, 25]) same('__pair_bottomState', distance);
+  for (const event of [{deltaMode: 0, deltaY: 3}, {deltaMode: 1, deltaY: 3}, {deltaMode: 2, deltaY: -1}]) same('__pair_wheelPixels', event);
+  const element = {scrollTop: -120, scrollHeight: 2000, clientHeight: 600};
+  for (const mode of ['__pair_TOP_DOWN_SCROLL', '__kept_as'])
+    assert.equal(ours[mode].readDistanceFromBottom({...element}), supplied[mode].readDistanceFromBottom({...element}), mode);
+  const states = [{type: 'attached'}, {type: 'detached'}, {type: 'settling', completion: 'attached', targetDistancePx: 0}];
+  const actions = [{type: 'open-at-bottom'}, {type: 'user-input'}, {type: 'user-distance', distanceFromBottomPx: 30}, {type: 'user-distance', distanceFromBottomPx: 4, isStreaming: true},
+    {type: 'user-distance', distanceFromBottomPx: 4}, {type: 'bottom-button', behavior: 'smooth', isStreaming: true}, {type: 'bottom-button', behavior: 'instant'},
+    {type: 'scroll-to-key', targetDistancePx: 120}, {type: 'scroll-to-key', targetDistancePx: 5, behavior: 'smooth'}, {type: 'settling-complete'},
+    {type: 'streaming-started'}, {type: 'streaming-ended'}, {type: 'other'}];
+  for (const state of states) for (const action of actions) same('__pair_followReducer', state, action);
+  const thinking = (text, extra) => ({part: {type: 'thinking', thinking: text}, ...extra});
+  const run = {type: 'assistant-activity', runId: 'r1', assistantMessages: [{stopReason: 'aborted'}], items: [
+    {type: 'steps', status: 'done', steps: [thinking('**Planning** the work\n**Reading files**'), step(1, 'read')]},
+    {type: 'steps', status: 'streaming', steps: [step(2, 'subagent', {part: {type: 'toolCall', id: 'c2', name: 'subagent', arguments: {action: 'spawn'}}})]},
+    {type: 'error', errorMessage: 'database or disk is full'}, {type: 'error', errorMessage: 'Other'}, {type: 'content', part: {type: 'text', text: 'hi'}}]};
+  same('__pair_mergeStepGroups', run.items);
+  const spawn = index => ({step: step(index, 'subagent', {part: {type: 'toolCall', id: `c${index}`, name: 'subagent', arguments: {action: 'spawn'}}}), props: {}});
+  same('__kept_Ja', [spawn(1), spawn(2)], () => true);
+  for (const options of [{row: run}, {row: run, hideUserInterruptedAbortMessage: true}, {row: run, hideUserInterruptedAbortMessage: true, paymentRequiredRunId: 'r1'}])
+    same('__kept_hh', options);
+  for (const message of [{role: 'assistant', stopReason: 'stop'}, {role: 'assistant', stopReason: ' Error '}, {role: 'user', stopReason: 'stop'}, {role: 'assistant'}]) {
+    same('__pair_stopStatus', message);
+    same('__kept_gh', message);
+  }
+  for (const row of [run, {type: 'message', key: 'm1'}, {...run, renderKey: 'rk'}]) same('__kept_$e', row);
+  same('__kept_xh', run);
+  same('__kept_xh', {...run, items: run.items.slice(0, 1)});
+  for (const text of ['**One**\nthen **Two** ', 'no header', '**A**']) same('__pair_thinkingHeaderOf', text);
+  for (const rows of [[{type: 'message'}, run], [run, {type: 'message'}], [{...run, items: [{type: 'steps', steps: [thinking('plain')]}]}], []])
+    same('__pair_currentThinkingHeader', rows);
+});
+
+// The chat commands: feedback, new, clear (confirmed, then failing) and compact (failing).
+test('the chat commands run like the supplied ones', async () => {
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: COMPOSER, text: textOf(COMPOSER), blocks: ROUTES[COMPOSER], integrate: integrateRoutes,
+    read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  // Each command fails once with an Error and once with something else, for both messages.
+  const run = async (side, plain) => {
+    const calls = [];
+    const record = name => (...args) => (calls.push([name, ...args.filter(arg => typeof arg !== 'function')]), name === 'loading' ? 'toast-1' : undefined);
+    world.enter({imports: {'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './context-q_vohNW8.js#n': {navigate: record('navigate')},
+      './strip-markdown-DRcmtuJc.js#N': {broadcast: record('broadcast')}, './provider-Cw0zhujt.js#l': {setMessages: record('setMessages')},
+      './strip-markdown-DRcmtuJc.js#M': {confirm: (options, then) => (calls.push(['confirm', options]), then())},
+      // The toast is an object whose methods are called, so each method's path is set.
+      './dist-LyKrHgST.js#n.loading': record('loading'), './dist-LyKrHgST.js#n.error': record('error'), './dist-LyKrHgST.js#n.success': record('success'),
+      './strip-markdown-DRcmtuJc.js#er': options => ({mutateAsync: async input => { calls.push(['mutate', String(options), input]); throw String(options).includes(plain) ? 'not an Error' : new Error('boom'); }})}});
+    const command = side.__kept_Ga({sessionId: 's1'});
+    for (const [name, detail] of [['feedback', 'Nice'], ['new'], ['clear'], ['compact', 'Keep the plan'], ['other']]) calls.push([name, command(name, detail)]);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    return JSON.stringify(calls);
+  };
+  for (const plain of ['clearMessages', 'compact']) assert.equal(await run(ours, plain), await run(supplied, plain), plain);
+});
+
+// The scroll controller, driven through a session: open at the bottom, stream, the user scrolls up by
+// wheel, touch and keys, then jumps back; its follow mode, location, debug trail and scroll writes match.
+test('the message list scroll controller follows and lets go like the supplied one', async () => {
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: COMPOSER, text: textOf(COMPOSER), blocks: ROUTES[COMPOSER], integrate: integrateRoutes,
+    read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const drive = (side, geometry) => {
+    const trail = [];
+    let streaming = false;
+    const element = {scrollTop: 0, scrollHeight: 2000, clientHeight: 600, listeners: {},
+      addEventListener(type, listener) { this.listeners[type] = listener; }, removeEventListener(type) { delete this.listeners[type]; },
+      getBoundingClientRect: () => ({top: 0, bottom: 600, height: 600}), querySelector: () => null};
+    const controller = new side.__pair_ScrollController({isStreaming: () => streaming, onLocationChange: location => trail.push(['location', location]),
+      prefersReducedMotion: () => true, geometry: geometry === 'bottom-up' ? side.__kept_as : undefined});
+    const steps = [
+      () => controller.attach(element), () => controller.openAtBottom(), () => { streaming = true; controller.notifyStreamingStarted(); },
+      () => { element.scrollHeight += 300; controller.commitAttachedFollow(); }, () => controller.queueLayoutReplacement(),
+      () => element.listeners.wheel?.({deltaMode: 0, deltaY: -240}), () => { element.scrollTop = Math.max(0, element.scrollTop - 240); element.listeners.scroll?.(); },
+      () => element.listeners.touchstart?.({touches: [{clientY: 300}]}), () => element.listeners.touchmove?.({touches: [{clientY: 420}]}), () => element.listeners.touchend?.(),
+      () => element.listeners.pointerdown?.(), () => controller.preserveDistance(80), () => controller.scrollToKeyDistance(150, 'smooth'),
+      () => controller.scrollToBottom('smooth'), () => controller.commitPending(), () => { streaming = false; controller.notifyStreamingEnded(); },
+      () => controller.queueFooterCorrection(24),
+      // A touch after the last one ended starts fresh; many steps fill the debug trail past its cap.
+      () => element.listeners.touchmove?.({touches: [{clientY: 500}]}),
+      ...Array.from({length: 40}, (_, index) => () => (index % 2 ? controller.scrollToBottom() : controller.scrollToKeyDistance(60 + index))),
+      () => controller.detach(),
+    ];
+    for (const [index, run] of steps.entries()) {
+      let outcome;
+      try { outcome = run(); } catch (error) { outcome = `threw ${error.name}`; }
+      trail.push([index, outcome, controller.getFollowMode(), controller.getLocation?.(), element.scrollTop]);
+    }
+    return JSON.stringify([...trail, controller.getDebugEvents()]);
+  };
+  for (const geometry of ['top-down', 'bottom-up']) assert.equal(drive(ours, geometry), drive(supplied, geometry), geometry);
+});
+
