@@ -37,7 +37,7 @@ export function createWorld() {
     const target = function () {};
     const proxy = new Proxy(target, {
       get(_, key) {
-        if (key === LABEL) return path;
+        if (key === LABEL || key === STUB_PATH) return path;
         if (key === Symbol.toPrimitive) return hint => (hint === 'number' ? 1 : path);
         if (key === Symbol.iterator) return function* () { yield stub(`${path}[0]`); yield stub(`${path}[1]`); };
         if (key === 'then') return undefined;
@@ -114,7 +114,8 @@ export function createWorld() {
     useInsertionEffect: () => {},
     useEffectEvent: fn => fn,
     useSyncExternalStore: (_, get) => get(),
-    useImperativeHandle: () => {},
+    // Handlers a component exposes on its ref run like its effects, each with the scene's event.
+    useImperativeHandle: (_, make) => effects.push(() => Object.fromEntries(Object.entries(make() ?? {}).map(([key, value]) => [key, describeProp(key, value, 0)]))),
     useTransition: () => [false, fn => fn()],
     useDeferredValue: value => value,
     isValidElement: value => Boolean(value?.$element),
@@ -192,7 +193,7 @@ export function createWorld() {
     if (prop === 'render' || prop === 'children') return {renderProp: call(value, scenario.renderProps ?? stub('renderProps'), scenario.renderState ?? stub('renderState'))};
     if (/^on[A-Z]/.test(prop)) {
       const before = log.length;
-      const result = call(value, scenario.event ?? stub(`event:${prop}`));
+      const result = call(value, ...(scenario.args ?? [scenario.event ?? stub(`event:${prop}`)]));
       return {handler: result, log: log.splice(before)};
     }
     return describe(value, depth + 1);
@@ -200,7 +201,7 @@ export function createWorld() {
 
   /** Sets the scene that stubs answer by, for calls made outside a render (a helper called directly). */
   function enter(scene = {}) {
-    Object.assign(scenario, {context: undefined, state: undefined, event: undefined, renderProps: undefined, renderState: undefined, imports: undefined}, scene);
+    Object.assign(scenario, {context: undefined, state: undefined, event: undefined, renderProps: undefined, renderState: undefined, imports: undefined, frames: false, window: undefined, args: undefined}, scene);
   }
 
   /** Renders `component` with `props` under `scene`, then runs the effects it registered. */
@@ -242,8 +243,10 @@ export function createWorld() {
   /** Evaluates a chunk's text as a module; resolves with its namespace. */
   async function evaluate(text, identifier) {
     const context = vm.createContext({
-      window: stub('window'), document, navigator: stub('navigator'), globalThis: undefined,
-      requestAnimationFrame: fn => (log.push(['requestAnimationFrame']), 1), cancelAnimationFrame: () => log.push(['cancelAnimationFrame']),
+      // A scene can give the window's values, and `frames: true` runs animation frames at once.
+      window: new Proxy(stub('window'), {get: (target, key) => (scenario.window && key in scenario.window ? scenario.window[key] : target[key])}),
+      document, navigator: stub('navigator'), globalThis: undefined,
+      requestAnimationFrame: fn => (log.push(['requestAnimationFrame']), scenario.frames && fn(NOW), 1), cancelAnimationFrame: () => log.push(['cancelAnimationFrame']),
       setTimeout: () => (log.push(['setTimeout']), 1), clearTimeout: () => log.push(['clearTimeout']),
       ResizeObserver: stub('ResizeObserver'), MutationObserver: stub('MutationObserver'), matchMedia: stub('matchMedia'),
       getComputedStyle: stub('getComputedStyle'), queueMicrotask: () => {}, console, Math: seededMath, JSON, Object, Array, Map, Set, WeakMap, WeakSet,

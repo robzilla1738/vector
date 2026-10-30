@@ -2576,3 +2576,355 @@ test('Settings › Lasso lists shortcuts, edits them and templates placeholders 
   for (const name of ['promptText', 'urlText']) assert.equal(ours[`__pair_${name}`](editor), supplied[`__pair_${name}`](editor), name);
   for (const value of ['a.b*c', '{x}', '']) assert.equal(ours.__pair_escapeRegExp(value), supplied.__pair_escapeRegExp(value));
 });
+
+// The session provider's UI: the side panel, composer controls, mention menu, RichInput, the routine
+// dialog with its schedule, agent status and the tool card runtime, on a device routine, a cloud one,
+// a session with subagents, Aux Code agents and side chats, and each key the time field and menu take.
+test('the session provider UI renders and behaves like the supplied one', async () => {
+  const chunk = 'assets/provider-Cw0zhujt.js';
+  const dayjs = at => ({isValid: () => !String(at).startsWith('bad'), tz: zone => { if (zone === 'Bad/Zone') throw Error('zone'); return dayjs(`${at}@${zone}`); },
+    format: pattern => `${at} as ${pattern}`, hour: () => 14, minute: () => 30, add: amount => dayjs(`${at}+${amount}`), startOf: unit => dayjs(`${at}^${unit}`), toISOString: () => `iso(${at})`, utc: () => dayjs(`${at}z`)});
+  const model = {provider: 'anthropic', modelId: 'claude-x', thinkingLevel: 'medium', fastMode: false};
+  const routine = {id: 'r1', name: 'Morning', prompt: 'Summarize', environment: 'device', deviceId: 'd1', type: 'child', parentSessionId: 's9', status: 'active', revision: 3, projectId: 'p1',
+    rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0', sessionConfig: {model, permissionMode: 'auto', notificationsEnabled: false}};
+  const preview = (id, extra = {}) => ({id, title: `Task ${id}`, status: 'idle', model: {provider: 'openai', modelId: 'gpt-x'}, createdAt: '2026-10-29T08:00:00Z', updatedAt: '2026-10-30T08:00:00Z', previewText: 'Almost done', waiting: false,
+    latestRun: {startedAt: '2026-10-30T08:00:00Z', finishedAt: '2026-10-30T08:05:00Z', abortReason: null, finalAssistantMessage: [{model: 'gpt-x', responseModel: 'gpt-y', provider: 'openai'}]}, ...extra});
+  const rows = [preview('a1', {status: 'running'}), preview('a2'), preview('a3', {status: 'errored'}), preview('a4', {status: 'suspended'}), preview('a5', {waiting: true}), preview('a6', {status: 'aborted'})];
+  const subagents = [{sessionId: 'a1', model: 'm', isRunning: true}, {sessionId: 'a2', model: 'm', isRunning: false}];
+  const children = [{id: 'c1', trigger: {type: 'sidechat'}, title: ''}, {id: 'c2', trigger: {type: 'sidechat'}, title: 'Notes'}, {id: 'c3', trigger: {type: 'other'}, title: 'No'}];
+  const answer = {'sessions.get': {data: rows[1], isLoading: false}, 'sessions.childSessions': {data: children}, 'sessions.liveToolCalls': {data: [{name: 'read_file'}]},
+    'projects.listSkills': {data: [{enabled: true, name: 'plan', absolutePath: '/s/plan', description: 'Plans'}, {enabled: false}], isFetched: true},
+    'settings.getAll': {data: {timezone: 'America/Chicago', routineDeviceId: 'd1', mcp: {servers: {git: {transport: 'stdio'}, git__hub: {transport: 'streamable-http', url: 'https://mcp.example'}}}}}, 'routines.get': {data: routine}};
+  const previews = data => (_, options) => ({query: 'previews', data: options?.select ? options.select(data) : data, isFetching: false, isError: false, refetch: () => {}, interval: options?.refetchInterval?.({state: {data}})});
+  const query = options => (options?.query === 'previews' ? options : queries(answer)(options));
+  const form = (world, values) => ({watch: name => name.split('.').reduce((value, key) => value?.[key], values), setValue: world.stub('spy:setValue'), register: name => ({name}), handleSubmit: run => run,
+    formState: {isDirty: true, isSubmitting: false, isValid: true, dirtyFields: {model: true, trigger: true, notificationsEnabled: true, permissionMode: true}}});
+  const values = (extra = {}) => ({environment: 'device', projectId: 'p1', name: 'Morning', prompt: 'Summarize', timezone: 'America/Chicago', model, permissionMode: 'guard', notificationsEnabled: true,
+    attachment: {type: 'child', parentSessionId: 's9'}, trigger: {kind: 'recurring', rrule: 'FREQ=WEEKLY;BYDAY=MO,WE;BYHOUR=8;BYMINUTE=30'}, ...extra});
+  const imports = (world, {formValues = values(), previewRows = rows, session = {toolState: {subagent: {subagents}}}, host = {kind: 'device'}, failing = false} = {}) => ({
+    './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#qt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#nr': query, './strip-markdown-DRcmtuJc.js#tr': query,
+    '*sessions.listPreviewItems.queryOptions': previews(previewRows),
+    './strip-markdown-DRcmtuJc.js#er': () => ({isPending: false, mutateAsync: failing ? () => { throw 'offline'; } : world.stub('spy:mutateAsync')}), './strip-markdown-DRcmtuJc.js#jn': {host}, './strip-markdown-DRcmtuJc.js#M': {confirm: world.stub('spy:confirm')},
+    './strip-markdown-DRcmtuJc.js#en': true, './strip-markdown-DRcmtuJc.js#g': status => status === 'running', './strip-markdown-DRcmtuJc.js#_': title => !title, './strip-markdown-DRcmtuJc.js#$t': item => item.id && 'starter',
+    './strip-markdown-DRcmtuJc.js#ct': path => path.split('/').pop(), './strip-markdown-DRcmtuJc.js#xn': async () => ({items: [{id: 1, title: 'Docs', url: 'https://d', targetId: 't1', active: true}]}),
+    './context-q_vohNW8.js#n': {currentSession: session}, './context-q_vohNW8.js#r': {navigate: world.stub('spy:miniNavigate')}, './subagent-icon-B78zcDX8.js#n': list => new Map(list.map(item => [item.sessionId, 'blue'])),
+    './use-agent-settings-DiedG0R1.js#n': {...{modelProvider: 'anthropic', modelId: 'claude-x', thinkingLevel: 'high', fastMode: true}, defaultPermissionMode: 'guard', availableModels: [{provider: 'openai', id: 'gpt-x', shortName: 'GPT X'}]},
+    './tag-icon-DeMC7uIN.js#p': form(world, formValues), './tag-icon-DeMC7uIN.js#f': form(world, formValues), './tag-icon-DeMC7uIN.js#c': world.stub('spy:resolver'),
+    './use-default-permission-mode-DKp05vFQ.js#s': enabled => ({label: enabled ? 'Confirm' : 'Skip', tooltip: 'Final confirm', icon: world.stub('confirmIcon')}), './use-default-permission-mode-DKp05vFQ.js#o': value => (value === 'true' ? true : value === 'false' ? false : undefined),
+    './model-select-BvZsM1Kl.js#l': {selectedModel: {modelShortName: 'Claude X', availableThinkingLevels: ['low', 'high'], supportsFastMode: true}, isOpen: false}, './model-select-BvZsM1Kl.js#s': levels => levels,
+    './date-CxUVm-Dr.js#n.default': dayjs, './date-CxUVm-Dr.js#n.default.tz': (at, zone) => dayjs(`${at}@${zone}`), './date-CxUVm-Dr.js#t': ms => `${ms}ms`,
+    './tool-definition-registry-Cc6FCFb2.js#t': name => ({title: `Tool ${name}`}), './tool-definition-registry-Cc6FCFb2.js#n': call => `Read ${call.name}`, './tool-definition-registry-Cc6FCFb2.js#r': (title, summary) => `${title}: ${summary}`,
+    './strip-markdown-DRcmtuJc.js#t': text => `plain ${text}`, './strip-markdown-DRcmtuJc.js#zt': message => message.model, './browser-binding-CzDmxQNA.js#n': async () => ({windowId: 1}),
+    './utils-Cl9zfMcr.js#g': text => (text.startsWith('/f') ? 'hint' : ''), '*.flushSync': run => run()});
+  const context = (world, extra = {}) => ({onClose: world.stub('spy:onClose'), onCancel: world.stub('spy:onCancel'), onDirtyChange: world.stub('spy:onDirty'), runtime: {mention: {}, submit: {}, file: {}, callbacks: {}, root: {}}, bumpRuntimeVersion: world.stub('spy:bump'),
+    disabled: false, initialContent: {type: 'doc'}, runtimeVersion: 2, openFilePreview: world.stub('spy:openFilePreview'), openAuxCode: world.stub('spy:openAuxCode'), ...extra});
+  const key = (world, name, extra = {}) => ({key: name, nativeEvent: {isComposing: false}, preventDefault: world.stub('spy:preventDefault'), stopPropagation: world.stub('spy:stopPropagation'), metaKey: false, ctrlKey: false, altKey: false,
+    currentTarget: {get value() { return '45'; }, set value(_) {}, selectionStart: 0, selectionEnd: 3, matches: () => true, closest: () => null}, target: {value: '9:30 pm'}, clipboardData: {getData: () => '7a'}, reason: 'none', cancel: world.stub('spy:cancel'), ...extra});
+  const submitted = world => key(world, 'Enter', {...values(), name: 'Evening'});
+  const mentions = [{type: 'tab', id: 't1', name: 'Docs', description: 'd.example', groupLabel: 'Open Tabs', icon: 'data:fav'}, {type: 'tab-group', id: 'g1', name: 'Work', groupLabel: 'Tab Groups'},
+    {type: 'skill', id: 's1', name: 'plan', groupLabel: 'Skills', description: 'Plans'}, {type: 'command', id: 'c1', command: 'clear', name: 'clear', groupLabel: 'Commands'}, {type: 'command', id: 'c2', command: 'nope', name: 'nope', groupLabel: 'Commands'}];
+  const scene = (world, options = {}, extra = {}) => ({imports: imports(world, options), context: context(world), window: {innerWidth: 1000, innerHeight: 800, location: {hash: '#/u/7/projects/p1/settings/memories/files', pathname: '/u/7/tasks'}, setInterval: () => 3, clearInterval: () => {}}, frames: true, ...extra});
+  const scenes = [
+    world => scene(world, {}, {event: submitted(world)}),
+    world => scene(world, {formValues: values({trigger: {kind: 'recurring', rrule: 'FREQ=MINUTELY;INTERVAL=30'}, attachment: {type: 'standalone'}})}, {event: {...key(world, 'ArrowDown'), event: key(world, 'ArrowDown')}, state: [true, true, '9:30 pm', 600, 540]}),
+    world => scene(world, {formValues: values({trigger: {kind: 'recurring', rrule: 'FREQ=DAILY;INTERVAL=3;BYHOUR=7;BYMINUTE=5'}})}, {event: {...key(world, 'ArrowUp'), event: key(world, 'ArrowUp')}, state: ['custom']}),
+    world => scene(world, {formValues: values({trigger: {kind: 'once', runAt: '2026-11-01T15:00:00Z'}})}, {event: {...key(world, 'Enter'), event: key(world, 'Enter')}}),
+    world => scene(world, {formValues: values({trigger: {kind: 'recurring', rrule: 'FREQ=MONTHLY;BYMONTHDAY=1'}, environment: 'cloud'}), previewRows: []}, {event: key(world, 'Escape'), state: [true, false, '', null, 15]}),
+    world => scene(world, {session: {toolState: {}}, host: {kind: 'cloud'}, previewRows: []}, {event: key(world, 'Tab'), state: [true, true, 'x', null, 15]}),
+    world => scene(world, {failing: true}, {event: submitted(world)}),
+    world => scene(world, {}, {context: undefined, state: [true, false]}),
+    world => scene(world, {}, {event: 'interval'}),
+    world => scene(world, {}, {event: 'DAILY', state: ['custom']}),
+    world => scene(world, {}, {event: key(world, 'a')}),
+    world => scene(world, {}, {event: key(world, 'Backspace', {metaKey: true}), state: [false, true, '12:15', null, 735], context: context(world, {disabled: true})}),
+  ];
+  const propsets = [
+    world => ({mode: 'guard', finalConfirm: true, alwaysShowLabel: true, memoryExtractionDisabled: true, onModeChange: world.stub('spy:onModeChange'), onFinalConfirmChange: world.stub('spy:onFinal'), onMemoryExtractionDisabledChange: world.stub('spy:onMem'), render: world.stub('render'),
+      children: 'child', sessionId: 's1', previewFiles: [{metadata: {path: '/a.md'}}], value: model, model, shortName: 'Claude X', showThinkingLevel: true, provider: 'openai', fastMode: true, label: 'Medium', className: 'probe', hour: 14, minute: 45,
+      routineId: 'r1', projectId: 'p1', open: true, defaults: values(), status: 'active', routine, editing: true, environment: 'device', canEditSettings: true, deviceName: 'Mac', isCurrent: true, days: ['TU', 'MO'], initialPrompt: 'Go', item: {...subagents[0], preview: rows[0]}, preview: rows[0], fallback: 'Busy',
+      startedAt: '2026-10-30T08:00:00Z', actualModel: {provider: 'openai', modelId: 'gpt-y'}, taskId: 'a1', title: 'Fix', prompt: 'Do', path: 'memory/notes.md', tooltip: true, toolState: {subagent: {subagents}}, call: {name: 'mcp__git__hub__search'}, items: mentions, command: world.stub('spy:command'), isInteractionBlocked: () => false, index: 2, isSelected: true}),
+    world => ({mode: 'full-access', variant: 'submenu', onModeChange: world.stub('spy:onModeChange'), value: {skills: [{id: 's'}], isLoaded: true}, model: {...model, fastMode: true}, status: 'paused', routine: {...routine, environment: 'cloud'}, routineId: 'r2', defaults: values({environment: 'cloud'}), editing: true, environment: 'cloud', canEditSettings: false,
+      item: {...subagents[1], preview: rows[2]}, preview: rows[1], variant2: 1, taskId: 'a2', path: '../up.md', tooltip: false, call: {name: 'mcp__git__log'}, items: [], error: 'Tabs failed', isInteractionBlocked: () => true, days: ['MO','TU','WE','TH','FR']}),
+    world => ({variant: 'final-confirm', finalConfirm: false, onModeChange: world.stub('spy:onModeChange'), onFinalConfirmChange: world.stub('spy:onFinal'), status: 'working', item: {...subagents[0], isRunning: false, preview: rows[1]}, preview: rows[3], path: 'C:\\x\\y.md', routineId: undefined, defaults: values(), environment: 'device', loading: true, days: ['SA', 'SU', 'MO', 'TU', 'WE', 'TH', 'FR'], actualModel: model, taskId: undefined, item2: 1}),
+    world => ({variant: 'duration', status: 'needs-you', preview: preview('w', {status: 'suspended', previewText: ''}), item: {sessionId: 'a2', isRunning: false, preview: rows[1]}, model, actualModel: null, onChange: world.stub('spy:onChange'), hour: 0, minute: 0}),
+    world => ({variant: 'badge', status: 'stopped', preview: rows[5], item: {...subagents[1], preview: rows[1]}, model, hour: 12, minute: 5}),
+    world => ({status: 'failed', preview: rows[4], variant: 'duration', item: {...subagents[1], isRunning: true}}),
+    world => ({status: 'done', preview: preview('z', {previewText: ''})}),
+    world => ({status: 'waiting', preview: preview('y', {status: 'idle', waiting: true, previewText: ''})}),
+  ];
+  const {world} = await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 3000, defaults: false, renamed: renamedBindings, scenes, props: propsets});
+  // Helpers on real values, in both versions: typed times, RRULEs through the fields and back, days, a one-time rule and form values.
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const same = (name, ...args) => { const run = side => { try { return JSON.stringify(side[name](...args)); } catch (error) { return `threw ${error.name}`; } }; assert.equal(run(ours), run(supplied), `${name} ${JSON.stringify(args)}`); return run(ours); };
+  world.enter({imports: imports(world)});
+  assert.equal(same('__kept_rt', 13, 5), '"1:05 PM"');
+  assert.equal(same('__kept_ln', '9:30 pm', 0), '{"hour":21,"minute":30}');
+  for (const [text, at] of [['9', 600], ['9', 300], ['0930', 0], ['12:15', 735], ['12a', 0], ['1230p', 0], ['13', 0], ['24', 0], ['9:60', 0], ['nope', 0], ['123:45', 0], ['7 a.m.', 0], ['0', 0], ['2359', 0]]) same('__kept_ln', text, at);
+  const rules = ['FREQ=DAILY;BYHOUR=9;BYMINUTE=0', 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=8;BYMINUTE=30', 'FREQ=WEEKLY;BYDAY=SU,SA;BYHOUR=10;BYMINUTE=15', 'FREQ=MINUTELY;INTERVAL=30', 'FREQ=HOURLY;INTERVAL=2', 'FREQ=DAILY;INTERVAL=3;BYHOUR=7;BYMINUTE=5',
+    'DTSTART;TZID=America/Chicago:20261101T090000\nRRULE:FREQ=WEEKLY;BYDAY=TU;BYHOUR=9;BYMINUTE=0', 'FREQ=MONTHLY;BYMONTHDAY=1', 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0;BYSECOND=30', 'FREQ=WEEKLY;INTERVAL=2;BYDAY=XX;BYHOUR=9;BYMINUTE=0', ''];
+  assert.equal(JSON.parse(same('__pair_parseSchedule', {scheduleKind: 'recurring', rrule: rules[3], timezone: 'UTC'})).interval, 30);
+  for (const rrule of rules) {
+    same('__pair_parseSchedule', {scheduleKind: 'recurring', rrule, timezone: 'UTC'});
+    for (const type of ['daily', 'weekdays', 'weekly', 'custom', 'interval', 'once'])
+      same('__pair_buildRrule', {...JSON.parse(ours.__pair_parseSchedule ? JSON.stringify(ours.__pair_parseSchedule({scheduleKind: 'recurring', rrule, timezone: 'UTC'})) : '{}'), type});
+    same('__pair_parseRruleParts', rrule); same('__pair_hasFixedTime', Object.fromEntries(rrule.split(';').map(part => part.split('='))));
+  }
+  same('__pair_parseSchedule', {scheduleKind: 'once', runAt: '2026-11-01T15:00:00Z', timezone: 'UTC'}); same('__pair_parseSchedule', {scheduleKind: 'once', timezone: 'Bad/Zone'});
+  same('__pair_triggerFromSchedule', {type: 'once', runAt: 'x'}, 'UTC'); same('__pair_triggerFromSchedule', {type: 'once'}, 'UTC'); same('__pair_triggerFromSchedule', {type: 'daily', rrule: rules[0]}, 'UTC');
+  for (const days of [['MO'], ['MO', 'TU', 'WE', 'TH', 'FR'], ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'], ['SA', 'MO'], []]) {
+    same('__pair_formatDays', days); same('__pair_sortDays', days);
+    for (const day of ['MO', 'SA']) same('__pair_toggleDay', days, day);
+  }
+  for (const value of ['mo, tu', '', undefined]) same('__pair_parseDays', value);
+  for (const [value, zone] of [['2026-11-01T09:00', 'UTC'], ['', 'UTC'], ['bad', 'Bad/Zone'], ['2026-11-01T09:00', 'Bad/Zone']]) { same('__pair_fromDateTimeLocal', value, zone); same('__pair_toDateTimeLocal', value, zone); same('__pair_inTimezone', value, zone); same('__pair_nextHour', zone); }
+  same('__pair_formRrule', {trigger: {kind: 'once', runAt: '2026-11-01T15:00:00Z'}}); same('__pair_formRrule', {trigger: {kind: 'recurring', rrule: rules[0]}});
+  for (const rule of ['DTSTART;TZID=America/Chicago:20261101T090000\nRRULE:FREQ=DAILY;COUNT=1', 'DTSTART:20261101T150000Z\nRRULE:FREQ=DAILY;COUNT=1', 'DTSTART:20261101T150000Z\nRRULE:FREQ=DAILY;COUNT=2', rules[0]]) same('__pair_parseOnceRule', rule, 'UTC');
+  same('__pair_routineToForm', routine, model, 'UTC'); same('__pair_routineToForm', {...routine, type: 'standalone', rrule: 'DTSTART:20261101T150000Z\nRRULE:FREQ=DAILY;COUNT=1', sessionConfig: {}}, model, 'UTC');
+  for (const path of ['memory/notes.md', './x/y.md', '../up.md', '', 'C:\\a\\b.md']) { same('__pair_projectMemoryPath', path, {projectId: 'p1'}); same('__pair_fileName', path); }
+  // The suggestion popup through its whole life, the same way in both: open, update, keys, close.
+  const popup = async side => {
+    const calls = [];
+    const runtime = {mention: {}, callbacks: {onCommand: command => (calls.push(['onCommand', command]), command === 'clear'), onChange: value => calls.push(['onChange', value])}};
+    const disposers = [];
+    const options = side.__kept_bo(runtime, {allowedPrefixes: null, char: '@', load: async input => (calls.push(['load', input.query, input.commandCandidates.length]), {items: mentions, error: 'x'})}, 'Menu', disposers);
+    const editor = {isDestroyed: false, view: {dom: {offsetWidth: 300, getBoundingClientRect: () => ({left: 10, top: 700, bottom: 720})}}, extensionManager: {extensions: []}, commands: {clearContent: () => calls.push(['clear'])}, getJSON: () => ({})};
+    const suggestion = {editor, items: mentions, loading: false, command: item => calls.push(['command', item.id]), clientRect: () => ({left: 900, top: 700, bottom: 720})};
+    const items = await options.items({editor, query: 'do'});
+    const popupHandlers = options.render();
+    popupHandlers.onStart(suggestion); popupHandlers.onUpdate({...suggestion, items: []});
+    calls.push([popupHandlers.onKeyDown({event: {key: 'ArrowDown'}}), popupHandlers.onKeyDown({event: {key: 'Enter'}}), runtime.mention.suppressSubmitUntil, runtime.mention.isSuggestionOpen, popupHandlers.onKeyDown({event: {key: 'Escape'}})]);
+    popupHandlers.onExit(); disposers.forEach(run => run());
+    return JSON.stringify([items.length, runtime.mention.error, calls]);
+  };
+  const opened = scenes[0](world);
+  world.enter({...opened, imports: {...opened.imports, '*.createRoot': () => ({render: element => element.props.ref({onKeyDown: () => true}), unmount: () => {}}), './create-editor-B-Br5Wz9.js#c': () => false}});
+  assert.equal(await popup(ours), await popup(supplied));
+  const element = () => ({style: {}, isConnected: true, offsetHeight: 200});
+  for (const [rect, width] of [[{left: 900, top: 700, bottom: 720}, 300], [{left: 4, top: 100, bottom: 120}, 0], [{left: 40, top: 300, bottom: 320}, 500], [{left: 40, top: 50, bottom: 690}, 200]]) {
+    const place = side => { const box = element(); side.__pair_positionPopup(box, {editor: {view: {dom: {offsetWidth: width}}}, clientRect: () => rect}); return JSON.stringify(box.style); };
+    assert.equal(place(ours), place(supplied));
+  }
+});
+
+test('the Projects list and its dialog act like the supplied ones', async () => {
+  const chunk = 'assets/project-list-BmtBNv8P.js';
+  const projects = [{id: 'p1', name: 'Site', color: 'blue', icon: 'globe', lastActiveAt: '2026-10-30T08:00:00Z', updatedAt: '2026-10-01T08:00:00Z'}, {id: 'p2', name: 'Old', archivedAt: '2026-01-01', updatedAt: '2026-10-02T08:00:00Z'}, {id: 'p3', name: 'Bad', lastActiveAt: 'bad'}];
+  const scene = (world, mutate = world.stub('spy:mutateAsync')) => ({imports: {'./strip-markdown-DRcmtuJc.js#er': {isPending: false, mutateAsync: mutate}, './strip-markdown-DRcmtuJc.js#M': {confirm: (options, run) => world.stub('spy:confirm')(options, run())},
+    './date-CxUVm-Dr.js#n.default': at => ({isValid: () => at !== 'bad', format: pattern => `${at} as ${pattern}`})}, event: {preventDefault: world.stub('spy:preventDefault'), stopPropagation: world.stub('spy:stopPropagation')}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 8, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world), world => scene(world, () => { throw 'offline'; }), world => ({...scene(world), imports: {...scene(world).imports, './strip-markdown-DRcmtuJc.js#er': {isPending: true, mutateAsync: world.stub('spy:mutateAsync')}}})],
+    props: [{accountId: 7, userId: '7', projects, project: projects[0], open: true, onCreated: () => {}}, {accountId: 7, userId: '7', projects: [], project: projects[1], open: false}, {project: projects[2]}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  assert.equal(ours.r(projects.slice(0, 2)).map(project => project.id).join(), 'p1,p2');
+  assert.equal(JSON.stringify(ours.r(projects)), JSON.stringify(supplied.r(projects)));
+});
+
+test('the session feedback dialog opens, saves and guards a draft like the supplied one', async () => {
+  const chunk = 'assets/session-feedback-dialog-BjDg0W8m.js';
+  const scene = (world, {comment = 'Too slow', errors = {}, pending = false, payload = {sessionId: 's1', comment: 'Seen'}, event = {comment: 'Saved', reason: 'none'}} = {}) => ({event, imports: {
+    './context-q_vohNW8.js#n': {currentSession: {id: 's1'}}, './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')}, './strip-markdown-DRcmtuJc.js#M': {confirm: world.stub('spy:confirm')},
+    './strip-markdown-DRcmtuJc.js#P': (_, handler) => handler(payload), './tag-icon-DeMC7uIN.js#f': {getValues: () => comment, reset: world.stub('spy:reset'), setValue: world.stub('spy:setValue'), handleSubmit: run => run, register: name => ({name}), formState: {errors}},
+    './strip-markdown-DRcmtuJc.js#er': {isPending: pending, error: pending ? {message: 'Failed'} : null, reset: world.stub('spy:resetReport'), mutate: (input, options) => { world.stub('spy:mutate')(input); options.onSuccess(); }}}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 6, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world), world => ({...scene(world, {comment: '  ', event: {reason: 'escape-key'}, payload: {sessionId: 'other'}}), state: [true]}), world => scene(world, {errors: {comment: {message: 'Required'}}, pending: true, event: null, payload: {sessionId: 's1'}}),
+      world => ({...scene(world), args: [false, {reason: 'escape-key'}]}), world => ({...scene(world), args: [false, {reason: 'outside-press'}]}), world => ({...scene(world), args: [false, {reason: 'close-press'}]})], props: [{}, {children: 'x'}]});
+});
+
+test('the coding agent nudge picks its target and looks for code like the supplied one', async () => {
+  const chunk = 'assets/coding-agent-nudge-Cy9BtLdb.js';
+  const session = (provider, content, status = 'idle') => ({currentSession: {status, model: {provider}, messages: [{role: 'assistant', content: 'Hi'}, {role: 'user', content}]}});
+  const scene = (world, value = session('aux', 'fix the bug in src/app.tsx'), {isDismissed = false, stream = 'idle', hidden = false} = {}) => ({event: {stopPropagation: world.stub('spy:stopPropagation')}, imports: {'./context-q_vohNW8.js#n': value, './provider-Cw0zhujt.js#l': {status: stream}, './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7},
+    './browser-binding-CzDmxQNA.js#l': hidden, './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')}, './utils-BEeo4-cB.js#t': {isDismissed, dismiss: world.stub('spy:dismiss'), dismissForever: world.stub('spy:dismissForever')}}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 30, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world), world => scene(world, session('claude-code', [{type: 'text', text: 'pnpm test'}, {type: 'image'}])), world => scene(world, session('openai-codex', 'Plan my trip')), world => scene(world, session('aux', 'git status', 'running'), {stream: 'streaming'}),
+      world => scene(world, session('google', 'react')), world => scene(world, undefined, {isDismissed: true}), world => scene(world, undefined, {hidden: true})],
+    props: [{className: 'probe', accountId: 7, targetId: 'codex', place: 'chat', isPending: true, onStatusChange: () => {}, children: 'Connect', dismissLabel: 'Dismiss', href: 'https://a', onDismiss: () => {}}, {accountId: 7, targetId: 'claude-code'}, {accountId: 7, isPending: true}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  for (const text of ['fix the bug', 'tell me about Paris', 'run pnpm install', 'see src/app/page.tsx:12', '```\nx\n```', '버그를 고쳐줘', 'the go team', 'go build ./x', 'localhost:3000', 'Node', 'a stack trace'])
+    assert.equal(ours.__pair_looksLikeCode(text), supplied.__pair_looksLikeCode(text), text);
+  assert.equal(ours.__pair_looksLikeCode('fix the bug'), true);
+  for (const provider of [undefined, 'aux', 'openai-codex', 'claude-code', 'google']) assert.equal(ours.r(provider), supplied.r(provider));
+  for (const message of [{content: ' hi <system-message>x</system-message> '}, {content: [{type: 'text', text: 'a'}, {type: 'image'}, {type: 'text', text: 'b'}]}]) assert.equal(ours.__pair_messageText(message), supplied.__pair_messageText(message));
+  for (const messages of [[], [{role: 'assistant', content: 'x'}], [{role: 'user', content: 'a'}, {role: 'assistant', content: 'b'}, null]]) assert.equal(ours.__pair_lastUserMessage(messages), supplied.__pair_lastUserMessage(messages));
+});
+
+test('the Avatar parts render and report image loads like the supplied ones', async () => {
+  const chunk = 'assets/avatar-iEt_J7Lk.js';
+  const stateful = world => ({context: ['loaded', world.stub('spy:setStatus')], event: {currentTarget: {hidden: false}}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 12, defaults: false, renamed: renamedBindings,
+    scenes: [stateful, world => ({context: ['error', world.stub('spy:setStatus')], event: {currentTarget: {hidden: true}}}), {context: undefined}],
+    props: [world => ({className: 'probe', size: 'lg', src: '/a.png', alt: 'A', onError: world.stub('spy:onError'), onLoad: world.stub('spy:onLoad'), onLoadingStatusChange: world.stub('spy:status')}), {children: 'AB'}, {src: ''}, {delay: 300}]});
+});
+
+test('the Settings content layout tracks its sections and skips full pages like the supplied one', async () => {
+  const chunk = 'assets/route-DMfKuXmY.js';
+  const heading = (name, top) => ({dataset: {settingsSection: name}, getBoundingClientRect: () => ({top})});
+  const headings = [heading('Appearance', 10), heading('Privacy', 45), heading('', 0), heading('Exact', 51), heading('Language', 400)];
+  const viewport = (world, scrollTop = 100, scrollHeight = 900) => ({scrollTop, clientHeight: 500, scrollHeight, getBoundingClientRect: () => ({top: 10}), addEventListener: (name, handler) => { world.stub('spy:listen')(name); handler(); }, removeEventListener: world.stub('spy:unlisten')});
+  const content = (world, list = headings) => ({querySelectorAll: () => list, querySelector: () => ({scrollIntoView: world.stub('spy:scrollIntoView')})});
+  const route = (world, pathname, matches = []) => ({frames: true, state: [[{title: 'Appearance', isActive: true}, {title: 'Privacy', isActive: false}]], imports: {'./useRouterState-vMU34Fpy.js#t': options => options.select({location: {pathname}}), './Matches-B99cyGDb.js#n': () => match => matches.includes(match.to)}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 12, defaults: false, renamed: renamedBindings,
+    scenes: [world => route(world, '/u/7/settings/general'), world => route(world, '/u/7/settings/plugins/skills'), world => route(world, '/x', ['/u/$userId/settings/experimental']), world => route(world, '/x', ['/u/$userId/settings/routines/$routineId']), world => ({...route(world, '/x'), state: [[]]}), world => ({...route(world, '/x'), state: [[{title: 'Only', isActive: true}]]})],
+    props: [world => ({viewportRef: {current: viewport(world)}, contentRef: {current: content(world)}}), world => ({viewportRef: {current: viewport(world, 400, 901.5)}, contentRef: {current: content(world)}}), world => ({viewportRef: {current: viewport(world, 0)}, contentRef: {current: content(world, [])}}), {viewportRef: {current: null}, contentRef: {current: null}}]});
+});
+
+test('the side panel route keeps the session in the URL and goes dark in incognito like the supplied one', async () => {
+  const chunk = 'assets/route-DI45z3OR.js';
+  const scene = (world, mode, search) => ({imports: {'./strip-markdown-DRcmtuJc.js#Kt': {mode}, './extension-main-Dz1-AsCT.js#H.useParams': {userId: '7'}, './extension-main-Dz1-AsCT.js#H.useNavigate': world.stub('spy:navigate'), './extension-main-Dz1-AsCT.js#H.useSearch': search}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 6, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world, 'default', {sessionId: 's1'}), world => scene(world, 'incognito', {}), world => ({...scene(world, 'incognito', {sessionId: 's2'}), event: 's3'})], props: [{children: 'child'}, {}]});
+});
+
+test('the Done step applies appearance drafts and finishes onboarding like the supplied one', async () => {
+  const chunk = 'assets/done-DPzI9pFd.js';
+  const calls = [];
+  const note = name => (...args) => { calls.push([name, ...args.map(arg => JSON.stringify(arg) ?? 'undefined')]); return undefined; };
+  const preferences = {getBrowserColorScheme: async () => 'dark', setBrowserColorScheme: async () => {}, getTabStyle: async () => 'vertical', setTabStyle: async () => {}, getTabSwitcherSortByRecentlyUsed: async () => true, setTabSwitcherSortByRecentlyUsed: async () => {}};
+  const settings = {'browserColorScheme': 'dark', tabStyle: 'horizontal', tabSwitcherSortByRecentlyUsed: true, windowBackgroundVibrancyEnabled: false, verticalTabInsertionPosition: 'top', enabled: true};
+  const imports = (world, {os = 'macos', query = {}, mutation = {}, skipDone = false, target = 'workspace', browserPreferences = preferences} = {}) => ({
+    './browser-color-scheme-Df5VSuPV.js#r': browserPreferences, './translate-status-K6en4VW6.js#d': {setTheme: note('setTheme')}, './strip-markdown-DRcmtuJc.js#Bn': {os}, './appearance-Ceuw3-j6.js#o': true, './appearance-Ceuw3-j6.js#c': true,
+    './strip-markdown-DRcmtuJc.js#nr': options => ({data: settings[options.queryKey?.[1]], isError: false, isLoading: false, ...query}),
+    './strip-markdown-DRcmtuJc.js#pr': {setQueryData: note('setQueryData'), invalidateQueries: note('invalidate'), query: async () => ({accountId: 7, browserProfile: {profilePath: '/p'}}), fetchQuery: async () => ({mode: 'cloud'})},
+    '*.mutationOptions': options => options, './strip-markdown-DRcmtuJc.js#er': options => ({isPending: false, isError: false, mutate: () => { world.stub('spy:mutate')(); options?.onSuccess?.({installed: true}); options?.onError?.({message: 'Denied'}); options?.onSettled?.(); }, mutateAsync: async (...args) => note('mutateAsync')(...args), ...mutation}),
+    './strip-markdown-DRcmtuJc.js#Ut': {track: note('track')}, './tag-icon-DeMC7uIN.js#f': {handleSubmit: run => run, watch: id => id === 'defaultBrowser', setValue: note('setValue')},
+    './use-update-settings-ahXnGzre.js#t': () => {}, './extension-main-Dz1-AsCT.js#R.useLoaderData': {skipDone}, './extension-main-Dz1-AsCT.js#R.useSearch': {completionTarget: target}, './platform-CX_yPATJ.js#o': false,
+    './sign-in-popup-CzjJFAuC.js#t': async () => true, './error-content-CCom8r6s.js#t': async (error, title) => ({title, description: String(error?.message)}), './recommended-filters-gA0HHZVC.js#t': async () => { throw Error('filters'); },
+    './dist-LyKrHgST.js#n.error': note('toast.error'), './dist-LyKrHgST.js#n.success': note('toast.success')});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 60, defaults: false, renamed: renamedBindings,
+    scenes: [world => ({imports: imports(world)}), world => ({imports: imports(world, {os: 'windows', skipDone: true, mutation: {isPending: true}}), state: [true]}), world => ({imports: imports(world, {query: {isError: true}, browserPreferences: {}})}), world => ({imports: imports(world, {mutation: {isError: true, error: {message: 'Some settings'}}})}),
+      world => ({imports: imports(world, {query: {isLoading: true, data: undefined}}), state: [false]}), world => ({imports: imports(world, {mutation: {isPending: true}, query: {data: undefined}})})],
+    props: [{open: true, onOpenChange: () => {}, onClose: () => {}, onSavingChange: () => {}, children: 'child', autoComplete: false, onAutoCompleteError: () => {}}, {open: false, autoComplete: true}, {queryKey: ['x', 'tabStyle'], available: true, read: () => 'a', write: () => {}}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const dock = (isAdded, canAdd) => ({'chrome.auxBrowserPreferences.getDockState': {isAdded, canAdd}, 'chrome.auxBrowserPreferences.addToDock': {isAdded: true, added: 'now'}, 'chrome.auxBrowserPreferences.getDefaultBrowserState': {isDefault: isAdded, canSet: canAdd}, 'chrome.auxBrowserPreferences.setAsDefaultBrowser': {isDefault: true, set: 'now'}});
+  // Whatever finishing does after its first await, in order, from the form's submit.
+  const values = {defaultBrowser: true, addToDock: true, keepTasksRunning: false, helpImproveAux: true};
+  const finish = async (side, options = {}) => {
+    calls.length = 0;
+    world.render(side.__pair_OptionsForm, {}, {imports: {...imports(world, options), ...dock(false, true), 'localStorage.setItem': note('localStorage')}, event: values, window: {location: {protocol: 'chrome-extension:', origin: 'o', replace: note('replace')}}});
+    await new Promise(resolve => setImmediate(resolve));
+    return JSON.stringify(calls);
+  };
+  assert.equal(await finish(ours), await finish(supplied));
+  assert.ok((await finish(ours)).includes('toast.error'));
+  const draft = async (side, state, data, available = true) => {
+    const written = [];
+    world.enter({state: [state], imports: {...imports(world), './strip-markdown-DRcmtuJc.js#nr': {data, isError: false, isLoading: false}, './strip-markdown-DRcmtuJc.js#pr': {setQueryData: (key, value) => written.push(['cached', key, value])}}});
+    const setting = side.__pair_useDraftSetting({queryKey: ['k'], available, read: () => {}, write: async value => written.push(['write', value])});
+    await setting.save();
+    return JSON.stringify([setting.value, setting.disabled, setting.available, written]);
+  };
+  for (const args of [['b', 'a'], ['a', 'a'], [undefined, 'a'], ['b', undefined], ['b', 'a', false]]) assert.equal(await draft(ours, ...args), await draft(supplied, ...args));
+  assert.ok((await draft(ours, 'b', 'a')).includes('write'));
+  // A failed Apply keeps the drafts and says so.
+  const apply = async side => {
+    let run;
+    world.render(side.__pair_AppearanceForm, {onClose: () => {}, onSavingChange: note('saving')}, {state: ['vertical'], imports: {...imports(world), './browser-color-scheme-Df5VSuPV.js#o': () => ({...preferences, setTabStyle: async () => { throw Error('denied'); }}), './strip-markdown-DRcmtuJc.js#er': options => { run = options.mutationFn; return {}; }}});
+    return run().then(() => 'saved', error => error.message);
+  };
+  assert.equal(await apply(ours), await apply(supplied));
+  assert.notEqual(await apply(ours), 'saved');
+  for (const [added, can, options] of [[false, true, {defaultBrowser: true, addToDock: true}], [true, true, {defaultBrowser: true, addToDock: true}], [false, false, {defaultBrowser: true, addToDock: true}], [false, true, {defaultBrowser: false, addToDock: false}]]) {
+    world.enter({imports: dock(added, can)});
+    assert.equal(JSON.stringify(await ours.__pair_applyBrowserOptions(options)), JSON.stringify(await supplied.__pair_applyBrowserOptions(options)));
+  }
+});
+
+test('a Project page shows its files, instructions and tabs and saves its name like the supplied one', async () => {
+  const chunk = 'assets/_projectId-DW8jDyV7.js';
+  const calls = [];
+  const note = name => (...args) => { calls.push([name, ...args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg, (key, value) => (typeof value === 'function' ? 'fn' : value)) : String(arg)))]); };
+  const project = {id: 'p1', name: 'Site', color: 'blue', icon: 'globe', workspacePath: '/Users/me/site', archivedAt: null};
+  const archived = {...project, id: 'p2', name: 'Old', archivedAt: '2026-01-01'};
+  const list = data => ({data, isPending: false, isError: false});
+  const session = id => ({id, title: `Chat ${id}`, previewText: 'Hello', updatedAt: '2026-10-30T08:00:00Z'});
+  const answers = {'projects.readFile': list({content: ' # Rules\n'}), 'projects.listFiles': list(['AGENTS.md', 'a.md', 'b.png']), 'sessions.listPreviewItems': list([session('s1'), session('s2')]), 'routines.list': list([{id: 'r1', name: 'Morning', pausedAt: null}, {id: 'r2', name: 'Weekly', pausedAt: '2026-10-01'}]), 'projects.list': list([project, archived, {...project, id: 'p3', name: 'Third'}])};
+  const imports = (world, {current = project, answer = answers, updating = note('update')} = {}) => ({'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, '*.useParams': {projectId: current.id, userId: '7'}, './Match-OymXmaXz.js#o': world.stub('spy:navigate'),
+    './strip-markdown-DRcmtuJc.js#tr': {data: current}, './strip-markdown-DRcmtuJc.js#nr': queries(answer), './strip-markdown-DRcmtuJc.js#er': {isPending: false, mutateAsync: async (...args) => updating(...args)},
+    './strip-markdown-DRcmtuJc.js#pr': {invalidateQueries: note('invalidate')}, './tag-icon-DeMC7uIN.js#f': {control: {}, handleSubmit: run => run}, './tag-icon-DeMC7uIN.js#m': '/Users/me/site', './date-CxUVm-Dr.js#n.default': at => ({format: pattern => `${at} as ${pattern}`, fromNow: () => 'today'}),
+    './tool-definition-registry-Cc6FCFb2.js#f': routine => `Every day (${routine.id})`, './utils-DCBm67_n.js#y': false, '*.safeParse': name => (String(name).trim() ? {success: true, data: String(name).trim()} : {success: false, error: {issues: String(name) ? [{message: 'Name it'}] : []}}),
+    './dist-LyKrHgST.js#n.error': note('toast.error'), './dist-LyKrHgST.js#n.success': note('toast.success')});
+  const scenes = [world => ({imports: imports(world), event: {target: {value: 'x'}, key: 'a', nativeEvent: {isComposing: false}, currentTarget: {blur: world.stub('spy:blur')}}}), world => ({imports: imports(world, {current: archived}), state: [true]}), world => ({imports: imports(world), event: 'routines'}),
+    world => ({imports: imports(world, {answer: {}}), state: ['routines']}), world => ({imports: imports(world, {answer: Object.fromEntries(Object.keys(answers).map(key => [key, {isPending: false, isError: true}]))}), state: ['sources']}),
+    world => ({imports: imports(world, {answer: Object.fromEntries(Object.keys(answers).map(key => [key, list([])]))}), state: ['chats']})];
+  const {world} = await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 100, defaults: false, renamed: renamedBindings, scenes,
+    props: [{project, accountId: 7, projectId: 'p1', content: '# Rules', rawContent: ' # Rules\n', isPending: false, isError: false, sourceFiles: ['a.md'], onClose: () => {}, onPersist: async () => true, initialContent: 'x', label: 'chats', title: 'No chats', description: 'Start', icon: 'i', selected: true},
+      {project: archived, isPending: true, sourceFiles: [], selected: false, onClose: () => {}, onPersist: async () => false}, {project, isError: true, content: '', sourceFiles: [], onClose: () => {}, onPersist: async () => true}, {project, content: '', sourceFiles: [], onClose: () => {}, onPersist: async () => true}]});
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  // The name's save runs past its first await: every outcome, on both sides.
+  const rename = async (side, name, event, onPersist) => {
+    calls.length = 0;
+    world.render(side.__pair_ProjectNameInput, {project, onPersist: async (...args) => { note('persist')(...args); return onPersist; }}, {imports: imports(world), state: [name], event: {target: {value: name}, key: event, nativeEvent: {isComposing: false}, currentTarget: {blur: note('blur')}}});
+    await new Promise(resolve => setImmediate(resolve));
+    return JSON.stringify(calls);
+  };
+  for (const [name, event, result] of [['  New  ', 'x', true], ['New', 'x', false], ['Site', 'x', true], ['   ', 'x', true], ['New', 'Enter', true], ['New', 'Escape', true], ['', 'x', true]]) assert.equal(await rename(ours, name, event, result), await rename(supplied, name, event, result), name);
+  assert.ok((await rename(ours, '  New  ', 'x', true)).includes('persist'));
+  const persist = async (side, updating) => {
+    calls.length = 0;
+    world.render(side.__pair_ProjectIdentity, {project}, {imports: imports(world, {updating})});
+    await new Promise(resolve => setImmediate(resolve));
+    return JSON.stringify(calls);
+  };
+  assert.equal(await persist(ours, note('update')), await persist(supplied, note('update')));
+  const flow = async (side, component, props, event, updating) => {
+    calls.length = 0;
+    world.render(side[component], {project, accountId: 7, projectId: 'p1', initialContent: 'x', onClose: note('close'), ...props}, {imports: imports(world, {updating}), state: ['Rules'], event});
+    await new Promise(resolve => setImmediate(resolve));
+    return JSON.stringify(calls);
+  };
+  for (const updating of [note('update'), () => { throw 'offline'; }]) {
+    assert.equal(await flow(ours, '__pair_WorkingDirectoryForm', {}, {workspacePath: '/new'}, updating), await flow(supplied, '__pair_WorkingDirectoryForm', {}, {workspacePath: '/new'}, updating));
+    assert.equal(await flow(ours, '__pair_InstructionsEditor', {}, {target: null}, updating), await flow(supplied, '__pair_InstructionsEditor', {}, {target: null}, updating));
+  }
+});
+
+test('the new task page keeps its draft and Project in the URL like the supplied one', async () => {
+  const chunk = 'assets/new-DS2pRmiw.js';
+  const scene = (world, search) => ({event: 's9', imports: {'./extension-main-Dz1-AsCT.js#C.useParams': {userId: '7'}, './extension-main-Dz1-AsCT.js#C.useSearch': search, './extension-main-Dz1-AsCT.js#C.useNavigate': world.stub('spy:navigate')}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 8, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world, {projectId: 'p1'}), world => scene(world, {}), world => ({...scene(world, {projectId: 'p1'}), event: null})], props: [{projectId: 'p1', onProjectIdChange: () => {}, onSessionChange: () => {}}, {projectId: null}]});
+});
+
+test('Settings › Mini popup saves its switch and shortcut like the supplied page', async () => {
+  const chunk = 'assets/mini-popup-BBLwe-a8.js';
+  const calls = [];
+  const note = name => (...args) => { calls.push([name, String(args[0]?.message ?? args[0])]); };
+  const scene = (world, {enabled = {data: true}, shortcut = {data: 'Alt+Space'}, os = 'macos', pending = false} = {}) => ({imports: {'./strip-markdown-DRcmtuJc.js#Bn': {os}, './strip-markdown-DRcmtuJc.js#pr': {setQueryData: note('setQueryData'), invalidateQueries: note('invalidate')},
+    './useQueries-CrOl5VwX.js#t': () => [enabled, shortcut], './strip-markdown-DRcmtuJc.js#er': options => ({isPending: pending, mutate: value => { note('mutate')(value); options.onSuccess?.(value); options.onError?.({message: 'Denied'}); }}), './use-shortcut-capture-DGr8Ws5Z.js#i': true,
+    './dist-LyKrHgST.js#n.error': note('toast.error'), './dist-LyKrHgST.js#n.success': note('toast.success')}, event: false});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 8, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world), world => scene(world, {enabled: {data: false}}), world => scene(world, {enabled: {isLoading: true}, shortcut: {isError: true}, os: 'windows', pending: true})], props: [{}, {children: 'x'}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const run = side => { calls.length = 0; world.render(side.__pair_MiniPopupSettings, {}, scene(world)); return JSON.stringify(calls); };
+  assert.equal(run(ours), run(supplied));
+  assert.ok(run(ours).includes('toast.error'));
+});
+
+test('Detect tools lists its sites like the supplied page', async () => {
+  const chunk = 'assets/detect-tools-Bq1QGFUu.js';
+  const report = {apps: [{host: 'mail.example', score: 8, activeDays: 12}, {host: 'docs.example', score: 3, activeDays: 2}], scannedVisits: 12450, droppedHosts: 7, window: {days: 30}};
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 6, defaults: false, renamed: renamedBindings,
+    scenes: [{imports: {'./strip-markdown-DRcmtuJc.js#nr': {data: report, isPending: false}}}, {imports: {'./strip-markdown-DRcmtuJc.js#nr': {isPending: true}}}, {imports: {'./strip-markdown-DRcmtuJc.js#nr': {isPending: false, error: {message: 'No history'}}}}], props: [{host: 'a.example', score: 2, activeDays: 1}, {}]});
+});
+
+test('the Mini popup shortcut row captures and resets like the supplied one', async () => {
+  const chunk = 'assets/mini-popup-shortcut-field-zmtLA1sg.js';
+  const scene = (world, isCapturing) => ({imports: {'./use-shortcut-capture-DGr8Ws5Z.js#t': options => { options.onValueChange?.('Alt+Space'); options.onValueChange?.('Alt+K'); return {inputRef: world.stub('inputRef'), isCapturing, placeholder: 'Press keys', handleFocus: world.stub('spy:focus'), handleBlur: world.stub('spy:blur'), handleKeyDown: world.stub('spy:key')}; },
+    './platform-CX_yPATJ.js#n': (value, isMac) => `${value}:${isMac}`}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 6, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world, false), world => scene(world, true)], props: [world => ({value: 'Alt+Space', isMacOS: true, onValueChange: world.stub('spy:value'), onReset: world.stub('spy:reset')}), {value: '', isMacOS: false, disabled: true}, {value: 'Alt+K', disabled: false}]});
+});
+
+test('an action confirmation shows its artifact like the supplied one', async () => {
+  const chunk = 'assets/action-confirmation-artifact-BOdmqe64.js';
+  const skill = {name: 'Plan', description: 'Plans a week', body: 'Do this', operation: 'update', existingSkillName: 'Planner', existingSkillCreator: 'builtin', keywords: ['plan', 3], urlPatterns: ['https://x/*']};
+  const scene = {imports: {'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './draft-artifacts-registry-CZ58X0Cu.js#i': kind => kind === 'gmail-draft'}};
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 10, defaults: false, renamed: renamedBindings, scenes: [scene],
+    props: [{artifact: {type: 'screenshot', path: 'shots/a.png', alt: 'Page'}, sessionId: 's1', className: 'probe', compact: true}, {artifact: {type: 'screenshot', path: 'https://x/a.png', caption: 'Page'}}, {artifact: {type: 'screenshot', path: 'a.png'}}, {artifact: {type: 'screenshot', path: 'data:image/png;base64,AA'}, sessionId: 's1'}, {data: {operation: 'customize', existingSkillName: 'Planner', existingSkillCreator: 'builtin'}},
+      {artifact: {type: 'skill-draft', data: skill}, compact: true, data: skill, label: 'Keywords', values: ['a', 'b']}, {artifact: {type: 'skill-draft', data: {operation: 'customize', existingSkillName: 'Planner'}}, data: {operation: 'customize', existingSkillName: 'Planner', existingSkillCreator: 'user'}},
+      {artifact: {type: 'skill-draft', data: {operation: 'create'}}, data: {}}, {artifact: {type: 'gmail-draft', data: {to: 'a'}}, sessionId: 's1'}, {artifact: {type: 'tweet', data: {text: 'hi'}}}]});
+});

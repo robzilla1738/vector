@@ -433,6 +433,84 @@ export const ROUTES = Object.freeze({
     '(0,t.jsx)("span",{children:"Apply"})})};', 'ad1c029216d284002eea81763eb5d2be96aaef0e429c42607a01889a803dc12c', 11004)],
   'assets/lasso-LoarCzmz.js': [block('Lasso settings', 'lasso-settings.js', 'var t=ke(),me=({size:e=24,ariaHidden:n=!',
     ')(ct,{}),children:(0,t.jsx)($t,{})})]})}', '862273d293fb03e9153bfa70aba79291bea343cb20c1da9eb4be8f8006e29742', 19204)],
+  'assets/provider-Cw0zhujt.js': [
+    block('Session icons', 'session-icons.js', 'xa=({size:e=24,ariaHidden:t=!0,...n})=>(',
+      '13.5 9.5H10.5Z",fill:"currentColor"})});', 'a26a3532b8a0ad98da2fe2171181d71a675a853db1cafb44c8c8840b5a8d4f1e', 7318),
+    block('Session side panel', 'session-sidepanel.js', 'var Fi={open:"480px"},et=e=>`side-chat-$',
+      'rovider");return e},Ct=()=>(0,c.use)(wt)', '2b25989418825bb0348475c98d8ad4c7f78c48d2ca293f8cdc1f81514ee5a7f5', 4377),
+    block('Composer permission menu', 'permission-menu.js', 'Bi=({render:e,variant:t="default",mode:n',
+      'pan",{children:"Password access"})]})]})', 'b7e38c8fce3b29121dafedaa23a4786e2b660e828e1b88344893e3f5c8d26dcc', 4327),
+    block('Routine dialog: advanced settings', 'routine-advanced.js', 'Ki=({environment:e,deviceName:t,isCurren',
+      'assName:"size-4"})]},b.id))]})]})]})]})}', '95b19881a21c41d69099a431d1b2805cf6b55eba8d9b70fbdac22d12bb7bb037', 6054),
+    block('Composer model and thinking controls', 'model-select-controls.js', 'Yi=({children:e,className:t})=>{const n=',
+      '{children:Lt("Meta+Shift+.")})]})]})]})}', '5d2b245399c782b3b4838454a850c73e9e46ddab597750bcdcd2c390323571c2', 4019),
+    block('RichInput compound parts', 'rich-input.js', 'zn=(0,c.createContext)(null),Ee=()=>{con',
+      'wId===n&&(e.promise=void 0)}),e.promise}', '24f67e292581093cff7795d8445883edab40acd73ac9670aa1944a12457adb98', 3474),
+    block('Mention menu', 'mention-menu.js', 'fo=async({commandCandidates:e,query:t,ru',
+      'right"),children:s.description??""})]})}', '9d3dd5b7a534e4880b2237ba3015f4e3e1d85e4c05274d8ef0e7b137031a34c1', 4689),
+    block('RichInput editor and suggestion popup', 'rich-input-editor.js', 'bo=(e,t,n,s)=>{const a=new ua;return{all',
+      'ne runs. Use $ to mention skills."})]})}', '187596a076680147b3f62ae8489675d93b4c1a8ff3656186b600aaf490bcce8b', 3601),
+    block('Routine schedule', 'routine-schedule.js', 'jo=Array.from({length:96},(e,t)=>t*15),M',
+      'Routine:s,deleteRoutine:a,runRoutine:i}}', '50dcba63d1501fa84f76e7195ae9e749e57a9fb6756cb939aaa04117cdb882e8', 12232),
+    block('Routine dialog', 'routine-dialog.js', 'Wo=M({environment:N("device"),projectId:',
+      'nId:i},replace:l?.replace})},[n,t,e,a])}', 'c9bd9103134fbf5dd6c72e437baf9cf3224151d2beff0a86c92a26f98204897c', 8037),
+    block('Subagent and coder status', 'subagent-status.js', 'var It=({preview:e})=>e!==void 0&&(e.sta',
+      'k:l.openAuxCode}):void 0,children:o})})}', '5fec755b792366b5a363cb059c8299f988f29b5cefe464e7a7dd3a2ef2f90120', 5679),
+    block('Tool card runtime', 'tool-card-runtime.js', 'll=({children:e,path:t,tooltip:n=!0})=>{',
+      'port==="streamable-http"?l.url:m?.url})}', '29bf876cc13cbe9f11eadef85ce0cdbf17b2b4a12ba47c772e54581e67f2b6d9', 3420),
+  ],
+  'assets/project-list-BmtBNv8P.js': [
+    block('Project list', 'project-list.js', 'U=({accountId:s,projects:t,userId:i})=>(',
+      ';return t.isValid()?t.format("LL"):"—"};', '35a78ed2d11dd46c976a5476a00a288f841152926e367f32743c74a246087947', 2668),
+  ],
+  'assets/session-feedback-dialog-BjDg0W8m.js': [
+    block('Session feedback dialog', 'session-feedback-dialog.js', 'var Y=g(v(),1),e=S();function G(){const ',
+      'n",{children:"Submit"})]})]})]})})})})};', '7738b42b511ba64a201614870de4593ceff3cba57d40d0b3417cdc6e04387980', 2261),
+  ],
+  'assets/coding-agent-nudge-Cy9BtLdb.js': [
+    block('Coding agent nudge', 'coding-agent-nudge.js', 's=k(),I=({children:e,className:n,dismiss',
+      'rget:u,handleConnect:C,handleDismiss:w}}', '59553210ecd019381efdf30cc931e6c051d16ae829beb0ba381e4d2b739c6cfb', 5320),
+  ],
+  'assets/avatar-iEt_J7Lk.js': [
+    block('Avatar', 'avatar.js', 'p=t.createContext(void 0);function k({cl',
+      'em,44cqi,2rem)] leading-none",r),...e})}', '97db20fe91c9035f44e49e95882e743672866c34bfb2cdef44547a632aa72eb1', 1290),
+  ],
+  'assets/route-DMfKuXmY.js': [
+    block('Settings scroll layout', 'settings-scroll-layout.js', 'var i=_(N(),1),t=R(),B=1,O=.2,P=({viewpo',
+      'x)(P,{viewportRef:s,contentRef:d})]})})}', '861998f23282d243dcee739bbe295dbc6d915aca0eaa043b3693883580e7171d', 3048),
+  ],
+  'assets/route-DI45z3OR.js': [
+    block('Side panel route', 'sidepanel-route.js', 'var i=m(u()),n=h();function _(){L();cons',
+      ',"data-chat-drop-zone":"",children:t})};', '7a74ac8657acb38865da18e65e0e306736c00aea7b7d1e392834e192d416dca7', 1342),
+  ],
+  'assets/done-DPzI9pFd.js': [
+    block('Onboarding: done', 'onboarding-done.js', 'var e=J(),Ze=({size:t=24,ariaHidden:a=!0',
+      '},transition:{duration:.2},children:t});', '7f41f568618c8557024ae8a92cbca7cede9e1988333b8fd7a0d7d5e4059fa2fb', 14590),
+  ],
+  'assets/_projectId-DW8jDyV7.js': [
+    block('Project page', 'project-page.js', 'var p=ne(oe(),1),e=ie(),Ns=b("/_web/(pro',
+      '"size-4 shrink-0",!r&&"invisible")})]});', 'b452a4fd6cd4dca4c1264f56e8eae490e0d00351cb11c038a4d0a2e9745fa926', 18947),
+  ],
+  'assets/new-DS2pRmiw.js': [
+    block('New task page', 'new-task-page.js', 'var i=u(d(),1),e=m(),E=({projectId:s,onP',
+      'onProjectIdChange:n,onSessionChange:r})}', '1d80f88edb20b38bb8e9fd396e7f1880de19069c04f6f7b9f451e47847b6a8e6', 1628),
+  ],
+  'assets/mini-popup-BBLwe-a8.js': [
+    block('Mini popup settings', 'mini-popup-settings.js', 'var k="/assets/aux-mini-popup-DpI8c-u_.w',
+      'nding,onCheckedChange:j})]})]}),v()]})};', '84cca5ef1a1d9ae98c38aa220e4f4870fc5dc90899baa60a0ae16b4e9c304317', 2215),
+  ],
+  'assets/detect-tools-Bq1QGFUu.js': [
+    block('Detect tools', 'detect-tools.js', 'var e=o();function N(){const t=c(),{data',
+      ' text-xs leading-tight",children:t})]});', '046ff2c39bdef399d130cf989bf3e2885adf7f1e0d405d9e162af6c6cc49167a', 1218),
+  ],
+  'assets/mini-popup-shortcut-field-zmtLA1sg.js': [
+    block('Mini popup shortcut field', 'mini-popup-shortcut-field.js', 'var t=d(),D=({value:e,isMacOS:o,disabled',
+      'children:"Reset to default"})]})]})]})};', 'da7de287fc1e8f455bb18f4b9aee7fb594f8aa872dd2f50a50d3f2bbf90ecbb9', 841),
+  ],
+  'assets/action-confirmation-artifact-BOdmqe64.js': [
+    block('Action confirmation artifact', 'action-confirmation-artifact.js', 'var s=g(),S=({artifact:e,className:r,com',
+      'xisting"} / ${r}`:"Creates a new skill"}', '8ef31d63a748efd969249bed20dca958e48f7e52907af1d89f05f1b0cd4b3295', 2921),
+  ],
 });
 
 /** Supplied name → Aux name for the module bindings a route renamed (the parity tests compare them
@@ -518,6 +596,14 @@ export const TOKEN_CHANGES = Object.freeze([
   ['search-view.js', 'rounded-2xl', 'rounded-xl'],
   // The dictation overlay's pill was a fixed neutral-100 in light mode; dark mode already took --secondary.
   ['voice-dictation-overlay.js', 'rounded-full bg-neutral-100', 'rounded-full bg-muted'],
+  // The composer's mention menu dropped to 8px at its small size; it is a popover, so it keeps the 12px step.
+  ['mention-menu.js', 'rounded-xl p-1.5 shadow-lg data-[size=sm]:rounded-lg', 'rounded-xl p-1.5 shadow-lg'],
+  // A Project's Instruction and Files cards took the 16px step; cards use the 12px one.
+  ['project-page.js', 'border-border rounded-2xl border', 'border-border rounded-xl border'],
+  // The Detect tools site tiles: the 12px card corner.
+  ['detect-tools.js', 'size-16 rounded-2xl', 'size-16 rounded-xl'],
+  // The artifact in an action confirmation takes the 12px card corner, like the frame around it.
+  ['action-confirmation-artifact.js', 'bg-surface-primary w-full overflow-hidden rounded-lg', 'bg-surface-primary w-full overflow-hidden rounded-xl'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');
