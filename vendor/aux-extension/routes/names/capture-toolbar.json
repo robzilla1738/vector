@@ -1,0 +1,16 @@
+{
+ "L": "FullPageIcon",
+ "N": "SelectionIcon",
+ "k": "DEFAULT_MODE",
+ "V": "CaptureMode",
+ "X": "CaptureRect",
+ "le": "CaptureResult",
+ "ue": "CaptureRequest",
+ "Y": "DRAG_THRESHOLD_PX",
+ "q": "CaptureToolbar",
+ "z": "MODES",
+ "F": "ModeButtons",
+ "G": "CaptureButton",
+ "W": "CloseButton",
+ "J": "isSyncMessage"
+}

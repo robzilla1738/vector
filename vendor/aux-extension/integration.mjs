@@ -103,7 +103,8 @@ function replaceBlocks(text, blocks, label, replacement) {
 /** Utilities the components need that the sealed build lacks, appended inside the utilities layer. */
 export const UTILITIES = 'utilities.css';
 const ADDED_UTILITIES = ['.rounded-b-xl{', '.bg-card{', '.-mt-\\[var\\(--radius-xl\\)\\]{', '.\\[--_r\\:var\\(--radius-xl\\)\\]{',
-  '.group-hover\\/routine\\:bg-muted:'];
+  '.group-hover\\/routine\\:bg-muted:', ':is(.\\*\\:data-model-select-shortcuts\\:px-2 > *)',
+  ':is(.\\*\\*\\:data-\\[agent-session-ui\\=\\"chat\\"\\]\\:px-2 *)'];
 
 export function integrateStyles(text) {
   for (const selector of ADDED_UTILITIES)
@@ -194,6 +195,9 @@ export const ROUTES = Object.freeze({
   ],
   'assets/sidepanel-CI-CbXmY.js': [block('Agent panel', 'agent-panel.js', 'var a=F(E(),1),e=q(),$=', '(0,e.jsx)(g,{})]})]})]})})};',
     '6e5ea2bd545821ed1078577def24b5fa0f51ba66737e3c5ad9fec15b300e34db', 2942)],
+  // Only the panel header; the panel's session and draft plumbing around it stays supplied.
+  'assets/-components-4o0FSqQ9.js': [block('Agent panel header', 'agent-panel-header.js', 'qe=({leading:e})=>{const{os:n}=_(),{data',
+    ':(0,s.jsx)(e==="windows"?ce:ee,{})})})};', '751383ec0b97c0872a530eaca39a6a1ded8687a940eb63b996ce6664918e2f82', 1567)],
   'assets/-layouts-CcApOQbE.js': [block('Settings page kit', 'settings-layout.js', 'var s=l(),p=', '"flex max-w-40 min-w-0 shrink justify-end",e.className)});',
     '6a3f086ae431b181c598eafa4eee750d0dc396e9b1260d9c42748ab8bf1c3978', 2299)],
   'assets/route-TQyeTEXE.js': [block('Settings shell', 'settings-shell.js', 'te=[{label:"Extensions",icon:T1,kind:"chrome",to:"chrome://extensions"}]',
@@ -397,6 +401,38 @@ export const ROUTES = Object.freeze({
     'eric"&&e.reportable&&(0,t.jsx)(T,{})]})}', '26ed1281abeeb6fee31e9ebfb32f0c448c498eb79afd341a311c0ede41d54a5b', 4841)],
   'assets/file-tree-YTG8I4Hr.js': [block('File tree', 'file-tree.js', 'var r=H(),E=({size:s=24,ariaHidden:t=!0,',
     '));return e},F=s=>s.endsWith(".md")?M:E;', '3af3c357f280965efd55825651707da97b6063ace756da0e9d1611ceb9eb935d', 4353)],
+  'assets/voice-dictation-overlay-CtbBZWfm.js': [block('Voice dictation', 'voice-dictation-overlay.js', 'var l=D(),F=({size:o=24,ariaHidden:n=!0,',
+    '(0,l.jsx)(F,{className:"size-4"})})]})};', '9a1733b60a1d06fe14ab5c7678a6f35a8ea794192e499f9e773e31ead4bc6eeb', 5101)],
+  'assets/capture-toolbar-HNeL44hk.js': [block('Capture toolbar', 'capture-toolbar.js', 'var t=E(),L=({size:e=24,ariaHidden:s=!0,',
+    'n e)?!1:e.type==="CAPTURE_TOOLBAR_SYNC"}', '55271c6196ef4813ad17def3775ddff80d57c7c2167ec3588daceaddf1db41e2', 5928)],
+  'assets/full-disk-access-BmnWkbG2.js': [block('Messages access', 'full-disk-access.js', 'var D=C(h()),s=g(),N=e=>(0,s.jsxs)("svg"',
+    ' continue."}),size:"default"})]}):null};', '5e43b59a75248771a13fa4b32b0b2e5e58b4f73cef3943f23af3db836feeed31', 4595)],
+  'assets/inbox-BIWs6dWb.js': [block('Notification Use settings', 'inbox.js', 'var e=N(),f=new Set([K,typeof chrome<"u"',
+    'on:"&&f.has(r.hostname)}catch{return!1}}', '3974896101dc61255a13f04e1213b58ffd7db76120bf099c60afd85c2bf8e194', 4142)],
+  'assets/statistics-CsvIURox.js': [block('Statistics settings', 'statistics.js', 'var y=w(C()),e=O(),g=11,q=2,M=13,Y=7;fun',
+    ')("span",{children:"More"})]})]})})]})};', '9211fd90ccf86ad35cac79ab8c140a6205f73817729a30a8e8e0c2197ca163d8', 4253)],
+  'assets/archived-chats-BgWKiXTB.js': [block('Archived chats settings', 'archived-chats.js', 'var b=D(E()),e=T(),v=20;function ye(){co',
+    'ewText?W(G(s.previewText),100):void 0});', '75f04590fa9c404f4c6c769c9a947ca0831c07e6ba6c5119022d850275b2a376', 3752)],
+  'assets/search-view-gCFKEZ8L.js': [block('New Tab search suggestions', 'search-view.js', 'var p=W(G(),1),oe=new RegExp("\\\\p{M}+","',
+    'ew Promise(e=>{window.setTimeout(e,0)});', '944c1cb7667b1bb3e59c4c6ac898557693fd71fc72106f8f6f65ba71eb6880ce', 8984)],
+  // The preview between these two blocks stays supplied: its Copy and Download are
+  // vendor/provided/aux-productivity-capture.mjs's error toasts and native save dialog.
+  'assets/capture-result-nUfmrYC9.js': [
+    block('Capture result: file name, data URL, route and frame', 'capture-result-frame.js', 'function $(e=new Date){const t=s=>String',
+      'sible p-4 pr-5 pb-7",ref:s,children:e})}', '651c277aa4699634c9ca463ffc0ad442e89db5489ab145a03ebc543950ed7ac5', 1044),
+    block('Capture result: the preview button and its message check', 'capture-result-button.js', 'p=({"aria-label":e,label:t,onClick:s,chi',
+      'SYNC"||e.type==="CAPTURE_RESULT_LANDED"}', 'c12d62040f3361b68df45d21acf27727935684c2bc277d3aaef2c73e0ad80bca', 392),
+  ],
+  'assets/use-browser-importer-GNOc7eYC.js': [block('Browser importer', 'use-browser-importer.js', 'var f=B(K(),1),L="/assets/grant-permissi',
+    '"file",accept:".zip",onChange:o})]})})};', 'b7744aa82b2e0f9cebf8aba20511179d3ba0e0e3453487e79609a70623f208d3', 6521)],
+  'assets/import-browser-DwQpkFpc.js': [block('Onboarding browser import', 'import-browser.js', 'var h=A(z(),1),e=O(),V=({browsers:a,init',
+    'd:a,onClick:n,children:"Next"})})]})})};', '114e794433fe432a83a1f8eac15e1215679ad36352b9f281ff4214ce980deed1', 7602)],
+  'assets/chat-preview-card-J0uel3r2.js': [block('Chat preview card', 'chat-preview-card.js', 'var k=F(L(),1),Ae="/assets/page-curl-top',
+    '&(e.kind==="document"||e.kind==="html")}', '89d4cdb12d797f1e81b5e966bbbf009fada2fc0f91dfabdb74e68e0574ad6a0f', 12213)],
+  'assets/lasso-Chg_FuP-.js': [block('Selection popup', 'selection-popup.js', 'var l=X(J(),1);function Ee(e,s){const r=',
+    '(0,t.jsx)("span",{children:"Apply"})})};', 'ad1c029216d284002eea81763eb5d2be96aaef0e429c42607a01889a803dc12c', 11004)],
+  'assets/lasso-LoarCzmz.js': [block('Lasso settings', 'lasso-settings.js', 'var t=ke(),me=({size:e=24,ariaHidden:n=!',
+    ')(ct,{}),children:(0,t.jsx)($t,{})})]})}', '862273d293fb03e9153bfa70aba79291bea343cb20c1da9eb4be8f8006e29742', 19204)],
 });
 
 /** Supplied name → Aux name for the module bindings a route renamed (the parity tests compare them
@@ -461,6 +497,27 @@ export const TOKEN_CHANGES = Object.freeze([
   ['tool-cards.js', 'text-black', 'text-foreground'],
   // A chat error card: the 12px card corner (its compact form already used it).
   ['error-alert.js', 'rounded-2xl', 'rounded-xl'],
+  // The Agent panel mirrors the sidebar (Arc-style): the native window leaves a 6px gutter on both
+  // sides of the panel, as it does around the sidebar's rows. The composer card fills the panel's
+  // width (its 12px side padding goes), so it sits on that gutter like a sidebar row; the header
+  // title, the conversation text and the composer's footer controls sit 8px in, in line with the
+  // composer's text, like the sidebar's labels inside their rows. The mini popup and New Tab
+  // composers keep theirs.
+  ['agent-panel.js', 'pb-1', 'px-0 pb-1 *:data-model-select-shortcuts:px-2'],
+  ['agent-panel.js', '**:data-[agent-session-ui="chat"]:px-4', '**:data-[agent-session-ui="chat"]:px-2'],
+  ['agent-panel-header.js', 'pt-0.5 pr-2 pl-2', 'px-0 pt-0.5'],
+  // The selection popup: the 12px popover corner, and its field's fill follows --muted in light mode.
+  ['selection-popup.js', 'rounded-3xl', 'rounded-xl'],
+  ['selection-popup.js', 'bg-neutral-100', 'bg-muted'],
+  // The task card's images, tab preview and placeholder used fixed 12px and 14px corners; the card uses rounded-xl.
+  ['chat-preview-card.js', 'rounded-[12px]', 'rounded-xl'],
+  ['chat-preview-card.js', 'rounded-[14px]', 'rounded-xl'],
+  // The onboarding browser tiles and their placeholders: the 12px card corner.
+  ['import-browser.js', 'rounded-2xl', 'rounded-xl'],
+  // The New Tab search suggestions popup took the 16px step; popovers use the 12px one.
+  ['search-view.js', 'rounded-2xl', 'rounded-xl'],
+  // The dictation overlay's pill was a fixed neutral-100 in light mode; dark mode already took --secondary.
+  ['voice-dictation-overlay.js', 'rounded-full bg-neutral-100', 'rounded-full bg-muted'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');

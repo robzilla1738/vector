@@ -420,7 +420,7 @@ test('the token changes use compiled, theme-following classes', () => {
       // A class as compiled CSS escapes it: every character but letters, digits, - and _.
       const selector = name.replace(/[^\w-]/g, '\\$&');
       const pattern = selector.replace(/[\\[\]().*+?^${}|]/g, '\\$&');
-      assert.ok(new RegExp(`\\.${pattern}\\s*[{,[:]`).test(css), `${file}: .${name} is not compiled`);
+      assert.ok(new RegExp(`\\.${pattern}\\s*[{,[:>*)]`).test(css), `${file}: .${name} is not compiled`);
     }
     // A change that adds a class keeps the supplied one; any other leaves none of it.
     assert.ok(readRoute(file).includes(to) && (to.includes(from) || !readRoute(file).includes(from)), file);
@@ -2213,4 +2213,366 @@ test('the New Tab nudges, the error alert and the file tree render like the supp
   for (const path of ['notes/old/a.txt', 'a', '', 'x/y/z/w.md']) assert.equal(JSON.stringify(ours.__pair_ancestorPaths(path)), JSON.stringify(supplied.__pair_ancestorPaths(path)));
   assert.equal(JSON.stringify(ours.__pair_directoryPaths(nodes)), JSON.stringify(supplied.__pair_directoryPaths(nodes)));
   for (const path of ['a.md', 'a.MD', 'a.txt']) assert.equal(ours.__pair_iconFor(path) === ours.__pair_FileIcon, supplied.__pair_iconFor(path) === supplied.__pair_FileIcon);
+});
+
+test('the Agent panel header renders and acts like the supplied one', async () => {
+  const chunk = 'assets/-components-4o0FSqQ9.js';
+  const header = (world, os, layout, sessionId) => ({context: {currentSessionId: sessionId}, imports: {'./strip-markdown-DRcmtuJc.js#Bn': {os},
+    './utils-DCBm67_n.js#v': {data: layout}, './context-q_vohNW8.js#n': {navigate: world.stub('spy:navigate')}, './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 20, defaults: false,
+    renamed: renamedBindings, scenes: [
+      world => header(world, 'windows', 'vertical', 's 1'),
+      world => header(world, 'windows', 'horizontal', null),
+      world => header(world, 'macos', 'vertical', 's2'),
+      world => header(world, 'macos', 'horizontal', ''),
+    ],
+    props: [world => ({leading: world.stub('leading')}), {}]});
+});
+
+test('voice dictation records, transcribes and draws its overlay like the supplied one', async () => {
+  const chunk = 'assets/voice-dictation-overlay-CtbBZWfm.js';
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 12, defaults: false,
+    renamed: renamedBindings, scenes: [
+      {imports: {'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}}, state: ['idle', null, null]},
+      world => ({imports: {'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}}, state: ['recording', world.stub('stream'), 'Microphone permission denied.']}),
+      {imports: {'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 0}}, state: ['transcribing', null, null]},
+    ],
+    props: [world => ({status: 'recording', stream: world.stub('stream'), onCancel: world.stub('spy:onCancel'), onConfirm: world.stub('spy:onConfirm')}),
+      {status: 'transcribing', stream: null}, {status: 'idle'}]});
+});
+
+test('the capture toolbar picks modes, captures, closes and drags like the supplied one', async () => {
+  const chunk = 'assets/capture-toolbar-HNeL44hk.js';
+  const imports = world => ({'./translate-status-K6en4VW6.js#l': {ref: world.stub('frameRef'), sendMessage: world.stub('spy:send')},
+    './use-messaging-DRNeToXk.js#r': world.stub('spy:sendMessage')});
+  const pointer = (world, x, y, onButton) => ({screenX: x, screenY: y, pointerId: 3, target: onButton ? {closest: () => world.stub('button')} : null,
+    currentTarget: {setPointerCapture: world.stub('spy:capture'), hasPointerCapture: () => true, releasePointerCapture: world.stub('spy:release')},
+    preventDefault: world.stub('spy:preventDefault'), key: 'Escape'});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 20, defaults: false,
+    renamed: renamedBindings, scenes: [
+      world => ({imports: imports(world), state: {mode: 'area', status: 'error', errorMessage: 'Capture failed'}, event: pointer(world, 10, 20, false)}),
+      world => ({imports: imports(world), state: {mode: 'full', status: 'capturing'}, event: pointer(world, 0, 0, true)}),
+      world => ({imports: imports(world), state: {mode: 'viewport', status: 'idle', errorMessage: ''},
+        event: {...pointer(world, 5, 5, false), type: 'CAPTURE_TOOLBAR_SYNC', mode: 'area', status: 'idle'}}),
+    ],
+    props: [world => ({disabled: true, mode: 'full', errorMessage: 'Nope', status: 'error'}), {mode: 'area', status: 'capturing'}, {}]});
+  const {supplied, ours} = await evaluatePair({world: createWorld(), chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  for (const message of [{type: 'CAPTURE_TOOLBAR_SYNC'}, {type: 'SYNC'}, null, 'CAPTURE_TOOLBAR_SYNC', {}])
+    assert.equal(ours.__pair_isSyncMessage(message), supplied.__pair_isSyncMessage(message));
+});
+
+test('the Messages access card and button render and set up access like the supplied ones', async () => {
+  const chunk = 'assets/full-disk-access-BmnWkbG2.js';
+  const access = (world, mac, status, session) => ({imports: {'./platform-CX_yPATJ.js#a': mac, './strip-markdown-DRcmtuJc.js#nr': {data: status && {status}},
+    './context-q_vohNW8.js#r': session && {currentSession: {id: session}}, './strip-markdown-DRcmtuJc.js#N': {broadcast: world.stub('spy:broadcast')},
+    './strip-markdown-DRcmtuJc.js#er': {mutateAsync: async () => ({completed: true})}}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 20, defaults: false,
+    renamed: renamedBindings, scenes: [
+      world => ({...access(world, true, 'granted', 's1'), state: [false]}),
+      world => ({...access(world, true, 'denied', 's1'), state: [true]}),
+      world => ({...access(world, true, null, null), state: [false]}),
+      world => ({...access(world, false, 'denied', 's1'), state: [false]}),
+    ],
+    props: [world => ({label: 'Allow', onGranted: world.stub('spy:onGranted'), size: 'sm', className: 'probe'}), {}]});
+});
+
+test('Notification Use lists grants and recent notifications like the supplied page', async () => {
+  const chunk = 'assets/inbox-BIWs6dWb.js';
+  const overview = {notificationGrants: [{origin: 'https://www.mail.example', grantedAt: '2026-10-01T12:00:00Z'}, {origin: 'not a url', grantedAt: null}],
+    messages: [{id: 'n1', content: 'New mail', source: 'web-push-notification', from: {id: 'mail', name: 'Mail'}, metadata: {origin: 'https://mail.example'},
+      receivedAt: '2026-10-01T12:00:00Z', deliveryState: 'delivered'},
+    {id: 'n2', content: 'Own', source: 'web-push-notification', from: {id: ' aux-extension-id '}, metadata: {}, deliveryState: 'failed'},
+    {id: 'n3', content: 'Own URL', source: 'web-push-notification', from: null, metadata: {contextUrl: 'chrome-extension://aux-extension-id/x'}, deliveryState: 'pending'},
+    {id: 'n4', content: 'Other', source: 'channel', from: {name: 'Bot'}, metadata: {}, deliveryState: 'pending'},
+    ...['n5', 'n6'].map(id => ({id, content: id, source: 'channel', metadata: {}, deliveryState: 'delivered'}))]};
+  // useQuery runs its select on the overview, as react-query would.
+  const query = options => ({data: options?.select ? options.select(overview) : overview});
+  const queryEmpty = options => ({data: options?.select ? options.select({}) : {}});
+  const trpc = world => ({inbox: {overview: {queryOptions: (input, options) => ({...options, input}), queryKey: input => ['inbox', input]},
+    revokeNotificationGrant: {mutationOptions: options => options}}, toString: () => 'trpc'});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 6, defaults: false,
+    renamed: renamedBindings, scenes: [
+      world => ({imports: {'./strip-markdown-DRcmtuJc.js#nr': query, './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './queries-ldd77hNk.js#_': trpc(world),
+        './strip-markdown-DRcmtuJc.js#M': {confirm: (options, run) => world.stub('spy:confirm')(options, run())}}}),
+      world => ({imports: {'./strip-markdown-DRcmtuJc.js#nr': queryEmpty, './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './queries-ldd77hNk.js#_': trpc(world)}}),
+    ],
+    props: [{}]});
+  const {supplied, ours} = await evaluatePair({world: createWorld(), chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  for (const origin of ['https://www.a.example', 'https://a.www.example', 'nope', ''])
+    assert.equal(ours.__pair_siteName(origin), supplied.__pair_siteName(origin));
+});
+
+// A small UTC dayjs: just what the Statistics page calls.
+const DAY = 864e5;
+const dayjs = at => {
+  const ms = at === undefined ? Date.UTC(2026, 9, 30, 15) : new Date(at).valueOf();
+  const d = new Date(ms);
+  const self = {
+    valueOf: () => ms, toISOString: () => d.toISOString(), date: () => d.getUTCDate(),
+    startOf: () => dayjs(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())),
+    day: n => dayjs(ms + (n - d.getUTCDay()) * DAY), add: n => dayjs(ms + n * DAY), subtract: n => dayjs(ms - n * DAY),
+    isAfter: other => ms > other.valueOf(), isBefore: other => ms < other.valueOf(),
+    isSame: other => Math.floor(ms / DAY) === Math.floor(other.valueOf() / DAY),
+    format: pattern => ({'YYYY-MM-DD': d.toISOString().slice(0, 10), 'YYYY-MM': d.toISOString().slice(0, 7),
+      MMM: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]})[pattern],
+  };
+  return self;
+};
+
+test('Statistics counts sessions and draws the heatmap like the supplied page', async () => {
+  const chunk = 'assets/statistics-CsvIURox.js';
+  const sessions = ['2026-10-30T09:00:00Z', '2026-10-30T10:00:00Z', '2026-10-01T09:00:00Z', '2026-09-01T09:00:00Z', '2026-08-09T09:00:00Z', '2026-08-01T09:00:00Z',
+    '2025-01-01T00:00:00Z'].map((createdAt, index) => ({id: `s${index}`, createdAt}));
+  const scene = list => ({imports: {'./extension-main-Dz1-AsCT.js#l.useParams': {userId: '7'}, './strip-markdown-DRcmtuJc.js#tr': {data: list},
+    './date-CxUVm-Dr.js#n.default': dayjs}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 4, defaults: false,
+    renamed: renamedBindings, scenes: [scene(sessions), scene([])], props: [{}, {className: 'probe'}]});
+});
+
+test('Archived chats pages, unarchives and deletes like the supplied page', async () => {
+  const chunk = 'assets/archived-chats-BgWKiXTB.js';
+  const chats = Array.from({length: 21}, (_, index) => ({id: `c${index}`, title: `Chat ${index}`, previewText: index % 2 ? `**Preview** ${index}` : '', updatedAt: '2026-10-01'}));
+  const scene = (world, page, query) => ({imports: {'./extension-main-Dz1-AsCT.js#y.useParams': {userId: '7'}, './extension-main-Dz1-AsCT.js#y.useSearch': {page},
+    './extension-main-Dz1-AsCT.js#y.useNavigate': world.stub('spy:navigate'), './strip-markdown-DRcmtuJc.js#nr': query,
+    './strip-markdown-DRcmtuJc.js#M': {confirm: (options, run) => world.stub('spy:confirm')(options, run())},
+    './strip-markdown-DRcmtuJc.js#er': {isPending: page === 3, mutateAsync: world.stub('spy:mutateAsync')}}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 12, defaults: false,
+    renamed: renamedBindings, scenes: [
+      world => scene(world, 1, {data: chats, isLoading: false, refetch: world.stub('spy:refetch')}),
+      world => scene(world, 2, {data: chats.slice(0, 3), isLoading: false}),
+      world => scene(world, 3, {data: [], isLoading: false}),
+      world => scene(world, 2, {data: [], isLoading: false}),
+      world => scene(world, 1, {isLoading: true}),
+      world => scene(world, 2, {error: new Error('x'), isLoading: false, refetch: world.stub('spy:refetch')}),
+    ],
+    props: [{item: chats[1]}, {item: chats[0]}]});
+});
+
+test('the New Tab search suggestions highlight, open, act and delete like the supplied ones', async () => {
+  const chunk = 'assets/search-view-gCFKEZ8L.js';
+  const matches = [
+    {line: 0, item: {type: 'search-what-you-typed', isSearchType: true, description: '', contents: 'aux browser', destinationUrl: 'https://search.example/?q=aux'}},
+    {line: 1, item: {type: 'history-url', description: 'Aux — the browser', contents: 'aux.example/docs', destinationUrl: 'https://aux.example/docs',
+      supportsDeletion: true, iconUrl: 'icon.png', actions: [{hint: 'Switch to this tab'}, {hint: 'Pin'}]}},
+    {line: 2, item: {type: 'url', hasInstantKeyword: true, description: '@tabs - Search tabs', fillIntoEdit: '@tabs', imageUrl: 'img.png'}},
+    {line: 3, item: {type: 'navsuggest', description: 'Résumé café', contents: '', destinationUrl: 'https://cafe.example/'}},
+  ];
+  const search = (world, extra = {}) => ({activateScopeMatch: (item, line) => (world.stub('spy:activateScopeMatch')(item, line), line === 2), displayedMatches: matches, hasManualSelection: false,
+    matchesInput: 'au br', removeMatch: world.stub('spy:removeMatch'), scope: null, selection: {line: 1}, session: {sessionId: 'o1'},
+    setSelection: world.stub('spy:setSelection'), clearSearchState: world.stub('spy:clearSearchState'), ...extra});
+  const scene = (world, extra, imports = {}) => ({imports: {'./newtab-CnOLQ0yu.js#i': search(world, extra), './newtab-CnOLQ0yu.js#t': item => (item.fillIntoEdit ? {keyword: 'tabs'} : null),
+    './omnibox-scope-DGFEg60F.js#t': keyword => (keyword === 'tabs' ? world.stub('TabsIcon') : null), './newtab-CnOLQ0yu.js#r': item => item.type === 'history-url',
+    './search-navigation-TWhZq3-H.js#t': url => (url?.includes('search.example') ? world.stub('searchPage') : null), './newtab-CnOLQ0yu.js#n': () => null, ...imports},
+  event: {movementX: 0, movementY: 1, preventDefault: world.stub('spy:preventDefault'), stopPropagation: world.stub('spy:stopPropagation')}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 12, defaults: false,
+    renamed: renamedBindings, scenes: [
+      world => scene(world, {}),
+      world => scene(world, {scope: 'tabs', hasManualSelection: true, session: null, selection: null}),
+      world => scene(world, {matchesInput: ''}, {'./newtab-CnOLQ0yu.js#n': () => '/u/7/tasks'}),
+      world => scene(world, {displayedMatches: []}),
+    ],
+    props: [world => ({isOpen: true, ref: world.stub('spy:ref')}), {isOpen: false, ref: {current: null}}]});
+  const {supplied, ours} = await evaluatePair({world: createWorld(), chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  for (const [text, query] of [['Aux — the browser', 'au br'], ['Résumé café', 'resume'], ['a-b_c/d', 'abcd'], ['hello', 'xyz'], ['', 'a'], ['abc', '   '], ['ＡＢＣ', 'abc']])
+    assert.equal(JSON.stringify(ours.__pair_highlightSegments(text, query)), JSON.stringify(supplied.__pair_highlightSegments(text, query)));
+  for (const [segments, hint] of [[[{text: '@tabs - Search tabs'}], '@tabs'], [[{text: 'Search tabs - @tabs'}], '@tabs'], [[{text: '@tabs'}], '@tabs'], [[{text: 'x'}], '@h']])
+    assert.equal(JSON.stringify(ours.__pair_withoutScopeHint(segments, hint)), JSON.stringify(supplied.__pair_withoutScopeHint(segments, hint)));
+  for (const [item, line] of [[{destinationUrl: 'https://a', type: 't'}, 1], [{fillIntoEdit: 'f'}, 2], [{}, 3]])
+    assert.equal(ours.__pair_suggestionKey(item, line), supplied.__pair_suggestionKey(item, line));
+  assert.equal(ours.__pair_bytesToBase64(new Uint8Array([104, 105, 255]).buffer), supplied.__pair_bytesToBase64(new Uint8Array([104, 105, 255]).buffer));
+});
+
+test('the capture result frame, file name, button and message check match the supplied ones', async () => {
+  const chunk = 'assets/capture-result-nUfmrYC9.js';
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 6, defaults: false,
+    renamed: renamedBindings, scenes: [
+      world => ({imports: {'./translate-status-K6en4VW6.js#o.useSearch': {frameId: 'f1'}, './translate-status-K6en4VW6.js#l': {ref: world.stub('frameRef')}}}),
+    ],
+    props: [world => ({'aria-label': 'Copy', label: 'Copy', onClick: world.stub('spy:onClick'), children: 'icon'}), {children: 'child'}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES});
+  assert.equal(ours.__kept_$(new Date(2026, 0, 2, 3, 4, 5)), supplied.__kept_$(new Date(2026, 0, 2, 3, 4, 5)));
+  assert.match(ours.__kept_$(new Date(2026, 0, 2, 3, 4, 5)), /^aux-capture-20260102-030405\.png$/);
+  for (const url of ['data:image/png;base64,aGk=', 'data:text/plain,hi%20there', 'data:,x']) {
+    const [mine, theirs] = [ours.__kept_f(url), supplied.__kept_f(url)];
+    assert.deepEqual([mine.type, mine.size], [theirs.type, theirs.size]);
+    assert.equal(await mine.text(), await theirs.text());
+  }
+  assert.throws(() => ours.__kept_f('nope'), /Invalid data URL/);
+  for (const message of [{type: 'CAPTURE_RESULT_SYNC'}, {type: 'CAPTURE_RESULT_LANDED'}, {type: 'x'}, null, 'x', {}])
+    assert.equal(ours.__kept_H(message), supplied.__kept_H(message));
+});
+
+test('the browser importer lists targets, starts imports and draws its dialogs like the supplied one', async () => {
+  const chunk = 'assets/use-browser-importer-GNOc7eYC.js';
+  const sources = [{id: 'chrome', name: 'Chrome', profiles: [{id: 'p1', name: 'Work'}, {id: 'p2', name: 'Home'}]}, {id: 'arc', name: 'Arc', profiles: []},
+    {id: 'safari', name: 'Safari', profiles: [], requiresFileImport: true}, {id: 'brave', name: 'Brave', profiles: [{id: 'b1', name: 'Default'}]}];
+  const detected = [{name: 'Chrome', profiles: [{id: 'p1', name: 'Work', lastUsedAt: '2026-10-01'}]}, {name: 'Safari', profiles: [{id: 't', lastUsedAt: '2026-02-01'}, {id: 's', lastUsedAt: '2026-01-01'}]},
+    {name: 'Edge', profiles: []}];
+  const imports = (os = 'macos') => ({'./strip-markdown-DRcmtuJc.js#Bn': {os}, './useQueries-CrOl5VwX.js#t': options =>
+    options.combine([{data: detected}, {data: sources}, {data: ['arc', 'chrome:p1']}])});
+  const event = world => ({key: 'Enter', nativeEvent: {isComposing: false}, preventDefault: world.stub('spy:preventDefault'), stopPropagation: world.stub('spy:stopPropagation'),
+    target: {files: [{name: 'export.zip', arrayBuffer: async () => new ArrayBuffer(1)}]}});
+  const dialogs = [{type: 'grant-permission', source: sources[0], navigateToProgress: true, sourceProfileId: 'p1'}, {type: 'profile-select', source: sources[0], dataKinds: ['history'], navigateToProgress: false},
+    {type: 'safari-file-import', source: sources[2], dataKinds: ['bookmarks'], navigateToProgress: true}];
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 12, defaults: false,
+    renamed: renamedBindings, scenes: [
+      world => ({imports: imports(), event: event(world)}),
+      world => ({imports: imports('windows'), state: [''], event: {...event(world), key: 'Escape', target: {files: [{name: 'a.txt'}]}}}),
+      world => ({imports: imports(), state: ['p2', true], event: {...event(world), nativeEvent: {isComposing: true}, target: {files: []}}}),
+    ],
+    props: [...dialogs.map(dialog => world => ({dialog, onOpenChange: world.stub('spy:onOpenChange'), onProceed: world.stub('spy:onProceed'), onDialogChange: world.stub('spy:onDialogChange'),
+      onResolve: world.stub('spy:onResolve')})), {dialog: null}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const sourceMap = new Map(sources.map(source => [source.id, source]));
+  const profiles = new Map([['chrome', [{id: 'p1', name: 'Work', lastUsedAt: '2026-10-01'}]], ['safari', [{id: 't', lastUsedAt: '2026-02-01'}, {id: 's', lastUsedAt: '2026-01-01'}]]]);
+  const targets = ours.__pair_importTargets(sourceMap, profiles, new Set(['arc', 'chrome:p1']));
+  assert.equal(JSON.stringify(targets), JSON.stringify(supplied.__pair_importTargets(sourceMap, profiles, new Set(['arc', 'chrome:p1']))));
+  for (const list of [targets, targets.map(target => ({...target, alreadyImported: true})), targets.map(target => ({...target, detected: false, alreadyImported: false})),
+    [{id: 'a', detected: false, alreadyImported: false}, {id: 'b', detected: true, alreadyImported: false}]])
+    assert.equal(JSON.stringify(ours.t(list)), JSON.stringify(supplied.t(list)));
+  const scene = os => ({imports: imports(os)});
+  for (const [target, options, os] of [[targets[0], undefined, 'macos'], [{...targets[1], alreadyImported: true}, undefined, 'macos'], [{...targets[1], alreadyImported: true}, {dataKinds: ['cookies']}, 'macos'],
+    [targets.find(target => target.kind === 'file'), {navigateToProgress: false}, 'macos'], [targets[1], undefined, 'windows'], [targets.find(target => target.kind === 'source'), undefined, 'macos']]) {
+    const start = hook => () => hook().importTarget(target, options);
+    assert.equal(JSON.stringify(world.render(start(ours.n), {}, scene(os))), JSON.stringify(world.render(start(supplied.n), {}, scene(os))));
+  }
+});
+
+test('onboarding import lists browsers, folds the rest and starts imports like the supplied page', async () => {
+  const chunk = 'assets/import-browser-DwQpkFpc.js';
+  const source = (id, name) => ({id, name});
+  const profile = (id, sourceId, name, lastUsedAt, alreadyImported = false) => ({kind: 'profile', id: `${sourceId}:${id}`, source: source(sourceId, name), label: name, description: id, detected: true, alreadyImported, lastUsedAt});
+  const targets = [profile('p1', 'chrome', 'Chrome', '2026-10-01'), profile('p2', 'chrome', 'Chrome', '2026-10-05'), {kind: 'source', id: 'arc', source: source('arc', 'Arc'), label: 'Arc', detected: true, alreadyImported: true},
+    {kind: 'file', id: 'safari', source: source('safari', 'Safari'), label: 'Safari', detected: true, alreadyImported: false, lastUsedAt: '2026-10-09'},
+    profile('b1', 'brave', 'Brave', '2026-09-01'), profile('e1', 'edge', 'Edge', '2026-08-01'), profile('v1', 'vivaldi', 'Vivaldi', '2026-07-01'), {kind: 'source', id: 'gone', source: source('gone', 'Gone'), detected: false, alreadyImported: false}];
+  const importer = (world, list) => ({targets: list, importTarget: world.stub('spy:importTarget'), dialogs: 'dialogs'});
+  const imports = (world, list, reduced = false) => ({'./use-browser-importer-GNOc7eYC.js#n': importer(world, list), './strip-markdown-DRcmtuJc.js#Xt': reduced,
+    './use-browser-importer-GNOc7eYC.js#t': options => options.find(target => !target.alreadyImported) ?? options[0], './strip-markdown-DRcmtuJc.js#Ut': {track: world.stub('spy:track')}});
+  const browsers = [{source: source('chrome', 'Chrome'), targets: targets.slice(0, 2), alreadyImported: false, requiresProfileSelection: true},
+    {source: source('arc', 'Arc'), targets: [targets[2]], alreadyImported: true, requiresProfileSelection: false}];
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 20, defaults: false,
+    renamed: renamedBindings, scenes: [
+      world => ({imports: imports(world, targets)}),
+      world => ({imports: imports(world, targets.slice(0, 3)), state: ['arc', 'profile']}),
+      world => ({imports: imports(world, targets.slice(0, 2), true), state: ['chrome', 'browser']}),
+      world => ({imports: imports(world, [])}),
+      world => ({imports: imports(world, targets), state: ['safari', 'browser', true, true]}),
+      world => ({imports: imports(world, targets.slice(0, 5))}),
+      world => ({imports: imports(world, targets), state: ['profile', 'chrome', '', false]}),
+    ],
+    props: [world => ({browsers, initialBrowserId: 'chrome', initialStep: 'browser', onCancel: world.stub('spy:onCancel'), onImport: world.stub('spy:onImport'), label: 'Chrome', selected: true,
+      disabled: true, children: 'child', onClick: world.stub('spy:onClick')}),
+    world => ({browsers, initialBrowserId: 'chrome', initialStep: 'profile', onCancel: world.stub('spy:onCancel'), onImport: world.stub('spy:onImport'), disabled: false, children: 'child'})]});
+});
+
+test('the chat preview card shows a task, its artifacts and its prompts like the supplied one', async () => {
+  const chunk = 'assets/chat-preview-card-J0uel3r2.js';
+  const reply = {role: 'assistant', content: [{type: 'text', text: 'Done ![chart](artifacts/chart.png) and ![x](<output/a b.png>)\n```aux-draft\n{"a":1}\n```\n```js\nx\n```'},
+    {type: 'image', mimeType: 'image/png', data: 'AA'}]};
+  const run = {startedAt: '2026-10-30T11:00:00Z', userMessage: [{role: 'user', content: 'Plan it'}, {role: 'system'}], finalAssistantMessage: [reply],
+    filesChanged: [{path: 'output/report.pdf', artifact: {sizeBytes: 10}}, {path: 'output/page.html', artifact: {sizeBytes: 5}}, {path: 'skip.txt'}, {path: 'output/report.pdf', artifact: {sizeBytes: 10}}, {path: 'x/photo.PNG?v=1', artifact: {sizeBytes: 1}}]};
+  const base = {id: 's1', title: 'Report', status: 'completed', updatedAt: '2026-10-30T10:00:00Z', latestRun: run, pinned: true, unread: true};
+  const sessions = [base, {...base, status: 'running', activeTabTargetId: 't1'}, {...base, status: 'suspended', suspension: {kind: 'ask-user-question', id: 'q', toolCallId: 'c1', request: {questions: []}}},
+    {...base, status: 'suspended', routine: {id: 'r1', name: 'Digest', scheduleLabel: 'Daily'}, trigger: {type: 'standalone-routine'}, suspension: {kind: 'approval', id: 'a', toolCallId: 'c2', request: {scope: 'x', source: {taskId: 't'}}}},
+    {...base, status: 'suspended', suspension: {kind: 'action-confirmation', toolCallId: 'c3', createdAt: 'now', request: {}}}, {...base, status: 'interrupted', routine: {id: 'r1', name: 'Digest', scheduleLabel: 'Daily'},
+      trigger: {type: 'channel', channel: 'slack'}, channel: {name: 'ops'}, latestRun: {...run, filesChanged: [], finalAssistantMessage: []}, activeTabTargetId: 't1'},
+    {...base, latestRun: {...run, filesChanged: [{path: 'output/one.pdf', artifact: {sizeBytes: 2}}], finalAssistantMessage: []}},
+    {...base, latestRun: {...run, filesChanged: [{path: 'output/shot.png', artifact: {sizeBytes: 2}}], finalAssistantMessage: []}}];
+  const imports = (extra = {}) => ({'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#nr': {data: [{id: 'c1', name: 'read'}]},
+    './strip-markdown-DRcmtuJc.js#zt': message => message.content?.[0]?.text ?? '', './strip-markdown-DRcmtuJc.js#tt': () => null, './strip-markdown-DRcmtuJc.js#it': text => text,
+    './tool-definition-registry-Cc6FCFb2.js#t': () => ({hide: state => state === 'hidden', icon: 'icon', title: 'title'}), './tool-definition-registry-Cc6FCFb2.js#n': () => 'shown',
+    './file-attachments-D5m1O8aA.js#a': suspension => Boolean(suspension?.kind), './strip-markdown-DRcmtuJc.js#ht': path => path.replace(/^\.\//, ''),
+    './strip-markdown-DRcmtuJc.js#dt': path => path.startsWith('artifacts/'), './strip-markdown-DRcmtuJc.js#pt': path => path.startsWith('output/'), './draft-artifacts-registry-CZ58X0Cu.js#c': data => data,
+    ...extra});
+  const failed = {'./strip-markdown-DRcmtuJc.js#tt': () => ({message: 'Out of credits'}), './strip-markdown-DRcmtuJc.js#$': error => ({...error, kind: 'credits-aux-v2'}),
+    './strip-markdown-DRcmtuJc.js#nr': {data: {subscription: {status: 'active', plan: {slug: 'pro'}}, credit: {refresh_at: 'soon'}}}};
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 40, defaults: false,
+    renamed: renamedBindings, scenes: [
+      {imports: imports(), state: [false]},
+      {imports: imports({'./strip-markdown-DRcmtuJc.js#nr': {data: []}}), state: [true]},
+      {imports: imports(failed), state: [false]},
+      {imports: imports({'./strip-markdown-DRcmtuJc.js#nr': {data: {subscription: {status: 'canceled'}, credit: {}}}, './strip-markdown-DRcmtuJc.js#tt': failed['./strip-markdown-DRcmtuJc.js#tt'],
+        './strip-markdown-DRcmtuJc.js#$': failed['./strip-markdown-DRcmtuJc.js#$']}), state: [false]},
+    ],
+    props: sessions.map(session => world => ({session, taskLinkProps: {href: '/task'}, onOpenRoutine: world.stub('spy:onOpenRoutine'), className: 'probe', sessionId: 's1',
+      artifact: {path: 'output/a.png', mimeType: 'image/png', data: 'AA'}, artifacts: [], toolCall: {id: 'c', name: 'read'}, index: 2, startedAt: '2026-10-30T11:00:00Z', targetId: 't', title: 'T'}))});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  world.enter?.({imports: imports()});
+  for (const path of ['a.PDF', 'x/y.png?v=1#z', 'page.html', 'noext', 'a.b.csv', '']) {
+    assert.equal(ours.__pair_fileExtension(path), supplied.__pair_fileExtension(path));
+    assert.equal(ours.__pair_fileKind(path), supplied.__pair_fileKind(path));
+  }
+  for (const code of ['', ' ', '{"a":1}', '[1]', 'null', '{oops'])
+    assert.equal(JSON.stringify(ours.__pair_parseDraftBlock(code)), JSON.stringify(supplied.__pair_parseDraftBlock(code)));
+  for (const artifact of [{kind: 'document'}, {kind: 'html'}, {kind: 'image'}, null])
+    assert.equal(ours.__pair_isDocumentArtifact(artifact), supplied.__pair_isDocumentArtifact(artifact));
+});
+
+test('the selection popup lists shortcuts, chats and applies like the supplied one', async () => {
+  const chunk = 'assets/lasso-Chg_FuP-.js';
+  const popup = (world, extra = {}) => ({mode: 'main', messages: [], selection: {text: 'Hello', selectionKind: 'text', canApply: true, focusPolicy: 'popup-focused'}, response: '', errorMessage: '',
+    isApplying: false, isCopyingCode: false, isStreaming: false, focusPopup: world.stub('spy:focusPopup'), releaseFocus: world.stub('spy:releaseFocus'), applyResponse: world.stub('spy:applyResponse'),
+    copyCode: world.stub('spy:copyCode'), copyValue: world.stub('spy:copyValue'), close: world.stub('spy:close'), runInstruction: world.stub('spy:runInstruction'), ...extra});
+  const chat = [{role: 'user', content: 'Fix {selected}  \n\n\n\nnow'}, {role: 'user', content: 'x', displayContent: 'Fix it'}, {role: 'assistant', content: 'Done'}];
+  const imports = world => ({'./translate-status-K6en4VW6.js#i.useSearch': {accountId: 7, frameId: 'f'}, './translate-status-K6en4VW6.js#l': {ref: world.stub('frameRef'), sendMessage: world.stub('spy:send')},
+    './use-messaging-DRNeToXk.js#r': world.stub('spy:sendMessage'), './personalization-C9HKLZT4.js#i': {shortcuts: [{id: 's1', type: 'text-selection', name: 'Explain', color: 'red', icon: 'i', action: {type: 'prompt', prompt: 'Explain {selected}'}},
+      {id: 's2', type: 'text-selection', name: 'Copy', color: 'blue', icon: 'c', action: {type: 'copy'}}, {id: 's3', type: 'text-selection', name: 'Open', color: 'g', icon: 'o', action: {type: 'url'}},
+      {id: 's4', type: 'lasso', name: 'Code', color: 'g', icon: 'o', action: {type: 'copy'}}]},
+    './personalization-C9HKLZT4.js#r': () => ({selected: ' Hello ', image: 'img', text: 'T x'}), './personalization-C9HKLZT4.js#n': (shortcut, values) => (shortcut.name === 'Open' ? `https://x/?q=${values.selected}` : null),
+    './lasso-shortcuts-BVNCEenS.js#i': (prompt, values) => Boolean(values.selected), './tag-icon-DeMC7uIN.js#f': {register: () => ({ref: world.stub('fieldRef'), name: 'message'}), handleSubmit: fn => fn, reset: world.stub('spy:reset'), formState: {errors: {}}}});
+  const event = world => ({target: null, preventDefault: world.stub('spy:preventDefault'), button: 0, key: 'Escape'});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 40, defaults: false,
+    renamed: renamedBindings, scenes: [
+      world => ({imports: imports(world), context: popup(world), event: event(world)}),
+      world => ({imports: imports(world), context: popup(world, {mode: 'chat', messages: chat, response: 'Stream', errorMessage: 'Failed'}), event: {...event(world), button: 1}}),
+      world => ({imports: imports(world), context: popup(world, {mode: 'chat', messages: chat, response: 'Done', isStreaming: true, selection: {text: '  ', selectionKind: 'region', canApply: false, focusPolicy: 'preserve-selection'}})}),
+      world => ({imports: imports(world), context: popup(world, {selection: {text: 'R', selectionKind: 'region', canApply: true, focusPolicy: 'popup-focused'}, isCopyingCode: true, isApplying: true, mode: 'chat', response: 'Reply'})}),
+      world => ({imports: {...imports(world), './translate-status-K6en4VW6.js#i.useSearch': {frameId: 'f'}}, context: popup(world)}),
+    ],
+    props: [{children: 'child', accountId: 7, message: chat[0], shortcut: {id: 's1', type: 'lasso', name: 'Explain', color: 'red', icon: 'i', action: {type: 'prompt', prompt: 'Go'}}, prompt: 'Go',
+      templateValues: {selected: ' x ', image: 'i', text: 't'}, disabled: false, href: 'https://x'}, {message: chat[2], shortcut: {id: 's4', type: 'lasso', name: 'Code', color: 'g', icon: 'o', action: {type: 'copy'}},
+      templateValues: {selected: '  ', image: '', text: ''}, disabled: true, href: null}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  for (const [text, selection] of [[' Do ', {selectionKind: 'text'}], ['Do', {selectionKind: 'region', previewImage: 'data:x'}], ['Do', {selectionKind: 'region', previewImage: ' '}]])
+    assert.equal(ours.__pair_withRegionImage(text, selection), supplied.__pair_withRegionImage(text, selection));
+  for (const message of chat) assert.equal(ours.__pair_userMessageText(message), supplied.__pair_userMessageText(message));
+  for (const [messages, response] of [[chat, ''], [chat, 'Done'], [chat, 'New'], [[], 'New']])
+    assert.equal(JSON.stringify(ours.__pair_withStreamingResponse(messages, response)), JSON.stringify(supplied.__pair_withStreamingResponse(messages, response)));
+});
+
+test('Settings › Lasso lists shortcuts, edits them and templates placeholders like the supplied page', async () => {
+  const chunk = 'assets/lasso-LoarCzmz.js';
+  const shortcuts = [{id: 's1', type: 'text-selection', name: 'Explain', color: 'red', icon: 'i', action: {type: 'prompt', prompt: 'Explain {text}'}},
+    {id: 's2', type: 'text-selection', name: 'Search', color: 'blue', icon: 'c', action: {type: 'open-url', href: 'https://x/?q={text}'}}, {id: 's3', type: 'lasso', name: 'Copy', color: 'g', icon: 'o', action: {type: 'copy'}}];
+  const lasso = {textSelectionEnabled: true, lassoSelectionEnabled: false, hotkey: 'Alt', shortcuts};
+  const ui = (world, dialog) => ({dialog, setDialog: world.stub('spy:setDialog'), saveSettings: world.stub('spy:saveSettings'), invalidateLassoCache: world.stub('spy:invalidate')});
+  const imports = world => ({'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#tr': {data: lasso}, './strip-markdown-DRcmtuJc.js#nr': {data: lasso},
+    './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')}, './strip-markdown-DRcmtuJc.js#M': {confirm: (options, run) => world.stub('spy:confirm')(options, run())},
+    './platform-CX_yPATJ.js#a': true, './platform-CX_yPATJ.js#n': key => `key:${key}`, './tag-icon-DeMC7uIN.js#m': options => (options.name === 'action.type' ? 'prompt' : `value:${options.name}`),
+    './lasso-shortcuts-BVNCEenS.js#r': (type, kind) => (kind === 'prompt' ? ['{text}', '{code}'] : ['{text}'])});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 30, defaults: false,
+    renamed: renamedBindings, scenes: [
+      world => ({imports: imports(world), context: ui(world, {view: 'edit', type: 'text-selection', data: shortcuts[0]}), state: [true]}),
+      world => ({imports: imports(world), context: ui(world, {view: 'add', type: 'lasso'}), state: [false]}),
+      world => ({imports: imports(world), context: ui(world, null), event: {key: 'Escape', stopPropagation: world.stub('spy:stopPropagation')}}),
+    ],
+    props: [world => ({settings: lasso, type: 'text-selection', defaultValues: shortcuts[0], onClose: world.stub('spy:onClose'), items: ['s1'], onDragEnd: world.stub('spy:onDragEnd'), id: 's1', children: 'child',
+      className: 'probe', command: world.stub('spy:command')}), world => ({settings: {...lasso, shortcuts: [], lassoSelectionEnabled: true, hotkey: 'Meta'}, type: 'lasso', onClose: world.stub('spy:onClose'), items: [], id: 'x', disabled: true,
+      children: 'child', command: world.stub('spy:command')})]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  for (const text of ['Plain', 'Fix {text} and {code}', 'line\nnext {image}', '', '{text}'])
+    for (const name of ['promptDocument', 'urlDocument', 'templateNodes', 'withoutLineBreaks'])
+      assert.equal(JSON.stringify(ours[`__pair_${name}`](text)), JSON.stringify(supplied[`__pair_${name}`](text)), `${name} ${text}`);
+  const editor = {state: {doc: {firstChild: {content: {content: [{type: {name: 'text'}, text: 'Go '}, {type: {name: 'mention'}, attrs: {id: 'code'}}]}},
+    content: {content: [{content: {content: [{type: {name: 'text'}, text: 'Go'}, {type: {name: 'hardBreak'}}, {type: {name: 'mention'}, attrs: {id: 'image'}}]}}]}}}};
+  for (const name of ['promptText', 'urlText']) assert.equal(ours[`__pair_${name}`](editor), supplied[`__pair_${name}`](editor), name);
+  for (const value of ['a.b*c', '{x}', '']) assert.equal(ours.__pair_escapeRegExp(value), supplied.__pair_escapeRegExp(value));
 });

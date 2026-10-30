@@ -26,4 +26,12 @@
       background-color: var(--muted);
     }
   }
+  /* The Agent panel mirrors the sidebar: its conversation text sits 8px in and the composer's
+     footer controls sit 8px inside the panel, in line with the composer's text. */
+  :is(.\*\*\:data-\[agent-session-ui\=\"chat\"\]\:px-2 *)[data-agent-session-ui=chat] {
+    padding-inline: calc(var(--spacing) * 2);
+  }
+  :is(.\*\:data-model-select-shortcuts\:px-2 > *)[data-model-select-shortcuts] {
+    padding-inline: calc(var(--spacing) * 2);
+  }
 }

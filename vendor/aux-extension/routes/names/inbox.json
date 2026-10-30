@@ -1,0 +1,9 @@
+{
+ "e": "jsxRuntime",
+ "f": "OWN_EXTENSION_IDS",
+ "P": "NotificationGrants",
+ "x": "siteName",
+ "V": "RecentNotifications",
+ "$": "isOwnNotification",
+ "X": "isOwnSender"
+}

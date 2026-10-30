@@ -9,10 +9,15 @@
  * O action confirmation, y approval; provider M hasMessages, L composer extensions; -components
  * R panel header, W usePanelSession, N tabScopeKey, Q rememberSessionTab; context T useSession;
  * draft-storage _ readDraft, k writeDraft, z readDraftState, J writeDraftState; X useTabContext;
- * Y back-to-parent button; P DocumentTitle; Z feedback dialog. */
+ * Y back-to-parent button; P DocumentTitle; Z feedback dialog.
+ * Aux change: the panel's horizontal geometry mirrors the sidebar's (see ComposerClasses). */
 var React = F(E(), 1),
   jsxRuntime = q(),
-  ConversationClasses = '**:data-[agent-session-ui="chat"]:px-4 [&_.streamdown_pre]:wrap-anywhere [&_.streamdown_pre]:whitespace-pre-wrap',
+  // Arc-style, mirroring the sidebar: the composer card fills the panel's width (it sits on the
+  // window's 6px gutter, like a sidebar row) and its footer controls sit 8px in; the conversation
+  // text sits 8px in too, in line with the composer's text, like the sidebar's labels.
+  ComposerClasses = 'px-0 pb-1 *:data-model-select-shortcuts:px-2',
+  ConversationClasses = '**:data-[agent-session-ui="chat"]:px-2 [&_.streamdown_pre]:wrap-anywhere [&_.streamdown_pre]:whitespace-pre-wrap',
   // An open session: header with a back button to its parent, the conversation, then the composer
   // and whichever input mode the run asks for (a question, a confirmation, an approval).
   SessionView = ({sessionId}) => {
@@ -38,7 +43,7 @@ var React = F(E(), 1),
             onChange: canSwitchMode ? updateMode : void 0,
           },
           children: (0, jsxRuntime.jsxs)(v, {
-            className: 'pb-1',
+            className: ComposerClasses,
             sessionId,
             isSidepanel: true,
             runCommand,
@@ -134,7 +139,7 @@ var NewSession = ({onSessionChange}) => {
       onDraftStateChange,
       getCreateSessionInput,
       children: (0, jsxRuntime.jsxs)(v, {
-        className: 'pb-1',
+        className: ComposerClasses,
         isSidepanel: true,
         draftPersistence,
         children: [

@@ -62,7 +62,9 @@ test('the added utilities live in the utilities layer and only add what the comp
   const rows = declarations(readSource(UTILITIES));
   assert.deepEqual([...new Set(rows.map(([at]) => at))], ['@layer utilities > .rounded-b-xl', '@layer utilities > .bg-card',
     '@layer utilities > .-mt-\\[var\\(--radius-xl\\)\\]', '@layer utilities > .\\[--_r\\:var\\(--radius-xl\\)\\]',
-    '@layer utilities > @media (hover: hover) > .group-hover\\/routine\\:bg-muted:is(:where(.group\\/routine):hover *)']);
+    '@layer utilities > @media (hover: hover) > .group-hover\\/routine\\:bg-muted:is(:where(.group\\/routine):hover *)',
+    '@layer utilities > :is(.\\*\\*\\:data-\\[agent-session-ui\\=\\"chat\\"\\]\\:px-2 *)[data-agent-session-ui=chat]',
+    '@layer utilities > :is(.\\*\\:data-model-select-shortcuts\\:px-2 > *)[data-model-select-shortcuts]']);
   assert.deepEqual(rows.map(([, , value]) => value), ['var(--radius-xl)', 'var(--radius-xl)', 'var(--card)', 'calc(var(--radius-xl) * -1)', 'var(--radius-xl)',
-    'var(--muted)']);
+    'var(--muted)', 'calc(var(--spacing) * 2)', 'calc(var(--spacing) * 2)']);
 });

@@ -14,7 +14,7 @@ export function expectedText(text, blocks, changes, label) {
   locateBlocks(text, blocks, label).forEach(([at, stop], index) => {
     let block = text.slice(at, stop);
     for (const [file, from, to] of changes)
-      if (file === blocks[index].file) block = block.replace(new RegExp(`(?<![\\w-])${from.replace(/[[\]()]/g, '\\$&')}(?![\\w-])`, 'g'), to);
+      if (file === blocks[index].file) block = block.replace(new RegExp(`(?<![\\w-])${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`, 'g'), to);
     output += text.slice(cursor, at) + block;
     cursor = stop;
   });
