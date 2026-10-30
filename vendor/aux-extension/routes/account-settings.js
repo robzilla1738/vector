@@ -23,7 +23,7 @@ var jsxRuntime = ue(),
         fill: 'currentColor',
       }),
     }),
-  React = ce(de(), 1) /** Local mode: sign in to sync. */,
+  React = ce(de(), 1) /** Local mode: this Mac holds everything. */,
   LocalModeCard = () =>
     (0, jsxRuntime.jsx)(N, {
       children: (0, jsxRuntime.jsxs)(A, {
@@ -33,16 +33,8 @@ var jsxRuntime = ue(),
             children: (0, jsxRuntime.jsx)(m, {
               searchable: false,
               title: "You're using Aux in local mode",
-              description: 'Sign in to sync your browser data.',
+              description: 'Your browser data stays on this Mac.',
             }),
-          }),
-          (0, jsxRuntime.jsxs)(I, {
-            className: '**:text-muted-foreground gap-1',
-            render: (0, jsxRuntime.jsx)(_, {to: '/auth/sign-in'}),
-            children: [
-              (0, jsxRuntime.jsx)(L, {className: 'mx-0.5 size-4'}),
-              (0, jsxRuntime.jsx)(m, {searchable: false, title: 'Sign in'}),
-            ],
           }),
         ],
       }),

@@ -763,6 +763,9 @@ const behavior = (file, name, find, replace) => Object.freeze({file, name, find,
  * make exactly these edits to the supplied side, inside the file's block, so everything else must
  * still match. `find` is exact text, or [first, last] for the span between them; it must match once. */
 export const BEHAVIOR_CHANGES = Object.freeze([
+  // Local mode stays local: the Account card offers no hosted sign-in (owner, 2026-10-29).
+  behavior('account-settings.js', 'local mode offers no sign-in', ['description:"Sign in to sync your browser data."', 'title:"Sign in"})]})'],
+    'description:"Your browser data stays on this Mac."})})'),
   // The Developers page describes the commands that ship: ask, exec, repl and mcp as Aux has them (owner, 2026-10-30).
   behavior('developers-settings.js', 'the questions describe the CLI that ships', ['Ae=[{id:"using-cli"', 'during its own run."}]'],
     `Ae=${readFileSync(new URL('./routes/developers-settings.js', import.meta.url), 'utf8').match(/CLI_QUESTIONS = (\[.*?\n {2}\])/s)[1]}`),
