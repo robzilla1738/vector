@@ -8,6 +8,8 @@ Robert asked for a thorough review of the browser experience — the agent, qual
 
 ## Progress (build 112, 2026-10-30)
 
+**Read this first:** [the audit of build 112](2026-10-30-plan-audit.md) checked every item against the code and overrules this section. It found Batch 6 (onboarding) largely unbuilt, the chrome://settings cleanup in Batch 7 not started, and the Batch 8 approvals popover missing. The list below describes what was built, not what's finished.
+
 Build 112 (`out/release/1.0.0-112`) carries everything below. It is assembled from the durable checkout with the release transforms, `--pdf-runtime`, `--computer-use-helper` and `--memory-helper`. It launches, and the items marked *(seen)* were checked on screen. The rest is built and unit-tested but not yet driven by hand.
 
 **Done**
