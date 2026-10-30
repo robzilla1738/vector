@@ -138572,7 +138572,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..e004d8c915a59f6c895de9a922025e49
    UpdateBackgroundColor();
  }
 diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
-index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130ff60364f5 100644
+index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..61422a0ff3cdfe6bb67063866ac89331b76e5861 100644
 --- a/chrome/browser/ui/views/frame/browser_view.cc
 +++ b/chrome/browser/ui/views/frame/browser_view.cc
 @@ -3,6 +3,30 @@
@@ -138678,12 +138678,15 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  
    WebUIContentsPreloadManager::GetInstance()->WarmupForBrowser(browser_.get());
  
-@@ -1101,6 +1149,12 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
+@@ -1101,6 +1149,15 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
  }
  
  BrowserView::~BrowserView() {
 +#if BUILDFLAG(ENABLE_AUX_BROWSER)
 +  aux_frame_tearing_down_ = true;
++  // The toolbar outlives or precedes the sidebar's row; it owns its field.
++  if (toolbar_)
++    toolbar_->ReclaimAuxLocationBar();
 +  aux_navigation_placement_.reset();
 +  aux_navigation_sidebar_host_ = nullptr;
 +#endif
@@ -138691,7 +138694,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    // Remove the layout manager to avoid dangling. This needs to be earlier than
    // other cleanups that destroy views referenced in the layout manager.
    SetLayoutManager(nullptr);
-@@ -1172,12 +1226,24 @@ BrowserWindow* BrowserWindow::FindBrowserWindowWithWebContents(
+@@ -1172,12 +1229,24 @@ BrowserWindow* BrowserWindow::FindBrowserWindowWithWebContents(
    // level NativeView.
    if (const auto* widget = views::Widget::GetTopLevelWidgetForNativeView(
            web_contents->GetNativeView())) {
@@ -138720,7 +138723,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  }
  
  // static
-@@ -1215,6 +1281,19 @@ void BrowserView::SetDisableRevealerDelayForTesting(bool disable) {
+@@ -1215,6 +1284,19 @@ void BrowserView::SetDisableRevealerDelayForTesting(bool disable) {
  gfx::Rect BrowserView::GetFindBarBoundingBox() const {
    gfx::Rect contents_bounds = multi_contents_view_->ConvertRectToWidget(
        multi_contents_view_->GetLocalBounds());
@@ -138740,17 +138743,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  
    // If the location bar is visible use it to position the bounding box,
    // otherwise use the contents container.
-@@ -1248,7 +1327,8 @@ ClientFrameElementInfo BrowserView::GetFrameElementInfo() const {
-                 .height()
-           : 0;
-   if (toolbar_ && ShouldDrawVerticalTabStrip()) {
--    info.toolbar_minimum_height = toolbar_->GetMinimumSize().height();
-+    info.toolbar_minimum_height = toolbar_->GetMinimumSize().height() -
-+                                  toolbar_->GetAuxSidebarNavigationRowHeight();
-   } else if (web_app_frame_toolbar_ && ShouldDrawWebAppFrameToolbar()) {
-     info.toolbar_minimum_height =
-         web_app_frame_toolbar_->GetMinimumSize().height();
-@@ -1489,6 +1569,10 @@ bool BrowserView::GetAccelerator(int cmd_id,
+@@ -1489,6 +1571,10 @@ bool BrowserView::GetAccelerator(int cmd_id,
      cmd_id = IDC_TASK_MANAGER_SHORTCUT;
    }
  
@@ -138761,7 +138754,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  #if BUILDFLAG(IS_MAC)
    // On macOS, most accelerators are defined in MainMenu.xib and are user
    // configurable. Furthermore, their values and enabled state depends on the
-@@ -1605,6 +1689,13 @@ void BrowserView::OnVerticalTabStripModeChanged(
+@@ -1605,6 +1691,13 @@ void BrowserView::OnVerticalTabStripModeChanged(
  // BrowserView, BrowserWindow implementation:
  
  void BrowserView::Show() {
@@ -138775,7 +138768,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    // Attempts to show closed windows should no-op.
    if (browser_widget_->IsClosed()) {
      return;
-@@ -1670,6 +1761,13 @@ void BrowserView::Show() {
+@@ -1670,6 +1763,13 @@ void BrowserView::Show() {
  }
  
  void BrowserView::ShowInactive() {
@@ -138789,7 +138782,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    if (!browser_widget_->IsVisible()) {
      browser_widget_->ShowInactive();
    }
-@@ -1983,6 +2081,7 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
+@@ -1983,6 +2083,7 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
    }
  
    WebContentsObserver::Observe(new_contents);
@@ -138797,7 +138790,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  
    // If |contents_web_view| already has the correct WebContents, we can save
    // some work.  This also prevents extra events from being reported by the
-@@ -2021,8 +2120,11 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
+@@ -2021,8 +2122,11 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
        GetWidget()->GetFocusManager()->ClearFocus();
      }
  
@@ -138811,7 +138804,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    }
  
    // Do this before updating InfoBarContainer as the InfoBarContainer may
-@@ -2828,6 +2930,52 @@ bool BrowserView::AreDraggableRegionsEnabled() const {
+@@ -2828,6 +2932,52 @@ bool BrowserView::AreDraggableRegionsEnabled() const {
    return IsWindowControlsOverlayEnabled() || IsUnframedModeEnabled();
  }
  
@@ -138864,7 +138857,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  void BrowserView::OnFocusBookmarksToolbar() {
    if (bookmark_bar_view_ && bookmark_bar_view_->GetVisible() &&
        bookmark_bar_view_->GetPreferredSize().height() != 0) {
-@@ -2968,8 +3116,27 @@ void BrowserView::OnWidgetWindowModalVisibilityChanged(views::Widget* widget,
+@@ -2968,8 +3118,27 @@ void BrowserView::OnWidgetWindowModalVisibilityChanged(views::Widget* widget,
  #endif
  }
  
@@ -138892,7 +138885,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  }
  
  void BrowserView::DidFinishNavigation(
-@@ -3010,6 +3177,9 @@ void BrowserView::MaybeShowReadingListInSidePanelIPH() {
+@@ -3010,6 +3179,9 @@ void BrowserView::MaybeShowReadingListInSidePanelIPH() {
  }
  
  bool BrowserView::IsBookmarkBarVisible() const {
@@ -138902,7 +138895,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    if (!WindowFeatureController::From(browser_)->SupportsWindowFeature(
            WindowFeatureController::WindowFeature::kFeatureBookmarkBar)) {
      return false;
-@@ -3490,7 +3660,10 @@ void BrowserView::OnSplitTabChanged(const SplitTabChange& change) {
+@@ -3490,7 +3662,10 @@ void BrowserView::OnSplitTabChanged(const SplitTabChange& change) {
            browser_->GetTabStripModel()->GetActiveTab();
  
        if (active_tab->GetSplit() == change.split_id) {
@@ -138914,7 +138907,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
        }
        break;
      }
-@@ -3880,7 +4053,9 @@ void BrowserView::ReparentTabStripAndWebAppViewsToBrowserView(
+@@ -3880,7 +4055,9 @@ void BrowserView::ReparentTabStripAndWebAppViewsToBrowserView(
  void BrowserView::EnsureFocusOrder() {
    // We want the infobar to come before the content pane, but after the bookmark
    // bar (if present) or top container (i.e. toolbar, again if present).
@@ -138925,7 +138918,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
      infobar_container_->InsertAfterInFocusList(bookmark_bar_view_.get());
    } else if (top_container_->parent() == this) {
      infobar_container_->InsertAfterInFocusList(top_container_);
-@@ -4233,12 +4408,19 @@ const views::Widget* BrowserView::GetWidget() const {
+@@ -4233,12 +4410,19 @@ const views::Widget* BrowserView::GetWidget() const {
  }
  
  void BrowserView::CreateTabSearchBubble() {
@@ -138945,7 +138938,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    if (auto* tab_search_host = GetTabSearchBubbleHost()) {
      tab_search_host->CloseTabSearchBubble();
    }
-@@ -4285,6 +4467,15 @@ void BrowserView::UpdateTabSearchBubbleHost() {
+@@ -4285,6 +4469,15 @@ void BrowserView::UpdateTabSearchBubbleHost() {
        vertical_tab_strip_state_controller->ShouldDisplayVerticalTabs()) {
      auto* combo_button =
          vertical_tab_strip_region_view_->GetTopContainer()->GetComboButton();
@@ -138961,7 +138954,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
      tab_search_bubble_host_ = std::make_unique<TabSearchBubbleHost>(
          combo_button->end_button(), browser_.get());
      combo_button->SetTabSearchBubbleHost(tab_search_bubble_host_.get());
-@@ -4310,6 +4501,12 @@ void BrowserView::ShowSplitView(bool focus_active_view) {
+@@ -4310,6 +4503,12 @@ void BrowserView::ShowSplitView(bool focus_active_view) {
  
    std::vector<tabs::TabInterface*> split_tabs = split_data->ListTabs();
  
@@ -138974,7 +138967,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    for (size_t i = 0; tabs::TabInterface* tab : split_tabs) {
      multi_contents_view_->SetWebContentsAtIndex(tab->GetContents(), i++);
    }
-@@ -4358,8 +4555,13 @@ void BrowserView::UpdateActiveTabInSplitView() {
+@@ -4358,8 +4557,13 @@ void BrowserView::UpdateActiveTabInSplitView() {
    // When active tab changes inside a split, it's generally due to focus change.
    // However, there are cases where inactive tab can be activated without a
    // focus change e.g. using tab shortcuts and in these cases update focus.
@@ -138990,7 +138983,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
      multi_contents_view_->GetActiveContentsView()->RequestFocus();
    }
  }
-@@ -4369,8 +4571,7 @@ bool BrowserView::IsTabChangeInSplitView(content::WebContents* old_contents,
+@@ -4369,8 +4573,7 @@ bool BrowserView::IsTabChangeInSplitView(content::WebContents* old_contents,
    return multi_contents_view_->IsInSplitView() &&
           multi_contents_view_->GetActiveContentsView()->web_contents() ==
               old_contents &&
@@ -139000,7 +138993,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  }
  
  void BrowserView::UpdateTabModalDialogHost() {
-@@ -4419,10 +4620,10 @@ void BrowserView::MaybeUpdateStoredFocusForWebContents(
+@@ -4419,10 +4622,10 @@ void BrowserView::MaybeUpdateStoredFocusForWebContents(
  std::vector<ContentsWebView*> BrowserView::GetAllVisibleContentsWebViews() {
    std::vector<ContentsWebView*> contents_views;
    contents_views.push_back(multi_contents_view_->GetActiveContentsView());
@@ -139015,7 +139008,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    }
    return contents_views;
  }
-@@ -4513,6 +4714,15 @@ void BrowserView::GetAccessiblePanes(std::vector<views::View*>* panes) {
+@@ -4513,6 +4716,15 @@ void BrowserView::GetAccessiblePanes(std::vector<views::View*>* panes) {
  bool BrowserView::ShouldDescendIntoChildForEventHandling(
      gfx::NativeView child,
      const gfx::Point& location) {
@@ -139031,7 +139024,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    // Window for PWAs with window-controls-overlay display override should claim
    // mouse events that fall within the draggable region.
    web_app::AppBrowserController* controller =
-@@ -4566,6 +4776,24 @@ bool BrowserView::RotatePaneFocusFromView(views::View* focused_view,
+@@ -4566,6 +4778,24 @@ bool BrowserView::RotatePaneFocusFromView(views::View* focused_view,
  // BrowserView, views::ClientView overrides:
  
  views::CloseRequestResult BrowserView::OnWindowCloseRequested() {
@@ -139056,7 +139049,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    // You cannot close a frame for which there is an active originating drag
    // session.
    if (tab_strip_view() && !tab_strip_view()->IsTabStripCloseable()) {
-@@ -4647,6 +4875,17 @@ int BrowserView::NonClientHitTest(const gfx::Point& point) {
+@@ -4647,6 +4877,17 @@ int BrowserView::NonClientHitTest(const gfx::Point& point) {
    views::View::ConvertPointToTarget(parent(), this,
                                      &point_in_browser_view_coords);
  
@@ -139074,7 +139067,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    // Check if the point is in the web_app_frame_toolbar_. Because this toolbar
    // can entirely be within the window controls overlay area, this check needs
    // to be done before the window controls overlay area check below.
-@@ -4863,6 +5102,9 @@ void BrowserView::Layout(PassKey) {
+@@ -4863,6 +5104,9 @@ void BrowserView::Layout(PassKey) {
    }
  
    LayoutSuperclass<views::View>(this);
@@ -139084,7 +139077,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  
    // TODO(jamescook): Why was this in the middle of layout code?
    toolbar_->location_bar()->UpdateFocusBehavior(IsToolbarVisible());
-@@ -4966,6 +5208,7 @@ void BrowserView::AddedToWidget() {
+@@ -4966,6 +5210,7 @@ void BrowserView::AddedToWidget() {
    }
  
    views::ClientView::AddedToWidget();
@@ -139092,7 +139085,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  
  #if BUILDFLAG(IS_WIN)
    // Register for screen capture exclusion updates. This is specific to
-@@ -5035,6 +5278,13 @@ void BrowserView::AddedToWidget() {
+@@ -5035,6 +5280,13 @@ void BrowserView::AddedToWidget() {
  
    LoadAccelerators();
  
@@ -139106,7 +139099,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    // ImmersiveModeController may depend on the presence of a Widget, so it
    // is initialized here.
    auto* const immersive_mode_controller =
-@@ -5111,7 +5361,9 @@ void BrowserView::AddedToWidget() {
+@@ -5111,7 +5363,9 @@ void BrowserView::AddedToWidget() {
    // be constructed following the check above.
    autofill_bubble_handler_ =
        std::make_unique<autofill::AutofillBubbleHandlerImpl>(
@@ -139117,7 +139110,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  
    auto* const frame_view = GetFrameView();
    frame_view->OnBrowserViewInitViewsComplete();
-@@ -5154,6 +5406,7 @@ void BrowserView::AddedToWidget() {
+@@ -5154,6 +5408,7 @@ void BrowserView::AddedToWidget() {
        kFallbackPopupAnchorElementId, *this);
  
    initialized_ = true;
@@ -139125,7 +139118,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  }
  
  void BrowserView::RemovedFromWidget() {
-@@ -5189,6 +5442,12 @@ void BrowserView::OnThemeChanged() {
+@@ -5189,6 +5444,12 @@ void BrowserView::OnThemeChanged() {
    }
  
    FrameColorsChanged();
@@ -139138,7 +139131,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  }
  
  bool BrowserView::GetDropFormats(
-@@ -6025,6 +6284,7 @@ void BrowserView::OnWillChangeFocus(View* focused_before, View* focused_now) {
+@@ -6025,6 +6286,7 @@ void BrowserView::OnWillChangeFocus(View* focused_before, View* focused_now) {
  }
  void BrowserView::OnDidChangeFocus(View* focused_before, View* focused_now) {
    UpdateAccessibleNameForRootView();
@@ -139146,7 +139139,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  }
  
  WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() {
-@@ -6036,6 +6296,7 @@ const WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() const {
+@@ -6036,6 +6298,7 @@ const WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() const {
  }
  
  void BrowserView::PaintAsActiveChanged() {
@@ -139154,7 +139147,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
    // Do not propagate Browser active state changes if the Browser has already
    // been scheduled for destruction.
    if (browser_->IsDeleteScheduled()) {
-@@ -6109,6 +6370,227 @@ void BrowserView::UpdateAccessibleURLForRootView(const GURL& url) {
+@@ -6109,6 +6372,227 @@ void BrowserView::UpdateAccessibleURLForRootView(const GURL& url) {
    }
  }
  
@@ -139382,7 +139375,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..ee874cfa4503abf904b18719f0b4130f
  void BrowserView::UpdateFullscreenAllowedFromPolicy(
      bool allowed_without_policy) {
    auto* fullscreen_pref_path = prefs::kFullscreenAllowed;
-@@ -6121,6 +6603,8 @@ void BrowserView::UpdateFullscreenAllowedFromPolicy(
+@@ -6121,6 +6605,8 @@ void BrowserView::UpdateFullscreenAllowedFromPolicy(
  
  void BrowserView::OnFirstPresentation(
      const viz::FrameTimingDetails& frame_timing_details) {
@@ -139729,20 +139722,18 @@ index 3dd6c5cf3093b6ab68040a4b6d37395618f03730..6aff87e131b378b2e85cc13e80b1c7bc
    static constexpr int kHighlightThickness = 3;
  
 diff --git a/chrome/browser/ui/views/frame/contents_container_view.cc b/chrome/browser/ui/views/frame/contents_container_view.cc
-index 099b89a24c04886a696793d7f9dd163982b8052f..500f87dce0ad35d8cf8983941ac6974e7f2ce2bf 100644
+index 099b89a24c04886a696793d7f9dd163982b8052f..bafef58550657f237e5f1cba7262e371492ee324 100644
 --- a/chrome/browser/ui/views/frame/contents_container_view.cc
 +++ b/chrome/browser/ui/views/frame/contents_container_view.cc
-@@ -26,7 +26,9 @@
+@@ -26,6 +26,7 @@
  #include "chrome/browser/ui/views/frame/contents_separator.h"
  #include "chrome/browser/ui/views/frame/contents_web_view.h"
  #include "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h"
 +#include "chrome/browser/buildflags.h"
  #include "chrome/browser/ui/views/frame/scrim_view.h"
-+#include "ui/views/view_shadow.h"
  #include "chrome/browser/ui/views/frame/tab_modal_dialog_host.h"
  #include "chrome/browser/ui/views/frame/top_container_view.h"
- #include "chrome/browser/ui/views/indigo/indigo_toolbar.h"
-@@ -54,7 +56,13 @@
+@@ -54,7 +55,13 @@
  #endif
  
  namespace {
@@ -139756,7 +139747,7 @@ index 099b89a24c04886a696793d7f9dd163982b8052f..500f87dce0ad35d8cf8983941ac6974e
  constexpr int kNewTabFooterSeparatorHeight = 1;
  constexpr int kNewTabFooterHeight = 56;
  }  // namespace
-@@ -213,8 +221,7 @@ void ContentsContainerView::UpdateBorderAndOverlay(bool is_in_split,
+@@ -213,8 +220,7 @@ void ContentsContainerView::UpdateBorderAndOverlay(bool is_in_split,
      }
    } else {
      if (split_changed) {
@@ -139766,25 +139757,7 @@ index 099b89a24c04886a696793d7f9dd163982b8052f..500f87dce0ad35d8cf8983941ac6974e
        UpdateBorderRoundedCorners();
      }
  
-@@ -436,6 +443,17 @@ void ContentsContainerView::SetTargetContentBounds(
-   InvalidateLayout(/*avoid_propagate_during_layout=*/true);
- }
- 
-+void ContentsContainerView::SetAuxCardShadow(bool shown) {
-+  if (!shown) {
-+    aux_card_shadow_.reset();
-+    return;
-+  }
-+  if (!aux_card_shadow_) {
-+    aux_card_shadow_ = std::make_unique<views::ViewShadow>(this, 2);
-+  }
-+  aux_card_shadow_->SetRoundedCorners(rounded_corner_radii_);
-+}
-+
- void ContentsContainerView::SetRoundedCorners(
-     const gfx::RoundedCornersF& corner_radii) {
-   if (corner_radii == rounded_corner_radii_) {
-@@ -477,6 +495,12 @@ views::ProposedLayout ContentsContainerView::CalculateProposedLayout(
+@@ -477,6 +483,12 @@ views::ProposedLayout ContentsContainerView::CalculateProposedLayout(
    }
  
    gfx::Rect full_contents_bounds = GetContentsBounds();
@@ -139797,7 +139770,7 @@ index 099b89a24c04886a696793d7f9dd163982b8052f..500f87dce0ad35d8cf8983941ac6974e
    gfx::Rect devtools_bounds;
    // The area contents excluding devtools is drawn (ie |contents_view_|,
    // |new_tab_footer_view_|, etc).
-@@ -605,15 +629,20 @@ views::ProposedLayout ContentsContainerView::CalculateProposedLayout(
+@@ -605,15 +617,20 @@ views::ProposedLayout ContentsContainerView::CalculateProposedLayout(
      // the outline. Shrink the available space by corner radius to ensure we
      // have space to draw it at the corners.
      views::SizeBounds available_space(width, height);
@@ -139823,7 +139796,7 @@ index 099b89a24c04886a696793d7f9dd163982b8052f..500f87dce0ad35d8cf8983941ac6974e
          mini_toolbar_.get(), mini_toolbar_->GetVisible(), mini_toolbar_rect);
    }
 diff --git a/chrome/browser/ui/views/frame/contents_container_view.h b/chrome/browser/ui/views/frame/contents_container_view.h
-index e3ae9d104db2d7e03712a6f0dbc3c4c2f34af0d8..dbe436c5968e980297a45835fceb471acf2b919b 100644
+index e3ae9d104db2d7e03712a6f0dbc3c4c2f34af0d8..4e48ac581c56791b1cbe9afaba4d7d6c29610549 100644
 --- a/chrome/browser/ui/views/frame/contents_container_view.h
 +++ b/chrome/browser/ui/views/frame/contents_container_view.h
 @@ -8,6 +8,7 @@
@@ -139834,15 +139807,7 @@ index e3ae9d104db2d7e03712a6f0dbc3c4c2f34af0d8..dbe436c5968e980297a45835fceb471a
  #include "base/memory/raw_ptr.h"
  #include "base/scoped_observation.h"
  #include "chrome/browser/devtools/devtools_contents_resizing_strategy.h"
-@@ -39,6 +40,7 @@ class NewTabFooterWebView;
- }  // namespace new_tab_footer
- 
- namespace views {
-+class ViewShadow;
- class WebView;
- }  // namespace views
- 
-@@ -53,6 +55,14 @@ class ContentsContainerView : public views::View,
+@@ -53,6 +54,14 @@ class ContentsContainerView : public views::View,
                                public views::ViewObserver {
    METADATA_HEADER(ContentsContainerView, views::View)
   public:
@@ -139857,24 +139822,6 @@ index e3ae9d104db2d7e03712a6f0dbc3c4c2f34af0d8..dbe436c5968e980297a45835fceb471a
    // Enumerates where the devtools are docked relative to the main web contents.
    enum class DevToolsDockedPlacement {
      kLeft,
-@@ -140,6 +150,9 @@ class ContentsContainerView : public views::View,
-       std::optional<gfx::Outsets> target_contents_bounds);
- 
-   void SetRoundedCorners(const gfx::RoundedCornersF& corner_radii);
-+  // Aux's page card: a soft shadow under the rounded page instead of a rim,
-+  // as Arc draws it, single page or split pane.
-+  void SetAuxCardShadow(bool shown);
- 
-   views::View* GetToastAnchorView() { return toast_anchor_view_; }
- 
-@@ -239,6 +252,7 @@ class ContentsContainerView : public views::View,
- 
-   // This is rounded corner radii that will be used.
-   gfx::RoundedCornersF rounded_corner_radii_;
-+  std::unique_ptr<views::ViewShadow> aux_card_shadow_;
- 
-   DevToolsContentsResizingStrategy strategy_;
-   base::ScopedObservation<View, ViewObserver> view_bounds_observer_{this};
 diff --git a/chrome/browser/ui/views/frame/contents_web_view.cc b/chrome/browser/ui/views/frame/contents_web_view.cc
 index 8f29bb4291546ddec1643d46e52c21b8c3b31128..40544c36e65dec38cc5e5ebfc8180a022caafa88 100644
 --- a/chrome/browser/ui/views/frame/contents_web_view.cc
@@ -140655,7 +140602,7 @@ index fdbb4cf741eb3de803fdf4b053813d8f1ad2d16e..a77e9da5095e95eb74e2671d1fe6b916
      window->OnTopContainerViewBoundsChanged(bounds);
    }
 diff --git a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c75d787cbb 100644
+index 29dfbde914c55ad1453a1c70998c9299b49c1132..7941846ff88943344ed65231dd7ad94854d56d59 100644
 --- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 @@ -3,6 +3,7 @@
@@ -140986,7 +140933,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
    }
  
    if (IsParentedTo(views().vertical_tab_strip_background_blur_backdrop,
-@@ -846,7 +1049,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -846,17 +1049,30 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
      layout.AddChild(
          views().vertical_tab_strip_background_blur_backdrop,
          vertical_tab_strip_bounds,
@@ -141000,23 +140947,36 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
              layout_data_->vertical_tab_strip_animation.expand_on_hover_width >
                  0.0f);
    }
-@@ -857,6 +1065,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+ 
+-  // Position the vertical tabstrip top corner.
++  const bool aux_card_surface =
++      BUILDFLAG(IS_MAC) &&
++      layout_data_->tab_strip_type == TabStripType::kVertical &&
++      views().vertical_tab_strip_region_view->GetAuxProfilePreviewAdmission();
++  // Position the vertical tabstrip top corner. Aux's page is a rounded card
++  // inside the window surface; Chromium's stroked corners are for a page set
++  // against the sidebar, so neither shows there.
+   if (IsParentedTo(views().vertical_tab_strip_top_corner,
+                    views().browser_view)) {
      gfx::Rect corner_bounds;
      const bool top_corner_visible =
++        !aux_card_surface &&
          layout_data_->tab_strip_type == TabStripType::kVertical &&
 +        !vertical_tab_strip_bounds.IsEmpty() &&
          vertical_tab_strip_animation.top_corner > 0.0;
  
      // The top corner is drawn when the tabstrip goes all the way to the top.
-@@ -880,6 +1089,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -879,7 +1095,9 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+                    views().browser_view)) {
      gfx::Rect corner_bounds;
      const bool bottom_corner_visible =
++        !aux_card_surface &&
          layout_data_->tab_strip_type == TabStripType::kVertical &&
 +        !vertical_tab_strip_bounds.IsEmpty() &&
          vertical_tab_strip_animation.bottom_corner > 0.0;
      if (bottom_corner_visible) {
        auto preferred =
-@@ -1139,6 +1349,28 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1139,6 +1357,28 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
  
      views().multi_contents_view->SetSplitViewInsets(contents_insets);
    }
@@ -141045,22 +141005,19 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
  
    // Update the multi-contents view about if we will be animating content
    // bounds. This is to make optimizations during animations e.g. avoid
-@@ -1214,8 +1446,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1214,8 +1454,9 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
      }
    }
  
 -  // If the window goes out of glass mode, these changes won't hurt anything.
 -  if (in_glass_mode()) {
-+  const bool aux_surface =
-+      BUILDFLAG(IS_MAC) &&
-+      layout_data_->tab_strip_type == TabStripType::kVertical &&
-+      views().vertical_tab_strip_region_view->GetAuxProfilePreviewAdmission();
++  const bool aux_surface = aux_card_surface;
 +  // Aux surface clipping does not depend on the upstream glass feature.
 +  if (in_glass_mode() || aux_surface) {
      gfx::RoundedCornersF content_corners;
      if (layout_data_->tab_strip_type == TabStripType::kVertical &&
          !is_fullscreen(layout_data_->window_state)) {
-@@ -1230,6 +1466,40 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1230,6 +1471,40 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
          content_corners.set_lower_left(radius);
        }
      }
@@ -141101,7 +141058,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
      views().multi_contents_view->SetBackgroundRadii(content_corners);
    }
  
-@@ -1254,6 +1524,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1254,6 +1529,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
        // leading caption buttons).
        toolbar_height = toolbar_bounds->bottom() - tabstrip_bounds->y();
  
@@ -141114,7 +141071,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
        caption_button_width =
            base::ClampCeil(browser_params.leading_exclusion.content.width()) -
            tabstrip_bounds->x();
-@@ -1339,6 +1615,26 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
+@@ -1339,6 +1620,26 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
      bool needs_exclusion) const {
    const int original_top = params.visual_client_area.y();
  
@@ -141141,7 +141098,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
    if (IsParentedTo(views().horizontal_tab_strip_region_view,
                     views().top_container)) {
      gfx::Rect tabstrip_bounds;
-@@ -1399,6 +1695,19 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
+@@ -1399,6 +1700,19 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
                      layout_data_->separator_info.top_container_separator);
    }
  
@@ -141161,7 +141118,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
    return gfx::Rect(params.visual_client_area.x(), original_top,
                     params.visual_client_area.width(),
                     params.visual_client_area.y() - original_top);
-@@ -1423,6 +1732,17 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1423,6 +1737,17 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    } else {
      background->SetPrimaryColor(CustomCornersBackground::ToolbarTheme());
    }
@@ -141179,7 +141136,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
  
    // By default, this is just a flat background.
    CustomCornersBackground::Corners corners;
-@@ -1430,14 +1750,19 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1430,14 +1755,19 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    // Rounded corners are drawn in vertical tab strip mode when not maximized or
    // fullscreen.
    if (layout_data_->tab_strip_type == TabStripType::kVertical &&
@@ -141201,7 +141158,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
        corners[CornerOrientation::kTopLeading] =
            background->GetWindowCorner(/*upper=*/true);
      }
-@@ -1484,6 +1809,11 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
+@@ -1484,6 +1814,11 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
  
  void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      const BrowserLayoutParams& params) {
@@ -141213,7 +141170,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
    // Want to cut the vertical tabstrip and its decorations out of the top
    // container in transparency mode.
    CustomCornersBackground::Cutouts top_container_cutout_views;
-@@ -1496,6 +1826,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1496,6 +1831,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
                                                    1.0f);
    if (layout_data_->tab_strip_type == TabStripType::kVertical) {
      side_panel_start = views().vertical_tab_strip_region_view->bounds().right();
@@ -141226,7 +141183,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
  
      // Vertical tabstrip goes all the way to the top of the window if it is not
      // collapsed or there are no caption buttons on the leading edge.
-@@ -1508,10 +1844,26 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1508,10 +1849,26 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      CHECK(vertical_tabs_background)
          << "Expected vertical tab strip to have a CustomCornersBackground.";
  
@@ -141255,7 +141212,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
        // Use a curve that goes very close to 1 very quickly, but still has a
        // visible fade. This isn't perfect, but hopefully with glass
        // expand-on-hover it will improve.
-@@ -1530,7 +1882,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1530,7 +1887,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
  
      // Ensure that corners of the window remain rounded.
      CustomCornersBackground::Corners vertical_tabs_corners;
@@ -141264,7 +141221,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
        if (animation.top_offset == 0) {
          vertical_tabs_corners[CornerOrientation::kTopLeading] =
              vertical_tabs_background->GetWindowCorner(/*upper=*/true);
-@@ -1566,6 +1918,23 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1566,6 +1923,23 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
            vertical_tabs_bottom_corner_size;
      }
  
@@ -141288,7 +141245,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
      vertical_tabs_background->SetCorners(vertical_tabs_corners);
  
      // When the organizer panel is animating open or closed and does not appear
-@@ -1619,8 +1988,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1619,8 +1993,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
                                            vertical_tabs_bottom_corner_amount) *
              frame_color.opacity,
      };
@@ -141301,7 +141258,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
      // Top edge is drawn when the tabstrip is not flush with the edge of the
      // screen, or with a visual element that provides a natural border.
      if (animation.expand_on_hover_width > 0.0 || animation.top_corner < 0.0 ||
-@@ -1707,6 +2078,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1707,6 +2083,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        break;
      }
      case TabStripType::kVertical: {
@@ -141317,7 +141274,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
        // Curve trailing corner when it becomes the top trailing corner of the
        // browser.
        if (layout_data_->window_state == WindowState::kNormal &&
-@@ -1722,7 +2102,30 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1722,7 +2107,30 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        // happen.
        break;
    }
@@ -141348,7 +141305,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
  
    auto* const top_container_background =
        views().top_container->background()->AsA<CustomCornersBackground>();
-@@ -1733,9 +2136,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1733,9 +2141,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
    // is active for the current window.
    if (features::IsGlassFrameEnabled()) {
      if (!is_fullscreen(layout_data_->window_state)) {
@@ -141361,7 +141318,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c7
          top_container_cutout_views.push_back(
              CustomCornersBackground::InverseOf(*toolbar_background));
        }
-@@ -1842,8 +2246,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1842,8 +2251,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
  
      // Need to ensure the bottom of the window is properly rounded for normal
      // windows.
@@ -141537,7 +141494,7 @@ index 460c40a7c5033c97ace6c442d347d7ebab13a82f..7798c40c98c1a8587a5f37fb2a6a9067
  
    raw_ptr<views::FlexLayout> flex_layout_manager_;
 diff --git a/chrome/browser/ui/views/frame/multi_contents_view.cc b/chrome/browser/ui/views/frame/multi_contents_view.cc
-index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5c79de15c 100644
+index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f9915807b3cc87b 100644
 --- a/chrome/browser/ui/views/frame/multi_contents_view.cc
 +++ b/chrome/browser/ui/views/frame/multi_contents_view.cc
 @@ -6,6 +6,7 @@
@@ -141717,7 +141674,17 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
    resize_area_ = nullptr;
    contents_separators_.Reset();
    background_view_ = nullptr;
-@@ -256,19 +315,20 @@ MultiContentsView::GetFocusableViewsMapFor(
+@@ -227,7 +286,8 @@ void MultiContentsView::SetBackgroundRadii(const gfx::RoundedCornersF& radii) {
+ 
+   background_view_->SetRoundedCorners(radii);
+ 
+-  if (!IsInSplitView()) {
++  // An Aux card keeps its own radius; these are the window's.
++  if (!IsInSplitView() && !aux_card_layout_) {
+     GetActiveContentsContainerView()->SetRoundedCorners(radii);
+     GetInactiveContentsContainerView()->SetRoundedCorners(
+         gfx::RoundedCornersF());
+@@ -256,19 +316,20 @@ MultiContentsView::GetFocusableViewsMapFor(
  }
  
  bool MultiContentsView::IsInSplitView() const {
@@ -141741,7 +141708,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
      UpdateContentsBorderAndOverlay();
    }
  
-@@ -281,18 +341,82 @@ void MultiContentsView::SetWebContentsAtIndex(
+@@ -281,18 +342,82 @@ void MultiContentsView::SetWebContentsAtIndex(
  
  void MultiContentsView::ShowSplitView(
      split_tabs::SplitTabVisualData visual_data) {
@@ -141772,7 +141739,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
 +        GetIndexOf(lens_overlay_view_).value());
 +    contents_container_views_.push_back(container);
 +    ObserveContainerFocus(container);
-   }
++  }
 +  visual_data_ = visual_data;
 +  pane_count_ = pane_count;
 +  for (size_t i = 0; i < contents_container_views_.size(); ++i) {
@@ -141811,7 +141778,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
 +    auto* handle = branch_resize_areas_.back().get();
 +    branch_resize_areas_.pop_back();
 +    RemoveChildViewT(handle);
-+  }
+   }
 +  if (!visual_data_.pane_tree()) return;
 +  for (const auto& node : visual_data_.pane_tree()->nodes()) {
 +    if (node.slot) continue;
@@ -141835,7 +141802,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
  }
  
  void MultiContentsView::CloseSplitView() {
-@@ -301,10 +425,19 @@ void MultiContentsView::CloseSplitView() {
+@@ -301,10 +426,19 @@ void MultiContentsView::CloseSplitView() {
    }
  
    if (active_index_ != 0) {
@@ -141858,7 +141825,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
    resize_area_->SetVisible(false);
    UpdateContentsBorderAndOverlay();
  
-@@ -333,15 +466,50 @@ void MultiContentsView::SwapContentsInSplitView() {
+@@ -333,15 +467,50 @@ void MultiContentsView::SwapContentsInSplitView() {
  void MultiContentsView::SetActiveIndex(int index) {
    // Index should never be less than 0 or equal to or greater than the total
    // number of contents views.
@@ -141912,7 +141879,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
  void MultiContentsView::UpdateSplitVisualData(
      const split_tabs::SplitTabVisualData& visual_data) {
    if (visual_data_ == visual_data) {
-@@ -350,6 +518,7 @@ void MultiContentsView::UpdateSplitVisualData(
+@@ -350,6 +519,7 @@ void MultiContentsView::UpdateSplitVisualData(
  
    visual_data_ = visual_data;
    resize_area_->SetLayout(visual_data.split_layout());
@@ -141920,7 +141887,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
    InvalidateLayout();
  }
  
-@@ -374,6 +543,12 @@ void MultiContentsView::OnSwap() {
+@@ -374,6 +544,12 @@ void MultiContentsView::OnSwap() {
    delegate_->ReverseWebContents();
  }
  
@@ -141933,7 +141900,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
  void MultiContentsView::SetTargetContentBounds(
      std::optional<TargetContentBounds> target_content_bounds) {
    if (target_content_bounds_ == target_content_bounds) {
-@@ -393,7 +568,10 @@ void MultiContentsView::SetIsAnimatingContent(bool is_animating) {
+@@ -393,7 +569,10 @@ void MultiContentsView::SetIsAnimatingContent(bool is_animating) {
  
  std::vector<views::View*> MultiContentsView::GetAccessiblePanes() {
    std::vector<views::View*> accessible_panes;
@@ -141944,7 +141911,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
      auto contents_accessible_panes =
          contents_container_view->GetAccessiblePanes();
      accessible_panes.insert(accessible_panes.end(),
-@@ -423,6 +601,42 @@ void MultiContentsView::OnResize(int resize_amount, bool done_resizing) {
+@@ -423,6 +602,42 @@ void MultiContentsView::OnResize(int resize_amount, bool done_resizing) {
    }
  }
  
@@ -141987,7 +141954,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
  double MultiContentsView::CalculateRatioWithSnapPoints(
      double start_size,
      double total_size) const {
-@@ -448,7 +662,7 @@ void MultiContentsView::OnWebContentsFocused(views::WebView* web_view) {
+@@ -448,7 +663,7 @@ void MultiContentsView::OnWebContentsFocused(views::WebView* web_view) {
    if (IsInSplitView()) {
      // Check whether the widget is visible as otherwise during browser hide,
      // inactive web contents gets focus. See crbug.com/419335827
@@ -141996,7 +141963,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
          GetWidget()->IsVisible()) {
        delegate_->WebContentsFocused(web_view->web_contents());
      }
-@@ -460,10 +674,10 @@ void MultiContentsView::OnActorOverlayFocused(views::WebView* web_view) {
+@@ -460,10 +675,10 @@ void MultiContentsView::OnActorOverlayFocused(views::WebView* web_view) {
      for (auto& contents_container_view : contents_container_views_) {
        if (contents_container_view->actor_overlay_web_view() &&
            contents_container_view->actor_overlay_web_view() == web_view &&
@@ -142009,7 +141976,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
        }
      }
    }
-@@ -474,10 +688,10 @@ void MultiContentsView::OnNtpFooterFocused(views::WebView* web_view) {
+@@ -474,10 +689,10 @@ void MultiContentsView::OnNtpFooterFocused(views::WebView* web_view) {
      for (auto& contents_container_view : contents_container_views_) {
        if (contents_container_view->new_tab_footer_view() &&
            contents_container_view->new_tab_footer_view() == web_view &&
@@ -142022,7 +141989,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
        }
      }
    }
-@@ -487,7 +701,7 @@ void MultiContentsView::OnReadAnythingOverlayFocused(
+@@ -487,7 +702,7 @@ void MultiContentsView::OnReadAnythingOverlayFocused(
      ContentsContainerView* container,
      views::WebView* web_view) {
    if (IsInSplitView() && GetWidget()->IsVisible()) {
@@ -142031,7 +141998,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
        delegate_->WebContentsFocused(container->contents_view()->web_contents());
      }
    }
-@@ -506,8 +720,9 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -506,8 +721,9 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
  
    gfx::Rect available_space = gfx::Rect(width, height);
  
@@ -142042,7 +142009,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
    layouts.child_layouts.emplace_back(background_view_.get(), show_background,
                                       available_space);
  
-@@ -519,9 +734,63 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -519,9 +735,63 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
    available_space =
        CalculateSeparatorLayouts(available_space, layouts.child_layouts);
  
@@ -142107,7 +142074,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
    ViewSizes sizes = GetViewSizes(available_space);
  
    gfx::Rect start_rect, resize_rect, end_rect;
-@@ -544,6 +813,10 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -544,6 +814,10 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
    layouts.child_layouts.emplace_back(contents_container_views_[0].get(),
                                       contents_container_views_[0]->GetVisible(),
                                       start_rect);
@@ -142118,7 +142085,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
    layouts.child_layouts.emplace_back(resize_area_.get(),
                                       resize_area_->GetVisible(), resize_rect);
    layouts.child_layouts.emplace_back(contents_container_views_[1].get(),
-@@ -558,6 +831,14 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -558,6 +832,14 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
  }
  
  void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
@@ -142133,7 +142100,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
    if (!target_content_bounds_) {
      for (auto& contents : contents_container_views_) {
        contents->SetTargetContentBounds(std::nullopt);
-@@ -579,14 +860,29 @@ void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
+@@ -579,14 +861,29 @@ void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
    views::ProposedLayout target_layout;
    {
      // Need to temporarily override the split view insets.
@@ -142165,7 +142132,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
    const auto& default_clip = target_content_bounds_->clipped_area;
  
    // Due to the way web contents resize, and the fact that both split views will
-@@ -798,12 +1094,21 @@ void MultiContentsView::UpdateContentsBorderAndOverlay() {
+@@ -798,10 +1095,17 @@ void MultiContentsView::UpdateContentsBorderAndOverlay() {
    for (auto& contents_container_view : contents_container_views_) {
      const bool is_active =
          contents_container_view->contents_view() == GetActiveContentsView();
@@ -142185,12 +142152,8 @@ index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5
 +                                      : gfx::RoundedCornersF()));
      contents_container_view->UpdateBorderAndOverlay(
          is_in_split, is_active, is_active && active_contents_view_highlighted_);
-+    contents_container_view->SetAuxCardShadow(aux_card_layout_ &&
-+                                              contents_container_view->GetVisible());
    }
- }
- 
-@@ -851,6 +1156,15 @@ void MultiContentsView::SetShouldShowTopSeparator(bool should_show) {
+@@ -851,6 +1155,15 @@ void MultiContentsView::SetShouldShowTopSeparator(bool should_show) {
    InvalidateLayout(/*avoid_propagate_during_layout=*/true);
  }
  
@@ -142967,7 +142930,7 @@ index 66b5ec2944471b2cd6058f2b0e02099ac29c83d4..99301f4a705f0b244828de8921d4a67c
    explicit ThemedBackground(BrowserView* browser_view,
                              ThemeChoice theme_choice = kToolbarTheme);
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba4976303754ecf 100644
+index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc95bed574 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -3,12 +3,44 @@
@@ -143015,7 +142978,15 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
  #include "base/i18n/number_formatting.h"
  #include "base/i18n/rtl.h"
  #include "base/metrics/histogram_functions.h"
-@@ -60,6 +92,7 @@
+@@ -35,6 +67,7 @@
+ #include "chrome/browser/ui/views/animations/tab_strip_animations.h"
+ #include "chrome/browser/ui/views/frame/base_tab_strip_region_view.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/frame/themed_background.h"
+ #include "chrome/browser/ui/views/frame/custom_corners_background.h"
+ #include "chrome/browser/ui/views/frame/safe_invoke/safe_invoke.h"
+ #include "chrome/browser/ui/views/frame/shadow_frame_view.h"
+@@ -60,6 +93,7 @@
  #include "ui/base/interaction/element_tracker.h"
  #include "ui/base/l10n/l10n_util.h"
  #include "ui/base/metadata/metadata_impl_macros.h"
@@ -143023,7 +142994,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
  #include "ui/compositor/layer.h"
  #include "ui/display/screen.h"
  #include "ui/events/event.h"
-@@ -68,17 +101,32 @@
+@@ -68,17 +102,32 @@
  #include "ui/views/controls/button/label_button.h"
  #include "ui/views/controls/focus_ring.h"
  #include "ui/views/controls/resize_area.h"
@@ -143056,7 +143027,47 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
  constexpr int kResizeAreaWidth = 5;
  constexpr int kCollapsedResizeAreaWidth = 2;
  constexpr int kKeyboardResizeWidth = 50;
-@@ -141,6 +189,69 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -97,6 +146,39 @@ constexpr ShadowFrameView::ShadowAlpha kExpandOnHoverShadowAlpha(
+ DEFINE_CLASS_CUSTOM_ELEMENT_EVENT_TYPE(VerticalTabStripRegionView,
+                                        kAnimationCompletedEvent);
+ 
++namespace {
++// Holds the address field above Tabs. Its own layer keeps it over the
++// scrolled list; rows slide under the window surface it paints.
++class AuxAddressRow final : public views::View {
++  METADATA_HEADER(AuxAddressRow, views::View)
++
++ public:
++  explicit AuxAddressRow(BrowserView& browser_view)
++      : browser_view_(browser_view) {
++    SetPaintToLayer();
++    layer()->SetFillsBoundsOpaquely(false);
++  }
++
++ private:
++  void OnPaintBackground(gfx::Canvas* canvas) override {
++    ThemedBackground::PaintAuxWindowSurface(canvas, this, &browser_view_.get());
++  }
++  void Layout(PassKey) override {
++    if (children().empty())
++      return;
++    gfx::Rect field = GetLocalBounds();
++    field.Inset(gfx::Insets::VH((height() - children()[0]->GetPreferredSize().height()) / 2,
++                                aux::frame_metrics::kGutter));
++    children()[0]->SetBoundsRect(field);
++  }
++
++  const raw_ref<BrowserView> browser_view_;
++};
++
++BEGIN_METADATA(AuxAddressRow)
++END_METADATA
++}  // namespace
++
+ VerticalTabStripRegionView::VerticalTabStripRegionView(
+     tabs::VerticalTabStripStateController* state_controller,
+     actions::ActionItem* root_action_item,
+@@ -141,6 +223,73 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
    top_button_separator_->SetProperty(
        views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
  
@@ -143086,6 +143097,10 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
 +          base::BindRepeating(&VerticalTabStripRegionView::RecordNewTabButtonPressed,
 +                              base::Unretained(this))));
 +  aux_sidebar_->SetProperty(views::kMarginsKey, gfx::Insets());
++  aux_address_row_ = AddChildView(std::make_unique<AuxAddressRow>(*browser_view));
++  aux_address_row_->SetProperty(views::kViewIgnoredByLayoutKey, true);
++  aux_address_scrolled_ = aux_sidebar_->AddContentsScrolledCallback(base::BindRepeating(
++      &VerticalTabStripRegionView::LayoutAuxAddressRow, base::Unretained(this)));
 +
 +  // Original +5a8 parent follows the expanding scroll/body (+5b0).
 +  // Keep the genuine profile/pager/search owner below the live tab body.
@@ -143126,7 +143141,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    bottom_button_container_ =
        AddChildView(std::make_unique<VerticalTabStripBottomContainer>(
            state_controller_, root_action_item, browser_view->browser(),
-@@ -177,12 +288,13 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -177,12 +326,13 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
            base::Unretained(this)));
  
    SetProperty(views::kElementIdentifierKey, kTabStripRegionElementId);
@@ -143141,7 +143156,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
        /*corner_color=*/CustomCornersBackground::ToolbarTheme()));
  
    shadow_frame_ = AddChildView(std::make_unique<ShadowFrameView>(
-@@ -194,11 +306,32 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -194,11 +344,32 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
          std::make_unique<VerticalTabStripFocusSwipeController>(this);
    }
  
@@ -143174,7 +143189,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    for (const auto& lock : hover_locks_) {
      lock->ClearRegionViewOnDestruction();
    }
-@@ -208,7 +341,17 @@ VerticalTabStripRegionView::~VerticalTabStripRegionView() {
+@@ -208,7 +379,17 @@ VerticalTabStripRegionView::~VerticalTabStripRegionView() {
    state_controller_->SetDelegate(nullptr);
  }
  
@@ -143192,7 +143207,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    return BrowserAnimationController::From(browser_view()->browser())
        ->IsAnimating(TabStripAnimations::kVerticalTabStrip);
  }
-@@ -216,6 +359,26 @@ bool VerticalTabStripRegionView::IsAnimatingSize() const {
+@@ -216,6 +397,26 @@ bool VerticalTabStripRegionView::IsAnimatingSize() const {
  void VerticalTabStripRegionView::OnAnimationProgressed(
      const BrowserAnimationController* controller,
      BrowserAnimationUpdate status) {
@@ -143219,7 +143234,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    switch (status) {
      case BrowserAnimationUpdate::kStarted: {
        const auto motion =
-@@ -281,6 +444,19 @@ bool VerticalTabStripRegionView::IsPositionInWindowCaption(
+@@ -281,6 +482,19 @@ bool VerticalTabStripRegionView::IsPositionInWindowCaption(
      return false;
    }
  
@@ -143239,7 +143254,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    if (IsHitInView(top_button_container_, point)) {
      gfx::Point point_in_child = point;
      views::View::ConvertPointToTarget(this, top_button_container_,
-@@ -295,23 +471,128 @@ bool VerticalTabStripRegionView::IsPositionInWindowCaption(
+@@ -295,23 +509,153 @@ bool VerticalTabStripRegionView::IsPositionInWindowCaption(
      return bottom_button_container_->IsPositionInWindowCaption(point_in_child);
    }
  
@@ -143313,6 +143328,31 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
 +  GetLayoutManager()->InvalidateLayout();
 +}
 +
++void VerticalTabStripRegionView::HostAuxAddressField(
++    std::unique_ptr<views::View> field) {
++  aux_address_row_->AddChildView(std::move(field));
++  InvalidateLayout();
++}
++
++int VerticalTabStripRegionView::GetAuxAddressFieldHeight() const {
++  return aux_address_row_ && !aux_address_row_->children().empty()
++             ? aux_address_row_->children()[0]->GetPreferredSize().height()
++             : 0;
++}
++
++void VerticalTabStripRegionView::LayoutAuxAddressRow() {
++  if (!aux_address_row_)
++    return;
++  const auto spacer = aux_sidebar_->GetAddressSpacerBounds();
++  const bool shown = spacer.has_value() && !aux_address_row_->children().empty();
++  aux_address_row_->SetVisible(shown);
++  if (!shown)
++    return;
++  // In the list above Tabs; scrolled away, it stays at the list's top.
++  const int y = std::max(aux_sidebar_->y(), spacer->y());
++  aux_address_row_->SetBounds(0, y, width(), spacer->height());
++}
++
 +void VerticalTabStripRegionView::LayoutAuxNavigationRow(ToolbarView* toolbar) {
 +  aux_navigation_row_split_ = 0;
 +  if (!toolbar) {
@@ -143321,7 +143361,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
 +    return;
 +  }
 +  // Arc header: traffic lights, sidebar toggle, then back/forward/reload in
-+  // one row; the address field sits directly below it.
++  // one row.
 +  constexpr int kToggleGap = 4;
 +  const auto* margins = top_button_container_->GetProperty(views::kMarginsKey);
 +  const int left = margins ? margins->left() : 0;
@@ -143336,7 +143376,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
 +  toolbar->SetAuxSidebarNavigationLeadingInset(split - host->x() - toolbar->x());
 +  aux_navigation_row_split_ = split;
 +  const int button_row =
-+      host->height() - toolbar->GetAuxSidebarNavigationRowHeight();
++      host->height();
 +  const int center =
 +      top_button_container_->GetCollapseButton()->bounds().CenterPoint().y();
 +  const int want = std::max(0, center - button_row / 2);
@@ -143379,7 +143419,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
  void VerticalTabStripRegionView::SetToolbarHeightForLayout(int toolbar_height) {
    top_button_container_->SetToolbarHeightForLayout(toolbar_height);
  }
-@@ -353,6 +634,11 @@ bool VerticalTabStripRegionView::WillWrapDueToOverflow(
+@@ -353,6 +697,11 @@ bool VerticalTabStripRegionView::WillWrapDueToOverflow(
  
  void VerticalTabStripRegionView::AddedToWidget() {
    BaseTabStripRegionView::AddedToWidget();
@@ -143391,7 +143431,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    paint_as_active_subscription_ =
        GetWidget()->RegisterPaintAsActiveChangedCallback(base::BindRepeating(
            [](VerticalTabStripRegionView* view) {
-@@ -366,6 +652,12 @@ void VerticalTabStripRegionView::AddedToWidget() {
+@@ -366,6 +715,12 @@ void VerticalTabStripRegionView::AddedToWidget() {
  }
  
  void VerticalTabStripRegionView::RemovedFromWidget() {
@@ -143404,7 +143444,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    if (GetFocusManager()) {
      GetFocusManager()->RemoveFocusChangeListener(&focus_listener_);
    }
-@@ -373,7 +665,27 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
+@@ -373,7 +728,29 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
  }
  
  void VerticalTabStripRegionView::Layout(PassKey) {
@@ -143429,10 +143469,12 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
 +  } else {
 +    LayoutAuxNavigationRow(merged ? navigation : nullptr);
 +  }
++
++  LayoutAuxAddressRow();
  
    // Manually position the resize area as it overlaps views handled by the flex
    // layout.
-@@ -381,6 +693,10 @@ void VerticalTabStripRegionView::Layout(PassKey) {
+@@ -381,6 +758,10 @@ void VerticalTabStripRegionView::Layout(PassKey) {
                                          0, resize_area_width_,
                                          bounds().height()));
    shadow_frame_->SetBoundsRect(GetLocalBounds());
@@ -143443,7 +143485,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
  
    // Ensure that we update the drop arrow position so that it does not render in
    // the collapsed state when expand on hover is active.
-@@ -401,14 +717,36 @@ views::View* VerticalTabStripRegionView::GetDefaultFocusableChild() {
+@@ -401,14 +782,36 @@ views::View* VerticalTabStripRegionView::GetDefaultFocusableChild() {
  gfx::Size VerticalTabStripRegionView::GetMinimumSize() const {
    auto min_size = BaseTabStripRegionView::GetMinimumSize();
    min_size.set_width((state_controller_->IsCollapsed() || IsAnimatingSize())
@@ -143482,7 +143524,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    const auto* controller =
        BrowserAnimationController::From(browser_view()->browser());
    const auto motion =
-@@ -510,7 +848,18 @@ void VerticalTabStripRegionView::HandleDragUpdate(
+@@ -510,7 +913,18 @@ void VerticalTabStripRegionView::HandleDragUpdate(
    }
  }
  
@@ -143501,7 +143543,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    SetLinkDropArrow(std::nullopt);
    link_drag_lock_.reset();
    UpdateExpandOnHoverState(false);
-@@ -604,7 +953,8 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
+@@ -604,7 +1018,8 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
    new_state.uncollapsed_width = target_collapse_state_.uncollapsed_width;
    if (!new_state.collapsed) {
      new_state.uncollapsed_width =
@@ -143511,7 +143553,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
      if (std::abs(new_state.uncollapsed_width -
                   tabs::kVerticalTabStripDefaultUncollapsedWidth) <
          kSnapDistance) {
-@@ -637,6 +987,9 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
+@@ -637,6 +1052,9 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
    }
  
    target_collapse_state_ = new_state;
@@ -143521,7 +143563,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
  
    if (previously_collapsed != target_collapse_state_.collapsed) {
      state_controller_->RequestCollapse(target_collapse_state_.collapsed);
-@@ -653,6 +1006,8 @@ void VerticalTabStripRegionView::SetCollapsedStateUpdatedCallback(
+@@ -653,6 +1071,8 @@ void VerticalTabStripRegionView::SetCollapsedStateUpdatedCallback(
  }
  
  bool VerticalTabStripRegionView::IsCollapsing() {
@@ -143530,7 +143572,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    return BrowserAnimationController::From(browser_view()->browser())
               ->GetCurrentMotion(TabStripAnimations::kVerticalTabStrip) ==
           TabStripAnimations::kCollapse;
-@@ -674,6 +1029,11 @@ void VerticalTabStripRegionView::RequestCollapse(bool collapse) {
+@@ -674,6 +1094,11 @@ void VerticalTabStripRegionView::RequestCollapse(bool collapse) {
    if (!tab_strip_view()) {
      return;
    }
@@ -143542,7 +143584,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    const auto motion =
        collapse ? TabStripAnimations::kCollapse : TabStripAnimations::kExpand;
    BrowserAnimationController::From(browser_view()->browser())
-@@ -709,17 +1069,177 @@ void VerticalTabStripRegionView::ClickEventHandler::OnMouseEvent(
+@@ -709,17 +1134,177 @@ void VerticalTabStripRegionView::ClickEventHandler::OnMouseEvent(
    }
  }
  
@@ -143730,7 +143772,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
  
    // Pre-set the animation values to the appropriate state.
    auto* const animation_controller =
-@@ -740,14 +1260,20 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
+@@ -740,14 +1325,20 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
                &VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged,
                base::Unretained(this)));
  
@@ -143754,7 +143796,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    on_animation_update_subscription_.reset();
    expand_on_hover_enabled_changed_subscription_.reset();
    omnibox_tab_helper_observation_.Reset();
-@@ -758,6 +1284,10 @@ void VerticalTabStripRegionView::OnTabStripViewWillClear() {
+@@ -758,6 +1349,10 @@ void VerticalTabStripRegionView::OnTabStripViewWillClear() {
  
  void VerticalTabStripRegionView::OnCollapseStateChanged(
      tabs::VerticalTabStripCollapseState state) {
@@ -143765,7 +143807,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    // Apply padding immediately at the start of the animation by including
    // the collapsing state.
    bool collapsed = state != tabs::VerticalTabStripCollapseState::kExpanded;
-@@ -767,6 +1297,9 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
+@@ -767,6 +1362,9 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
                             resize_area_->is_resizing());
  
    resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
@@ -143775,7 +143817,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
  
    if (tab_strip_view()) {
      tab_strip_view()->SetCollapsedState(collapsed);
-@@ -816,16 +1349,17 @@ bool VerticalTabStripRegionView::IsCollapseButtonHovered() const {
+@@ -816,16 +1414,17 @@ bool VerticalTabStripRegionView::IsCollapseButtonHovered() const {
  }
  
  gfx::Rect VerticalTabStripRegionView::GetTabStripDraggableBounds() const {
@@ -143803,7 +143845,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
  }
  
  void VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged(bool enabled) {
-@@ -834,6 +1368,32 @@ void VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged(bool enabled) {
+@@ -834,6 +1433,32 @@ void VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged(bool enabled) {
    UpdateExpandOnHoverState();
  }
  
@@ -143836,7 +143878,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
  void VerticalTabStripRegionView::UpdateExpandOnHoverState(
      std::optional<bool> hovered) {
    // If not collapsed, then we shouldn't be in or entering the expand on hover
-@@ -842,6 +1402,8 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -842,6 +1467,8 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
        !state_controller_->IsCollapsed()) {
      ResetExpandOnHoverTimers();
      is_expanded_on_hover_ = false;
@@ -143845,7 +143887,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
      return;
    }
  
-@@ -851,6 +1413,10 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -851,6 +1478,10 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
  
    // If the force collapse lock is held, collapse the tab strip.
    if (force_collapse_lock_count_ > 0) {
@@ -143856,7 +143898,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
      if (is_expanded_on_hover_) {
        AnimateExpandOnHover(/*expand=*/false);
      }
-@@ -864,7 +1430,7 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -864,7 +1495,7 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
    }
  
    // If the keep expanded lock is held, expand the tab strip.
@@ -143865,7 +143907,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
      if (!is_expanded_on_hover_) {
        AnimateExpandOnHover(/*expand=*/true);
      }
-@@ -882,13 +1448,35 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -882,13 +1513,35 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
      return;
    }
  
@@ -143905,7 +143947,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
      if (is_expanded_on_hover_ && keep_current_state_lock_count_ == 0) {
        AnimateExpandOnHover(/*expand=*/false);
      } else {
-@@ -907,6 +1495,13 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -907,6 +1560,13 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
          hover_card_controller()->GetHoverCardHideLock();
    }
  
@@ -143919,7 +143961,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    if (tabs::kVerticalTabsExpandOnHoverUseVelocityHeuristic.Get()) {
      CalculateMouseVelocityForExpandOnHover();
    } else if (expand_on_hover_timer_.IsRunning()) {
-@@ -1024,7 +1619,41 @@ void VerticalTabStripRegionView::ResetExpandOnHoverTimers() {
+@@ -1024,7 +1684,41 @@ void VerticalTabStripRegionView::ResetExpandOnHoverTimers() {
    }
  }
  
@@ -143961,7 +144003,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
    is_expanded_on_hover_ = expand;
    ResetExpandOnHoverTimers();
  
-@@ -1105,8 +1734,12 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
+@@ -1105,8 +1799,12 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
  void VerticalTabStripRegionView::OnOmniboxPopupVisibilityChanged(bool is_open) {
    if (is_open) {
      if (!omnibox_open_lock_) {
@@ -143976,7 +144018,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
        UpdateExpandOnHoverState();
      }
    } else {
-@@ -1128,5 +1761,328 @@ void VerticalTabStripRegionView::OnActiveTabChanged(
+@@ -1128,5 +1826,328 @@ void VerticalTabStripRegionView::OnActiveTabChanged(
    }
  }
  
@@ -144306,7 +144348,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5e4ff78fed3c44350b987bbe4ba49763
 +  return bookmark_target;
 +}
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-index 76f8e997d61b2d606024eb72e6bcaf538265d290..8fb5002900d4752cb8d3535316656ba21ad08693 100644
+index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff44272f18c 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 @@ -5,11 +5,22 @@
@@ -144382,7 +144424,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..8fb5002900d4752cb8d3535316656ba2
    explicit VerticalTabStripRegionView(
        tabs::VerticalTabStripStateController* state_controller,
        actions::ActionItem* root_action_item,
-@@ -80,6 +115,65 @@ class VerticalTabStripRegionView final
+@@ -80,6 +115,70 @@ class VerticalTabStripRegionView final
        delete;
    ~VerticalTabStripRegionView() override;
  
@@ -144400,6 +144442,11 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..8fb5002900d4752cb8d3535316656ba2
 +  // Root supplies persisted per-profile preferences. This method delegates to
 +  // the existing collapse/animation controller; it creates no second timer.
 +  void SetAuxSidebarMode(aux::SidebarMode mode);
++  // The address field's row above Tabs, in the list and sticky at its top.
++  void HostAuxAddressField(std::unique_ptr<views::View> field);
++  // 0 while the field is in the toolbar.
++  int GetAuxAddressFieldHeight() const;
++  void LayoutAuxAddressRow();
 +  void SetAuxNavigationPlacementHold(bool held);
 +  // Terminal detach/profile pause revokes ownership without starting layout.
 +  void ClearAuxNavigationPlacementHoldWithoutLayout();
@@ -144448,7 +144495,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..8fb5002900d4752cb8d3535316656ba2
    VerticalTabStripTopContainer* GetTopContainer() {
      return top_button_container_;
    }
-@@ -105,6 +199,7 @@ class VerticalTabStripRegionView final
+@@ -105,6 +204,7 @@ class VerticalTabStripRegionView final
    void AddedToWidget() override;
    void RemovedFromWidget() override;
    void Layout(PassKey) override;
@@ -144456,7 +144503,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..8fb5002900d4752cb8d3535316656ba2
    views::View* GetDefaultFocusableChild() override;
    gfx::Size GetMinimumSize() const override;
    gfx::Size CalculatePreferredSize(
-@@ -154,6 +249,14 @@ class VerticalTabStripRegionView final
+@@ -154,6 +254,14 @@ class VerticalTabStripRegionView final
    }
  
   private:
@@ -144471,7 +144518,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..8fb5002900d4752cb8d3535316656ba2
    // Since VerticalTabStripRegionView inherits from AccessiblePaneView, which is
    // a FocusChangeListener, we need to have a separate focus listener to avoid
    // conflicts with the base class implementation which conditionally listens
-@@ -223,7 +326,7 @@ class VerticalTabStripRegionView final
+@@ -223,7 +331,7 @@ class VerticalTabStripRegionView final
    void RestartExpandOnHoverTimer(const base::TimeDelta& delay);
    void OnMouseVelocityHeuristicInterval();
    void CalculateMouseVelocityForExpandOnHover();
@@ -144480,7 +144527,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..8fb5002900d4752cb8d3535316656ba2
    void AnimateExpandOnHover(bool expand);
  
    void RegisterExpandOnHoverLock(VerticalTabStripExpandOnHoverLock* lock);
-@@ -238,8 +341,49 @@ class VerticalTabStripRegionView final
+@@ -238,8 +346,51 @@ class VerticalTabStripRegionView final
  
    void OnActiveTabChanged(const tabs::TabInterface* active_tab) override;
  
@@ -144516,6 +144563,8 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..8fb5002900d4752cb8d3535316656ba2
 +  raw_ptr<views::View> aux_pins_host_ = nullptr;
 +  std::optional<uint64_t> pinned_profile_switch_generation_;
 +  raw_ptr<aux::AuxSidebarBody> aux_sidebar_ = nullptr;
++  raw_ptr<views::View> aux_address_row_ = nullptr;
++  base::CallbackListSubscription aux_address_scrolled_;
 +  raw_ptr<aux::AuxSpaceCreateView> aux_space_create_ = nullptr;
 +  // Original source839 starts clear; actual native drag producer owns changes.
 +  bool aux_empty_pinned_drop_active_ = false;
@@ -144530,7 +144579,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..8fb5002900d4752cb8d3535316656ba2
    raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
    raw_ptr<views::View> gemini_button_ = nullptr;
    raw_ptr<views::ResizeArea> resize_area_ = nullptr;
-@@ -305,6 +449,16 @@ class VerticalTabStripRegionView final
+@@ -305,6 +456,16 @@ class VerticalTabStripRegionView final
    base::OneShotTimer mouse_exit_timer_;
  
    base::CallbackListSubscription paint_as_active_subscription_;
@@ -144976,7 +145025,7 @@ index 0a5e9cce40424b65d14d006a59c8d22b7f130e46..f8e4037832510b7d9a4cec65d321c95c
      controller_observation_.Observe(controller);
    }
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..80858537c597af95dd035bbdf8be883e99b8aefe 100644
+index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9fe1b24446 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
 @@ -10,6 +10,7 @@
@@ -145412,19 +145461,18 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..80858537c597af95dd035bbdf8be883e
    selected_keyword_view_->SetFontList(font_list);
    for (ContentSettingImageView* view : content_setting_views_) {
      view->SetFontList(font_list);
-@@ -2255,6 +2467,11 @@ SkColor LocationBarView::GetSecurityChipColor(
+@@ -2255,6 +2467,10 @@ SkColor LocationBarView::GetSecurityChipColor(
    return GetColorProvider()->GetColor(id);
  }
  
 +bool LocationBarView::IsAuxSidebarNavigation() const {
-+  const auto* toolbar = views::AsViewClass<ToolbarView>(parent());
-+  return toolbar && toolbar->IsAuxSidebarNavigationLayout();
++  return aux_sidebar_navigation_;
 +}
 +
  bool LocationBarView::ShowPageInfoDialog() {
    WebContents* contents = GetWebContents();
    if (!contents) {
-@@ -2304,6 +2521,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
+@@ -2304,6 +2520,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
      return GetOmniboxController()->edit_model()->GetAddContextIcon(dip_size);
    }
  
@@ -145467,7 +145515,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..80858537c597af95dd035bbdf8be883e
    return omnibox_view_
               ? omnibox_view_->GetIcon(
                     dip_size, location_icon_view_->GetForegroundColor(),
-@@ -2421,3 +2674,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
+@@ -2421,3 +2673,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
  ADD_READONLY_PROPERTY_METADATA(gfx::Rect, LocalBoundsWithoutEndcaps)
  ADD_READONLY_PROPERTY_METADATA(bool, PopupMode)
  END_METADATA
@@ -145667,7 +145715,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..80858537c597af95dd035bbdf8be883e
 +}
 +#endif
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.h b/chrome/browser/ui/views/location_bar/location_bar_view.h
-index dc2ea8c236d03c89dfce8b21095906540370434f..dd7d63327b1a13c58b1e8c1ddf0e4c4b06a14361 100644
+index dc2ea8c236d03c89dfce8b21095906540370434f..db67ac93b3bad4b73be63dfaf9cde3505625f35c 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.h
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.h
 @@ -8,6 +8,7 @@
@@ -145723,15 +145771,18 @@ index dc2ea8c236d03c89dfce8b21095906540370434f..dd7d63327b1a13c58b1e8c1ddf0e4c4b
    // Returns the location bar border radius in DIPs.
    int GetBorderRadius() const;
    static int ComputeBorderRadius(gfx::Size size);
-@@ -309,6 +322,7 @@ class LocationBarView
+@@ -309,6 +322,10 @@ class LocationBarView
    void OnLocationIconPressed(const ui::MouseEvent& event) override;
    void OnLocationIconDragged(const ui::MouseEvent& event) override;
    bool ShowPageInfoDialog() override;
 +  bool IsAuxSidebarNavigation() const override;
++  void set_aux_sidebar_navigation(bool enabled) {
++    aux_sidebar_navigation_ = enabled;
++  }
    SkColor GetSecurityChipColor(
        security_state::SecurityLevel security_level) const override;
    ui::ImageModel GetLocationIcon(
-@@ -527,7 +541,21 @@ class LocationBarView
+@@ -527,7 +544,21 @@ class LocationBarView
    const raw_ptr<BrowserWindowInterface> browser_;
  
    // May be nullptr in tests.
@@ -145754,7 +145805,7 @@ index dc2ea8c236d03c89dfce8b21095906540370434f..dd7d63327b1a13c58b1e8c1ddf0e4c4b
  
    // The omnibox controller.
    std::unique_ptr<OmniboxController> omnibox_controller_;
-@@ -575,6 +603,10 @@ class LocationBarView
+@@ -575,6 +606,10 @@ class LocationBarView
    // feature flag is disabled.
    raw_ptr<views::Label> omnibox_additional_text_view_ = nullptr;
  
@@ -145765,6 +145816,15 @@ index dc2ea8c236d03c89dfce8b21095906540370434f..dd7d63327b1a13c58b1e8c1ddf0e4c4b
    // The following views are used to provide hints and remind the user as to
    // what is going in the edit. They are all added a children of the
    // LocationBarView. At most one is visible at a time. These autocollapse when
+@@ -636,6 +671,8 @@ class LocationBarView
+ 
+   void OnMiddleClickPaste(base::TimeTicks event_timestamp, std::u16string text);
+ 
++  bool aux_sidebar_navigation_ = false;
++
+   base::WeakPtrFactory<LocationBarView> weak_factory_{this};
+ };
+ 
 diff --git a/chrome/browser/ui/views/location_bar/location_icon_view.cc b/chrome/browser/ui/views/location_bar/location_icon_view.cc
 index 9b355a43928455709f35ce2cf6711c0628adb8b8..83076539dfd81fbb64efd215f3779ad7144a8a09 100644
 --- a/chrome/browser/ui/views/location_bar/location_icon_view.cc
@@ -153640,13 +153700,14 @@ index 04bd545acf62e2f1c9a7cee34befdd3a5c6b1cdc..7e55ac1b3f4df5a9252a10473e5ed6b8
              // If the element is not on the toolbar, either it's being handled
              // by WebUI, or the element was not added to the toolbar. We do not
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc153879f9 100644
+index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..6d6966fa0290b658f9821304dfc4815274575296 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
-@@ -3,11 +3,27 @@
- // found in the LICENSE file.
+@@ -4,10 +4,28 @@
  
  #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+ 
++#include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
 +#include "chrome/browser/ui/views/frame/aux_frame_metrics.h"
 +#include "build/build_config.h"
 +#include "chrome/browser/buildflags.h"
@@ -153658,7 +153719,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
 +
 +#include "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.h"
 +#include "chrome/browser/ui/views/toolbar/toolbar_chip_button.h"
- 
++
  #include <algorithm>
 +#include <initializer_list>
  #include <memory>
@@ -153671,7 +153732,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
  #include "base/command_line.h"
  #include "base/containers/fixed_flat_map.h"
  #include "base/feature_list.h"
-@@ -275,6 +291,11 @@ ToolbarView::ToolbarView(BrowserWindowInterface* browser,
+@@ -275,6 +293,11 @@ ToolbarView::ToolbarView(BrowserWindowInterface* browser,
      scoped_unowned_user_data_.emplace(browser_->GetUnownedUserDataHost(),
                                        *this);
    }
@@ -153683,7 +153744,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
  
    SetID(VIEW_ID_TOOLBAR);
    SetProperty(views::kElementIdentifierKey, kToolbarElementId);
-@@ -313,6 +334,202 @@ ToolbarView::~ToolbarView() {
+@@ -313,6 +336,202 @@ ToolbarView::~ToolbarView() {
  
  // Forwards the early teardown request to both the embedded and detached WebUI
  // toolbar web views to stop renderer script execution before IPC disconnection.
@@ -153886,7 +153947,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
  void ToolbarView::DestroyWebUIToolbarWebContents() {
    if (toolbar_webview_) {
      toolbar_webview_->DestroyWebContents();
-@@ -403,15 +620,12 @@ void ToolbarView::Init() {
+@@ -403,15 +622,12 @@ void ToolbarView::Init() {
    PrefService* const prefs = browser_->GetProfile()->GetPrefs();
  
    std::unique_ptr<ExtensionsToolbarDesktop> extensions_container;
@@ -153902,7 +153963,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
    }
  
    std::unique_ptr<MediaToolbarButtonView> media_button;
-@@ -423,6 +637,15 @@ void ToolbarView::Init() {
+@@ -423,6 +639,15 @@ void ToolbarView::Init() {
    }
  #endif
  
@@ -153918,7 +153979,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
    // Always add children in order from left to right, for accessibility.
    if (!features::IsWebUIBackForwardButtonEnabled()) {
      back_ = AddChildView(std::make_unique<BackForwardButton>(
-@@ -484,7 +707,6 @@ void ToolbarView::Init() {
+@@ -484,7 +709,6 @@ void ToolbarView::Init() {
    } else {
      location_bar_ = toolbar_webview_->GetLocationBar();
    }
@@ -153926,7 +153987,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
    bool is_glic_left_of_profile =
        features::kGlicToolbarButtonLocationParam.Get() ==
            features::GlicToolbarButtonLocation::kLeftOfProfileChip ||
-@@ -504,16 +726,6 @@ void ToolbarView::Init() {
+@@ -504,16 +728,6 @@ void ToolbarView::Init() {
              0, GetLayoutConstant(LayoutConstant::kToolbarDividerSpacing)));
    }
  
@@ -153943,7 +154004,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
    if (!features::IsWebUIPinnedToolbarActionsEnabled()) {
      pinned_toolbar_actions_container_ = AddChildView(
          std::make_unique<PinnedToolbarActionsContainer>(browser_view_, this));
-@@ -528,7 +740,7 @@ void ToolbarView::Init() {
+@@ -528,7 +742,7 @@ void ToolbarView::Init() {
      const bool should_show_chrome_labs_ui =
          ShouldShowChromeLabsUI(browser_->GetProfile());
      if (should_show_chrome_labs_ui) {
@@ -153952,7 +154013,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
            chrome_labs_prefs::kBrowserLabsEnabledEnterprisePolicy, prefs,
            base::BindRepeating(&ToolbarView::OnChromeLabsPrefChanged,
                                base::Unretained(this)));
-@@ -538,7 +750,7 @@ void ToolbarView::Init() {
+@@ -538,7 +752,7 @@ void ToolbarView::Init() {
        // value. Only call OnChromeLabsPrefChanged if there is a change from
        // the initial value.
        pinned_toolbar_actions_container_->GetActionItemFor(kActionShowChromeLabs)
@@ -153961,7 +154022,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
                         should_show_chrome_labs_ui);
      }
    }
-@@ -562,6 +774,12 @@ void ToolbarView::Init() {
+@@ -562,6 +776,12 @@ void ToolbarView::Init() {
      media_button_ = AddChildView(std::move(media_button));
    }
  
@@ -153974,7 +154035,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
    if (glic::GlicEnabling::IsProfileEligible(browser_view_->GetProfile())) {
      if (base::FeatureList::IsEnabled(features::kAiOverlayDialog) &&
          ttc::AiOverlayDialogController::From(browser_)) {
-@@ -646,26 +864,31 @@ void ToolbarView::Init() {
+@@ -646,26 +866,31 @@ void ToolbarView::Init() {
    // the widget (widget found by way of app_menu_button_->GetWidget()).
    app_menu_icon_controller_.UpdateDelegate();
  
@@ -154010,7 +154071,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
    }
  
    auto* vertical_tab_strip_state_controller =
-@@ -1000,6 +1223,18 @@ bool ToolbarView::IsActorTaskListBubbleShowing() {
+@@ -1000,6 +1225,18 @@ bool ToolbarView::IsActorTaskListBubbleShowing() {
    return actor_task_list_bubble_ && actor_task_list_bubble_->IsShowing();
  }
  
@@ -154029,7 +154090,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
  void ToolbarView::FinalizeHideGlicActorTaskIcon() {
    if (!glic_button_ || !glic_actor_task_icon_ ||
        !glic_actor_button_container_) {
-@@ -1366,8 +1601,134 @@ bool ToolbarView::GetAcceleratorForCommandId(
+@@ -1366,8 +1603,144 @@ bool ToolbarView::GetAcceleratorForCommandId(
  ////////////////////////////////////////////////////////////////////////////////
  // ToolbarView, views::View overrides:
  
@@ -154090,6 +154151,15 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
 +  aux_sidebar_navigation_layout_ = enabled;
 +  location_bar_view_->SetProperty(views::kViewIgnoredByLayoutKey,
 +      enabled ? true : aux_location_bar_was_ignored_);
++  // In the sidebar the address field has its own row above Tabs.
++  location_bar_view_->set_aux_sidebar_navigation(enabled);
++  if (enabled) {
++    aux_location_bar_index_ = GetIndexOf(location_bar_view_).value();
++    browser_view_->vertical_tab_strip_region_view()->HostAuxAddressField(
++        RemoveChildViewT(location_bar_view_.get()));
++  } else {
++    ReclaimAuxLocationBar();
++  }
 +  // In the sidebar the address row holds the address field, the extensions
 +  // control and the Agent, and the button row only back, forward and reload.
 +  const auto hidden = AuxSidebarHiddenViews();
@@ -154111,6 +154181,14 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
 +  PreferredSizeChanged();
 +  InvalidateLayout();
 +  return true;
++}
++
++void ToolbarView::ReclaimAuxLocationBar() {
++  if (location_bar_view_->parent() == this)
++    return;
++  AddChildViewAt(
++      location_bar_view_->parent()->RemoveChildViewT(location_bar_view_.get()),
++      aux_location_bar_index_);
 +}
 +
 +void ToolbarView::SetAuxSidebarNavigationLeadingInset(int inset) {
@@ -154145,13 +154223,6 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
 +             : 0;
 +}
 +
-+int ToolbarView::GetAuxSidebarNavigationRowHeight() const {
-+  return aux_sidebar_navigation_layout_
-+             ? location_bar_->PreferredSize().height() +
-+                   GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin)
-+             : 0;
-+}
-+
  gfx::Size ToolbarView::CalculatePreferredSize(
      const views::SizeBounds& available_size) const {
 +  if (aux_sidebar_navigation_layout_) {
@@ -154164,7 +154235,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
    gfx::Size size;
    switch (display_mode_) {
      case DisplayMode::kCustomTab:
-@@ -1375,6 +1736,9 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+@@ -1375,6 +1748,9 @@ gfx::Size ToolbarView::CalculatePreferredSize(
        break;
      case DisplayMode::kLocation:
        size = location_bar_->PreferredSize();
@@ -154174,7 +154245,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
        break;
      case DisplayMode::kNormal:
        size = AccessiblePaneView::CalculatePreferredSize(available_size);
-@@ -1396,6 +1760,23 @@ gfx::Size ToolbarView::CalculatePreferredSize(
+@@ -1396,6 +1772,23 @@ gfx::Size ToolbarView::CalculatePreferredSize(
  }
  
  gfx::Size ToolbarView::GetMinimumSize() const {
@@ -154198,7 +154269,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
    gfx::Size size;
    switch (display_mode_) {
      case DisplayMode::kCustomTab:
-@@ -1403,6 +1784,9 @@ gfx::Size ToolbarView::GetMinimumSize() const {
+@@ -1403,6 +1796,9 @@ gfx::Size ToolbarView::GetMinimumSize() const {
        break;
      case DisplayMode::kLocation:
        size = location_bar_->MinimumSize();
@@ -154208,31 +154279,20 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
        break;
      case DisplayMode::kNormal:
        size = AccessiblePaneView::GetMinimumSize();
-@@ -1469,9 +1853,51 @@ void ToolbarView::Layout(PassKey) {
+@@ -1469,9 +1865,40 @@ void ToolbarView::Layout(PassKey) {
      }
    }
  
 -  // Call super implementation to ensure layout manager and child layouts
 -  // happen.
-+  // The normal responsive flex row owns every existing button. Only the
-+  // actual location bar is excluded from that row in sidebar mode; it occupies
-+  // the reserved second row without replacing its controller/security UI.
++  // The normal responsive flex row owns every existing button.
 +  if (aux_sidebar_navigation_layout_) {
-+    const auto padding = GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
-+    const int location_height = location_bar_->PreferredSize().height();
-+    // Share the sidebar's pill edge (the window gutter) with tiles and rows.
-+    constexpr int kSidebarEdge = aux::frame_metrics::kGutter;
-+    const int row_y = std::max(0, height() - padding.bottom() - location_height);
 +    // Hidden, not just zero-sized: a zero-sized button can still take focus
 +    // and anchor a popup nowhere.
 +    for (auto* view : AuxSidebarHiddenViews()) {
 +      view->SetBoundsRect(gfx::Rect());
 +      view->SetVisible(false);
 +    }
-+    // As in Arc, the address field has the whole row; the extensions control
-+    // sits on the button row (below) and the Agent in the sidebar footer.
-+    location_bar_view_->SetBounds(kSidebarEdge, row_y,
-+                                  std::max(0, width() - 2 * kSidebarEdge), location_height);
 +  }
    LayoutSuperclass<AccessiblePaneView>(this);
 +  // Extensions: the puzzle menu lists every extension and pins any of them
@@ -154262,7 +154322,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
  }
  
  void ToolbarView::OnThemeChanged() {
-@@ -1504,7 +1930,8 @@ void ToolbarView::ChildPreferredSizeChanged(views::View* child) {
+@@ -1504,7 +1931,8 @@ void ToolbarView::ChildPreferredSizeChanged(views::View* child) {
  
  void ToolbarView::ChildVisibilityChanged(views::View* child) {
    if (child == home_) {
@@ -154272,7 +154332,18 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
        base::UmaHistogramBoolean("Toolbar.Overflow.HomeButton", true);
      }
    }
-@@ -1674,6 +2101,13 @@ void ToolbarView::LayoutCommon() {
+@@ -1521,7 +1949,9 @@ void ToolbarView::ChildVisibilityChanged(views::View* child) {
+ // the location bar gets focus, not the first control in the toolbar - and
+ // also so that it selects all content in the location bar.
+ views::View* ToolbarView::GetDefaultFocusableChild() {
+-  return location_bar_view_;
++  // In the sidebar the field is outside this pane.
++  return aux_sidebar_navigation_layout_ ? static_cast<views::View*>(back_)
++                                        : location_bar_view_;
+ }
+ 
+ void ToolbarView::InitLayout() {
+@@ -1674,6 +2104,13 @@ void ToolbarView::LayoutCommon() {
  
    gfx::Insets interior_margin =
        GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
@@ -154286,18 +154357,13 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
  
    const bool is_trailing_contextual_tasks_visible =
        IsTrailingContextualTasksButtonVisible();
-@@ -1742,7 +2176,20 @@ void ToolbarView::LayoutCommon() {
+@@ -1742,7 +2179,15 @@ void ToolbarView::LayoutCommon() {
        interior_margin.set_right(0);
      }
    }
 +  if (aux_sidebar_navigation_layout_) {
 +    interior_margin.set_left(std::max(interior_margin.left(),
 +                                      aux_sidebar_navigation_leading_inset_));
-+    // Reserve the real location bar below the ordinary responsive button row.
-+    // Both rows reuse existing toolbar spacing; no new color/radius/motion.
-+    interior_margin.set_bottom(interior_margin.bottom() +
-+        location_bar_->PreferredSize().height() +
-+        GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin));
 +  }
    layout_manager_->SetInteriorMargin(interior_margin);
 +  // In the sidebar back, forward and reload sit at the end of the caption row.
@@ -154307,7 +154373,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
  
    // Extend buttons to the window edge if we're either in a maximized or
    // fullscreen window. This makes the buttons easier to hit, see Fitts' law.
-@@ -1752,7 +2199,8 @@ void ToolbarView::LayoutCommon() {
+@@ -1752,7 +2197,8 @@ void ToolbarView::LayoutCommon() {
    // `SetIsMaximizedOrFullscreen` remains reliably synchronized with window
    // bounds without requiring supplemental widget observation hooks.
    const bool is_maximized_or_fullscreen =
@@ -154317,7 +154383,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
                                  browser_->GetWindow()->IsFullscreen());
  
    const int margin = is_maximized_or_fullscreen ? leading_interior_margin : 0;
-@@ -2059,11 +2507,14 @@ views::View* ToolbarView::GetViewForDrop() {
+@@ -2059,11 +2505,14 @@ views::View* ToolbarView::GetViewForDrop() {
  }
  
  void ToolbarView::OnChromeLabsPrefChanged() {
@@ -154333,7 +154399,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
        ShouldShowChromeLabsUI(browser_->GetProfile()));
    GetViewAccessibility().AnnounceText(l10n_util::GetStringUTF16(
        chrome_labs_action->GetVisible()
-@@ -2080,13 +2531,19 @@ void ToolbarView::LoadImages() {
+@@ -2080,13 +2529,19 @@ void ToolbarView::LoadImages() {
  }
  
  void ToolbarView::OnShowForwardButtonChanged() {
@@ -154356,7 +154422,7 @@ index bfc981b7ee720c039cd927c5cfc717ed72fa1bd5..93f13038e4fa8ba8f054f8075a1b17dc
  }
  
 diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.h b/chrome/browser/ui/views/toolbar/toolbar_view.h
-index 0520c2901223d569f0266421d2e6c6f7dbaff718..6c0cdff36653268eb04b68d2fbd3c7356aedbc13 100644
+index 0520c2901223d569f0266421d2e6c6f7dbaff718..79263b42c764e3c70c1d98d0e58cb0617af97a1d 100644
 --- a/chrome/browser/ui/views/toolbar/toolbar_view.h
 +++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
 @@ -13,6 +13,8 @@
@@ -154387,7 +154453,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..6c0cdff36653268eb04b68d2fbd3c735
  class AvatarToolbarButtonBrowserTest;
  class ToolbarController;
  class ToolbarDivider;
-@@ -120,6 +127,38 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -120,6 +127,39 @@ class ToolbarView : public views::AccessiblePaneView,
    // Create the contents of the Browser Toolbar.
    void Init();
  
@@ -154418,7 +154484,8 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..6c0cdff36653268eb04b68d2fbd3c735
 +  }
 +  // Height of the location row the sidebar layout adds below the buttons;
 +  // 0 otherwise. The titlebar excludes it so the traffic lights stay put.
-+  int GetAuxSidebarNavigationRowHeight() const;
++  // Takes the address field back from the sidebar's row, without a layout.
++  void ReclaimAuxLocationBar();
 +  // Leading space the button row leaves for the sidebar's caption buttons and
 +  // collapse toggle when it shares their row. The location row keeps full width.
 +  void SetAuxSidebarNavigationLeadingInset(int inset);
@@ -154426,7 +154493,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..6c0cdff36653268eb04b68d2fbd3c735
    // Forces the toolbar (and transitively the location bar) to update its
    // current state.  If |tab| is non-NULL, we're switching (back?) to this tab
    // and should restore any previous location bar state (such as user editing)
-@@ -270,6 +309,8 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -270,6 +310,8 @@ class ToolbarView : public views::AccessiblePaneView,
    void ShowActorTaskListBubble() override;
    void CloseActorTaskListBubble() override;
    bool IsActorTaskListBubbleShowing() override;
@@ -154435,7 +154502,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..6c0cdff36653268eb04b68d2fbd3c735
  
    // Updates glic button parenting after hiding glic actor task icon.
    void FinalizeHideGlicActorTaskIcon();
-@@ -281,6 +322,10 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -281,6 +323,10 @@ class ToolbarView : public views::AccessiblePaneView,
    void SetToolbarVisibility(bool visible);
  
   private:
@@ -154446,7 +154513,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..6c0cdff36653268eb04b68d2fbd3c735
    FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
                             CircularButtonRetainsInteriorMarginsAndPosition);
    FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
-@@ -407,6 +452,7 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -407,6 +453,7 @@ class ToolbarView : public views::AccessiblePaneView,
    // |location_bar_| is guaranteed to exist. These pointers are owned by the
    // view hierarchy.
    raw_ptr<ToolbarButton> contextual_tasks_button_ = nullptr;
@@ -154454,7 +154521,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..6c0cdff36653268eb04b68d2fbd3c735
    raw_ptr<ToolbarButton> back_ = nullptr;
    raw_ptr<ToolbarButton> forward_ = nullptr;
    raw_ptr<ReloadButton> reload_ = nullptr;
-@@ -463,18 +509,46 @@ class ToolbarView : public views::AccessiblePaneView,
+@@ -463,18 +510,47 @@ class ToolbarView : public views::AccessiblePaneView,
    std::optional<ui::ScopedUnownedUserData<ToolbarButtonProvider>>
        scoped_unowned_user_data_;
  
@@ -154467,6 +154534,7 @@ index 0520c2901223d569f0266421d2e6c6f7dbaff718..6c0cdff36653268eb04b68d2fbd3c735
 +  bool aux_sidebar_navigation_layout_ = false;
 +  bool aux_minimal_ui_layout_ = false;
 +  bool aux_location_bar_was_ignored_ = false;
++  size_t aux_location_bar_index_ = 0;
 +  // Each AuxSidebarHiddenViews() entry's own ignored-by-layout state before
 +  // the sidebar layout took it out of the row, restored when it ends.
 +  std::vector<bool> aux_sidebar_hidden_was_ignored_;
