@@ -28,8 +28,8 @@ function run(entries, mode) {
 /** What legitimately differs between two runs: the home directory, random 16-character ids
  * (any `…id`/`…Id`/`…_id` value, and UUIDs, numbered by first appearance and replaced everywhere, paths
  * included), SQLite's own unixepoch() defaults and file times (the real clock, not the harness one). */
-function comparable({home, outputs, snapshots, agentFileChanges, state, files, jsonFiles}) {
-  let text = JSON.stringify({outputs, snapshots, agentFileChanges, state, files, jsonFiles}).replaceAll(home, '<home>');
+function comparable({home, outputs, snapshots, agentFileChanges, state, ledger, files, jsonFiles}) {
+  let text = JSON.stringify({outputs, snapshots, agentFileChanges, state, ledger, files, jsonFiles}).replaceAll(home, '<home>');
   const ids = new Set();
   JSON.parse(text, (key, value) => {
     if (typeof value !== 'string') return value;
@@ -78,6 +78,8 @@ for (const namespace of Object.keys(SCENARIOS)) test(`${namespace}: the same out
 test('the same state.db and account files', () => {
   for (const [table, rows] of Object.entries(supplied.state.rows)) assert.deepEqual(aux.state.rows[table], rows, table);
   assert.deepEqual(aux.state, supplied.state);
+  assert.ok(supplied.ledger.rows.context_awareness_events.length, 'the ledger has fixture rows');
+  assert.deepEqual(aux.ledger, supplied.ledger);
   assert.deepEqual(aux.files, supplied.files);
   for (const [file, content] of Object.entries(supplied.jsonFiles)) assert.equal(aux.jsonFiles[file], content, file);
   assert.ok(supplied.agentFileChanges.length, 'the scenarios send agent file change notifications');

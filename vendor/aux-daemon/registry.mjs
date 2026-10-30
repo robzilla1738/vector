@@ -42,4 +42,5 @@ export const STORES = Object.freeze({
   routines: './stores/routines.mjs',
   channels: './stores/channels.mjs',
   memoryFiles: './stores/memoryFiles.mjs',
+  contextLedger: './stores/contextLedger.mjs',
 });

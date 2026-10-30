@@ -118,14 +118,22 @@ if (mode === 'aux') {
 }
 
 daemon.stateDb.close(0);
-const database = new DatabaseSync(path.join(controlHome, 'u', '0', 'state.db'), {readOnly: true});
-const tables = database.prepare(`select name from sqlite_master where type = 'table' order by name`).all();
-const state = {
-  userVersion: database.prepare('pragma user_version').get().user_version,
-  schema: database.prepare('select type, name, tbl_name, sql from sqlite_master order by type, name').all(),
-  rows: Object.fromEntries(tables.map(({name}) => [name, database.prepare(`select * from "${name}" order by rowid`).all()])),
+/** Every table of a SQLite file, row by row, with its schema. */
+const dump = file => {
+  const database = new DatabaseSync(file, {readOnly: true});
+  const tables = database.prepare(`select name from sqlite_master where type = 'table' order by name`).all();
+  const contents = {
+    userVersion: database.prepare('pragma user_version').get().user_version,
+    schema: database.prepare('select type, name, tbl_name, sql from sqlite_master order by type, name').all(),
+    rows: Object.fromEntries(tables.map(({name}) => [name, database.prepare(`select * from "${name}" order by rowid`).all()])),
+  };
+  database.close();
+  return contents;
 };
-database.close();
+const state = dump(path.join(controlHome, 'u', '0', 'state.db'));
+// The Context Awareness ledger, which its own store writes.
+daemon.ledgerDb(0).$client.exec('PRAGMA wal_checkpoint(FULL)');
+const ledger = dump(path.join(controlHome, 'u', '0', 'context-awareness', 'ledger.db'));
 // Logs are the daemon's own diagnostics, not effects of the namespaces.
 const files = readdirSync(home, {recursive: true}).filter(file => !file.split(path.sep).includes('logs')).sort();
 // The JSON and JSONL files the account keeps (settings.json, accounts.json, task transcripts and
@@ -133,5 +141,5 @@ const files = readdirSync(home, {recursive: true}).filter(file => !file.split(pa
 const jsonFiles = Object.fromEntries(files.filter(file => /\.jsonl?$/.test(file)).map(file => [file, readFileSync(path.join(home, file), 'utf8')]));
 
 mkdirSync(path.dirname(out), {recursive: true});
-writeFileSync(out, JSON.stringify({owned: mode === 'aux' ? daemon.auxOwnedDaemon.owned() : {}, storesInUse: daemon.auxOwnedDaemon.storesInUse(), wired, outputs, snapshots, agentFileChanges, state, files, jsonFiles}));
+writeFileSync(out, JSON.stringify({owned: mode === 'aux' ? daemon.auxOwnedDaemon.owned() : {}, storesInUse: daemon.auxOwnedDaemon.storesInUse(), wired, outputs, snapshots, agentFileChanges, state, ledger, files, jsonFiles}));
 process.exit(0);

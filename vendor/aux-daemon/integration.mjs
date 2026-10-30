@@ -159,6 +159,13 @@ export const BINDINGS = Object.freeze({
       readAtAfterLatestUpdatedAt: 'readAtAfterLatestUpdatedAt', buildMessageKey: 'buildMessageKey', getCitationSources: 'getCitationSources',
       resolveCompactionFirstKeptEntryId: 'resolveCompactionFirstKeptEntryId', updateOpenSessionTurnForNewMessage: 'updateOpenSessionTurnForNewMessage',
       defaultContextWindow: 'DEFAULT_SESSION_CONTEXT_WINDOW'},
+    contextLedger: {tables: {ContextAwarenessEventTable: 'ContextAwarenessEventTable', ContextAwarenessSummaryTable: 'ContextAwarenessSummaryTable',
+      ContextAwarenessBlobTable: 'ContextAwarenessBlobTable', ContextAwarenessFrameTable: 'ContextAwarenessFrameTable'},
+      operators: {eq: 'eq', and: 'and', or: 'or$1', gte: 'gte$1', lte: 'lte$1', gt: 'gt$1', lt: 'lt', like: 'like', inArray: 'inArray', desc: 'desc', asc: 'asc',
+        isNull: 'isNull', sql: 'sql', count: 'count'},
+      ledgerDb: 'ledgerDb', hasContextAwarenessLedger: 'hasContextAwarenessLedger', enqueueWindow: 'enqueueWindow', settings: 'settings',
+      helper: 'nativeContextAwarenessHelper', getContextAwarenessFootprint: 'getContextAwarenessFootprint', suppressionSummary: 'suppressionSummary',
+      emptyTreeBytes: 'EMPTY_TREE_BYTES', tenMinutes: 'TEN_MINUTES_MS'},
     memoryFiles: {memoryDir: 'memoryDir', lockFor: 'lockFor', atomicWrite: 'atomicWrite', diffMemorySnapshots: 'diffMemorySnapshots',
       appendMemoryHistoryEntry: 'appendMemoryHistoryEntry', createMemoryHistoryEntry: 'createMemoryHistoryEntry', readHistoryLinesReverse: 'readHistoryLinesReverse',
       parseMemoryHistorySummary: 'parseMemoryHistorySummary', historyPath: 'historyPath', isContextAwarenessMemoryPath: 'isContextAwarenessMemoryPath'},
@@ -209,6 +216,8 @@ const ROUTINE_FUNCTIONS = ['listRoutines', 'getRoutine', 'getRoutineDetail', 'ge
 const CHANNEL_FUNCTIONS = ['listConnections', 'getConnection', 'insertConnection', 'updateConnection', 'deleteConnection', 'listPrincipals', 'getPrincipal',
   'upsertPrincipal', 'deletePrincipal', 'setPrincipalPairingApproval', 'getConnectionPolicy', 'setConnectionPolicy', 'listPairingRequests', 'getPairingRequest',
   'deletePairingRequest', 'getConnectionLastUsedAt', 'toPublicConnection'];
+const LEDGER_FUNCTIONS = ['listContextAwarenessEvents', 'listHistorySummaries', 'listContextAwarenessRecents', 'resetTenMinuteWindow', 'getSummaryJobStatus',
+  'getContextAwarenessStats', 'listNativeCaptureHealth', 'getContextAwarenessViewStatus', 'eventIndexAt', 'tenMinuteWindow'];
 const MEMORY_FILE_FUNCTIONS = ['writeMemoryPage', 'listMarkdownFiles', 'listMemoryHistory', 'getMemoryHistoryEntry'];
 const ASYNC_ROUTINE_FUNCTIONS = ['createRoutine', 'updateRoutine', 'deleteRoutine', 'runDueRoutine', 'stopRoutineRuns'];
 
@@ -240,6 +249,8 @@ export const STORE_EDITS = Object.freeze([
   ...ASYNC_ROUTINE_FUNCTIONS.map(name => delegate('routines', name, 'async ')),
   ...CHANNEL_FUNCTIONS.map(name => delegate('channels', name)),
   ...MEMORY_FILE_FUNCTIONS.map(name => delegate('memoryFiles', name, 'async ')),
+  ...LEDGER_FUNCTIONS.map(name => delegate('contextLedger', name)),
+  delegate('contextLedger', 'listContextAwarenessView', 'async '),
 ]);
 
 /** The bundle as supplied for the stores: `text` with every store edit undone. */

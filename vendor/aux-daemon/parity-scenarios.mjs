@@ -392,12 +392,59 @@ const memory = {
   ['listFiles', a], ['readFile', {accountId: 0, filePath: 'garden/plants.md'}],
 ]};
 
+
+/** A time relative to the scenario's anchor, in minutes. */
+let ledgerAnchor;
+const ledgerTime = minutes => ledgerAnchor + minutes * 60_000;
+const ledgerFixtures = daemon => {
+  ledgerAnchor = Math.floor(Date.now() / 600_000) * 600_000;
+  const sql = daemon.ledgerDb(0).$client, at = ledgerTime;
+  const blob = sql.prepare('insert into context_awareness_blobs (id, content_hash, content, redacted_bytes, created_at, last_seen_at, frame_id, frame_index) values (?, ?, ?, ?, ?, ?, ?, ?)');
+  sql.prepare('insert into context_awareness_frames (id, content, member_count, stored_bytes, created_at) values (?, ?, ?, ?, ?)').run('frame-1', Buffer.from('frame'), 2, 900, at(-40));
+  blob.run('blob-inline', 'hash-1', Buffer.from('inline content'), 3000, at(-30), at(-30), null, null);
+  blob.run('blob-chrome', 'hash-2', Buffer.from('x'), 1000, at(-20), at(-20), null, null);
+  blob.run('blob-framed', 'hash-3', Buffer.from(''), 4000, at(-10), at(-10), 'frame-1', 0);
+  blob.run('blob-edge', 'hash-4', Buffer.from('edge'), 2048, at(-9), at(-9), null, null);
+  const event = sql.prepare('insert into context_awareness_events (id, occurred_at, source, kind, app_name, bundle_id, window_title, url, domain, target, payload, blob_id, session_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  event.run('e1', at(-35), 'mac_ax', 'app.focus', 'Notes', 'com.apple.Notes', 'Garden', null, null, '{}', '{"focused":true}', 'blob-inline', 's1');
+  event.run('e2', at(-28), 'aux_dom', 'page.visit', 'Safari', 'com.apple.Safari', 'Tomatoes', 'https://example.com/tomatoes', 'example.com', '{"tab":1}', '{}', null, 's1');
+  event.run('e3', at(-22), 'mac_ax', 'app.focus', 'Notes', 'com.apple.Notes', 'Garden', null, null, '{}', '{}', 'blob-chrome', 's2');
+  event.run('e4', at(-12), 'mac_ax', 'screen.ocr', 'Safari', 'com.apple.Safari', 'Basil', 'https://herbs.example/basil', 'herbs.example', '{}', '{}', 'blob-framed', null);
+  event.run('e5', at(-2), 'win_uia', 'app.focus', '', 'com.example.Tool', '', null, null, '{}', '{}', null, 's2');
+  event.run('e6', at(-8), 'mac_ax', 'app.focus', 'Safari', 'com.apple.Safari', '', null, null, '{}', '{}', 'blob-edge', null);
+  for (const [index, domain] of ['a.example', 'b.example', 'c.example', 'd.example', 'e.example', 'f.example'].entries())
+    event.run(`d${index}`, at(-50 + index), 'aux_dom', 'page.visit', 'Safari', 'com.apple.Safari', '', `https://${domain}/`, domain, '{}', '{}', null, null);
+  const summary = sql.prepare('insert into context_awareness_summaries (id, kind, window_from, window_to, created_at, updated_at, title, description, body, apps, domains, citations, source_ids, status, error, model, input_tokens, output_tokens) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  summary.run('sum-1', '10min', at(-40), at(-30), at(-29), at(-29), 'Planning the garden', 'Notes about tomatoes', 'Wrote a list of tomatoes.', '["Notes"]', '[]', '[]', '["e1"]', 'completed', null, 'm', 120, 30);
+  summary.run('sum-2', '10min', at(-30), at(-20), at(-19), at(-19), 'Reading', 'Tomato varieties', null, '["Safari","Notes"]', '["example.com"]', '[]', '["e2","e3"]', 'completed', null, 'm', 200, 40);
+  summary.run('sum-3', 'day', at(-60), at(0), at(0), at(0), 'The day', 'Garden work', 'Body', '["Notes"]', '[]', '[]', '[]', 'completed', null, 'm', 10, 5);
+  summary.run('sum-4', '10min', at(-20), at(-10), at(-9), at(-9), '', '', null, '[]', '[]', '[]', '["e4"]', 'pending', null, '', 0, 0);
+  summary.run('sum-6', '10min', at(-50), at(-40), at(-40), at(-40), '', '', null, '[]', '[]', '[]', '[]', 'running', null, '', 0, 0);
+  summary.run('sum-5', '10min', at(-10), at(0), at(-1), at(-1), '', '', null, '[]', '[]', '[]', '["e5"]', 'failed', 'No model is available.', '', 0, 0);
+  return sql.prepare('select count(*) as events from context_awareness_events').get();
+};
+
 const contextAwareness = {calls: [
   ['status', a], ['status', {accountId: 0, url: 'https://example.com'}], ['permissions', a], ['historyStatus', a], ['summaries', {accountId: 0, limit: 5}],
   ['historyList', {accountId: 0, from: 0, to: Date.parse('2026-01-02')}], ['appIcons', {accountId: 0, bundleIds: []}], ['listApplications', a],
   ['pause', {accountId: 0, durationMs: 60_000}], ['resume', a], ['reportTabSignal', {accountId: 0, targetId: 't', url: 'https://example.com', kind: 'activation', sequence: 1}],
   ['reportTabSignal', {accountId: 0, targetId: '', url: 'x', kind: 'scroll'}], ['summaryModelDefault', a], ['verifyStore', {accountId: 0}],
   ['events', {accountId: 0}], ['search', {accountId: 0}], ['read', {accountId: 0}], ['summaries', {accountId: 0, limit: 0}],
+  // Fixture rows in the ledger, as the native helper and the summarizer would write them.
+  ({daemon}) => ledgerFixtures(daemon),
+  ['events', {accountId: 0, limit: 10}], ['events', {accountId: 0, limit: 10, source: 'mac_ax'}], ['events', {accountId: 0, limit: 10, bundleId: 'com.apple.Safari', domain: 'example.com'}],
+  ['events', () => ({accountId: 0, limit: 2, from: ledgerTime(-30), to: ledgerTime(0)})],
+  ['summaries', {accountId: 0}], ['summaries', {accountId: 0, kinds: ['10min'], text: 'garden tomatoes'}], ['summaries', {accountId: 0, limit: 5}],
+  ['historyList', () => ({accountId: 0, from: ledgerTime(-120), to: ledgerTime(60)})], ['historyList', () => ({accountId: 0, from: ledgerTime(-35), to: ledgerTime(-10)})], ['historyStatus', a], ['status', a], ['listApplications', a],
+  ({daemon}) => [daemon.listHistorySummaries(0, {app: 'Safari'}).map(summary => summary.id), daemon.listHistorySummaries(0, {domain: 'example.com'}).map(summary => summary.id),
+    daemon.listHistorySummaries(0, {from: ledgerTime(-15), to: ledgerTime(-5), oldestFirst: true}).map(summary => summary.id),
+    daemon.listHistorySummaries(0, {from: ledgerTime(-30), to: ledgerTime(-20)}).map(summary => summary.id), daemon.listContextAwarenessRecents(0, 5),
+    daemon.listNativeCaptureHealth(0, ledgerTime(-120)), daemon.getSummaryJobStatus(0), daemon.tenMinuteWindow(ledgerTime(-25)), daemon.eventIndexAt([{occurredAt: 1}, {occurredAt: 5}], 3)],
+  ({daemon}) => {
+    daemon.resetTenMinuteWindow(0, daemon.tenMinuteWindow(ledgerTime(-25)));
+    daemon.resetTenMinuteWindow(0, {from: 0, to: 1});
+    return [daemon.getSummaryJobStatus(0), daemon.ledgerDb(0).$client.prepare('select kind, window_from, status, source_ids from context_awareness_summaries order by window_from, kind, status').all()];
+  },
 ]};
 
 const request = {requestId: '6f1c2b8e-3a0d-4c5e-9b7a-2d4e6f8a0b1c', profileId: 'Default'};
@@ -670,4 +717,5 @@ export const EXTRA_EXPORTS = ['attentionByAccountId', 'hasForegroundAgentManager
   'getNotificationPermissionEventTime', 'listDueRoutines', 'runDueRoutine', 'startRoutineScheduler', 'updateRoutine', 'deleteRoutine', 'getRoutineSummary',
   'getRoutineDetail', 'listRoutines', 'assertCapacity', 'insertConnection', 'upsertPrincipal', 'updateConnection', 'getPrincipal', 'getConnectionLastUsedAt',
   'getPairingRequest', 'getConnectionPolicy', 'toPublicConnection', 'getConnection', 'listConnections', 'deletePairingRequest', 'deletePrincipal', 'deleteConnection',
-  'listPrincipals', 'listPairingRequests', 'writeMemoryPage', 'getAccountRoot', 'EPISODIC_DIR', 'CONTEXT_AWARENESS_PAGE_PREFIX'];
+  'listPrincipals', 'listPairingRequests', 'writeMemoryPage', 'getAccountRoot', 'EPISODIC_DIR', 'CONTEXT_AWARENESS_PAGE_PREFIX', 'ledgerDb',
+  'listHistorySummaries', 'listContextAwarenessRecents', 'listNativeCaptureHealth', 'getSummaryJobStatus', 'tenMinuteWindow', 'eventIndexAt', 'resetTenMinuteWindow'];
