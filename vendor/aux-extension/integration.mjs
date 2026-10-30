@@ -215,6 +215,8 @@ export const ROUTES = Object.freeze({
       '5 hours",monthly:"Monthly",weekly:"Weekly"};', '810d4c63beaea8510613ea7917b742870e7f6f08c78ccba72960ab594ba82db2', 18914),
     block('Composer: sending, the queue and message editing', 'composer-send-queue-edit.js', 'var Vh=({sendMessage:e,stop:t,',
       ',children:p?(0,a.jsx)(kt,{}):"Send"})]})]})}', '3beec8b2e49addc82fd299f3982189bebcc78a09433c57a753c21a84b0857537', 7493),
+    block('Composer: toolbar, model menu, queued messages and composer shell', 'composer-toolbar-model.js', 'function Ep(e){const t=e.diagn',
+      'p-1 first:shrink-0 first:grow",children:e});', '3bbd99658e6f6b7f84fdeaf0abbbaaab9ef12c3762b978c361674885579e04ad', 30866),
   ],
 });
 
@@ -242,6 +244,8 @@ export const TOKEN_CHANGES = Object.freeze([
   // The file preview's Open with buttons were fixed white with neutral hovers and no dark mode.
   ['composer-attachments.js', 'border-neutral-200 bg-white hover:bg-neutral-100', 'border-border bg-background hover:bg-muted'],
   ['composer-attachments.js', 'aria-expanded:bg-neutral-100', 'aria-expanded:bg-muted'],
+  // The composer card and its queue, question and drop surfaces: the 12px step, like the mini popup composer.
+  ['composer-toolbar-model.js', 'rounded-2xl', 'rounded-xl'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');
