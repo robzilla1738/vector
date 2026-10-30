@@ -53,7 +53,7 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 
 | # | Request | Status |
 |---|---|---|
-| 31 | Do the runtime work | seen (inventory found nothing above macOS 15 beyond the PDF stack; rg fixed) |
+| 31 | Do the runtime work | open: Node, Python and rg rebuild from upstream in progress |
 | 32 | Everything in the plan complete and ready to test | open: see [the second audit](2026-10-30-plan-audit-2.md) |
 | 33 | Every item in the plan and from Robert done and excellent | open |
 

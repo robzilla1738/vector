@@ -8,7 +8,7 @@ Robert asked for a thorough review of the browser experience — the agent, qual
 
 ## Progress (build 117, 2026-10-30)
 
-**Read this first:** [the second audit](2026-10-30-plan-audit-2.md) checked every item and [the owner's requests](2026-10-30-owner-requests.md) against build 117, and overrules this section. It supersedes [the first audit](2026-10-30-plan-audit.md), which found onboarding, the chrome://settings cleanup and the approvals popover unbuilt; all three are now in. The list below describes what was built.
+**Read this first:** [the third audit](2026-10-30-plan-audit-3.md) supersedes the rest of this section. [The second audit](2026-10-30-plan-audit-2.md) checked every item and [the owner's requests](2026-10-30-owner-requests.md) against build 117, and overrules this section. It supersedes [the first audit](2026-10-30-plan-audit.md), which found onboarding, the chrome://settings cleanup and the approvals popover unbuilt; all three are now in. The list below describes what was built.
 
 Build 117 (`out/release/1.0.0-117`) carries everything below. It is assembled from the durable checkout with the release transforms, `--pdf-runtime`, `--computer-use-helper` and `--memory-helper`. It launches, and the items marked *(seen)* were checked on screen. The rest is built and unit-tested but not yet driven by hand.
 
@@ -413,7 +413,7 @@ Batches are in dependency order. Batch 1 makes everything safe to build on. Batc
 
 **Even gutter on all four sides.** The gap between the sidebar and the card equals the top, right and bottom gaps. On build 77 the card touches the sidebar's edge. Update STATUS, which says 8 where the code says 6.
 
-**The card in every mode:** horizontal tabs (checklist 6), fullscreen, minimal UI, Peek, Quick window and split; decide explicitly which mode is flush, if any. Drop the top separator on every scheme so chrome://, PDF and file pages don't draw a hairline and jump 1 px (`layout_impl.cc:310-326`).
+**The card in every mode:** horizontal tabs (checklist 6), fullscreen, minimal UI, Peek, Quick window and split; decide explicitly which mode is flush, if any (decided: Aux has vertical tabs only, so none is). Drop the top separator on every scheme so chrome://, PDF and file pages don't draw a hairline and jump 1 px (`layout_impl.cc:310-326`).
 
 **Card edge.** On dark pages build 77 shows a light rim around the card. Use Arc's soft shadow with a faint ink edge, and the same treatment for single and split.
 
