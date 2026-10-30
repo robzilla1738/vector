@@ -6,9 +6,9 @@ Robert asked for a thorough review of the browser experience — the agent, qual
 
 **Sources:** nine read-only code reviews of build 77 and the durable checkout, plus an on-screen look at build 77 beside the running Aside and the saved Arc references (`out/acceptance/20261027/ref/`). Findings marked *(check)* were inferred from code and need one look on screen before or while fixing. File paths are under the durable checkout's `src/` unless they start with `vendor/`, `scripts/` or `docs/`; `frame/` means `chrome/browser/ui/views/frame/`.
 
-## Progress (build 96, 2026-10-30)
+## Progress (build 98, 2026-10-30)
 
-Build 96 (`out/release/1.0.0-96`) carries everything below. It is assembled from the durable checkout with the release transforms, `--pdf-runtime`, `--computer-use-helper` and `--memory-helper`. It launches, and the items marked *(seen)* were checked on screen. The rest is built and unit-tested but not yet driven by hand.
+Build 98 (`out/release/1.0.0-98`) carries everything below. It is assembled from the durable checkout with the release transforms, `--pdf-runtime`, `--computer-use-helper` and `--memory-helper`. It launches, and the items marked *(seen)* were checked on screen. The rest is built and unit-tested but not yet driven by hand.
 
 **Done**
 - **Batch 1:**
@@ -73,13 +73,15 @@ Build 96 (`out/release/1.0.0-96`) carries everything below. It is assembled from
   - **Computer Use helper** (`apps/computer-use-helper/`): Aux's own Swift app on that protocol, Accessibility only, with no keyboard or pointer capture. Assembled with `--computer-use-helper`.
   - **Memory helper** (`apps/memory-helper/`): Aux's own `aux-memory`, bit-exact with the supplied one on the fixtures (`scripts/memory-helper/compare.py`). Assembled with `--memory-helper`, and it runs under the build 96 daemon *(seen in the process list)*.
   - **Daemon routers** (`vendor/aux-daemon/`): the root router serves 273 of 285 procedures from Aux's modules. Every input and output schema and route meta matches the supplied procedure (parity harness). remoteControl and externalPasswordManagers stay supplied, as agreed.
-  - **Extension, first two steps** (`vendor/aux-extension/`): tokens and fonts (Geist replaces the commercial display face), the New Tab page's first paint from the same tokens and fonts *(seen)*, and the 14 shared components as readable source, render-checked against the supplied ones. Dialogs, alert dialogs, popovers and the select popup use the 12px corner.
+  - **Daemon stores:** settings, Projects, task transcripts, the task store (SessionStore and its turn tables), the inbox and notification grants, and recent tasks are Aux modules. Each replaces the supplied store for every caller; parity compares on-disk bytes against the same build with the store edits undone.
+  - **Extension, first two steps** (`vendor/aux-extension/`): tokens and fonts (Geist replaces the commercial display face), the New Tab page's first paint from the same tokens and fonts *(seen)*, the 14 shared components, and the routes users see most (New Tab body, the Agent panel shell, the chat view, the chats sidebar, the Settings shell and page kit) as readable source, render-checked against the supplied ones *(New Tab and Agent panel seen)*. Dialogs, alert dialogs, popovers and the select popup use the 12px corner.
 - **Memory indexing fixed:** since at least build 55 the daemon refused the memory helper ("unsupported identity"). Assembly signed the unsigned memory-distribution copy, and the re-pin then rewrote the policy's `sourceSha256`, which the daemon checks against a compiled constant. Assembly now leaves `Contents/Resources/aux/memory-distribution` alone; the warning is gone in build 96.
+- **Gutter seam fixed** *(seen)*: in the single-page card layout the surface view under the card was hidden, so the gutter around the page (and beside the Agent panel) showed bare window material instead of the Space color. It now shows, and rounds only the corners on the window's edge.
 
 **Not done, and why**
 - **Batch 10 rewrites still to do:**
-  - The daemon's services under the routers (stores, agent server, model registry, auth functions, MCP and channel managers), store by store with the parity harness as the net.
-  - The extension's routes beyond the shared components.
+  - The daemon's remaining services: routines, MCP and channel connections, memory files, the context awareness ledger, the agent server and model registry. Auth, tokens and the Keychain stay supplied.
+  - The extension's composer, popups (mini popup, tab search and command bar), the Spaces sidebar, onboarding and each Settings page's contents.
   - The native addons (`aux-pdf.node`, `aux-macos-utilities.node`).
   - The memory helper under the production seatbelt needs `file-read-metadata` on the task home; that is an aux-daemon native change.
   - The memory-distribution `aux-memory` stays unsigned, as supplied. Notarization may reject an unsigned Mach-O in the bundle; that is checked when notarization runs.

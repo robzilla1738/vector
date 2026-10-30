@@ -140655,7 +140655,7 @@ index fdbb4cf741eb3de803fdf4b053813d8f1ad2d16e..a77e9da5095e95eb74e2671d1fe6b916
      window->OnTopContainerViewBoundsChanged(bounds);
    }
 diff --git a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c9021d04db2 100644
+index 29dfbde914c55ad1453a1c70998c9299b49c1132..a30af11cbd3bf6e166d8fd1ca2dae5c75d787cbb 100644
 --- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 @@ -3,6 +3,7 @@
@@ -141060,7 +141060,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
      gfx::RoundedCornersF content_corners;
      if (layout_data_->tab_strip_type == TabStripType::kVertical &&
          !is_fullscreen(layout_data_->window_state)) {
-@@ -1230,6 +1466,20 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1230,6 +1466,40 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
          content_corners.set_lower_left(radius);
        }
      }
@@ -141077,11 +141077,31 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
 +        content_corners.set_upper_left(window_corners.upper_left());
 +        content_corners.set_upper_right(window_corners.upper_right());
 +      }
++      // The card gutter paints the window surface: round only the corners on
++      // the window's edge, so none opens a wedge beside the docked sidebar or
++      // the Agent panel.
++      if (views().multi_contents_view->aux_card_layout()) {
++        const bool panel = horizontal_layout.has_side_panel();
++        const bool leading_edge =
++            GetVerticalTabStripCollapsedState() !=
++                VerticalTabStripCollapsedState::kExpanded &&
++            !(panel && side_panel_leading);
++        const bool trailing_edge = !(panel && !side_panel_leading);
++        const bool rtl = base::i18n::IsRTL();
++        if (!(rtl ? trailing_edge : leading_edge)) {
++          content_corners.set_upper_left(0);
++          content_corners.set_lower_left(0);
++        }
++        if (!(rtl ? leading_edge : trailing_edge)) {
++          content_corners.set_upper_right(0);
++          content_corners.set_lower_right(0);
++        }
++      }
 +    }
      views().multi_contents_view->SetBackgroundRadii(content_corners);
    }
  
-@@ -1254,6 +1504,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1254,6 +1524,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
        // leading caption buttons).
        toolbar_height = toolbar_bounds->bottom() - tabstrip_bounds->y();
  
@@ -141094,7 +141114,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
        caption_button_width =
            base::ClampCeil(browser_params.leading_exclusion.content.width()) -
            tabstrip_bounds->x();
-@@ -1339,6 +1595,26 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
+@@ -1339,6 +1615,26 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
      bool needs_exclusion) const {
    const int original_top = params.visual_client_area.y();
  
@@ -141121,7 +141141,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
    if (IsParentedTo(views().horizontal_tab_strip_region_view,
                     views().top_container)) {
      gfx::Rect tabstrip_bounds;
-@@ -1399,6 +1675,19 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
+@@ -1399,6 +1695,19 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
                      layout_data_->separator_info.top_container_separator);
    }
  
@@ -141141,7 +141161,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
    return gfx::Rect(params.visual_client_area.x(), original_top,
                     params.visual_client_area.width(),
                     params.visual_client_area.y() - original_top);
-@@ -1423,6 +1712,17 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1423,6 +1732,17 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    } else {
      background->SetPrimaryColor(CustomCornersBackground::ToolbarTheme());
    }
@@ -141159,7 +141179,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
  
    // By default, this is just a flat background.
    CustomCornersBackground::Corners corners;
-@@ -1430,14 +1730,19 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1430,14 +1750,19 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    // Rounded corners are drawn in vertical tab strip mode when not maximized or
    // fullscreen.
    if (layout_data_->tab_strip_type == TabStripType::kVertical &&
@@ -141181,7 +141201,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
        corners[CornerOrientation::kTopLeading] =
            background->GetWindowCorner(/*upper=*/true);
      }
-@@ -1484,6 +1789,11 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
+@@ -1484,6 +1809,11 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
  
  void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      const BrowserLayoutParams& params) {
@@ -141193,7 +141213,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
    // Want to cut the vertical tabstrip and its decorations out of the top
    // container in transparency mode.
    CustomCornersBackground::Cutouts top_container_cutout_views;
-@@ -1496,6 +1806,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1496,6 +1826,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
                                                    1.0f);
    if (layout_data_->tab_strip_type == TabStripType::kVertical) {
      side_panel_start = views().vertical_tab_strip_region_view->bounds().right();
@@ -141206,7 +141226,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
  
      // Vertical tabstrip goes all the way to the top of the window if it is not
      // collapsed or there are no caption buttons on the leading edge.
-@@ -1508,10 +1824,26 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1508,10 +1844,26 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      CHECK(vertical_tabs_background)
          << "Expected vertical tab strip to have a CustomCornersBackground.";
  
@@ -141235,7 +141255,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
        // Use a curve that goes very close to 1 very quickly, but still has a
        // visible fade. This isn't perfect, but hopefully with glass
        // expand-on-hover it will improve.
-@@ -1530,7 +1862,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1530,7 +1882,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
  
      // Ensure that corners of the window remain rounded.
      CustomCornersBackground::Corners vertical_tabs_corners;
@@ -141244,7 +141264,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
        if (animation.top_offset == 0) {
          vertical_tabs_corners[CornerOrientation::kTopLeading] =
              vertical_tabs_background->GetWindowCorner(/*upper=*/true);
-@@ -1566,6 +1898,23 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1566,6 +1918,23 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
            vertical_tabs_bottom_corner_size;
      }
  
@@ -141268,7 +141288,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
      vertical_tabs_background->SetCorners(vertical_tabs_corners);
  
      // When the organizer panel is animating open or closed and does not appear
-@@ -1619,8 +1968,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1619,8 +1988,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
                                            vertical_tabs_bottom_corner_amount) *
              frame_color.opacity,
      };
@@ -141281,7 +141301,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
      // Top edge is drawn when the tabstrip is not flush with the edge of the
      // screen, or with a visual element that provides a natural border.
      if (animation.expand_on_hover_width > 0.0 || animation.top_corner < 0.0 ||
-@@ -1707,6 +2058,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1707,6 +2078,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        break;
      }
      case TabStripType::kVertical: {
@@ -141297,7 +141317,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
        // Curve trailing corner when it becomes the top trailing corner of the
        // browser.
        if (layout_data_->window_state == WindowState::kNormal &&
-@@ -1722,7 +2082,30 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1722,7 +2102,30 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        // happen.
        break;
    }
@@ -141328,7 +141348,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
  
    auto* const top_container_background =
        views().top_container->background()->AsA<CustomCornersBackground>();
-@@ -1733,9 +2116,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1733,9 +2136,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
    // is active for the current window.
    if (features::IsGlassFrameEnabled()) {
      if (!is_fullscreen(layout_data_->window_state)) {
@@ -141341,7 +141361,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..47358f7f35d12235eb0713f68a904c90
          top_container_cutout_views.push_back(
              CustomCornersBackground::InverseOf(*toolbar_background));
        }
-@@ -1842,8 +2226,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1842,8 +2246,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
  
      // Need to ensure the bottom of the window is properly rounded for normal
      // windows.
@@ -141517,7 +141537,7 @@ index 460c40a7c5033c97ace6c442d347d7ebab13a82f..7798c40c98c1a8587a5f37fb2a6a9067
  
    raw_ptr<views::FlexLayout> flex_layout_manager_;
 diff --git a/chrome/browser/ui/views/frame/multi_contents_view.cc b/chrome/browser/ui/views/frame/multi_contents_view.cc
-index 76475b569327f1ffef76923c4114f1445885286c..64cd529c36239fc68b1b95153a9b15e4b2a67cf5 100644
+index 76475b569327f1ffef76923c4114f1445885286c..3a6383f5260ff387587107d80d2cc7f5c79de15c 100644
 --- a/chrome/browser/ui/views/frame/multi_contents_view.cc
 +++ b/chrome/browser/ui/views/frame/multi_contents_view.cc
 @@ -6,6 +6,7 @@
@@ -142011,7 +142031,18 @@ index 76475b569327f1ffef76923c4114f1445885286c..64cd529c36239fc68b1b95153a9b15e4
        delegate_->WebContentsFocused(container->contents_view()->web_contents());
      }
    }
-@@ -519,9 +733,63 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -506,8 +720,9 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+ 
+   gfx::Rect available_space = gfx::Rect(width, height);
+ 
++  // Aux's card gutter is the window surface, so it shows around one page too.
+   const bool show_background =
+-      drop_target_view_->GetVisible() || IsInSplitView();
++      drop_target_view_->GetVisible() || IsInSplitView() || aux_card_layout_;
+   layouts.child_layouts.emplace_back(background_view_.get(), show_background,
+                                      available_space);
+ 
+@@ -519,9 +734,63 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
    available_space =
        CalculateSeparatorLayouts(available_space, layouts.child_layouts);
  
@@ -142076,7 +142107,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..64cd529c36239fc68b1b95153a9b15e4
    ViewSizes sizes = GetViewSizes(available_space);
  
    gfx::Rect start_rect, resize_rect, end_rect;
-@@ -544,6 +812,10 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -544,6 +813,10 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
    layouts.child_layouts.emplace_back(contents_container_views_[0].get(),
                                       contents_container_views_[0]->GetVisible(),
                                       start_rect);
@@ -142087,7 +142118,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..64cd529c36239fc68b1b95153a9b15e4
    layouts.child_layouts.emplace_back(resize_area_.get(),
                                       resize_area_->GetVisible(), resize_rect);
    layouts.child_layouts.emplace_back(contents_container_views_[1].get(),
-@@ -558,6 +830,14 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -558,6 +831,14 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
  }
  
  void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
@@ -142102,7 +142133,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..64cd529c36239fc68b1b95153a9b15e4
    if (!target_content_bounds_) {
      for (auto& contents : contents_container_views_) {
        contents->SetTargetContentBounds(std::nullopt);
-@@ -579,14 +859,29 @@ void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
+@@ -579,14 +860,29 @@ void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
    views::ProposedLayout target_layout;
    {
      // Need to temporarily override the split view insets.
@@ -142134,7 +142165,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..64cd529c36239fc68b1b95153a9b15e4
    const auto& default_clip = target_content_bounds_->clipped_area;
  
    // Due to the way web contents resize, and the fact that both split views will
-@@ -798,12 +1093,21 @@ void MultiContentsView::UpdateContentsBorderAndOverlay() {
+@@ -798,12 +1094,21 @@ void MultiContentsView::UpdateContentsBorderAndOverlay() {
    for (auto& contents_container_view : contents_container_views_) {
      const bool is_active =
          contents_container_view->contents_view() == GetActiveContentsView();
@@ -142159,7 +142190,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..64cd529c36239fc68b1b95153a9b15e4
    }
  }
  
-@@ -851,6 +1155,15 @@ void MultiContentsView::SetShouldShowTopSeparator(bool should_show) {
+@@ -851,6 +1156,15 @@ void MultiContentsView::SetShouldShowTopSeparator(bool should_show) {
    InvalidateLayout(/*avoid_propagate_during_layout=*/true);
  }
  
