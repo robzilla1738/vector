@@ -5,7 +5,7 @@ import test from 'node:test';
 import {requireInput} from '../../scripts/lib/inputs.mjs';
 import {chromiumSrc} from '../../scripts/lib/aux-chromium.mjs';
 import {BLOCKS, GLOBALS_CSS, NEWTAB_BLOCKS, NEWTAB_PAGE, REMOVED_FILES, UTILITIES, declarations, geistFaces, integrateNewTab, integrateStyles,
-  locateBlocks, readSource, shipped} from './integration.mjs';
+  ULTRABROWSE_RULE, locateBlocks, readSource, shipped} from './integration.mjs';
 
 const dist = `${requireInput('candidateApp')}/Contents/Resources/aux/apps/extension/dist`;
 const sealed = readFileSync(`${dist}/${GLOBALS_CSS}`, 'utf8');
@@ -34,7 +34,8 @@ test('every rule outside the five blocks is byte for byte the supplied one', () 
   supplied.push(sealed.slice(cursor));
   const utilities = shipped(readSource(UTILITIES));
   assert.ok(after.endsWith(utilities));
-  assert.deepEqual(gaps(after.slice(0, -utilities.length)), supplied);
+  assert.deepEqual(gaps(after.slice(0, -utilities.length)), supplied.map(gap => gap.replace(ULTRABROWSE_RULE, '')));
+  assert.ok(!after.includes('ultrabrowse'));
 });
 
 // The only intended differences outside fonts: the --aux-radius-* names and what reads them, and

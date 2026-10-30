@@ -23,7 +23,7 @@ export const REMOVED_CHUNKS = Object.freeze(['assets/tasks-CtF0WxoJ.js', 'assets
   'assets/payment-use-CqnbXHDE.js', 'assets/password-LjdLcSRV.js', 'assets/password-import-menu-BuTmw0rs.js',
   'assets/error-test-BKjD4Ku7.js', 'assets/artifact-test-CdjpLuI1.js', 'assets/liquid-glass-playground-DkwgfDqY.js',
   'assets/liquid-glass-DlNhZpZV.js', 'assets/liquid-glass-BmSyeXQT.css', 'assets/pricing-table-shared-BWz9Ewvm.js',
-  'assets/openpgp.min-DsXep_gF.js']);
+  'assets/openpgp.min-DsXep_gF.js', 'assets/chat-wBzshK0k.js']);
 /** The removed chunks' only assets. */
 export const REMOVED_ASSETS = Object.freeze(['assets/aux-context-awareness-CQFhCmYA.webp', 'assets/aux-payment-use-BBKr-NnX.webp',
   'assets/aux-password-manager-CZ9IYl_W.webp', 'assets/apple-password-import-L1nnFJTi.webp']);
@@ -139,10 +139,13 @@ const ADDED_UTILITIES = ['.rounded-b-xl{', '.bg-card{', '.-mt-\\[var\\(--radius-
   '.group-hover\\/routine\\:bg-muted:', ':is(.\\*\\:data-model-select-shortcuts\\:px-2 > *)',
   ':is(.\\*\\*\\:data-\\[agent-session-ui\\=\\"chat\\"\\]\\:px-2 *)', '.dark\\:bg-background:is('];
 
+/** The removed Ultrabrowse animation's color tokens; nothing reads them. */
+export const ULTRABROWSE_RULE = /[^{}]*ultrabrowse[^{}]*\{[^{}]*\}/g;
+
 export function integrateStyles(text) {
   for (const selector of ADDED_UTILITIES)
     if (text.includes(selector)) throw Error(`Agent styles drift: the sealed CSS already has ${selector}`);
-  return replaceBlocks(text, BLOCKS, 'Agent styles', ({file}) => shipped(readSource(file))) + shipped(readSource(UTILITIES));
+  return replaceBlocks(text, BLOCKS, 'Agent styles', ({file}) => shipped(readSource(file))).replace(ULTRABROWSE_RULE, '') + shipped(readSource(UTILITIES));
 }
 
 /** The New Tab page and its first-paint block (the start of its inline <style>). */

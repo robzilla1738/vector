@@ -1,7 +1,6 @@
 /* Aux-owned source: the Developers settings page (assets/developers-DTvaoVBC.js, after its imports;
  * ss exported as component). Installing, updating or reinstalling the Aux CLI; the Aux browser skill
- * for Codex, Claude Code, Cursor and OpenCode; the Aux MCP server and how to set it up; and the CLI
- * questions and answers.
+ * for Codex, Claude Code, Cursor and OpenCode.
  * Names the rest of the chunk uses keep their chunk names: ss the page.
  * Chunk names used: A useTRPC, v useQuery, b useMutation, D useQueryClient, I analytics, ie confirm,
  * oe useApp, pe the route, te navigate, ue/he agent icons, Y/ee React.
