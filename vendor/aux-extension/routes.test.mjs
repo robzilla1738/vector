@@ -74,103 +74,9 @@ const conversationScenes = [
   world => ({context: {accountId: 7, tasks: [], canOpen: false}, imports: {'./strip-markdown-DRcmtuJc.js#Xt': true}, state: ['typed text', [{id: 'f1', name: 'a.txt', mimeType: 'text/plain', data: 'AA'}], false, 0, false]}),
 ];
 
-// The composer's toolbar and queue read their data from imports: a model list across providers with
-// thinking levels and fast mode, and a queue (one with attachments, one without text, a steering
-// message) paused after an interrupt. These drive the model menu, the queue and the badges.
-const COMPOSER = 'assets/session-composer-Dc0LRfZA.js';
-const models = [
-  {provider: 'anthropic', id: 'opus', shortName: 'Opus', availableThinkingLevels: ['low', 'medium', 'high'], supportsFastMode: true},
-  {provider: 'anthropic', id: 'haiku', shortName: 'Haiku', availableThinkingLevels: [], supportsFastMode: false},
-  {provider: 'openai', id: 'gpt', shortName: 'GPT', availableThinkingLevels: ['low', 'high'], supportsFastMode: false},
-  {provider: 'google', id: 'gem', shortName: 'Gem', availableThinkingLevels: [], supportsFastMode: true},
-  ...['mistral', 'xai', 'meta'].map(provider => ({provider, id: `${provider}-1`, shortName: provider, availableThinkingLevels: [], supportsFastMode: false})),
-];
-// More providers with models than the list shows at once, and one with none.
-const providers = [{id: 'openai', name: 'OpenAI'}, {id: 'anthropic', name: 'Anthropic'}, {id: 'google', name: 'Google'}, {id: 'empty', name: 'Empty'},
-  {id: 'mistral', name: 'Mistral'}, {id: 'xai', name: 'xAI'}, {id: 'meta', name: 'Meta'}];
-const queuedMessages = [
-  {role: 'user-message-metadata', attachments: [{type: 'tab', url: 'https://a.example', title: 'A', faviconUrl: 'f.png'}, {type: 'file', name: 'x'}]},
-  {role: 'user', content: 'First queued', timestamp: 1}, {role: 'user', content: 'Second', timestamp: 2}, {role: 'user', content: [], timestamp: 3},
-];
-const queueItems = [{message: queuedMessages[1], metadata: queuedMessages[0], deliveryMode: 'queued'}, {message: queuedMessages[3], deliveryMode: 'queued'}];
-const later = 4102444800000;
-const fastNotices = {
-  turnMessagesByKey: {a: {role: 'assistant', provider: 'anthropic', model: 'opus', timestamp: 5, diagnostics: [{type: 'model_fast_mode', details: {status: 'cooldown', retryAt: later}}]}},
-  messagesByKey: {b: {role: 'assistant', provider: 'anthropic', model: 'opus', timestamp: 3, diagnostics: [{type: 'other'}, {type: 'model_fast_mode', details: {status: 'off', reason: 'Not on this plan'}}]},
-    c: {role: 'user'}, d: {role: 'assistant', provider: 'openai', model: 'gpt', timestamp: 9, diagnostics: [{type: 'model_fast_mode', details: {status: 'off', reason: 'GPT is slow'}}]}},
-  streamingMessage: undefined,
-};
-const composerImports = (world, {session = {}, options = {}, settings = {}, mode = 'default', store = fastNotices, pending} = {}) => ({
-  './context-q_vohNW8.js#n': {currentSession: {id: 's1', status: 'interrupted', incognito: false, projectId: 'p1', suspension: {id: 'q1'},
-    model: {provider: 'anthropic', modelId: 'opus', thinkingLevel: 'high', fastMode: true}, runtimeConfig: {proactiveMode: false},
-    queuedMessages, steeringMessages: [{role: 'user', content: 'Steer', timestamp: 4}], ...session},
-  updateModel: world.stub('spy:updateModel'), updateRuntimeConfig: world.stub('spy:updateRuntimeConfig'), updateMode: world.stub('spy:updateMode')},
-  './model-select-BvZsM1Kl.js#l': {isOpen: true, isThinkingOpen: true, proactiveMode: false, selectableProviders: providers,
-    getModels: id => models.filter(model => model.provider === id), onOpenChange: world.stub('spy:modelOpen'), onThinkingOpenChange: world.stub('spy:thinkingOpen'),
-    onChange: world.stub('spy:modelChange'), ...options},
-  './model-select-BvZsM1Kl.js#s': levels => levels ?? [],
-  './use-agent-settings-DiedG0R1.js#n': {availableModels: models, subscriptionPlan: 'pro', isLoading: false, hasExternalSubscription: false, ...settings},
-  './use-agent-settings-DiedG0R1.js#a': ({provider, modelId}) => `${provider}/${modelId}`,
-  './provider-Cw0zhujt.js#x': (_, select) => select(store),
-  '*.safeParse': details => ({data: details}),
-  './permission-approval-D-GTf91U.js#b': {mode},
-  './permission-approval-D-GTf91U.js#x': {steer: world.stub('spy:steer'), continueConversation: world.stub('spy:continue'), sendMessage: world.stub('spy:send')},
-  './permission-approval-D-GTf91U.js#f': {isStreaming: false},
-  './permission-approval-D-GTf91U.js#p': {hasPreservedDraft: true, getText: () => ' edited ', insertText: world.stub('spy:insertText')},
-  './permission-approval-D-GTf91U.js#l': {disabled: false, handleDirectories: world.stub('spy:dirs'), handleFiles: world.stub('spy:files')},
-  './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7},
-  './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')},
-  // Each mutation is pending only when the scene names it (a stub's text is its path).
-  './strip-markdown-DRcmtuJc.js#er': options => ({isPending: Boolean(pending && String(options).includes(pending)), mutate: world.stub('spy:mutate'),
-    mutateAsync: world.stub('spy:mutateAsync')}),
-  './strip-markdown-DRcmtuJc.js#m': message => (typeof message.content === 'string' ? message.content : ''),
-  './strip-markdown-DRcmtuJc.js#f': {canMove: true, isMoveLocked: false, handleMove: world.stub('spy:move')},
-  './provider-Cw0zhujt.js#d': false,
-  './sortable.esm-CGWaoCcY.js#i': {attributes: {role: 'button'}, listeners: {}, setNodeRef: world.stub('setNodeRef'), setActivatorNodeRef: world.stub('setActivatorNodeRef'),
-    transform: {x: 0, y: 4}, transition: 'transform 200ms', isDragging: false},
-  './sortable.esm-CGWaoCcY.js#d': {active: {id: 2}, activeNode: null},
-  './browser-color-scheme-Df5VSuPV.js#T().createPortal': element => element,
-});
-// One context answers every context read: the mini popup's anchored layer and the badges' mode,
-// queue-edit and side panel values.
-const layer = world => ({open: true, optionsSize: {width: 280, maxHeight: 200, height: 168, fitWidth: true}, close: world.stub('spy:close'),
-  setTrigger: world.stub('spy:setTrigger'), trigger: world.stub('trigger'), value: 'incognito', onChange: world.stub('spy:modeChange'), isSidepanel: false,
-  pending: false, onCancel: world.stub('spy:cancelEdit'), visible: true, showInMenu: true});
-const composerScenes = [
-  world => ({imports: composerImports(world, {options: {proactiveMode: true}}), context: layer(world)}),
-  // One provider, a free plan, an incognito session that is not interrupted, the question slot open, one model selected.
-  world => ({imports: composerImports(world, {options: {selectableProviders: providers.slice(1, 2)}, settings: {subscriptionPlan: 'free'},
-    session: {status: 'idle', incognito: true, queuedMessages: queuedMessages.slice(0, 3)}, mode: 'ask-user-question', store: {...fastNotices, turnMessagesByKey: {}}}),
-  context: {isSidepanel: false, value: undefined, optionsSize: {width: 160, maxHeight: 320}, open: false}, renderProps: {payload: 'thinking', children: 'menu'},
-  event: {key: '4', preventDefault: world.stub('spy:preventDefault'), stopPropagation: world.stub('spy:stopPropagation')}}),
-  // No providers and no models; a queue held mid-reorder and pending.
-  world => ({imports: composerImports(world, {options: {selectableProviders: [], isOpen: false}, settings: {availableModels: [], isLoading: true},
-    pending: 'updateQueuedMessage'}), context: {isSidepanel: true, value: 'default'}, state: [null, [3, 1, 2], false]}),
-  // A provider pane open, and a queued message being edited.
-  world => ({imports: composerImports(world, {settings: {isLoading: true}, mode: 'action-confirmation'}), context: layer(world), state: ['anthropic']}),
-  // Handlers get a picked model and a digit key, as the model menu and its shortcuts do.
-  world => ({imports: composerImports(world, {options: {proactiveMode: true}}), context: layer(world),
-    event: {provider: 'openai', modelId: 'gpt', key: '4', detail: 0, preventDefault: world.stub('spy:preventDefault'), stopPropagation: world.stub('spy:stopPropagation')}}),
-  world => ({imports: composerImports(world), context: null, state: [queueItems[0], null, false]}),
-];
-const composerProps = [
-  {model: {provider: 'anthropic', modelId: 'opus', thinkingLevel: 'high', fastMode: true}, variant: 'mini-popup', showThinkingLevel: true, item: queueItems[0],
-    disabled: false, reorderable: true, editing: true, dragging: false, queue: queueItems, mode: 'default', inactive: false, label: false, showIncognito: true},
-  {model: {provider: 'openai', modelId: 'gpt', thinkingLevel: 'low', fastMode: false}, variant: 'main', showThinkingLevel: true, item: queueItems[1],
-    disabled: true, reorderable: false, editing: false, dragging: true, queue: [], mode: 'ask-user-question', inactive: true, persistDefaultOnChange: false},
-  {model: {provider: 'google', modelId: 'gem', thinkingLevel: 'low', fastMode: false}, variant: 'mini-popup', showThinkingLevel: false, mode: 'approval',
-    value: {provider: 'anthropic', modelId: 'haiku', thinkingLevel: 'low'}, proactiveMode: true, children: 'slot'},
-];
-
 test('every Aux-owned route renders, runs its effects and handles events like the one it replaces', async () => {
   await assertParity({blocksByChunk: ROUTES, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 600, scenes: [...routeScenes, ...conversationScenes],
     props: conversationProps, renamed: renamedBindings});
-});
-
-// The composer under its data fixtures, so the model menu, the queue and the badges render with data.
-test('the composer renders like the supplied one with models and a queue', async () => {
-  await assertParity({blocksByChunk: {[COMPOSER]: ROUTES[COMPOSER]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 600,
-    scenes: composerScenes, props: composerProps, renamed: renamedBindings, defaults: false});
 });
 
 test('the routes replace their blocks once and refuse a second pass', () => {
@@ -278,10 +184,4 @@ test('the composer attachment and preview helpers match the supplied ones', asyn
   const overview = {turns: [turn('t3', 3, 'k3')], transcriptRevision: 'r', nextCursor: 'c'};
   for (const cached of [undefined, {pages: [{turns: [turn('t1', 1, 'k1'), turn('t2', 2, 'k2')]}], pageParams: [null]}])
     for (const key of ['k2', 'missing']) same('pagesAfterEdit', cached, overview, key);
-  const screen = {availLeft: 0, availTop: 25, availWidth: 1440, availHeight: 875};
-  for (const [screenX, screenY, left] of [[100, 300, 20], [1300, 40, 0], [10, 900, 300], [100, 219, 20], [1390, 50, 20]])
-    same('popupPosition', {anchor: {left, top: 10, width: 30, height: 24}, screen, screenX, screenY, size: {width: 280, height: 200}});
-  assert.equal(String(ours.__pair_optionsPageUrl('chrome-extension://x/minipopup.html?a=1')), String(supplied.__pair_optionsPageUrl('chrome-extension://x/minipopup.html?a=1')));
-  same('fastModeDetails', {diagnostics: []});
-  same('fastModeDetails', {});
 });

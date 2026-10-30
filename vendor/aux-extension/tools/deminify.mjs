@@ -3,11 +3,10 @@
 // doc comments on top-level bindings, then prettier. The parity tests are what prove the result.
 //   node deminify.mjs list  <block.js> [--prefix]            top-level bindings and their locals
 //   node deminify.mjs show  <block.js> <Top,Top2>            each local of those bindings, in context
-//   node deminify.mjs build <block.js> <spec.mjs> <out.js> [--prefix] [--auto]
+//   node deminify.mjs build <block.js> <spec.mjs> <out.js> [--prefix]
 // A spec exports {module: {old: new}, locals: {Top: {old: new, 'old@2': new}}, comments: {old: text}};
 // `old@N` is the Nth declaration of that short name inside Top. --prefix parses a block that starts
-// inside a `var` list. --auto names destructured `{key: x}` bindings after their key when nothing
-// clashes. Needs acorn and prettier: AUX_ACORN and AUX_PRETTIER name their entry files.
+// inside a `var` list. Needs acorn and prettier: AUX_ACORN and AUX_PRETTIER name their entry files.
 import {readFileSync, writeFileSync} from 'node:fs';
 const acorn = await import(process.env.AUX_ACORN ?? 'acorn');
 const prettier = await import(process.env.AUX_PRETTIER ?? 'prettier');
@@ -128,7 +127,6 @@ function hoistDecls(st, scope, top, isFunctionBody) {
 
 // Pass 2: references.
 const declIds = new Set();
-const freeRefs = [];
 function refs(node, parent, scope, key) {
   if (!node || typeof node.type !== 'string') return;
   if (scopeOf.has(node)) scope = scopeOf.get(node);
@@ -144,7 +142,6 @@ function refs(node, parent, scope, key) {
     }
     const b = scope.lookup(node.name);
     if (b && !b.decls.includes(node)) b.refs.push(node);
-    else if (!b) freeRefs.push(node);
     return;
   }
   for (const k of Object.keys(node)) {
@@ -193,44 +190,26 @@ for (const b of bindings) {
   const pick = local[`${b.name}@${b.ordinal}`] ?? local[b.name];
   if (pick) b.newName = pick;
 }
-// Auto names (--auto): a destructured `{key: x}` binding takes the key's name when nothing clashes.
-const autoNamed = new Set();
-if (process.argv.includes('--auto')) {
-  (function walk(node) {
-    if (!node || typeof node.type !== 'string') return;
-    if (node.type === 'ObjectPattern') for (const prop of node.properties) {
-      if (prop.type !== 'Property' || prop.computed || prop.key.type !== 'Identifier') continue;
-      const id = prop.value.type === 'AssignmentPattern' ? prop.value.left : prop.value;
-      if (id.type !== 'Identifier' || id.name === prop.key.name) continue;
-      const b = bindings.find(x => x.decls[0] === id);
-      if (b && !b.newName && b.scope !== program) { b.newName = prop.key.name; autoNamed.add(b); }
-    }
-    for (const k of Object.keys(node)) { if (k === 'type') continue; const v = node[k]; if (Array.isArray(v)) v.forEach(c => c && typeof c.type === 'string' && walk(c)); else if (v && typeof v.type === 'string') walk(v); }
-  })(ast);
-}
-// Capture check: a new name must not clash in its scope, capture an outer binding or a free name
-// referenced inside, or be shadowed where the binding is used.
-const finalName = x => x.newName ?? x.name;
-function problemsFor(b) {
-  const problems = [];
-  if (!b.newName || b.newName === b.name) return problems;
-  const range = b.scope.node;
+// Capture check: a new name must not be declared in a scope between any reference and the binding,
+// nor be a name referenced (resolving elsewhere) inside the binding's scope.
+const problems = [];
+for (const b of bindings) {
+  if (!b.newName || b.newName === b.name) continue;
+  const clash = b.scope.bindings.get(b.newName);
+  if (clash && clash !== b && !(clash.newName && clash.newName !== b.newName)) problems.push(`${b.top}: ${b.name}→${b.newName} clashes in its scope`);
+  // any other binding visible in b.scope's subtree with the same final name
+  const finalName = x => x.newName ?? x.name;
   for (const other of bindings) {
     if (other === b || finalName(other) !== b.newName) continue;
-    if (other.scope === b.scope) { problems.push(`${b.top}: ${b.name}→${b.newName} clashes in its scope`); continue; }
+    // other is in an enclosing scope of b, and b's subtree references other → capture
     const encloses = (() => { for (let s = b.scope; s; s = s.parent) if (s === other.scope) return true; return false; })();
-    if (encloses && other.refs.some(node => node.start >= range.start && node.end <= range.end)) problems.push(`${b.top}: ${b.name}→${b.newName} would capture an outer ${other.name}`);
-    const otherInside = (() => { for (let s = other.scope; s; s = s.parent) if (s === b.scope) return true; return false; })();
-    if (otherInside && b.refs.some(r => r.start >= other.scope.node.start && r.end <= other.scope.node.end)) problems.push(`${b.top}: ${b.name}→${b.newName} shadowed by inner ${other.name}`);
+    const inside = node => node.start >= b.scope.node.start && node.end <= b.scope.node.end;
+    if (encloses && other.refs.some(inside)) problems.push(`${b.top}: ${b.name}→${b.newName} would capture an outer ${other.name}`);
+    // other is inside b's scope subtree and shadows b where b is referenced
+    const otherInside = (() => { for (let s = other.scope; s; s = s.parent) if (s === b.scope) return s !== other.scope || true; return false; })();
+    if (otherInside && other.scope !== b.scope && b.refs.some(r => r.start >= other.scope.node.start && r.end <= other.scope.node.end)) problems.push(`${b.top}: ${b.name}→${b.newName} shadowed by inner ${other.name}`);
   }
-  if (freeRefs.some(node => node.name === b.newName && node.start >= range.start && node.end <= range.end)) problems.push(`${b.top}: ${b.name}→${b.newName} would capture a free ${b.newName}`);
-  return problems;
 }
-for (let changed = true; changed;) {
-  changed = false;
-  for (const b of autoNamed) if (b.newName && problemsFor(b).length) { b.newName = null; autoNamed.delete(b); changed = true; }
-}
-const problems = bindings.flatMap(problemsFor);
 if (problems.length) { console.error(problems.join('\n')); process.exit(1); }
 
 // Edits

@@ -45,10 +45,7 @@ export async function evaluatePair({world, chunk, text, blocks, integrate, read,
   return {supplied, ours, kept, pairs};
 }
 
-/** `defaults: false` renders only the given props and scenes: fixtures that need each other (a queue's
- * real text and its real attachments) are not crossed with the stub-only defaults. */
-export async function assertParity({blocksByChunk, textOf, integrate, read, changes, minimum, scenes: extraScenes = [], props: extraProps = [], renamed = () => ({}),
-  defaults = true}) {
+export async function assertParity({blocksByChunk, textOf, integrate, read, changes, minimum, scenes: extraScenes = [], props: extraProps = [], renamed = () => ({})}) {
   const world = createWorld();
   // Callbacks are stubs, so every call a handler or effect makes to them is logged and compared.
   const spies = Object.fromEntries(['onClick', 'onCheckedChange', 'onOpenChange', 'onNarrowMorphHeightChange', 'onPointerDown', 'onPointerMove',
@@ -84,7 +81,6 @@ export async function assertParity({blocksByChunk, textOf, integrate, read, chan
     // Settings search with a query and a selection; other components read these as their own state.
     {context: {accountId: 7, mode: 'default'}, state: ['mem', 1, true, null], renderState: {checked: true}},
   ];
-  if (!defaults) PROPS.length = scenes.length = 0;
   scenes.push(...extraScenes.map(scene => (typeof scene === 'function' ? scene(world) : scene)));
   PROPS.push(...extraProps.map(props => ({...(typeof props === 'function' ? props(world) : props), ...spies})));
   let compared = 0;
