@@ -127,6 +127,17 @@ The plan refines these; it does not reverse them. Anything that would is a quest
 - **Scope:** bring-your-own models (API keys, or the user's own local agent CLIs; see answer 5); no payments, Pro or hosted credits; no built-in password manager (users bring 1Password and the like through extensions); routines run on this device only.
 - **Crash reports:** opt-in, off by default, asked once after the first crash (release decision 6).
 
+## Decisions (2026-10-30)
+
+These overrule anything older in this plan.
+
+- **Pins and bookmarks are per Space**, whether or not Spaces share cookies.
+- **The Agent's home thread follows cookie sharing:** Spaces that share sign-ins share a thread; an isolated Space has its own.
+- **Onboarding brings over passwords if possible.**
+- **Send feedback is hidden.** Max plan and ultrabrowse leftovers are removed.
+- **The runtime is rebuilt for macOS 15 in full:** Node, Python and rg as well as the PDF stack.
+- **The address field sits directly above Tabs.**
+
 ## New decisions (2026-10-29)
 
 1. **Spaces replace profiles.** There are no user-visible profiles. When you create a Space you choose whether it **shares** sign-ins, cookies and site data with another Space or is **isolated**. Design in [Batch 2](#batch-2--spaces-replace-profiles).
