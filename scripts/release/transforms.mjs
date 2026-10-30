@@ -13,8 +13,8 @@ import { DAEMON_FILES as AGENT_DAEMON_FILES, EXTENSION_EDITS as AGENT_EXTENSION_
 import { RUNTIME_FILES as AUX_DAEMON_FILES, integrateDaemon as integrateAuxDaemon } from '../../vendor/aux-daemon/integration.mjs';
 import { EDITS as POLISH_EDITS, integratePolish } from '../../vendor/provided/polish/integration.mjs';
 import { BUILTIN_SKILLS_DIR, SKILL_FILES, assertSameSkillFiles, replaceSkillFile } from '../../vendor/aux-skills/integration.mjs';
-import { COMPONENTS, GLOBALS_CSS, LICENSE as STYLES_LICENSE, NEWTAB_PAGE, REMOVED_FILES as STYLES_REMOVED, integrateComponents, integrateNewTab,
-  integrateStyles } from '../../vendor/aux-extension/integration.mjs';
+import { COMPONENTS, GLOBALS_CSS, LICENSE as STYLES_LICENSE, NEWTAB_PAGE, REMOVED_FILES as STYLES_REMOVED, ROUTES, integrateComponents, integrateNewTab,
+  integrateRoutes, integrateStyles } from '../../vendor/aux-extension/integration.mjs';
 
 const app = process.argv[2];
 if (!app) throw new Error('usage: transforms.mjs <staged Aux.app>');
@@ -44,6 +44,7 @@ const TRANSFORMS = [
   ['Agent extension styles: New Tab first-paint tokens and fonts', `${agent}/${NEWTAB_PAGE}`, integrateNewTab],
   // Last, so they apply to the text every earlier edit to the same chunk (polish, provider CLIs) left.
   ...Object.keys(COMPONENTS).map(chunk => [`Agent extension components: ${chunk}`, `${agent}/${chunk}`, text => integrateComponents(chunk, text)]),
+  ...Object.keys(ROUTES).map(chunk => [`Agent extension routes: ${chunk}`, `${agent}/${chunk}`, text => integrateRoutes(chunk, text)]),
 ];
 
 // [label, staged file]. Supplied files Aux may not ship; a missing file stops the release.

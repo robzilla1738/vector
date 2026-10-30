@@ -43,7 +43,16 @@ export function createWorld() {
         if (typeof key === 'symbol') return undefined;
         return stub(`${path}.${key}`);
       },
-      apply: (_, __, args) => { const named = `${path}(${signature(args)})`; log.push(['call', named]); return stub(named); },
+      apply: (_, __, args) => {
+        const named = `${path}(${signature(args)})`;
+        log.push(['call', named]);
+        // A scene can say what an import returns, to drive the branches a component takes.
+        if (scenario.imports && path in scenario.imports) {
+          const value = scenario.imports[path];
+          return typeof value === 'function' && !label(value) ? value(...args) : value;
+        }
+        return stub(named);
+      },
       construct: (_, args) => stub(`new ${path}(${signature(args)})`),
       has: () => false,
     });
@@ -55,7 +64,7 @@ export function createWorld() {
   function shallow(value, depth) {
     if (value === null || typeof value !== 'object' && typeof value !== 'function') return value;
     if (label(value)) return `stub:${label(value)}`;
-    if (depth > 3) return '…';
+    if (depth > 8) return '…';
     if (typeof value === 'function') return `fn(${value.length})`;
     if (Array.isArray(value)) return value.map(item => shallow(item, depth + 1));
     if (value.$element) return {type: shallow(value.type, depth + 1), props: shallow(value.props, depth + 1)};
@@ -66,16 +75,22 @@ export function createWorld() {
   const thrown = error => (error?.name === 'Error' ? String(error.message).slice(0, 80) : String(error?.name));
 
   const scenario = {context: undefined, state: undefined};
+  let stateCalls = 0;
   const element = (type, props, key) => ({$element: true, type, props: props ?? {}, key});
   const jsxRuntime = {jsx: element, jsxs: element, Fragment: 'Fragment'};
   const forwardRefs = new WeakSet();
+  const lazies = new WeakSet();
   const React = new Proxy({
     forwardRef: render => { const value = {$forwardRef: render}; forwardRefs.add(value); return value; },
     memo: value => value,
+    // A lazy component is named by what its loader asks the preload helper for (the chunk and its deps).
+    lazy: loader => { const value = {$lazy: loader}; lazies.add(value); return value; },
     createContext: value => ({$context: true, Provider: 'Context.Provider', Consumer: 'Context.Consumer', value}),
     useContext: () => scenario.context,
     use: () => scenario.context,
-    useState: init => [scenario.state !== undefined ? scenario.state : typeof init === 'function' ? init() : init,
+    // A scene's `state` sets every useState: one value, or a list taken in call order.
+    useState: init => [scenario.state === undefined ? typeof init === 'function' ? init() : init
+      : Array.isArray(scenario.state) ? scenario.state[stateCalls++ % scenario.state.length] : scenario.state,
       value => log.push(['setState', describe(value)])],
     useReducer: (_, init) => [init, value => log.push(['dispatch', describe(value)])],
     useRef: value => ({current: value}),
@@ -110,15 +125,25 @@ export function createWorld() {
   };
   const MODELLED = {A: module => module, E: () => React, w: () => jsxRuntime, C: cn, u: cva};
 
+  // Functions found in a render (callbacks in props and objects) are called once to compare what they do.
+  const calling = new Set();
   function describe(value, depth = 0) {
-    if (depth > 12) return '…';
+    if (depth > 150) return '…';
     if (value === null || typeof value !== 'object' && typeof value !== 'function') return value;
     if (label(value)) return `stub:${label(value)}`;
     if (Array.isArray(value)) return value.map(item => describe(item, depth + 1));
     if (value.$element) return renderElement(value, depth + 1);
     if (value.$context) return 'context';
     if (forwardRefs.has(value)) return `forwardRef:${hash(String(value.$forwardRef))}`;
-    if (typeof value === 'function') return `fn(${value.length})`;
+    if (lazies.has(value)) { let named; try { named = describe(value.$lazy(), depth + 1); } catch (error) { named = `threw:${thrown(error)}`; } return {lazy: named}; }
+    if (typeof value === 'function') {
+      if (calling.has(value) || calling.size > 4) return `fn(${value.length})`;
+      calling.add(value);
+      const before = log.length;
+      const returns = call(value, stub('argument'));
+      calling.delete(value);
+      return {fn: value.length, returns, log: log.splice(before)};
+    }
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, describe(item, depth + 1)]));
   }
 
@@ -159,8 +184,9 @@ export function createWorld() {
 
   /** Renders `component` with `props` under `scene`, then runs the effects it registered. */
   function render(component, props, scene = {}) {
-    Object.assign(scenario, {context: undefined, state: undefined, event: undefined, renderState: undefined}, scene);
+    Object.assign(scenario, {context: undefined, state: undefined, event: undefined, renderState: undefined, imports: undefined}, scene);
     log.length = 0;
+    stateCalls = 0;
     effects = [];
     const tree = describe(component.$forwardRef ? {$element: true, type: component, props} : {$element: true, type: component, props});
     const ran = effects.map(run => { const before = log.length; const cleanup = call(run); return {cleanup, log: log.splice(before)}; });
@@ -190,6 +216,11 @@ export function createWorld() {
       ResizeObserver: stub('ResizeObserver'), MutationObserver: stub('MutationObserver'), matchMedia: stub('matchMedia'),
       getComputedStyle: stub('getComputedStyle'), queueMicrotask: () => {}, console, Math, JSON, Object, Array, Map, Set, WeakMap, WeakSet,
       Symbol, Promise, Error, TypeError, Number, String, Boolean, RegExp, Date, Reflect, Proxy, URL, parseFloat, parseInt, isNaN, Infinity, NaN,
+      File, Blob, FormData, URLSearchParams, Intl, TextEncoder, TextDecoder, AbortController, Event, EventTarget, structuredClone, atob, btoa,
+      encodeURIComponent, decodeURIComponent, isFinite, Uint8Array, Uint8ClampedArray, ArrayBuffer, DataView, BigInt, WeakRef,
+      CSS: stub('CSS'), crypto: stub('crypto'), location: stub('location'), history: stub('history'), localStorage: stub('localStorage'),
+      sessionStorage: stub('sessionStorage'), fetch: stub('fetch'), chrome: stub('chrome'), self: undefined, global: undefined,
+      HTMLElement: stub('HTMLElement'), Element: stub('Element'), Node: stub('Node'), CustomEvent: stub('CustomEvent'),
     });
     context.globalThis = context;
     chunkIdentifiers.add(identifier);

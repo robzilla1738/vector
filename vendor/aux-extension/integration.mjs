@@ -6,7 +6,9 @@
  *  - Step 1, styles/: the globals CSS design tokens, UI fonts and base element styles.
  *  - Step 2: the New Tab first-paint tokens and fonts (styles/newtab-first-paint.css), and the
  *    shared components (components/), each replacing its sealed definitions with the same exported
- *    names, props, classes and behavior, except the corner changes listed in CORNER_CHANGES. */
+ *    names, props, classes and behavior, except the corner changes listed in CORNER_CHANGES.
+ *  - Step 3, routes/: the routes people see most, the same way, after every earlier edit to their
+ *    chunk (package edits, polish, agent), with the token changes listed in TOKEN_CHANGES. */
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 
@@ -177,4 +179,36 @@ export function integrateComponents(chunk, text) {
   const blocks = COMPONENTS[chunk];
   if (!blocks) throw Error(`Agent components: no blocks for ${chunk}`);
   return replaceBlocks(text, blocks, `Agent components ${chunk}`, ({file}) => readComponent(file));
+}
+
+/** Routes, chunk → its blocks in file order, pinned on the text the earlier release edits leave. */
+export const ROUTES = Object.freeze({
+  'assets/island-C0ouZ54e.js': [block('New Tab page body', 'new-tab-island.js', 'var e=E(),N=', '(0,e.jsx)(we,{})})]})};',
+    'cec1fe977980ff05a4a31d4a7b68dd54c580727dde165d28d46e3f29773cdd6d', 10863)],
+  'assets/newtab-CnOLQ0yu.js': [
+    block('New Tab context and mode tabs', 'new-tab-context.js', 'st=(0,n.createContext)(null),Bt=', 't):null}',
+      'c6659c4ea85c14ab689c4ae83827e8e0747e630dbea441dd103b371f7cca0cbd', 1668),
+    block('New Tab mount', 'new-tab-mount.js', 'Mn=({children:e,initialInput:t=""})=>', 'window.location.replace(Lt(t)),!0)}',
+      'db7fb77b65455fe8974c30d94fa5ec247e869a6e8be16a4d981d124de6ed2c4e', 1782),
+  ],
+  'assets/sidepanel-CI-CbXmY.js': [block('Agent panel', 'agent-panel.js', 'var a=F(E(),1),e=q(),$=', '(0,e.jsx)(g,{})]})]})]})})};',
+    '6e5ea2bd545821ed1078577def24b5fa0f51ba66737e3c5ad9fec15b300e34db', 2942)],
+  'assets/-layouts-CcApOQbE.js': [block('Settings page kit', 'settings-layout.js', 'var s=l(),p=', '"flex max-w-40 min-w-0 shrink justify-end",e.className)});',
+    '6a3f086ae431b181c598eafa4eee750d0dc396e9b1260d9c42748ab8bf1c3978', 2299)],
+  'assets/route-TQyeTEXE.js': [block('Settings shell', 'settings-shell.js', 'te=[{label:"Extensions",icon:T1,kind:"chrome",to:"chrome://extensions"}]',
+    '(0,t.jsx)(t1,{})})]})]})}', 'c0e43460db70c7d079b14069c2d29c3c4d89797ba8f92b0d9afd00313c5dd93b', 9554)],
+});
+
+/** Theme consistency changes in the routes: [route file, supplied class, Aux class]. A hovered
+ * Settings row used a fixed neutral-100 in light mode; --muted follows the Space tint. */
+export const TOKEN_CHANGES = Object.freeze([
+  ['settings-layout.js', 'hover:bg-neutral-100', 'hover:bg-muted'],
+]);
+
+export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');
+
+export function integrateRoutes(chunk, text) {
+  const blocks = ROUTES[chunk];
+  if (!blocks) throw Error(`Agent routes: no blocks for ${chunk}`);
+  return replaceBlocks(text, blocks, `Agent routes ${chunk}`, ({file}) => readRoute(file));
 }

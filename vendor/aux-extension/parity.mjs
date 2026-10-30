@@ -1,0 +1,119 @@
+// Test helper: render parity between supplied chunks and the chunks with Aux-owned blocks in them.
+// Both run in one stub world (render-harness.mjs); every export an Aux block defines renders under
+// the same props and scenes, and what it renders, what its effects and handlers do, and which stubs
+// it calls must match. The supplied side gets only the listed class changes, inside the blocks.
+import assert from 'node:assert/strict';
+import {locateBlocks} from './integration.mjs';
+import {createWorld} from './render-harness.mjs';
+
+/** `text` with only the intended class changes made, inside the replaced blocks. */
+export function expectedText(text, blocks, changes, label) {
+  let output = '';
+  let cursor = 0;
+  locateBlocks(text, blocks, label).forEach(([at, stop], index) => {
+    let block = text.slice(at, stop);
+    for (const [file, from, to] of changes)
+      if (file === blocks[index].file) block = block.replace(new RegExp(`(?<![\\w-])${from.replace(/[[\]()]/g, '\\$&')}(?![\\w-])`, 'g'), to);
+    output += text.slice(cursor, at) + block;
+    cursor = stop;
+  });
+  return output + text.slice(cursor);
+}
+
+/** Module-scope names an Aux source binds: `var`/`function` at the margin and `var`-list entries. */
+export const moduleNames = source => [...source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+  .matchAll(/^(?:(?:var|function)\s+([A-Za-z_$][\w$]*)|(?: {2})?([A-Za-z_$][\w$]*)\s*=(?![=>]))/gm)].map(match => match[1] ?? match[2]);
+
+/** Names an Aux block keeps from the supplied block it replaces (so both chunks bind them). */
+function keptNames(text, blocks, read, label) {
+  return locateBlocks(text, blocks, label).flatMap(([at, stop], index) => {
+    const supplied = new Set([...text.slice(at, stop).matchAll(/(?:^|[;,])\s*(?:var\s+)?([\w$]+)=(?!=)|function\s+([\w$]+)\(/g)].map(match => match[1] ?? match[2]));
+    return moduleNames(read(blocks[index].file)).filter(name => supplied.has(name));
+  });
+}
+
+export async function assertParity({blocksByChunk, textOf, integrate, read, changes, minimum, scenes: extraScenes = []}) {
+  const world = createWorld();
+  // Callbacks are stubs, so every call a handler or effect makes to them is logged and compared.
+  const spies = Object.fromEntries(['onClick', 'onCheckedChange', 'onOpenChange', 'onNarrowMorphHeightChange', 'onPointerDown', 'onPointerMove',
+    'onPointerUp', 'onPointerCancel', 'onValueChange', 'onSessionChange', 'onQueryChange', 'onKeyDown', 'onActivate', 'onSelect', 'onInputChange',
+    'onOmniboxModeChange'].map(name => [name, world.stub(`spy:${name}`)]));
+  const PROPS = [
+    {},
+    {className: 'probe', children: 'child'},
+    {className: 'probe', variant: 'outline', size: 'sm', shape: 'pill', disabled: true, checked: true, showCloseButton: false, orientation: 'vertical',
+      effect: false, inset: true, side: 'left', align: 'end', sideOffset: 2, narrowMorph: false, unstyled: true, open: true, forceNarrow: true,
+      travel: true, placeholder: 'Pick', delay: 300, alignItemWithTrigger: false, overlayClassName: 'overlay', type: 'email', value: 'v',
+      accountId: 7, sessionId: 'session-1', title: 'Title', label: 'Label', description: 'Says what it does', badge: 'New', id: 'section',
+      illustration: {src: '/a.png', alt: 'A'}, initialInput: 'hello', mode: 'ask', omniboxMode: 'search', query: 'mem', hasQuery: true,
+      results: [{id: 'r1', title: 'Memory', breadcrumb: 'Agent', path: '/u/$userId/settings/memories', kind: 'section'}], selectedIndex: 0, index: 0,
+      item: {label: 'Memory', icon: world.stub('icon'), activeIcon: world.stub('activeIcon'), href: '/u/$userId/settings/memories', badge: 'New', exact: false,
+        children: [{label: 'Overview', icon: world.stub('icon2'), href: '/u/$userId/settings/memories/files', promoteWhenCollapsed: true}]},
+      link: {label: 'Extensions', icon: world.stub('puzzle'), kind: 'chrome', to: 'chrome://extensions'}, draftScopeKey: 'tab:1', forcedMode: null, ...spies},
+    {variant: 'destructive', size: 'icon-xs', checked: false, open: false, narrowMorphScale: false, align: 'inline-end', children: ['a', 'b'],
+      accountId: 0, title: world.stub('node'), isExpanded: true, submenu: [{label: 'History', icon: world.stub('icon3'), href: '/h', badge: 'New'}],
+      item: {label: 'General', icon: world.stub('icon4'), href: '/u/$userId/settings/general'}, results: [], query: '', hasQuery: false,
+      link: {label: 'Docs', icon: world.stub('doc'), kind: 'web', to: 'https://example.com'}, ...spies},
+  ];
+  const scenes = [
+    {},
+    {context: {isNarrow: true, narrowMorph: true, narrowMorphPhase: 'active', narrowRootHeight: 120, narrowRootScale: 0.96, isOpen: true,
+      popupRef: {current: world.stub('popup')}, triggerRef: {current: world.stub('trigger')}, triggerPresentation: {children: 'Sub', className: 'sub', inset: true},
+      setNarrowRootHeights: world.stub('setNarrowRootHeights'), activateNarrowSubmenu: world.stub('activate'), deactivateNarrowSubmenu: world.stub('deactivate'),
+      completeNarrowSubmenuExit: world.stub('complete'), setTriggerPresentation: world.stub('setTriggerPresentation'),
+      accountId: 7, browserMode: 'default', omniboxMode: 'ask', setAccountId: world.stub('setAccountId'), setOmniboxMode: world.stub('setOmniboxMode')},
+     state: 20, renderState: {checked: true, activeTabPosition: {left: 4, top: 2}, activeTabSize: {width: 40, height: 20}}},
+    {context: {isNarrow: false, narrowMorphPhase: 'exiting', isOpen: false, accountId: null, browserMode: 'incognito', mode: 'incognito'},
+     state: '', renderState: {checked: false}},
+    // Settings search with a query and a selection; other components read these as their own state.
+    {context: {accountId: 7, mode: 'default'}, state: ['mem', 1, true, null], renderState: {checked: true}},
+  ];
+  scenes.push(...extraScenes.map(scene => (typeof scene === 'function' ? scene(world) : scene)));
+  let compared = 0;
+  for (const [chunk, blocks] of Object.entries(blocksByChunk)) {
+    const text = textOf(chunk);
+    // Internal components both versions keep by name are exported too, so they render on their own.
+    const kept = [...new Set(keptNames(text, blocks, read, chunk))];
+    const exposed = source => `${source}\nexport {${kept.map(name => `${name} as __kept_${name}`).join(',')}};`;
+    const supplied = await world.evaluate(exposed(expectedText(text, blocks, changes, chunk)), `supplied:${chunk}`);
+    const ours = await world.evaluate(exposed(integrate(chunk, text)), `aux:${chunk}`);
+    assert.deepEqual(Object.keys(ours).sort(), Object.keys(supplied).sort(), chunk);
+    // The exports the Aux blocks define. The chunk's other exports are its unchanged text; calling
+    // them under stubs only starts async work the stubs cannot finish.
+    const local = Object.fromEntries([...text.matchAll(/export\{([^}]*)\}/g)].flatMap(([, list]) =>
+      list.split(',').map(entry => entry.split(' as ').map(part => part.trim()).reverse())));
+    const owned = new Set(blocks.flatMap(({file}) => moduleNames(read(file))));
+    for (const name of kept) local[`__kept_${name}`] = name;
+    for (const name of Object.keys(supplied)) {
+      const [a, b] = [supplied[name], ours[name]];
+      if (!owned.has(local[name]) || typeof a !== 'function' && !a?.$forwardRef) { assert.equal(typeof b, typeof a, `${chunk} ${name}`); continue; }
+      for (const props of PROPS) for (const scene of scenes) {
+        const [actual, wanted] = [JSON.stringify(world.render(b, props, scene)), JSON.stringify(world.render(a, props, scene))];
+        if (actual !== wanted) {
+          let at = 0;
+          while (actual[at] === wanted[at]) at++;
+          assert.fail(`${chunk} export ${name}: differs at ${at}\n  supplied: …${wanted.slice(Math.max(0, at - 200), at + 200)}\n  aux:      …${actual.slice(Math.max(0, at - 200), at + 200)}`);
+        }
+        compared++;
+      }
+    }
+  }
+  assert.ok(compared >= minimum, `compared ${compared} renders`);
+  return compared;
+}
+
+/** Module-scope names each Aux block binds are not declared again in the rest of its chunk. */
+export function assertFreeNames({blocksByChunk, textOf, read}) {
+  for (const [chunk, blocks] of Object.entries(blocksByChunk)) {
+    const text = textOf(chunk);
+    let rest = '';
+    let cursor = 0;
+    for (const [at, stop] of locateBlocks(text, blocks, chunk)) { rest += `${text.slice(cursor, at)} `; cursor = stop; }
+    rest += text.slice(cursor);
+    const bound = name => new RegExp(`(?:^|[;,{(\\s])(?:var|let|const|function|class)?\\s*${name.replace(/\$/g, '\\$')}\\s*=|function\\s+${name.replace(/\$/g, '\\$')}\\b`).test(rest);
+    const exported = new Set([...rest.matchAll(/export\{([^}]*)\}/g)].flatMap(([, list]) => list.split(',').map(entry => entry.split(' as ')[0].trim())));
+    for (const {file} of blocks)
+      for (const name of new Set(moduleNames(read(file))))
+        if (!exported.has(name)) assert.ok(!bound(name), `${file}: ${name} is already bound in ${chunk}`);
+  }
+}

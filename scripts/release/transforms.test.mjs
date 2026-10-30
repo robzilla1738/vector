@@ -13,7 +13,8 @@ import {DAEMON_FILES as AGENT_FILES, EXTENSION_EDITS as AGENT_EDITS, UI_FILE as 
 import {RUNTIME_FILES as AUX_DAEMON_FILES} from '../../vendor/aux-daemon/integration.mjs';
 import {EDITS as POLISH_EDITS} from '../../vendor/provided/polish/integration.mjs';
 import {BUILTIN_SKILLS_DIR, SKILL_FILES, frontMatter} from '../../vendor/aux-skills/integration.mjs';
-import {COMPONENTS, GLOBALS_CSS, LICENSE as STYLES_LICENSE, NEWTAB_PAGE, REMOVED_FILES as STYLES_REMOVED, integrateNewTab, integrateStyles, readComponent}
+import {COMPONENTS, GLOBALS_CSS, LICENSE as STYLES_LICENSE, NEWTAB_PAGE, REMOVED_FILES as STYLES_REMOVED, ROUTES, integrateNewTab, integrateStyles, readComponent,
+  readRoute}
   from '../../vendor/aux-extension/integration.mjs';
 
 const candidate = requireInput('candidateApp');
@@ -24,8 +25,10 @@ const polishChunks = Object.keys(POLISH_EDITS).map(chunk => `${dist}/${chunk}`);
 const skills = `${path.dirname(daemon)}/${BUILTIN_SKILLS_DIR}`;
 const skillFiles = SKILL_FILES.map(file => `${skills}/${file}`);
 const componentChunks = Object.keys(COMPONENTS).map(chunk => `${dist}/${chunk}`);
+const routeChunks = Object.keys(ROUTES).map(chunk => `${dist}/${chunk}`);
+const earlier = [`${dist}/assets/strip-markdown-DRcmtuJc.js`, ...agentChunks, ...polishChunks];
 const touched = [`${daemon}/aux-native-entry.mjs`, `${dist}/assets/strip-markdown-DRcmtuJc.js`, `${dist}/assets/connect-dialog-CacgpFap.js`, ...agentChunks, ...polishChunks,
-  ...componentChunks.filter(chunk => !chunk.endsWith('/strip-markdown-DRcmtuJc.js'))];
+  ...componentChunks.filter(chunk => !earlier.includes(chunk)), ...routeChunks.filter(chunk => !earlier.includes(chunk))];
 const newTab = `${dist}/${NEWTAB_PAGE}`;
 // The release applies package edits before the transforms; stage the touched files the same way.
 const packageEdits = JSON.parse(readFileSync(path.join(repoRoot, 'scripts/release/package-edits.json'), 'utf8')).edits;
@@ -59,17 +62,18 @@ test('transforms.mjs adds the provider CLI, agent and Aux daemon files and appli
   assert.equal(result.status, 0, result.stderr);
   const applied = JSON.parse(result.stdout);
   assert.deepEqual(applied.filter(entry => entry.added).map(entry => path.basename(entry.path)), [...RUNTIME_FILES, ...AGENT_FILES, AGENT_UI, ...AUX_DAEMON_FILES.map(file => path.basename(file)), STYLES_LICENSE.target]);
-  assert.deepEqual(applied.filter(entry => !entry.added && !entry.removed).map(entry => entry.path), [...touched.slice(0, 3), touched[0], touched[0], ...agentChunks, ...polishChunks, ...skillFiles, styleFiles[0], newTab, ...componentChunks]);
+  assert.deepEqual(applied.filter(entry => !entry.added && !entry.removed).map(entry => entry.path), [...touched.slice(0, 3), touched[0], touched[0], ...agentChunks, ...polishChunks, ...skillFiles, styleFiles[0], newTab, ...componentChunks, ...routeChunks]);
   assert.deepEqual(applied.filter(entry => entry.removed).map(entry => entry.path), styleFiles.slice(1));
   for (const file of styleFiles.slice(1)) assert.ok(!existsSync(path.join(app, file)), file);
   assert.equal(readFileSync(path.join(app, styleFiles[0]), 'utf8'), integrateStyles(readFileSync(path.join(candidate, styleFiles[0]), 'utf8')));
   assert.deepEqual(readFileSync(path.join(app, dist, STYLES_LICENSE.target)), readFileSync(path.join(repoRoot, 'vendor/aux-extension', STYLES_LICENSE.source)));
   // The New Tab and components went in last, onto the text the package edits and polish left.
   assert.equal(readFileSync(path.join(app, newTab), 'utf8'), integrateNewTab(packageEdited(newTab)));
-  for (const [chunk, blocks] of Object.entries(COMPONENTS)) {
-    const text = readFileSync(path.join(app, dist, chunk), 'utf8');
-    for (const {file} of blocks) assert.equal(text.split(readComponent(file)).length - 1, 1, `${chunk}: ${file}`);
-  }
+  for (const [map, read] of [[COMPONENTS, readComponent], [ROUTES, readRoute]])
+    for (const [chunk, blocks] of Object.entries(map)) {
+      const text = readFileSync(path.join(app, dist, chunk), 'utf8');
+      for (const {file} of blocks) assert.equal(text.split(read(file)).length - 1, 1, `${chunk}: ${file}`);
+    }
   for (const file of skillFiles) assert.deepEqual(readFileSync(path.join(app, file)), readFileSync(path.join(repoRoot, 'vendor/aux-skills/builtin', path.relative(skills, file))), file);
   assert.deepEqual(readFileSync(path.join(app, dist, 'assets', AGENT_UI)), readFileSync(path.join(repoRoot, 'vendor/provided/agent', AGENT_UI)));
   for (const file of RUNTIME_FILES) {
