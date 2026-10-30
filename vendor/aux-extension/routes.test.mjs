@@ -980,8 +980,8 @@ test('the Models page parses limits, groups vendors and lists providers like the
 });
 
 // The Developers page: the CLI not installed, up to date and outdated; agents with and without the
-// skill; remote control off, connecting and connected.
-test('the Developers page renders like the supplied one with the CLI, agents and remote control', async () => {
+// skill; the MCP setup and questions.
+test('the Developers page renders like the supplied one with the CLI, agents and MCP', async () => {
   const chunk = 'assets/developers-DTvaoVBC.js';
   const scene = (world, {cli = {installed: true, updateAvailable: false, installCommand: 'curl -fsSL aux.sh | sh', commandPath: '/usr/local/bin/aux', currentVersion: '1.4.0',
     latestVersion: '1.4.0'}, agents = [{id: 'codex', installed: true, skill: {installed: true}}, {id: 'cursor', installed: true, skill: {installed: false}}, {id: 'opencode', installed: false, skill: {installed: false}}],
@@ -999,12 +999,15 @@ test('the Developers page renders like the supplied one with the CLI, agents and
     props: [{children: 'aux exec'}, {}]});
 });
 
-test('the Developers page lists the same questions, agents and statuses', async () => {
+test('the Developers page lists the questions and agents, and its questions match what ships', async () => {
   const chunk = 'assets/developers-DTvaoVBC.js';
   const {supplied, ours} = await evaluatePair({world: createWorld(), chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
     changes: TOKEN_CHANGES, renamed: renamedBindings});
-  for (const name of ['__pair_CLI_QUESTIONS', '__pair_SKILL_AGENTS', '__pair_REMOTE_STATUS', '__pair_CLI_ILLUSTRATION'])
+  for (const name of ['__pair_CLI_QUESTIONS', '__pair_SKILL_AGENTS', '__pair_CLI_ILLUSTRATION'])
     assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
+  const questions = JSON.stringify(ours.__pair_CLI_QUESTIONS);
+  for (const tool of ['open', 'tabs', 'spaces', 'chats', 'status', 'resolve', 'ask']) assert.match(questions, new RegExp(`\`${tool}\``));
+  assert.doesNotMatch(questions, /Playwright|browsing history|memory|signed-in|sign in|Remote Control/i);
 });
 
 // The Agent page: permission rules and file roots merged and labelled, then the page with a sandbox,
@@ -3726,6 +3729,163 @@ test('the error page and reporting behave like the supplied ones', async () => {
   listeners[1][1]({reason: new Error('Rejected')});
   await new Promise(resolve => setImmediate(resolve));
   same(sent, [['Error', 'Script error', {source: 'window_error', handled: false, route: '/u/7', surface: 'other'}], ['Error', 'Rejected', {source: 'unhandled_rejection', handled: false, route: '/u/7', surface: 'other'}]]);
+});
+
+// The task lists' shared helpers: every status a row shows and both kinds of menu.
+const TASK_LIST = 'assets/utils-DCBm67_n.js';
+test('the task menus and chat rows render and act like the supplied ones', async () => {
+  const sessions = [
+    {id: 's1', title: 'Plan', status: 'running', pinned: true, projectId: 'p1', trigger: {type: 'user', source: 'remote'}, routine: {scheduleLabel: 'Daily'}},
+    {id: 's2', title: null, status: 'errored', unread: true, trigger: {type: 'standalone-routine'}},
+    {id: 's3', title: 'Ask', status: 'suspended', suspension: {kind: 'approval'}},
+    {id: 's4', title: 'Confirm', status: 'suspended', suspension: {kind: 'action-confirmation', request: {message: 'Send it?'}}},
+    {id: 's5', title: 'Question', status: 'suspended', suspension: {kind: 'ask-user-question', request: {questions: [{question: 'Which one?'}]}}},
+    {id: 's6', title: 'Idle', status: 'idle', unread: true},
+    {id: 's7', title: 'Waiting', status: 'suspended'},
+    {id: 's8', title: 'Stopped', status: 'aborted'},
+    {id: 's9', title: 'New kind', status: 'other'},
+  ];
+  const projects = Array.from({length: 7}, (_, index) => ({id: `p${index}`, name: `Project ${index}`, color: 'blue', icon: 'folder'}));
+  const move = (overrides = {}) => ({canMove: true, isMoveLocked: false, projects, isLoading: false, handleMove: () => {}, isPending: false, ...overrides});
+  const scene = (session, overrides, extra = {}) => ({context: {session}, imports: {'./strip-markdown-DRcmtuJc.js#f': move(overrides), './strip-markdown-DRcmtuJc.js#$t': session.id === 's1',
+    './strip-markdown-DRcmtuJc.js#tt': session.id === 's2' ? {message: 'Boom'} : null, './strip-markdown-DRcmtuJc.js#$': () => ({title: 'It failed'}), './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}}, ...extra});
+  await parityOf(TASK_LIST, {minimum: 600, props: sessions.flatMap(session => ['context', 'dropdown'].flatMap(variant => [
+    {session, variant, place: 'list', open: true, children: 'Row', className: 'probe', datetime: '2026-10-01T12:00:00Z', onStartNewProject: () => {}},
+    {session, variant, place: 'list', open: false, size: 'sm', orientation: 'vertical', children: 'Preview', render: 'div'},
+  ])), scenes: [...sessions.map(session => scene(session)), scene(sessions[1], {isLoading: true}, {state: ['nothing matches', false, 'Plan', true]}), scene(sessions[0], {projects: []}, {state: [true, true, '  ', false]}),
+    scene(sessions[2], {canMove: false}), scene(sessions[5], {}, {state: ['project 3', false, 'Renamed', false]})]});
+
+  const {world, supplied, ours} = await bothSides(TASK_LIST);
+  for (const [text, length] of [['short', 9], ['a longer title', 8]]) same(ours.n(text, length), supplied.n(text, length));
+  same([1, 2048, 5 * 1048576, 3 * 1073741824].map(ours.t), [1, 2048, 5 * 1048576, 3 * 1073741824].map(size => supplied.t(size)));
+  same(ours.x('word'), 'Word');
+  same([ours.__pair_statusSlot(sessions[1]), ours.__pair_statusSlot(sessions[2]), ours.__pair_statusSlot(sessions[0]), ours.__pair_statusSlot(sessions[5]) ?? null], ['error', 'waiting', 'running', null]);
+  world.enter({imports: {'./strip-markdown-DRcmtuJc.js#tt': {message: 'Boom'}, './strip-markdown-DRcmtuJc.js#$': () => ({title: 'It failed'})}});
+  for (const session of sessions) assert.equal(ours.__pair_statusDetail(session), supplied.__pair_statusDetail(session));
+
+  // The zoom indicator: a message draws it once, sized against the page's zoom.
+  const zoom = async side => {
+    const listeners = [];
+    const replies = [];
+    const elements = {style: {setProperty: (name, value) => replies.push([name, value])}, dataset: {}, isConnected: true};
+    const scene = {chrome: {runtime: {onMessage: {addListener: listener => listeners.push(listener)}}}, window: {location: {protocol: 'https:'}},
+      imports: {'document.createElement(div).attachShadow': () => ({getElementById: () => elements})}};
+    world.enter(scene);
+    side.b();
+    world.enter(scene);
+    listeners[0]({type: 'current-zoom-indicator:show', zoomFactor: 1.25}, {}, reply => replies.push(reply));
+    listeners[0]({type: 'other', zoomFactor: 2}, {}, reply => replies.push(reply));
+    return {count: listeners.length, replies, text: elements.textContent, visible: elements.dataset.visible};
+  };
+  const shown = await zoom(ours);
+  assert.deepEqual(plain(shown), plain(await zoom(supplied)));
+  same([shown.text, shown.visible], ['125%', 'true']);
+});
+
+test('the setup dialog kit renders like the supplied one, and pastes a phrase into the word inputs', async () => {
+  const phrase = Array.from({length: 12}, (_, index) => `word${index}`);
+  await parityOf('assets/components-BlZz2O2v.js', {minimum: 80, props: [
+    {className: 'probe', children: 'Body', open: true, title: 'Set up', description: 'Connect it', icon: 'icon', badge: 'New', phrase, value: Array(12).fill(''), wordIndexes: [2, 5, 8], autoFocus: true,
+      required: true, size: 'lg', startAddon: 'Key', image: 'a.png', label: 'One', status: 'Connected', selected: true, defaultOpen: true},
+    {title: 'Set up', children: 'Body', phrase: phrase.slice(0, 7), value: ['alpha', '', ''], disabled: true, label: 'Two', done: true, open: false},
+  ], scenes: [{}, {state: [true, ['providers']]}, {event: {target: {value: 'one two three'}, clipboardData: {getData: () => 'one two three'}, preventDefault: () => {}}},
+    {event: {target: {value: 'Ab1'}, clipboardData: {getData: () => 'single'}, preventDefault: () => {}}}]});
+  const {world, supplied, ours} = await bothSides('assets/components-BlZz2O2v.js');
+  const parse = async text => { if (text.includes('key')) throw new Error('No'); return {phrase: 'parsed one two'}; };
+  for (const pasted of ['one two three', 'a key with four words']) {
+    world.enter({imports: {'./recovery-key-CPOQuYx2.js#a': parse}});
+    const mine = await ours.h(['', '', '', ''], 1, pasted);
+    world.enter({imports: {'./recovery-key-CPOQuYx2.js#a': parse}});
+    same(mine, JSON.parse(JSON.stringify(await supplied.h(['', '', '', ''], 1, pasted))));
+  }
+  assert.ok(!/vault/i.test(readRoute('setup-dialog.js').replace(/\/\*[\s\S]*?\*\//g, '')));
+  assert.deepEqual(['t', 'r'].filter(name => name in ours), []);
+});
+
+/** A value from the VM's realm, as plain data. */
+const plain = value => JSON.parse(JSON.stringify(value) ?? 'null');
+const MODEL_CATEGORIES = 'assets/model-categories-BLKcCTS7.js';
+test('the model categories pick the same models as the supplied ones', async () => {
+  const catalog = [
+    {provider: 'anthropic', id: 'claude-opus-5-5', availableThinkingLevels: ['off', 'medium', 'high'], supportsFastMode: true, supportsVision: true},
+    {provider: 'anthropic', id: 'claude-haiku-5-5', availableThinkingLevels: ['off'], supportsFastMode: false},
+    {provider: 'anthropic', id: 'claude-fable-5-1', availableThinkingLevels: ['high'], supportsFastMode: false, supportsVision: true},
+    {provider: 'openai', id: 'gpt-6.1-sol', availableThinkingLevels: ['low', 'high'], supportsFastMode: true},
+    {provider: 'openai', id: 'router/gpt-6-luna', availableThinkingLevels: ['off'], supportsFastMode: false},
+    {provider: 'google', id: 'gemini-4-argon-preview', availableThinkingLevels: ['off'], supportsFastMode: false, supportsVision: true},
+    {provider: 'xai', id: 'grok-4.7', availableThinkingLevels: ['off'], supportsFastMode: false},
+  ];
+  const setting = (provider, modelId, extra = {}) => ({provider, modelId, thinkingLevel: 'high', fastMode: true, ...extra});
+  const presets = {fast: [setting('anthropic', 'claude-haiku-5-5')], standard: [setting('openai', 'gpt-6-sol'), setting('anthropic', 'claude-sonnet-5')],
+    deep: [setting('anthropic', 'claude-fable-5'), setting('openai', 'gpt-5.5')], visual: [setting('google', 'gemini-3-pro')]};
+  const version = (a, b) => a.localeCompare(b, undefined, {numeric: true});
+  const {world, supplied, ours} = await bothSides(MODEL_CATEGORIES, {'./types-BEI3ap6-.js#n': presets});
+  const imports = {'./strip-markdown-DRcmtuJc.js#At': (provider, models) => models, './strip-markdown-DRcmtuJc.js#jt': version,
+    './types-BEI3ap6-.js#r': (level, levels) => (levels.includes(level) ? level : levels.at(-1))};
+  world.enter({imports});
+  const both = (name, ...args) => { const value = ours[`__pair_${name}`](...args); assert.deepEqual(plain(value), plain(supplied[`__pair_${name}`](...args))); return value; };
+  for (const id of ['claude-opus-4-8', 'claude-haiku-4-5-20251001', 'claude-opus-5-5-20261001', 'gpt-5.6-terra', 'gpt-6-luna', 'gemini-3.1-pro-preview', 'gemini-3-flash', 'grok-4.7', 'grok-4.7-fast', 'gpt-6-nova', 'x/y', 'gpt']) {
+    both('currentHostedModel', id); both('modelVendor', id); both('modelSlug', id); both('modelFamily', id);
+  }
+  same(both('modelFamily', 'claude-opus-5-5'), {family: 'claude-opus', version: '5.5'});
+  same(both('modelFamily', 'gemini-4-argon-preview'), {family: 'gemini-pro', version: '4'});
+  for (const saved of [setting('aux', 'claude-opus-5'), setting('anthropic', 'claude-sonnet-4-6'), setting('openai', 'gpt-6.1-sol'), setting('openai', 'gone'), setting('claude-code', 'claude-sonnet-4-6')]) {
+    both('migrateModel', saved); both('fallbackModel', saved, catalog); both('fallbackModel', saved, []);
+    for (const category of ['fast', 'standard', 'deep', 'visual']) {
+      both('presetsFor', category, catalog);
+      both('categoryModel', category, undefined, saved, catalog);
+      both('categoryModel', category, setting('anthropic', 'claude-opus-5-5'), saved, catalog);
+      for (const family of ['same', 'other']) both('categoryModel', category, undefined, saved, catalog, {selection: {family, relativeTo: {modelId: 'gpt-6.1-sol'}}});
+    }
+  }
+  same(both('categoryModel', 'fast', undefined, setting('openai', 'gone'), catalog).modelId, 'claude-haiku-5-5');
+  same(both('categoryModel', 'deep', undefined, setting('anthropic', 'claude-opus-5-5'), catalog).modelId, 'claude-fable-5-1');
+  const models = {modelCatalog: {models: catalog}};
+  const data = {data: {defaultModel: setting('anthropic', 'claude-opus-5-5'), modelCategories: {fast: setting('openai', 'gpt-6.1-sol')}}};
+  await parityOf(MODEL_CATEGORIES, {minimum: 30, props: [{value: setting('openai', 'gpt-6.1-sol'), modelCatalog: {models: catalog}, onChange: () => {}, info: {title: 'Fast', description: 'Quick'}},
+    {value: null, fallbackValue: setting('anthropic', 'claude-opus-5-5'), modelCatalog: {models: catalog}, allowDefaultValue: true, disabled: true, onChange: () => {}, label: 'Label', info: {title: 'Visual', requireVision: true}},
+    {value: null, modelCatalog: {models: catalog}, onChange: () => {}, iconProvider: 'openai', disabled: false}],
+  scenes: [{imports: {...imports, './strip-markdown-DRcmtuJc.js#nr': data, './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './provider-context-A_wu0fRN.js#n': models}, renderProps: {children: 'Pick', id: 'x'}}]});
+});
+
+const DRAFTS = 'assets/draft-artifacts-registry-CZ58X0Cu.js';
+test('drafts, session images and the carousel render like the supplied ones', async () => {
+  const attendee = {name: 'Ada Lovelace', email: 'ada@example.com', avatarUrl: 'a.png'};
+  const data = {to: ['a@example.com'], cc: ['b@example.com'], bcc: ['c@example.com'], subject: 'Hello', body: '안녕 from https://example.com/x', draft: 'Draft text', title: 'Lunch', time: 'Noon', location: 'Cafe', reminder: '10 min',
+    description: 'Catch up', color: '#123456', attendees: [attendee, {name: 'Bo', email: 'bo@example.com'}, 'junk'], channel: 'general', workspace: 'Team', profiles: [{name: 'Ada', avatarUrl: 'a.png'}],
+    messages: [{name: 'Ada', message: 'Hi', timestamp: '2026-10-01T12:00:00Z', sender: 'them'}, {name: 'Me', message: 'Hey', timestamp: 'nope', sender: 'me'}, {sender: 'me', message: '둘'}],
+    attachments: ['shot.png', {name: 'r.pdf', path: 'out/r.pdf'}, {attachmentPath: 'a.heic'}, 3, ''], authorName: 'Ada', avatarUrl: 'a.png', handle: 'ada', headline: 'Engineer', timestamp: 'Today',
+    stats: {likes: '1', replies: '2', reposts: '3', views: '4', comments: '5', reactions: '6'}, profile: {authorName: 'Bo', handle: 'bo', headline: 'Writer'}};
+  const languages = ['calendar-draft', 'calendar-event-draft', 'gmail-draft', 'imessage-draft', 'linkedin-draft', 'linkedin-message-draft', 'linkedin-post', 'linkedin-post-draft', 'slack-draft', 'slack-message-draft', 'tweet', 'tweet-draft', 'x-post', 'x-post-draft', 'x-tweet', 'x-tweet-draft', 'unknown'];
+  const image = {src: 'https://api.aux.test/f.png', alt: 'A', caption: 'One'};
+  await parityOf(DRAFTS, {minimum: 300, props: [
+    ...languages.flatMap(language => [{language, data, sessionId: 's1', compact: true, className: 'probe'}, {language, data: {}}, {language, code: JSON.stringify(data)}, {language, code: ' '}, {language, code: '{"body"'}]),
+    {images: [image, {...image, src: 'b.png', alt: 'B'}], sessionId: 's1', src: 'b.png', alt: 'B', caption: 'Two', className: 'object-cover', path: 'out/shot.png', sender: 'me', title: 'Shot', orientation: 'vertical'},
+    {images: [image], sessionId: 's1', src: 'https://api.aux.test/f.png', previewSrc: 'p.png', fullSrc: 'f.png', path: 'out/a.pdf', preferThumbnail: true, sender: 'them', orientation: 'horizontal', variant: 'ghost'},
+    {images: [], src: '', path: 'a.txt', previewUrl: 'p.png', onClick: () => {}, onKeyDown: () => {}, setApi: () => {}},
+  ], scenes: [{imports: {'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './context-q_vohNW8.js#r': {currentSession: {id: 's9'}}}},
+    {imports: {'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#dt': true},
+      context: {carouselRef: 'ref', orientation: 'vertical', scrollPrev: () => {}, scrollNext: () => {}, canScrollPrev: true, canScrollNext: false},
+      state: ['open', {sourceHeight: 1, sourceLeft: 2, sourceTop: 3, sourceWidth: 4, targetHeight: 5, targetLeft: 6, targetTop: 7, targetWidth: 8}, 'p.png', true],
+      event: {key: 'Enter', preventDefault: () => {}, stopPropagation: () => {}, defaultPrevented: false, dataTransfer: {setData: () => {}}}},
+    {context: {carouselRef: 'ref', orientation: 'horizontal'}, state: ['closing-morph', {sourceHeight: 1, sourceLeft: 2, sourceTop: 3, sourceWidth: 4, targetHeight: 5, targetLeft: 6, targetTop: 7, targetWidth: 8}, null, false], event: {key: 'Escape', defaultPrevented: true}},
+    {state: ['closing-fade', null, null, false], domRef: {isConnected: false, naturalWidth: 100, naturalHeight: 50, getBoundingClientRect: () => ({top: 1, left: 2, width: 3, height: 4, right: 5, bottom: 6})}}]});
+
+  const {world, supplied, ours} = await bothSides(DRAFTS, {'./queries-ldd77hNk.js#S': 'https://api.aux.test'});
+  const both = (name, ...args) => { const value = ours[name](...args); assert.deepEqual(plain(value), plain(supplied[name](...args))); return value; };
+  for (const language of languages) { both('i', language); both('__pair_draftText', language, data); both('__pair_parseDraft', JSON.stringify({type: 'x', data: {[language]: 1}})); }
+  same(both('c', {type: 'gmail', data: {subject: 'x'}}), {subject: 'x'});
+  same(both('__pair_emailText', {to: ['a', 'b'], cc: ['c'], bcc: [], subject: 'Hi', body: 'Text'}), 'To: a, b\nCc: c\nSubject: Hi\n\nText');
+  same(both('__pair_tweetLength', 'hi 안 😀 https://example.com/x'), both('__pair_tweetLength', 'hi 안 😀 https://example.com/x'));
+  for (const reader of ['emailData', 'iMessageData', 'linkedInMessageData', 'slackData', 'calendarData', 'tweetData', 'tweetProfile', 'linkedInPostData', 'linkedInProfile']) { both(`__pair_${reader}`, data); both(`__pair_${reader}`, {}); }
+  // Finished draft fences become text, at the fence's indent; an open fence stays.
+  const fence = (lang, json) => `\`\`\`${lang}\n${json}\n\`\`\``;
+  const markdown = `Intro\n\n- ${fence('gmail-draft', '{"subject":"Hi","body":"Text\\nMore","to":["a"]}')}\n\nThen\n${fence('slack-draft', '{"data":{"draft":"Yo"},"type":"x"}')}\n${fence('tweet', '{"body":"no"}')}\n${fence('imessage-draft', 'broken')}\n`;
+  const offset = text => markdown.indexOf(text);
+  const nodes = [['gmail-draft', 8], ['slack-draft', 0], ['tweet', 0], ['imessage-draft', 0]].map(([lang]) => { const at = offset(`\`\`\`${lang}`), end = markdown.indexOf('\n```', at) + 4; return {type: 'code', lang, value: markdown.slice(markdown.indexOf('\n', at) + 1, end - 4), position: {start: {offset: at}, end: {offset: end}}}; });
+  world.enter({imports: {'./lib-CwyXkVLI.js#t': () => ({type: 'root', children: [{type: 'list', children: [nodes[0]]}, ...nodes.slice(1)]})}});
+  const text = both('s', markdown);
+  assert.ok(text.includes('To: a') && text.includes('  Text\n  More'.replace('  ', '')) && text.includes('Yo') && text.includes('```imessage-draft'), text);
 });
 
 // Owner decisions (2026-10-30), which the parity tests can't speak to.

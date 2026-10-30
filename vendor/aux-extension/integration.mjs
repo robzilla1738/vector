@@ -263,7 +263,7 @@ export const ROUTES = Object.freeze({
   'assets/model-BrFuJM2w.js': [block('Models settings', 'model-settings.js', 'var i=Ue(Ve(),1),e=We(),Me="compaction-l',
     'x)(Ot,{})})]}),(0,e.jsx)(kt,{})]})})]})}', 'd0c57dbe9df98718e98f037b35936ff7072948a791b08ddf23e96d4a3215269e', 26211)],
   'assets/developers-DTvaoVBC.js': [block('Developers settings', 'developers-settings.js', 'var e=se(),ke=({size:t=24,ariaHidden:r=!',
-    'd-sm px-1 py-px font-mono",children:t});', '290d4d268361706be4ccf21d138294eb58051450ba4a34f96dfd1125a8ba3bae', 16361)],
+    'd-sm px-1 py-px font-mono",children:t});', 'ff3ae59b24a1ce630ed9ecb54198fca9a33128fdc594825ee91e596a7591675e', 16732)],
   'assets/agents-urkO3LLg.js': [block('Agent settings', 'agent-settings.js', 'var e=ge(),Qe=({size:s=24,ariaHidden:t=!',
     ',e.jsx)(ls,{}),(0,e.jsx)(Je,{})]})})]})}', '7593dbd434f203fabb7f7e96085498d069ee8a6a07f5aba45b4f559c75c734d9', 20528)],
   'assets/projects-D4kjkizu.js': [block('Projects settings', 'projects-settings.js', 'var p=S(f(),1),e=v(),O=({userId:t})=>{co',
@@ -625,6 +625,29 @@ export const ROUTES = Object.freeze({
     block('Error pages and reporting', 'error-tracking.js', 'T=({size:e=24,ariaHidden:t=!0,...r})=>(0',
       'rome.extension?.inIncognitoContext===!0}', '39a8476c9cb7bb0f52a7c3d050e74cf042e8e755fd5971fb5bbff9bf04d85939', 8182),
   ],
+  // The task lists' shared helpers, around the bundled TanStack Virtual, which stays supplied.
+  'assets/utils-DCBm67_n.js': [
+    block('Task list icons, zoom indicator and tab style', 'task-list-head.js', 'var o=we(),at=({size:t=24,ariaHidden:e=!0,',
+      'horizontal"},I=re(xe(),1),Mt=re(Se(),1);', 'c58b9a3f2c34d0a84f2b882a84e862011ec7dfd5de40b4a195fc7bf0129e70dd', 14791),
+    block('Task menus and the chat list row', 'task-list-item.js', 'var Ht=t=>(0,o.jsx)(Ye,{size:"sm",...t}),Kt=',
+      '024?`${Math.round(t/1024)} KB`:`${t} B`;', 'e920fdb59676306ba104d9767b6890db61c28cded5aaec7af26d04960494f2e0', 11939),
+  ],
+  // Around the bundled Embla carousel, which stays supplied.
+  'assets/draft-artifacts-registry-CZ58X0Cu.js': [
+    block('Draft icons', 'draft-icons.js', 'var r=Wt(),gn=({size:e=24,ariaHidden:t=!0,', '12Z",fill:"currentColor"})}),N=qt(Zt());',
+      '11009a97e85a823a9e89a01b7b27bda881c1081700fcd44a7d3fab471e3eba57', 4280),
+    block('Carousel, session images and draft previews', 'draft-artifacts.js', 'var kt=N.createContext(null);function Oe()',
+      '=="object"&&e!==null&&!Array.isArray(e);', 'cd8382c871e2746dc9846e8bbeb22bfce53f18a12385e9c0799b94efc20f91dd', 36033),
+  ],
+  'assets/model-categories-BLKcCTS7.js': [
+    block('Model categories', 'model-categories.js', 'var ue="aux",me=ee,ce=M(["free","pro","max"]',
+      'modelId,thinkingLevel:t.thinkingLevel});', 'af9a6b738ceb78848bf9d01593dfac3c07d263755c13e0ddc5d25773e4b38b48', 8003),
+  ],
+  // The whole module with its exports, so the Vault badge's export goes with it.
+  'assets/components-BlZz2O2v.js': [
+    block('Setup dialog kit', 'setup-dialog.js', 'var e=w(),G=({size:a=24,ariaHidden:s=!0,', 'e as p,ie as r,te as s,ne as t,me as u};',
+      'bfe320daf0ed8c178faee53e8d0fb47f26eb6a31a3244c8a7efabbbee23ea743', 9561),
+  ],
 });
 
 /** Supplied name → Aux name for the module bindings a route renamed (the parity tests compare them
@@ -722,6 +745,11 @@ export const TOKEN_CHANGES = Object.freeze([
   ['new-tab-context.js', '[&_button]:w-16', '[&_button]:w-16 bg-accent dark:bg-background'],
   // A checked radio card was a fixed zinc-100 in light mode; --muted follows the Space tint.
   ['radio-card-group.js', 'has-data-checked:bg-zinc-100!', 'has-data-checked:bg-muted'],
+  // The setup dialog takes the 12px corner like every dialog, and a hovered or pressed row follows the Space tint.
+  ['setup-dialog.js', 'rounded-3xl', 'rounded-xl'],
+  ['setup-dialog.js', 'dark:hover:bg-muted dark:aria-pressed:bg-muted flex', 'flex'],
+  ['setup-dialog.js', 'hover:bg-neutral-100', 'hover:bg-muted'],
+  ['setup-dialog.js', 'aria-pressed:bg-neutral-100', 'aria-pressed:bg-muted'],
 ]);
 
 /** Route blocks that are Aux's own design rather than the supplied screen with edits: parity has
@@ -735,6 +763,11 @@ const behavior = (file, name, find, replace) => Object.freeze({file, name, find,
  * make exactly these edits to the supplied side, inside the file's block, so everything else must
  * still match. `find` is exact text, or [first, last] for the span between them; it must match once. */
 export const BEHAVIOR_CHANGES = Object.freeze([
+  // The Developers page describes the commands that ship: ask, exec, repl and mcp as Aux has them (owner, 2026-10-30).
+  behavior('developers-settings.js', 'the questions describe the CLI that ships', ['Ae=[{id:"using-cli"', 'during its own run."}]'],
+    `Ae=${readFileSync(new URL('./routes/developers-settings.js', import.meta.url), 'utf8').match(/CLI_QUESTIONS = (\[.*?\n {2}\])/s)[1]}`),
+  behavior('developers-settings.js', 'aux mcp needs Aux open', '" to your agent tool, and it will run Aux over stdio when needed."',
+    '" to your agent tool. Aux has to be open for its tools to answer."'),
   // New Tab is always the logo, search box and chips: no task cards, no fold (owner, 2026-10-30).
   // Send feedback is hidden everywhere (owner, 2026-10-30).
   behavior('settings-feedback-removed.js', 'the unmounted Settings dialog is gone', ['L=5,G2=3145728', 'or??"Failed to send feedback.")}},'], ''),
@@ -834,6 +867,14 @@ export const BEHAVIOR_CHANGES = Object.freeze([
   behavior('onboarding-ai.js', 'no checkout callbacks', [',X=async()=>{await h("aux")},P=(0,u.useCallback)', '},[r,P]),(0,e.jsxs)(e.Fragment'], ';return (0,e.jsxs)(e.Fragment'),
   behavior('onboarding-ai.js', 'the first row is your own API key', ['provider:AUX_LAUNCH_POLICY.hostedAiEnabled?os:I,icon:', ':void 0})'], 'provider:I})'),
   behavior('onboarding-ai.js', 'no plans dialog', ['(0,e.jsx)(L,{open:n==="aux"', 'onConnectAux:X})})}),'], ''),
+  // Aux has no built-in password manager and no hosted model catalog: nothing imported or read these.
+  behavior('setup-dialog.js', 'no Aux Vault mark', [',H=({size:a=24', '}),m=C(j(),1)'], ',m=C(j(),1)'),
+  behavior('setup-dialog.js', 'no Aux Vault badge', ['ne=()=>(0,e.jsxs)("span"', '"Aux Vault"]}),'], ''),
+  behavior('setup-dialog.js', 'the badge is not exported', 'ne as t,', ''),
+  behavior('setup-dialog.js', 'no blank phrase', 'var ie=Array.from({length:12},()=>""),ce=', 'var ce='),
+  behavior('setup-dialog.js', 'the blank phrase is not exported', 'ie as r,', ''),
+  behavior('task-list-head.js', 'the zoom indicator takes the 12px popover corner', 'border-radius: 14px;', 'border-radius: 12px;'),
+  behavior('model-categories.js', 'no hosted model catalog', ['ue="aux",me=ee', 'optional()}),fe=new Map'], 'fe=new Map'),
   // The chat page's playground had a mock to-do list nothing reads.
   behavior('task-session.js', 'no mock to-dos', ['(0,p.useCallback)(v=>({...v,status:i.streaming', '[h,i.streaming,i.todoList]);const w='], 'const w='),
   // Math and unit answers head the command bar (plan Batch 7); Enter copies.

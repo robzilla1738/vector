@@ -1,0 +1,22 @@
+{
+ "l": "jsxRuntime",
+ "fe": "RETIRED_HOSTED_MODELS",
+ "ve": "currentHostedModel",
+ "he": "PROVIDER_ORDER",
+ "Ie": "RETIRED_PROVIDER_MODELS",
+ "h": "modelSetting",
+ "Me": "migrateModel",
+ "I": "findModel",
+ "k": "availableModel",
+ "Se": "firstModel",
+ "_": "modelVendor",
+ "y": "modelSlug",
+ "C": "modelFamily",
+ "xe": "pickPreset",
+ "ke": "presetsFor",
+ "ye": "fallbackModel",
+ "Ce": "categoryModel",
+ "A": "MODEL_CATEGORIES",
+ "D": "ModelField",
+ "B": "changeEvent"
+}

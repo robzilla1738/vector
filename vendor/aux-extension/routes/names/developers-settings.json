@@ -7,5 +7,7 @@
  "Ne": "CliInstall",
  "Le": "BrowserSkillInstall",
  "O": "SKILL_AGENTS",
+ "Ae": "CLI_QUESTIONS",
+ "Se": "McpSetup",
  "f": "Code"
 }

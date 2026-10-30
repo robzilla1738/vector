@@ -1,0 +1,15 @@
+{
+ "vt": "isZoomIndicatorMessage",
+ "Ct": "ZOOM_INDICATOR_MS",
+ "Z": "ZOOM_INSET",
+ "xt": "ZOOM_INDICATOR_SCALE",
+ "St": "ZOOM_CHANGE_EPSILON",
+ "y": "zoomRoot",
+ "W": "zoomIndicator",
+ "X": "zoomHideTimer",
+ "ee": "zoomListening",
+ "te": "showZoom",
+ "bt": "zoomIndicatorElement",
+ "jt": "TAB_STYLE_CACHE_KEY",
+ "Y": "browserPreferences"
+}

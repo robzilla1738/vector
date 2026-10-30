@@ -180,17 +180,6 @@ const APPEARANCE_ROWS = [
     'return(0,e.jsxs)(h,{children:[(0,e.jsx)(b,{title:"Bookmarks in the sidebar",description:"Show your bookmarks above your tabs."}),(0,e.jsx)(p,{children:(0,e.jsx)(ze,{checked:i,disabled:r,onCheckedChange:l=>o.mutate(!!l)})})]})},'),
 ];
 
-const DEVELOPERS = [
-  // The CLI ships `aux open` today; the MCP server and exec/repl come back with
-  // Aux's own CLI. Until then the page doesn't describe commands that aren't there.
-  edit('no MCP section while the CLI has no mcp command',
-    '(0,e.jsx)(L,{title:"Skill & MCP",children:(0,e.jsxs)(k,{children:[(0,e.jsx)(Le,{}),(0,e.jsx)(Se,{})]})})',
-    '(0,e.jsx)(L,{title:"Skill",children:(0,e.jsx)(k,{children:(0,e.jsx)(Le,{})})})'),
-  edit('no FAQ about exec, repl and mcp',
-    ",(0,e.jsx)(L,{title:\"FAQs\",children:(0,e.jsx)(k,{children:(0,e.jsx)(je,{className:\"bg-surface-secondary\",multiple:!0,children:Ae.map(t=>(0,e.jsxs)(Ce,{value:t.id,children:[(0,e.jsx)(xe,{className:\"px-3.5\",children:t.question}),(0,e.jsx)(ge,{className:\"text-primary px-3.5 text-sm\",children:(0,e.jsx)(U,{children:t.answer})})]},t.question))})})})",
-    ''),
-];
-
 const MODELS = [
   edit('no Open billing item: Aux has no billing',
     'n.id==="aux"&&(0,e.jsxs)(T,{render:(0,e.jsx)(Ce,{to:"/u/$userId/settings/billing",params:{userId:`${t}`}}),children:[(0,e.jsx)(ct,{}),(0,e.jsx)("span",{children:"Open billing"})]}),',
@@ -687,7 +676,6 @@ export const EDITS = Object.freeze({
   'assets/general-3dgRbrRk.js': Object.freeze([...SETTINGS, ...GENERAL_ROWS, ...CLEANUP_HOURS, ...LITTLE_AUX_KEYS, SPACES_KIND]),
   'assets/appearance-Ceuw3-j6.js': Object.freeze([...APPEARANCE, ...APPEARANCE_ROWS, ...LITTLE_AUX_KEYS, ...LITTLE_AUX_ROW]),
   'assets/privacy-BeEEt9Qu.js': Object.freeze([...PRIVACY, ...PRIVACY_ROWS]),
-  'assets/developers-DTvaoVBC.js': Object.freeze(DEVELOPERS),
   'assets/model-BrFuJM2w.js': Object.freeze(MODELS),
   'assets/lasso-LoarCzmz.js': Object.freeze(LASSO),
   'assets/route-TQyeTEXE.js': Object.freeze(SETTINGS_SHELL),

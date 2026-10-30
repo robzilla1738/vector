@@ -1,0 +1,14 @@
+{
+ "Ht": "SmallDropdownSubContent",
+ "Kt": "MENU_PARTS",
+ "qt": "ProjectMenuItems",
+ "H": "ChatListItemContext",
+ "Gt": "labelVariants",
+ "Q": "useChatListItem",
+ "Qt": "statusDetail",
+ "Jt": "statusSlot",
+ "Xt": "isAwaitingApproval",
+ "es": "isAwaitingReview",
+ "ts": "isAwaitingAnswer",
+ "U": "AwaitingBadge"
+}
