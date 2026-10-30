@@ -33,9 +33,9 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 | 18 | A split is one tab showing both, never the tabs individually as well | built; a drag split seen, other routes not reproduced |
 | 19 | Collapsed: no traffic lights over the page, as in Arc | seen |
 | 20 | Hover pop-out is full height with the traffic lights in it, so it doesn't go away | seen |
-| 21 | Hover pop-out outline correct in every theme | seen (navy; other themes still to check) |
-| 22 | Pins separate per Space | built |
-| 23 | Bookmarks separate per Space, regardless of cookies | built |
+| 21 | Hover pop-out outline correct in every theme | seen (navy, light, green, unthemed) |
+| 22 | Pins separate per Space | built (leak fixed in code; re-check) |
+| 23 | Bookmarks separate per Space, regardless of cookies | seen |
 | 24 | Agent thread follows cookie sharing; can be separate across Spaces | built |
 
 ## Pages and panels
@@ -43,7 +43,7 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 | # | Request | Status |
 |---|---|---|
 | 25 | New Tab stays centered; the Chats view doesn't come back | seen |
-| 26 | Site panel and extensions like Arc: simple buttons, a layout that expands | seen (polish fixes in build 116) |
+| 26 | Site panel and extensions like Arc: simple buttons, a layout that expands | seen |
 | 27 | Hide Send feedback | built |
 | 28 | Clean up the Max plan | built |
 | 29 | Clean up UltraBrowse | built |
