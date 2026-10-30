@@ -92245,7 +92245,7 @@ index 76c0d0763cdb85888c5b02e62006ad30ca6a80ff..b0b558dfbe76266268ececac50e19c14
    // programmatically to avoid dispatching close events for them.
    std::unordered_set<std::string> closed_notifications_;
 diff --git a/chrome/browser/password_manager/chrome_password_manager_client.cc b/chrome/browser/password_manager/chrome_password_manager_client.cc
-index b2f376065e3b8ea89eb26164ed3f80df0305c956..30eed7d6884b0fa02e82949e7ccc0f13955c9140 100644
+index b2f376065e3b8ea89eb26164ed3f80df0305c956..1bc70b6a96fe06b7a6a53cc2626e11e450e0d03f 100644
 --- a/chrome/browser/password_manager/chrome_password_manager_client.cc
 +++ b/chrome/browser/password_manager/chrome_password_manager_client.cc
 @@ -48,6 +48,7 @@
@@ -92256,27 +92256,45 @@ index b2f376065e3b8ea89eb26164ed3f80df0305c956..30eed7d6884b0fa02e82949e7ccc0f13
  #include "chrome/browser/profiles/profile_manager.h"
  #include "chrome/browser/signin/identity_manager_factory.h"
  #include "chrome/browser/signin/signin_ui_util.h"
-@@ -295,6 +296,12 @@ bool ChromePasswordManagerClient::IsSavingAndFillingEnabled(
- bool ChromePasswordManagerClient::IsFillingEnabled(
+@@ -278,6 +279,12 @@ ChromePasswordManagerClient::~ChromePasswordManagerClient() = default;
+ bool ChromePasswordManagerClient::IsSavingAndFillingEnabled(
      const url::Origin& origin,
      base::optional_ref<const GURL> url) const {
 +#if BUILDFLAG(ENABLE_AUX_BROWSER)
-+  // Password saving/filling belongs to the user's chosen extension. This also
-+  // disables Chromium save prompts through IsSavingAndFillingEnabled, without
-+  // deleting saved credentials or affecting extension content scripts/proxies.
++  // Aux fills the logins it imported but never saves or updates them, which
++  // leaves generation, leak checks and the save/update bubble off too. Saving
++  // belongs to the user's chosen extension.
 +  return false;
 +#else
-   if (origin.opaque() &&
-       base::FeatureList::IsEnabled(
-           password_manager::features::kPasswordBlockOpaqueOrigins)) {
-@@ -327,6 +334,7 @@ bool ChromePasswordManagerClient::IsFillingEnabled(
-   }
-   return !ssl_errors &&
-          IsPasswordManagementEnabledForCurrentPage(origin.GetURL());
+   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+           switches::kEnableAutomation)) {
+     // Disable the password saving UI for automated tests. It obscures the
+@@ -290,6 +297,7 @@ bool ChromePasswordManagerClient::IsSavingAndFillingEnabled(
+          settings_service->IsSettingEnabled(
+              PasswordManagerSetting::kOfferToSavePasswords) &&
+          !IsOffTheRecord() && IsFillingEnabled(origin, url);
 +#endif
  }
  
- bool ChromePasswordManagerClient::IsFieldFilledWithOtp(
+ bool ChromePasswordManagerClient::IsFillingEnabled(
+@@ -345,6 +353,9 @@ bool ChromePasswordManagerClient::IsFieldFilledWithOtp(
+ }
+ 
+ bool ChromePasswordManagerClient::IsAutoSignInEnabled() const {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  return false;
++#else
+ #if BUILDFLAG(IS_ANDROID)
+   if (base::android::device_info::is_automotive()) {
+     return false;
+@@ -354,6 +365,7 @@ bool ChromePasswordManagerClient::IsAutoSignInEnabled() const {
+       PasswordManagerSettingsServiceFactory::GetForProfile(GetProfile());
+   return settings_service && settings_service->IsSettingEnabled(
+                                  PasswordManagerSetting::kAutoSignIn);
++#endif
+ }
+ 
+ void ChromePasswordManagerClient::TriggerUserPerceptionOfPasswordManagerSurvey(
 diff --git a/chrome/browser/performance_manager/policies/discard_eligibility_policy.cc b/chrome/browser/performance_manager/policies/discard_eligibility_policy.cc
 index 7d1974430be3bcb379d8e76f90b12702eb715f53..c2510abbe26b4fb8efc971ca76b76b1fe2fcc2d9 100644
 --- a/chrome/browser/performance_manager/policies/discard_eligibility_policy.cc
@@ -92537,7 +92555,7 @@ index 817cd91bdac667c3165d33c55d01ca16842b75a7..ea30261e04cb9e79571d25ea99c64830
      ":util",
      "//chrome/browser:browser_process",
 diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
-index 2653e37becbfa113d92456139d86c321f09ed8b5..fd9395bb7900fede917282a9ac74d943a329b24d 100644
+index 2653e37becbfa113d92456139d86c321f09ed8b5..b07260ae014d448df41dd499e7af68ab439dbadb 100644
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
 @@ -3,6 +3,10 @@
@@ -92567,7 +92585,15 @@ index 2653e37becbfa113d92456139d86c321f09ed8b5..fd9395bb7900fede917282a9ac74d943
  #include "chrome/browser/accessibility/accessibility_labels_service.h"
  #include "chrome/browser/accessibility/invert_bubble_prefs.h"
  #include "chrome/browser/accessibility/page_colors_controller.h"
-@@ -1413,6 +1426,17 @@ std::string GetCountry() {
+@@ -114,6 +127,7 @@
+ #include "components/browsing_data/core/pref_names.h"
+ #include "components/certificate_transparency/pref_names.h"
+ #include "components/collaboration/public/pref_names.h"
++#include "components/commerce/core/pref_names.h"
+ #include "components/commerce/core/prefs.h"
+ #include "components/content_settings/core/browser/host_content_settings_map.h"
+ #include "components/content_settings/core/common/pref_names.h"
+@@ -1413,6 +1427,17 @@ std::string GetCountry() {
  }
  
  void RegisterLocalState(PrefRegistrySimple* registry) {
@@ -92585,7 +92611,7 @@ index 2653e37becbfa113d92456139d86c321f09ed8b5..fd9395bb7900fede917282a9ac74d943
    // Call outs to individual subsystems that register Local State (browser-wide)
    // prefs en masse. See RegisterProfilePrefs for per-profile prefs. Please
    // keep this list alphabetized.
-@@ -1746,6 +1770,9 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
+@@ -1746,6 +1771,9 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
  void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
                            const std::string& locale) {
    TRACE_EVENT0("browser", "chrome::RegisterProfilePrefs");
@@ -92595,7 +92621,7 @@ index 2653e37becbfa113d92456139d86c321f09ed8b5..fd9395bb7900fede917282a9ac74d943
    // User prefs. Please keep this list alphabetized.
    AccessibilityLabelsService::RegisterProfilePrefs(registry);
    registry->RegisterBooleanPref(prefs::kRendererAccessibilityEnabled, true);
-@@ -2006,7 +2033,18 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+@@ -2006,7 +2034,18 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
    MicrosoftAuthPageHandler::RegisterProfilePrefs(registry);
    MicrosoftFilesPageHandler::RegisterProfilePrefs(registry);
    OutlookCalendarPageHandler::RegisterProfilePrefs(registry);
@@ -92614,7 +92640,7 @@ index 2653e37becbfa113d92456139d86c321f09ed8b5..fd9395bb7900fede917282a9ac74d943
    promos_utils::RegisterProfilePrefs(registry);
    RegisterReadAnythingProfilePrefs(registry);
    settings::SettingsUI::RegisterProfilePrefs(registry);
-@@ -2017,6 +2055,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+@@ -2017,6 +2056,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
    tab_search_prefs::RegisterProfilePrefs(registry);
    ThemeColorPickerHandler::RegisterProfilePrefs(registry);
    ThemeService::RegisterProfilePrefs(registry);
@@ -92624,12 +92650,16 @@ index 2653e37becbfa113d92456139d86c321f09ed8b5..fd9395bb7900fede917282a9ac74d943
    toolbar::RegisterProfilePrefs(registry);
  #endif  // BUILDFLAG(IS_ANDROID)
  
-@@ -2279,6 +2320,10 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+@@ -2279,6 +2321,14 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
  #endif  // BUILDFLAG(IS_ANDROID)
  
    registry->RegisterBooleanPref(prefs::kStaticStorageQuotaEnabled, false);
 +#if BUILDFLAG(ENABLE_AUX_BROWSER)
 +  registry->SetDefaultPrefValue(prefs::kPrivacySandboxRelatedWebsiteSetsEnabled,
++                                base::Value(false));
++  registry->SetDefaultPrefValue(commerce::kShoppingListEnabledPrefName,
++                                base::Value(false));
++  registry->SetDefaultPrefValue(commerce::kPriceTrackingHomeModuleEnabled,
 +                                base::Value(false));
 +#endif
  }
@@ -93265,7 +93295,7 @@ index 5f49c6e87f2ea7ae5bf28b94edc4542d524ea1c4..ad8805fcb8351cebf8228c489757e281
    // Creates or loads the profile located at |profile_path|.
    // Should be called on the UI thread.
 diff --git a/chrome/browser/renderer_context_menu/render_view_context_menu.cc b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..3ec438ea0a20089835c72833b8b434cef2832fc9 100644
+index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..125d3ca176e3ec4cbb36586417b8132423305cd4 100644
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 @@ -3,6 +3,12 @@
@@ -93281,7 +93311,21 @@ index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..3ec438ea0a20089835c72833b8b434ce
  
  #include <stddef.h>
  
-@@ -1645,6 +1651,10 @@ std::u16string RenderViewContextMenu::GetImageSearchProviderName(
+@@ -1609,6 +1615,13 @@ const TemplateURL* RenderViewContextMenu::GetImageSearchProvider() const {
+     return nullptr;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Searching Google by image is Google Lens, which Aux doesn't offer.
++  if (search::DefaultSearchProviderIsGoogle(GetProfile())) {
++    return nullptr;
++  }
++#endif
++
+   // TODO(b/266624865): Image Search items do not function correctly when
+   // |GetBrowser| returns nullptr, as is the case for a context menu in the
+   // side panel, so for now we do not append image items in that case.
+@@ -1645,6 +1658,10 @@ std::u16string RenderViewContextMenu::GetImageSearchProviderName(
  }
  
  void RenderViewContextMenu::RecordUsedItem(int id) {
@@ -93292,7 +93336,7 @@ index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..3ec438ea0a20089835c72833b8b434ce
    // Log general ID.
  
    int enum_id =
-@@ -1760,6 +1770,10 @@ void RenderViewContextMenu::RecordUsedItem(int id) {
+@@ -1760,6 +1777,10 @@ void RenderViewContextMenu::RecordUsedItem(int id) {
  }
  
  void RenderViewContextMenu::RecordShownItem(int id, bool is_submenu) {
@@ -93303,7 +93347,7 @@ index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..3ec438ea0a20089835c72833b8b434ce
    // The "RenderViewContextMenu.Shown" histogram is not recorded for submenus.
    if (is_submenu) {
      return;
-@@ -1895,6 +1909,13 @@ void RenderViewContextMenu::AppendDevtoolsForUnpackedExtensions() {
+@@ -1895,6 +1916,13 @@ void RenderViewContextMenu::AppendDevtoolsForUnpackedExtensions() {
  }
  
  void RenderViewContextMenu::AppendLinkItems() {
@@ -93317,7 +93361,7 @@ index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..3ec438ea0a20089835c72833b8b434ce
    if (!params_.link_url.is_empty()) {
      const bool in_app = IsInProgressiveWebApp();
  
-@@ -2978,11 +2999,19 @@ void RenderViewContextMenu::AppendSearchProvider() {
+@@ -2978,11 +3006,19 @@ void RenderViewContextMenu::AppendSearchProvider() {
      if (!lens::features::
              IsLensOverlayTextSelectionContextMenuEntrypointEnabled() ||
          GetBrowser() || IsPrintPreviewContent(current_url_)) {
@@ -93337,7 +93381,7 @@ index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..3ec438ea0a20089835c72833b8b434ce
        if (features::IsMenuSimplificationEnabled()) {
          menu_model_.SetIconForCommandId(
              IDC_CONTENT_CONTEXT_SEARCHWEBFOR,
-@@ -3335,6 +3364,12 @@ void RenderViewContextMenu::AppendLiveCaptionItem() {
+@@ -3335,6 +3371,12 @@ void RenderViewContextMenu::AppendLiveCaptionItem() {
  // Menu delegate functions -----------------------------------------------------
  
  bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
@@ -93350,7 +93394,7 @@ index 1a4de31b32cc5e66b942881a18ea943e51fa05a1..3ec438ea0a20089835c72833b8b434ce
  #if BUILDFLAG(IS_CHROMEOS)
    // Disable context menu in locked fullscreen mode to prevent users from
    // exiting this mode (the menu is not really disabled as the user can still
-@@ -3772,6 +3807,13 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
+@@ -3772,6 +3814,13 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
      return;
    }
    command_executed_ = true;
@@ -156238,7 +156282,7 @@ index c3fa8790d1db2b86147d010021ad7a98538abe6d..d56db24aea885b488ea857289e748bbb
    void SetPresenterDelegate(OmniboxPopupPresenterBase* delegate);
  
 diff --git a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
-index 774e32188161b70bd96fddd794c652cd7c1067e9..9860908cdf71d94c042fd56626014dd595b9cf1c 100644
+index 774e32188161b70bd96fddd794c652cd7c1067e9..35a0b3c88c0e29a52f29374b33493a97cca7ff58 100644
 --- a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
 +++ b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
 @@ -17,6 +17,7 @@
@@ -156275,6 +156319,17 @@ index 774e32188161b70bd96fddd794c652cd7c1067e9..9860908cdf71d94c042fd56626014dd5
  
    html_source->AddString("aboutBrowserVersion", browser_version);
    html_source->AddString(
+@@ -2073,6 +2086,10 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
+                   .spec())));
+ 
+   html_source->AddLocalizedStrings(kLocalizedStrings);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  html_source->AddString("localPasswordManager", u"Passwords");
++  html_source->AddString("yourSavedInfoRelatedServicesTitle", u"Saved sign-ins");
++#endif
+   html_source->AddLocalizedString(
+       "autofillAiPageTitle",
+       base::FeatureList::IsEnabled(
 diff --git a/chrome/browser/ui/webui/settings/settings_ui.cc b/chrome/browser/ui/webui/settings/settings_ui.cc
 index 781744f9cfdb691b41299d8b07c984888605366a..44ef6191d7b4228b3dfca2e925c68e8275adb458 100644
 --- a/chrome/browser/ui/webui/settings/settings_ui.cc
@@ -187762,10 +187817,10 @@ index 593de2a260e2ad288e292ba845b75a6360654bf4..0133b029ce4f861d03b63a5ae0bd3fd7
    // tools/metrics/histograms/update_extension_histograms.py
    ENUM_BOUNDARY
 diff --git a/extensions/browser/extension_function_histogram_value.h b/extensions/browser/extension_function_histogram_value.h
-index 4f8efeb0d3dc9d682c5c5fa31c2a9a0f58746b47..0718fd1535782227573e1f4863338d4a46acbf20 100644
+index 4f8efeb0d3dc9d682c5c5fa31c2a9a0f58746b47..fe0a2da6acff1cab4ec47b1633f51b78f58a5291 100644
 --- a/extensions/browser/extension_function_histogram_value.h
 +++ b/extensions/browser/extension_function_histogram_value.h
-@@ -2051,6 +2051,172 @@ enum HistogramValue {
+@@ -2051,6 +2051,174 @@ enum HistogramValue {
    ENTERPRISE_WEBRTC_STARTCAPTURE = 1986,
    ENTERPRISE_WEBRTC_GETCAPTURESTATUS = 1987,
    ENTERPRISE_WEBRTC_STOPCAPTURE = 1988,
@@ -187935,6 +187990,8 @@ index 4f8efeb0d3dc9d682c5c5fa31c2a9a0f58746b47..0718fd1535782227573e1f4863338d4a
 +  AUXBROWSERPREFERENCES_GETCONFIRMTOQUITENABLED = 2152,
 +  AUXBROWSERPREFERENCES_SETCONFIRMTOQUITENABLED = 2153,
 +  AUXBROWSERPREFERENCES_RETRYDAEMON = 2154,
++  AUXBROWSERPREFERENCES_GETONBOARDINGCOMPLETED = 2155,
++  AUXBROWSERPREFERENCES_SETONBOARDINGCOMPLETED = 2156,
    // Last entry: Add new entries above, then run:
    // tools/metrics/histograms/update_extension_histograms.py
    ENUM_BOUNDARY
@@ -195297,7 +195354,7 @@ index 2d660c5ffc46ef0d11ea37e3d495874c3ae36107..86e8a4d4117e8444dc4b15320787cee7
  
  <!-- LINT.ThenChange(//components/infobars/core/infobar_delegate.h:InfoBarIdentifier) -->
 diff --git a/tools/metrics/histograms/metadata/extensions/enums.xml b/tools/metrics/histograms/metadata/extensions/enums.xml
-index 460630d8491054408e0e404cb576d147822515a9..e7ef04b41603b000ff33d7eb7ad34905590aaf81 100644
+index 460630d8491054408e0e404cb576d147822515a9..3250aede5e127c49ffdb178b5a0a1378fd5430fd 100644
 --- a/tools/metrics/histograms/metadata/extensions/enums.xml
 +++ b/tools/metrics/histograms/metadata/extensions/enums.xml
 @@ -809,6 +809,11 @@ Called by update_extension_histograms.py.-->
@@ -195312,7 +195369,7 @@ index 460630d8491054408e0e404cb576d147822515a9..e7ef04b41603b000ff33d7eb7ad34905
  </enum>
  
  <!-- LINT.ThenChange(//extensions/browser/extension_event_histogram_value.h:HistogramValue) -->
-@@ -2921,6 +2926,168 @@ Called by update_extension_histograms.py.-->
+@@ -2921,6 +2926,170 @@ Called by update_extension_histograms.py.-->
    <int value="1986" label="ENTERPRISE_WEBRTC_STARTCAPTURE"/>
    <int value="1987" label="ENTERPRISE_WEBRTC_GETCAPTURESTATUS"/>
    <int value="1988" label="ENTERPRISE_WEBRTC_STOPCAPTURE"/>
@@ -195478,10 +195535,12 @@ index 460630d8491054408e0e404cb576d147822515a9..e7ef04b41603b000ff33d7eb7ad34905
 +  <int value="2148" label="AUXADBLOCK_GETPAUSEDSITES"/>
 +  <int value="2149" label="AUXBROWSERPREFERENCES_STARTDICTATION"/>
 +  <int value="2150" label="AUXBROWSERPREFERENCES_STOPDICTATION"/>
++  <int value="2155" label="AUXBROWSERPREFERENCES_GETONBOARDINGCOMPLETED"/>
++  <int value="2156" label="AUXBROWSERPREFERENCES_SETONBOARDINGCOMPLETED"/>
  </enum>
  
  <!-- LINT.ThenChange(//extensions/browser/extension_function_histogram_value.h:HistogramValue) -->
-@@ -3316,6 +3483,16 @@ Called by update_extension_permission.py.-->
+@@ -3316,6 +3485,16 @@ Called by update_extension_permission.py.-->
    <int value="272" label="kBluetoothPeripheral"/>
    <int value="273" label="kPublicSuffix"/>
    <int value="274" label="kEnterpriseWebrtc"/>
