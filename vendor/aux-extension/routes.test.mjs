@@ -1080,3 +1080,68 @@ test('the Routines page and a routine menu render like the supplied ones', async
       {routine: routines[1], routineId: 'r2', name: 'Weekly', sessionId: 'gone', pending: true, contextMenu: false}]});
 });
 
+// The New Tab tasks: a session waiting on a confirmation, recent chats (one unread) and routines, none,
+// and incognito.
+test('the New Tab tasks render like the supplied ones with sessions to confirm and recent work', async () => {
+  const chunk = 'assets/tasks-CtF0WxoJ.js';
+  const confirm = {kind: 'action-confirmation', toolCallId: 'tc1', createdAt: 5, request: {title: 'Send the email?', message: 'To the team', artifact: {type: 'email'}}};
+  const sessions = [{id: 's1', title: 'Weekly update', status: 'suspended', suspension: confirm, updatedAt: '2026-10-30T10:00:00Z'},
+    {id: 's2', title: 'Research', status: 'running', unread: true}, {id: 's3', title: 'Plan', status: 'idle'}, {id: 's4', title: 'Notes', status: 'idle'},
+    {id: 's5', title: 'Asked', status: 'suspended', suspension: {kind: 'ask-user-question'}}];
+  const scene = (world, {list = sessions, loading = false, mode = 'default', state} = {}) => ({state, imports: {
+    './newtab-CnOLQ0yu.js#s': 7, './newtab-CnOLQ0yu.js#o': {browserMode: mode}, './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7},
+    './strip-markdown-DRcmtuJc.js#nr': {data: list, isLoading: loading}, './strip-markdown-DRcmtuJc.js#en': true,
+    './file-attachments-D5m1O8aA.js#a': suspension => Boolean(suspension?.kind),
+    './strip-markdown-DRcmtuJc.js#er': {isPending: false, mutateAsync: world.stub('spy:resolve')}, './extension-page-url-BH3pfT7h.js#t': path => `ext:${path}`}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 20, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world), world => scene(world, {list: [], state: ['routines', true]}), world => scene(world, {loading: true, list: []}),
+      world => scene(world, {mode: 'incognito'}), world => scene(world, {state: ['routines', false]}), world => scene(world, {state: [true]})],
+    props: [{session: sessions[0], items: sessions, children: 'island', disabled: false, message: 'To the team', sessionTitle: 'Weekly update', title: 'Send?',
+      onConfirm: world => world, onCustom: world => world}, {session: sessions[1], items: [], isLoading: true, disabled: true}]});
+});
+
+test('the New Tab tasks cache their previews like the supplied ones', async () => {
+  const chunk = 'assets/tasks-CtF0WxoJ.js';
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const run = side => {
+    const store = new Map([['aux.new-tab.session-previews.v2:7', JSON.stringify(Array.from({length: 10}, (_, index) => ({id: `s${index}`})))],
+      ['aux.new-tab.session-previews.v2:8', '{"not": "a list"}'], ['aux.new-tab.session-previews.v2:9', 'broken']]);
+    world.enter({imports: {'window.localStorage.getItem': key => store.get(key) ?? null, 'window.localStorage.setItem': (key, value) => store.set(key, value)}});
+    const read = [7, 8, 9, 10].map(account => side.__pair_readCachedPreviews(account));
+    side.__pair_writeCachedPreviews(11, Array.from({length: 12}, (_, index) => ({id: `w${index}`})));
+    return JSON.stringify([read, side.__pair_previewCacheKey(3), store.get('aux.new-tab.session-previews.v2:11')]);
+  };
+  assert.equal(run(ours), run(supplied));
+});
+
+// The Tasks page: chats as cards and as a list, filtered and searched, loading more, empty and failed.
+test('the Tasks page renders like the supplied one with chats, filters and paging', async () => {
+  const chunk = 'assets/tasks-D7OPjR17.js';
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  for (const status of ['all', 'running', 'failed', 'needs-review', 'done', 'other']) same('__pair_statusesFor', status);
+  for (const status of ['running', 'suspended', 'idle']) same('__pair_isActive', {status});
+  for (const item of [undefined, {previewText: 'x'}, {routine: {id: 'r'}}, {}]) same('__pair_rowHeight', item);
+  for (const name of ['__pair_STATUS_FILTERS', '__pair_ORDERS', '__pair_PAGE_SIZE']) assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
+  const items = [{id: 's1', title: 'Research', status: 'running', previewText: 'Reading'}, {id: 's2', title: 'Plan', status: 'idle', routine: {id: 'r1'}},
+    {id: 's3', title: 'Old', status: 'errored'}];
+  const scene = (world, {search = {filter: 'running', view: 'card', q: 'plan', order: 'oldest', projectId: 'p1'}, context = {}} = {}) => ({
+    context: {canFetchMoreSessionPreviews: true, fetchMoreSessionPreviews: world.stub('spy:more'), isFetchingMoreSessionPreviews: false,
+      isLoadingSessionPreviews: false, isSessionPreviewsError: false, items, ...context},
+    imports: {'*.useSearch': () => search, '*.useNavigate': () => world.stub('spy:navigate'), './link-q1zvRKtc.js#r': () => ({userId: '7'}),
+      './link-q1zvRKtc.js#n': options => ({href: `/u/7/tasks/${options.params.sessionId}`}), './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7},
+      './strip-markdown-DRcmtuJc.js#$n': {data: {pages: [items]}, hasNextPage: true, isFetchingNextPage: false, isLoading: false, isError: false,
+        fetchNextPage: world.stub('spy:fetchNext')},
+      './strip-markdown-DRcmtuJc.js#nr': {data: [{id: 'p1', name: 'Aux'}, {id: 'p2', name: 'Docs'}]}}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 20, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world), world => scene(world, {search: {view: 'list'}}),
+      world => scene(world, {search: {}, context: {items: [], isLoadingSessionPreviews: true, canFetchMoreSessionPreviews: false}}),
+      world => scene(world, {context: {items: [], isSessionPreviewsError: true}}), world => scene(world, {context: {isFetchingMoreSessionPreviews: true}}),
+      world => ({...scene(world), state: [true]})],
+    props: [{session: items[0], userId: '7', style: {height: 40}, children: 'list', projectId: 'p1', projectIdLocked: true}, {session: items[1], userId: '7'}]});
+});
+

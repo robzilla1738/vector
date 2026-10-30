@@ -102,7 +102,8 @@ function replaceBlocks(text, blocks, label, replacement) {
 
 /** Utilities the components need that the sealed build lacks, appended inside the utilities layer. */
 export const UTILITIES = 'utilities.css';
-const ADDED_UTILITIES = ['.rounded-b-xl{', '.bg-card{', '.-mt-\\[var\\(--radius-xl\\)\\]{', '.\\[--_r\\:var\\(--radius-xl\\)\\]{'];
+const ADDED_UTILITIES = ['.rounded-b-xl{', '.bg-card{', '.-mt-\\[var\\(--radius-xl\\)\\]{', '.\\[--_r\\:var\\(--radius-xl\\)\\]{',
+  '.group-hover\\/routine\\:bg-muted:'];
 
 export function integrateStyles(text) {
   for (const selector of ADDED_UTILITIES)
@@ -229,6 +230,10 @@ export const ROUTES = Object.freeze({
     '(0,e.jsx)(x,{title:"Create"})]})]})]})};', 'eddb999ec82b2a0d07f19ba3990cc57c4d45f40ca2ed680507e761eff3cc8dd5', 3656)],
   'assets/routine-item-menu-DJrYR2RE.js': [block('Routine row and menu', 'routine-item-menu.js', 'var j=z(k(),1),e=E(),v=50,le=({routineId',
     'e,{className:"size-4"}),"Remove"]})]})};', '29dccba48587313e77461322ce94bdbac59307eab9cf8eca7031b3aa4ebad589', 6333)],
+  'assets/tasks-CtF0WxoJ.js': [block('New Tab tasks', 'new-tab-tasks.js', 'var h=D(Q(),1),e=B(),P="rounded-full px-',
+    '})]}),s?.({taskCount:o?.length??0})]})};', '5b1fb9b6e811dfa6e504e30bada75f1b3ba843d77d4c77fd2e4b33db20b175aa', 7913)],
+  'assets/tasks-D7OPjR17.js': [block('Tasks page', 'tasks-page.js', 'var e=F(),Ke=({size:s=24,ariaHidden:a=!0',
+    'iew==="card"&&(0,e.jsx)(ss,{})]})]})]})}', 'e7f1eebeab6c8377b75b01b92e354a2301da199dd5bf9ff6f8ee2e29b4c9abad', 15327)],
   // The composer, one area per pass; the rest of the chunk stays supplied until its pass.
   'assets/session-composer-Dc0LRfZA.js': [
     block('Composer: icons, tool summaries, prompt history, the editor, the + menu, Send and dictation', 'composer-head.js',
@@ -295,6 +300,10 @@ export const TOKEN_CHANGES = Object.freeze([
   ['composer-conversation.js', 'rounded-2xl', 'rounded-xl'],
   // The remote-control status box on the Developers page used a fixed neutral-100 in light mode.
   ['developers-settings.js', 'bg-neutral-100', 'bg-muted'],
+  // A hovered routine row used a fixed neutral-100 in light mode, unlike every other settings row.
+  ['routines-settings.js', 'group-hover/routine:bg-neutral-100', 'group-hover/routine:bg-muted'],
+  // The New Tab confirmation card took the 16px step; the task cards beside it use the 12px one.
+  ['new-tab-tasks.js', 'rounded-2xl', 'rounded-xl'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');

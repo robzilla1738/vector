@@ -4,7 +4,8 @@
  * Names the rest of the chunk uses keep their chunk names: re the page.
  * Chunk names used: o/a/c/t/d/i/M/_ zod, q/N/k/C model, harness, permission and browser schemas,
  * p the route, y useTRPC, g useSuspenseQuery, R the schedule's description, L the routine row with its
- * menu, P the routine dialog, A/z/f/x settings sections and rows, m Link, I the plus icon. */
+ * menu, P the routine dialog, A/z/f/x settings sections and rows, m Link, I the plus icon.
+ * Aux change: a hovered routine row takes the muted surface token instead of a fixed neutral-100. */
 var ROUTINE_TYPES = o(['standalone', 'child', 'internal']),
   ROUTINE_STATUSES = o(['active', 'paused', 'completed', 'deleted']),
   routineSessionConfig = a({
@@ -122,7 +123,7 @@ var /** My routines: each routine with its switch and menu, then Create (held at
                     showSwitch: true,
                     children: (0, jsxRuntime.jsx)(f, {
                       className:
-                        'dark:group-hover/routine:bg-accent h-12 w-full pr-28 group-hover/routine:bg-neutral-100',
+                        'dark:group-hover/routine:bg-accent h-12 w-full pr-28 group-hover/routine:bg-muted',
                       render: (0, jsxRuntime.jsx)(m, {
                         to: '/u/$userId/tasks/$sessionId',
                         params: {userId, sessionId: s.parentSessionId},

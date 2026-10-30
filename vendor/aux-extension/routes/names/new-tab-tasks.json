@@ -1,0 +1,11 @@
+{
+ "h": "React",
+ "e": "jsxRuntime",
+ "P": "PILL",
+ "fe": "ConfirmationCard",
+ "pe": "ConfirmationActions",
+ "xe": "readCachedPreviews",
+ "he": "writeCachedPreviews",
+ "O": "previewCacheKey",
+ "ge": "RecentTasks"
+}

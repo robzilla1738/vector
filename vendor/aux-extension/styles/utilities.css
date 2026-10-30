@@ -19,4 +19,11 @@
   .\[--_r\:var\(--radius-xl\)\] {
     --_r: var(--radius-xl);
   }
+  /* A hovered routine row takes the muted surface, like every other settings row (dark mode keeps its
+     accent override, which is more specific). */
+  @media (hover: hover) {
+    .group-hover\/routine\:bg-muted:is(:where(.group\/routine):hover *) {
+      background-color: var(--muted);
+    }
+  }
 }
