@@ -265,10 +265,136 @@ test('every Aux-owned route renders, runs its effects and handles events like th
     props: conversationProps, renamed: renamedBindings});
 });
 
+// A conversation: user turns (one steering), assistant runs with text, web search, a coder run and a
+// subagent, citations, a memory update, compaction, retry, reconnect and error rows, system rows from
+// a routine, a memory signal and another agent, thinking, and turns more than an hour apart.
+const T = Date.UTC(2026, 9, 30, 9);
+const step = (index, name, extra = {}) => ({index, part: {type: 'toolCall', id: `c${index}`, name}, call: {id: `c${index}`, name}, ...extra});
+const sources = [{id: 's1', url: 'https://docs.example/a', title: 'Docs A', excerpt: '**Fast** setup'}, {id: 's2', url: 'https://www.blog.example/b', title: null}];
+const steps1 = [step(0, 'websearch', {result: {details: {sources}}}), step(1, 'start_coder'), step(2, 'read', {result: {isError: true}})];
+const assistant = (timestamp, text, extra = {}) => ({role: 'assistant', timestamp, completedAt: timestamp + 4000, provider: 'anthropic', model: 'opus',
+  stopReason: 'stop', content: [{type: 'text', text}, {type: 'text', text: '  '}], ...extra});
+const run1 = {type: 'assistant-activity', runId: 'run1', renderKey: 'run1-r', isStreaming: false, isHandoff: false,
+  assistantMessages: [assistant(T + 1000, 'See <citation refs="s1,s2">the <quote>docs</quote></citation>.'), assistant(T + 6000, 'Done')],
+  items: [{type: 'text', key: 'x1'}, {type: 'steps', key: 'k1', steps: steps1}, {type: 'text', key: 'x2'}]};
+const run2 = {type: 'assistant-activity', runId: 'run2', isStreaming: true, assistantMessages: [assistant(T + 5e6 + 100, 'Working', {stopReason: 'error'})],
+  items: [{type: 'steps', key: 'k2', steps: [step(3, 'subagent')]}, {type: 'error', key: 'e1'}]};
+const window1 = {items: run1.items, start: 0, showActions: true, hasNextStepsRow: false};
+const transcript = [
+  {key: 'u1', row: {type: 'message', timestamp: T, messageKey: 'm1', turn: {id: 'turn1', startedAt: T, finishedAt: T + 1e4, finalStartedAt: T + 8000, hasBody: true}}},
+  {key: 'r1', row: {...run1, turn: {id: 'turn1'}}, agentRunItemWindow: window1},
+  {key: 'c1', row: {type: 'compacting', state: 'done', summary: 'Kept the plan', turn: {id: 'turn1'}}},
+  {key: 'u2', row: {type: 'message', timestamp: T + 5e6, messageKey: 'm2'}},
+  {key: 'r2', row: run2, agentRunItemWindow: {items: run2.items, start: 0, showActions: true}},
+  {key: 'n1', row: {type: 'system-message', kind: 'agent_message', metadata: {deliveryMode: 'steer'}, content: 'Steer'}},
+  {key: 'u3', row: {type: 'message', isSteer: true, timestamp: T + 5e6 + 500}},
+  {key: 'u4', row: {type: 'message', timestamp: T + 9e6}},
+  {key: 'th', row: {type: 'thinking'}},
+];
+const conversationRows = [
+  {type: 'compacting', state: 'running'}, {type: 'compacting', state: 'error'}, {type: 'compacting', state: 'done', summary: 'Summary'}, {type: 'compacting', state: 'done', summary: '  '},
+  {type: 'session-branch', parentSession: {id: 'p1', title: 'Parent'}}, {type: 'retrying', retry: {attempt: 2, maxAttempts: 5}},
+  {type: 'reconnecting', reconnect: {phase: 'failed', error: 'Socket closed'}}, {type: 'reconnecting', reconnect: {phase: 'connecting', error: null}},
+  {type: 'error', message: 'Model overloaded'}, {type: 'generated-files', files: [{type: 'created', path: 'out/report.md'}]},
+  {type: 'generated-files', files: [{type: 'modified', path: 'src/a.ts', addedLines: 3, removedLines: 1}, {type: 'created', path: 'b.md', addedLines: 0, removedLines: 2}]},
+  {type: 'system-message', kind: 'routine_trigger', content: 'Daily digest\n\nHere is the news', metadata: {routineId: 'rt 1', routineName: 'Digest'}},
+  {type: 'system-message', kind: 'agent_message', content: 'Hi', metadata: {fromSessionId: 'x1', fromTitle: 'Fixer', report: 'yes', text: 'Report text'}},
+  {type: 'system-message', kind: 'agent_message', content: 'Plain', metadata: {}},
+  {type: 'system-message', kind: 'memory_signal', content: 'Remembered the plan'},
+];
+const sessionConversationImports = world => ({
+  './strip-markdown-DRcmtuJc.js#it': text => String(text).replace(/[^]*/g, ''),
+  './strip-markdown-DRcmtuJc.js#t': text => String(text).replace(/[*_`#]/g, ''),
+  './strip-markdown-DRcmtuJc.js#zt': result => result.text ?? '',
+  './favicon-Dpszfa2o.js#r': url => new URL(url).hostname,
+  './utils-Cl9zfMcr.js#c': text => [...String(text).matchAll(/\/(\w+)/g)].map(match => ({start: match.index, end: match.index + match[0].length, name: match[1],
+    skillPath: `skills/${match[1]}`})),
+  './draft-artifacts-registry-CZ58X0Cu.js#s': text => text,
+  './provider-Cw0zhujt.js#nt': message => message.stopReason === 'stop',
+  './context-q_vohNW8.js#n': {currentSession: {id: 's1', status: 'running', suspension: null, model: {provider: 'anthropic', modelId: 'opus'}}},
+  './context-q_vohNW8.js#r': {currentSession: {id: 's1', parentId: null}},
+  './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7},
+  './provider-Cw0zhujt.js#M': subagentItems,
+  './provider-Cw0zhujt.js#Z': {...sidePanel(world, {}), openFilePreview: world.stub('spy:openFilePreview')},
+  './browser-color-scheme-Df5VSuPV.js#T().createPortal': element => element,
+});
+// The message list context: what the rows read about the session and the live activity.
+const messageList = world => ({isReadonly: false, sessionId: 's1', alwaysVisibleAssistantRunId: 'run1', canChangePlan: true, hideAssistantActions: false,
+  onAddCreditsClick: world.stub('spy:addCredits'), onPaymentRequiredClick: world.stub('spy:paymentRequired'), onRetryAssistant: world.stub('spy:retry'),
+  pendingToolCallId: 'c3', paymentRequiredPlan: 'pro', runId: 'run1', steps: steps1, active: steps1[0], thinkingHeader: 'Planning',
+  retainTurnBody: world.stub('spy:retain'), scrollToBottom: world.stub('spy:scrollToBottom'), getSnapshot: () => ({isAtBottom: false})});
+const sessionConversationScenes = [
+  world => ({imports: sessionConversationImports(world), context: messageList(world)}),
+  world => ({imports: sessionConversationImports(world), context: {...messageList(world), isReadonly: true, active: null, hideAssistantActions: true}, state: [true]}),
+  // The turn rail shown (its fourth state) with the first turn hovered, every other state left as the component starts it.
+  world => ({imports: sessionConversationImports(world), context: messageList(world), state: [undefined, 0, undefined, true, undefined]}),
+];
+const conversationRowProps = [
+  ...conversationRows.map(row => ({row})),
+  {row: run1, itemWindow: window1, state: 'done', alwaysVisible: true, isDone: true, message: assistant(T, 'Run one'), segment: {type: 'run-fold', isActive: true, startedAt: T, workedForMs: 65000, chunks: [], turnId: 'turn1'}},
+  {row: run2, itemWindow: {items: run2.items, start: 0}, state: 'streaming', isDone: false, message: assistant(T, 'Run two'), segment: {type: 'run-fold', isActive: false, startedAt: T, finalStartedAt: T + 3000,
+    workedForMs: 4000, chunks: [{type: 'fold', key: 'f', rows: transcript.slice(1, 2)}]}},
+  {text: 'Use /deploy on @Docs\nline two', tabAttachments: [{name: 'Docs', id: 't1', url: 'https://docs.example', faviconUrl: 'f.png'}], collapsedLines: 1,
+    refs: 's1, s2', sourcesById: new Map(sources.map(source => [source.id, source])), messageId: 'm1', children: '**cited** text', sources,
+    images: [{mimeType: 'image/png', data: 'AA'}], files: [{type: 'created', path: 'a.md'}], parentSession: {id: 'p1', title: 'Parent'}, attempt: 1, maxAttempts: 3,
+    phase: 'failed', message: assistant(T, 'Copy me'), timestamp: T - 864e5 * 3, routine: {id: 'r1', name: 'Digest'}, steps: steps1, isLastItem: true, status: 'running',
+    href: 'https://x.example/files/content?path=out/a.md', items: ['First', 'Second', 'Third', 'Fourth', 'Fifth'].map((label, index) => ({key: `turn${index}`,
+      label, response: index % 2 ? `Answer ${index}` : undefined})), isDone: true, memoryExtraction: {summary: 'Saved the plan',
+      files: [{path: 'mem/a.md', addedLines: 2, removedLines: 1}, {path: 'b.md', addedLines: 0, removedLines: 3}]}, activity: {active: steps1[0],
+      steps: steps1, thinkingHeader: 'Thinking'}},
+];
+
 // The composer under its data fixtures, so the model menu, the queue and the badges render with data.
 test('the composer renders like the supplied one with models and a queue', async () => {
   await assertParity({blocksByChunk: {[COMPOSER]: ROUTES[COMPOSER]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 600,
     scenes: composerScenes, props: composerProps, renamed: renamedBindings, defaults: false});
+});
+
+test('the composer draws a conversation like the supplied one', async () => {
+  await assertParity({blocksByChunk: {[COMPOSER]: ROUTES[COMPOSER]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 600,
+    scenes: sessionConversationScenes, props: conversationRowProps, renamed: renamedBindings, defaults: false});
+});
+
+// The conversation's pure helpers, called with real rows and messages on both sides.
+test('the conversation helpers group, fold, cite and label like the supplied ones', async () => {
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: COMPOSER, text: textOf(COMPOSER), blocks: ROUTES[COMPOSER], integrate: integrateRoutes,
+    read: readRoute, changes: TOKEN_CHANGES, renamed: renamedBindings});
+  world.enter({imports: sessionConversationImports(world)});
+  // Maps come back from the other realm, so they are listed rather than compared by identity.
+  const json = value => JSON.stringify(value, (_, item) => (Object.prototype.toString.call(item) === '[object Map]' ? [...item] : item));
+  const same = (name, ...args) => assert.equal(json(ours[name](...args)), json(supplied[name](...args)), `${name}(${json(args).slice(0, 80)})`);
+  for (const message of [{content: 'Hi \uE200x\uE201'}, {content: [{type: 'text', text: 'a'}, {type: 'image'}, {type: 'text', text: '  '}]}])
+    same('__pair_messageTextBlocks', message);
+  same('__pair_mentionSegments', 'Use /deploy on @Docs and @Docs Old, @Docs', [{name: 'Docs', id: 't1'}, {name: 'Docs Old', id: 't2'}, {name: 'Docs', id: 't3'}]);
+  same('__pair_mentionSegments', 'plain', []);
+  for (const result of [{details: {sources: [...sources, {id: 2}]}}, {toolName: 'websearch', text: JSON.stringify({results: [{source_id: 'w1', url: 'https://w',
+    title: 'W', publish_date: '2026-01-01', excerpts: ['e']}, {url: 'bad'}]})}, {toolName: 'websearch', text: '{'}, {toolName: 'other'}])
+    same('__pair_toolSources', result);
+  for (const refs of ['s1, s2,,s1', '', 5]) same('__pair_splitRefs', refs);
+  const byId = new Map(sources.map(source => [source.id, source]));
+  same('__pair_citationsAsLinks', 'See <citation refs="s1,s2">the <quote>docs</quote></citation> and <citation refs="zz">x</citation><quote>q</quote>', byId);
+  same('__pair_citationsAsLinks', 'no citations', byId);
+  same('__kept_Jn', [{details: {sources: [{id: 's1', url: 'u'}, {id: 's2#3', url: 'v'}]}}, {toolName: 'websearch', text: '{}'}], [{id: 'p', url: 'w'}]);
+  for (const message of [{role: 'user', content: ' hi '}, {role: 'user', content: [{type: 'text', text: ' a '}, {type: 'text', text: ''}, {type: 'text', text: 'b'}]},
+    assistant(T, 'See <citation refs="s1">it</citation>'), {role: 'system'}]) same('__pair_copyText', message, byId);
+  for (const url of ['https://www.docs.example/a', 'https://x.example']) same('__pair_sourceHost', url);
+  same('__pair_turnGroups', transcript);
+  // Rows without turn ids: a system row then a message open one turn; a reply ends its prefix.
+  same('__pair_turnGroups', [{key: 'n', row: conversationRows[11]}, {key: 'm', row: {type: 'message', timestamp: T}}, {key: 'm2', row: {type: 'message', timestamp: T}},
+    {key: 'r', row: run1}, {key: 'n2', row: conversationRows[12]}]);
+  same('__pair_foldRuns', transcript);
+  same('__pair_splitCoderRuns', transcript[1]);
+  same('__pair_splitTail', transcript[1]);
+  same('__pair_splitTail', transcript[0]);
+  same('__pair_workedForMs', transcript);
+  same('__pair_workedForMs', []);
+  same('__kept_t0', supplied.__pair_turnGroups(transcript).map(group => group.rows));
+  for (const options of [{}, {isTrailingTurnStreaming: true, pendingToolCallId: 'c3'}, {pendingToolCallId: 'c1'}]) same('__kept_h0', transcript, options);
+  same('__kept_h0', transcript.slice(3), {isTrailingTurnStreaming: true});
+  for (const at of [T, T - 864e5, T - 864e5 * 3, T - 864e5 * 7, T - 864e5 * 8, T - 864e5 * 40, T - 864e5 * 400]) same('__kept_So', at, T + 3600e3);
+  for (const href of ['https://x.example/files/content?path=out/a.md', 'https://x.example/files/content?path=', 'https://x.example/a', undefined])
+    same('__pair_artifactName', href);
 });
 
 test('the routes replace their blocks once and refuse a second pass', () => {

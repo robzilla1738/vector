@@ -28,7 +28,7 @@ export const moduleNames = source => [...source.replace(/\/\*[\s\S]*?\*\//g, '')
 /** Names an Aux block keeps from the supplied block it replaces (so both chunks bind them). */
 function keptNames(text, blocks, read, label) {
   return locateBlocks(text, blocks, label).flatMap(([at, stop], index) => {
-    const supplied = new Set([...text.slice(at, stop).matchAll(/(?:^|[;,])\s*(?:var\s+)?([\w$]+)=(?!=)|function\s+([\w$]+)\(/g)].map(match => match[1] ?? match[2]));
+    const supplied = new Set([...text.slice(at, stop).matchAll(/(?:^|[;,]|\bvar\s)\s*(?:var\s+)?([\w$]+)=(?!=)|function\s+([\w$]+)\(/g)].map(match => match[1] ?? match[2]));
     return moduleNames(read(blocks[index].file)).filter(name => supplied.has(name));
   });
 }

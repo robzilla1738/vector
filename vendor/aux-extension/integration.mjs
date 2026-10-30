@@ -217,6 +217,8 @@ export const ROUTES = Object.freeze({
       'Er=e=>e.type==="file";', '33758bd60d24a5cdec6c07510bd9dca715e2a74125fc385b0d693da21f92b1c3', 12812),
     block('Composer: sending, the queue and message editing', 'composer-send-queue-edit.js', 'var Vh=({sendMessage:e,stop:t,',
       ',children:p?(0,a.jsx)(kt,{}):"Send"})]})]})}', '3beec8b2e49addc82fd299f3982189bebcc78a09433c57a753c21a84b0857537', 7493),
+    block('Composer: conversation rendering (messages, citations, tool steps, system rows, turn navigation)', 'composer-conversation.js',
+      'var Wh=3,Gh=5,Qh=10,Yh=.1,Xh=5,', 'children:j.response})]})]},j.key)})})})}', '84c6140296f9ea5c0cf26b8cfbba183590de949916384fef04566b800a5b1a58', 48034),
     block('Composer: the side panel, side chats and subagents', 'composer-side-panel.js', 'var Ro=rp,sp=({tab:e})=>{const',
       'SERVE_PX)}px`}', '1286bf2581df09410d2211a4fd1799e4b83bb3a58c3dafb87ff6f5b823a02686', 12328),
     block('Composer: comments on selected text, the new-session draft and the Projects menu', 'composer-comments-projects.js', 'Do=({range:e,children:t,classNam',
@@ -257,6 +259,8 @@ export const TOKEN_CHANGES = Object.freeze([
   ['composer-notices.js', 'rounded-2xl', 'rounded-xl'],
   ['composer-notices.js', '-mt-[var(--radius-2xl)]', '-mt-[var(--radius-xl)]'],
   ['composer-notices.js', 'inner-curved-shape-bottom', 'inner-curved-shape-bottom [--_r:var(--radius-xl)]'],
+  // The conversation's error row: the 12px step too.
+  ['composer-conversation.js', 'rounded-2xl', 'rounded-xl'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');

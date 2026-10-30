@@ -18,7 +18,7 @@ function ignoreChunkRejections() {
   rejectionsHandled = true;
   process.on('unhandledRejection', reason => {
     const stack = String(reason?.stack);
-    if (![...chunkIdentifiers].some(id => stack.includes(`(${id}:`))) throw reason;
+    if (![...chunkIdentifiers].some(id => stack.includes(`(${id}:`) || stack.includes(`at ${id}:`))) throw reason;
   });
 }
 
@@ -187,9 +187,14 @@ export function createWorld() {
     return describe(value, depth + 1);
   }
 
+  /** Sets the scene that stubs answer by, for calls made outside a render (a helper called directly). */
+  function enter(scene = {}) {
+    Object.assign(scenario, {context: undefined, state: undefined, event: undefined, renderProps: undefined, renderState: undefined, imports: undefined}, scene);
+  }
+
   /** Renders `component` with `props` under `scene`, then runs the effects it registered. */
   function render(component, props, scene = {}) {
-    Object.assign(scenario, {context: undefined, state: undefined, event: undefined, renderProps: undefined, renderState: undefined, imports: undefined}, scene);
+    enter(scene);
     log.length = 0;
     stateCalls = 0;
     seed = 1;
@@ -213,6 +218,12 @@ export function createWorld() {
   const document = new Proxy({createElement: tag => (tag === 'canvas' ? canvas() : stub(`document.createElement(${tag})`))},
     {get: (target, key) => (key in target ? target[key] : stub(`document.${String(key)}`))});
 
+  // The clock stands still, so "since" and "worked for" values compare equal between the two runs.
+  const NOW = Date.UTC(2026, 9, 30, 12);
+  const FixedDate = class extends Date {
+    constructor(...args) { if (args.length) super(...args); else super(NOW); }
+    static now() { return NOW; }
+  };
   // Math.random repeats the same sequence on every render, so random skeleton widths compare equal.
   let seed = 1;
   const seededMath = Object.assign(Object.create(Math), {random: () => (seed = (seed * 16807) % 2147483647) / 2147483647});
@@ -225,7 +236,7 @@ export function createWorld() {
       setTimeout: () => (log.push(['setTimeout']), 1), clearTimeout: () => log.push(['clearTimeout']),
       ResizeObserver: stub('ResizeObserver'), MutationObserver: stub('MutationObserver'), matchMedia: stub('matchMedia'),
       getComputedStyle: stub('getComputedStyle'), queueMicrotask: () => {}, console, Math: seededMath, JSON, Object, Array, Map, Set, WeakMap, WeakSet,
-      Symbol, Promise, Error, TypeError, Number, String, Boolean, RegExp, Date, Reflect, Proxy, URL, parseFloat, parseInt, isNaN, Infinity, NaN,
+      Symbol, Promise, Error, TypeError, Number, String, Boolean, RegExp, Date: FixedDate, Reflect, Proxy, URL, parseFloat, parseInt, isNaN, Infinity, NaN,
       File, Blob, FormData, URLSearchParams, Intl, TextEncoder, TextDecoder, AbortController, Event, EventTarget, structuredClone, atob, btoa,
       encodeURIComponent, decodeURIComponent, isFinite, Uint8Array, Uint8ClampedArray, ArrayBuffer, DataView, BigInt, WeakRef,
       CSS: stub('CSS'), crypto: stub('crypto'), location: stub('location'), history: stub('history'), localStorage: stub('localStorage'),
@@ -251,5 +262,5 @@ export function createWorld() {
     return module.namespace;
   }
 
-  return {evaluate, render, stub};
+  return {enter, evaluate, render, stub};
 }
