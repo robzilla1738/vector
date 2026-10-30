@@ -7,7 +7,7 @@
  * su/au/Mr/ou/iu icons, $n Separator, lu groupSteps, Kn isBareStep, hu activitySummary, pu tabTargets,
  * fu ComposerEditor, jr useTabMentions, Cu AddMenu, wu SendButton, xn DictationContext, Su
  * DictationProvider, Pu HideWhileDictating, ku DictationConfirm, Mu TrailingAction, Iu InputProvider,
- * Au InputFrame; auxDictation keeps its Aux name.
+ * Au InputFrame.
  * Chunk names used: Y cn, yi separator, Ye/aa tool definitions, El/Rl/Nl editor extensions, me
  * useSession, ge useApp, Ce useTRPC, At attachments, xt the input form, Tt the editor, Js the native
  * bridge, J Button, Ae/Pe/Ie tooltip parts, ja Kbd, st message key, Ht message text. */
@@ -762,63 +762,12 @@ var g = Ns(qo(), 1) /** ComposerEditor: the page’s own editor when it provides
         });
   },
   xn = (0, g.createContext)(null),
-  auxDictation = insert => {
-    const api = typeof chrome < 'u' ? chrome.auxBrowserPreferences : void 0,
-      [status, setStatus] = (0, g.useState)('idle'),
-      [listening, setListening] = (0, g.useState)(false),
-      [error, setError] = (0, g.useState)(null),
-      phase = (0, g.useRef)('idle'),
-      inserter = (0, g.useRef)(insert);
-    inserter.current = insert;
-    const move = next => {
-        ((phase.current = next), setStatus(next), setListening(false));
-      },
-      start = (0, g.useCallback)(async () => {
-        if (phase.current !== 'idle') return;
-        (setError(null), move('recording'));
-        try {
-          (await api.startDictation(), phase.current === 'recording' && setListening(true));
-        } catch (e) {
-          phase.current === 'recording' && (move('idle'), setError(e?.message || "Dictation couldn't start."));
-        }
-      }, [api]),
-      finish = (0, g.useCallback)(
-        async keep => {
-          if (phase.current !== 'recording') return;
-          move(keep ? 'transcribing' : 'idle');
-          try {
-            const text = (await api.stopDictation()).trim();
-            keep && (text ? inserter.current(text) : setError('Nothing was heard. Try again.'));
-          } catch (e) {
-            keep && setError(e?.message || 'Dictation failed.');
-          } finally {
-            keep && move('idle');
-          }
-        },
-        [api],
-      );
-    (0, g.useEffect)(
-      () => () => {
-        phase.current === 'recording' && api.stopDictation().catch(() => {});
-      },
-      [api],
-    );
-    return {
-      supported: typeof api?.startDictation == 'function',
-      status,
-      stream: listening || null,
-      error,
-      start,
-      cancel: () => finish(false),
-      confirm: () => finish(true),
-      warmMic: () => {},
-    };
-  } /** DictationProvider: dictation into the editor, through the browser’s speech service. */,
+  /** DictationProvider: dictation into the editor, through the browser’s speech service. */
   Su = ({children}) => {
     const {text, insertText} = Tt(),
       [r, s] = (0, g.useState)(null);
     (0, g.useEffect)(() => s(null), [text]);
-    const o = auxDictation(insertText);
+    const o = Mc(insertText);
     return (
       (0, g.useEffect)(() => {
         o.error && de.error(o.error);

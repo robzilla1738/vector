@@ -1,0 +1,326 @@
+{
+ "version": 1,
+ "sidebar": {
+  "containers": [
+   {
+    "global": {}
+   },
+   {
+    "items": [
+     "pin-fav",
+     {
+      "value": {
+       "id": "pin-fav",
+       "childrenIds": [
+        "fav-mail"
+       ],
+       "data": {
+        "itemContainer": {
+         "containerType": {
+          "topApps": {}
+         }
+        }
+       }
+      }
+     },
+     "fav-mail",
+     {
+      "value": {
+       "id": "fav-mail",
+       "parentID": "pin-fav",
+       "title": null,
+       "childrenIds": [],
+       "data": {
+        "tab": {
+         "savedURL": "https://mail.example.com/",
+         "savedTitle": "Mail"
+        }
+       }
+      }
+     },
+     "pin-work",
+     {
+      "value": {
+       "id": "pin-work",
+       "childrenIds": [
+        "tab-docs",
+        "folder-reading",
+        "tab-internal"
+       ],
+       "data": {
+        "itemContainer": {
+         "containerType": {
+          "spaceItems": {}
+         }
+        }
+       }
+      }
+     },
+     "tab-docs",
+     {
+      "value": {
+       "id": "tab-docs",
+       "parentID": "pin-work",
+       "title": "Team handbook",
+       "childrenIds": [],
+       "data": {
+        "tab": {
+         "savedURL": "https://docs.example.com/handbook",
+         "savedTitle": "Handbook"
+        }
+       }
+      }
+     },
+     "folder-reading",
+     {
+      "value": {
+       "id": "folder-reading",
+       "parentID": "pin-work",
+       "title": "Reading",
+       "childrenIds": [
+        "tab-paper",
+        "folder-empty"
+       ],
+       "data": {
+        "list": {}
+       }
+      }
+     },
+     "tab-paper",
+     {
+      "value": {
+       "id": "tab-paper",
+       "parentID": "folder-reading",
+       "title": null,
+       "childrenIds": [],
+       "data": {
+        "tab": {
+         "savedURL": "https://papers.example.org/1234",
+         "savedTitle": "A paper"
+        }
+       }
+      }
+     },
+     "folder-empty",
+     {
+      "value": {
+       "id": "folder-empty",
+       "parentID": "folder-reading",
+       "title": "",
+       "childrenIds": [],
+       "data": {
+        "list": {}
+       }
+      }
+     },
+     "tab-internal",
+     {
+      "value": {
+       "id": "tab-internal",
+       "parentID": "pin-work",
+       "title": null,
+       "childrenIds": [],
+       "data": {
+        "tab": {
+         "savedURL": "arc://settings",
+         "savedTitle": "Arc settings"
+        }
+       }
+      }
+     },
+     "pin-home",
+     {
+      "value": {
+       "id": "pin-home",
+       "childrenIds": [
+        "tab-news"
+       ],
+       "data": {
+        "itemContainer": {
+         "containerType": {
+          "spaceItems": {}
+         }
+        }
+       }
+      }
+     },
+     "tab-news",
+     {
+      "value": {
+       "id": "tab-news",
+       "parentID": "pin-home",
+       "title": null,
+       "childrenIds": [],
+       "data": {
+        "tab": {
+         "savedURL": "https://news.example.net/",
+         "savedTitle": "News"
+        }
+       }
+      }
+     },
+     "pin-other",
+     {
+      "value": {
+       "id": "pin-other",
+       "childrenIds": [
+        "tab-other"
+       ],
+       "data": {
+        "itemContainer": {
+         "containerType": {
+          "spaceItems": {}
+         }
+        }
+       }
+      }
+     },
+     "tab-other",
+     {
+      "value": {
+       "id": "tab-other",
+       "parentID": "pin-other",
+       "title": null,
+       "childrenIds": [],
+       "data": {
+        "tab": {
+         "savedURL": "https://other.example.net/",
+         "savedTitle": "Other profile"
+        }
+       }
+      }
+     }
+    ],
+    "spaces": [
+     "space-work",
+     {
+      "value": {
+       "id": "space-work",
+       "title": "Work",
+       "profile": {
+        "default": true
+       },
+       "customInfo": {
+        "iconType": {
+         "emoji_v2": "💼"
+        },
+        "windowTheme": {
+         "background": {
+          "single": {
+           "_0": {
+            "content": {
+             "color": {
+              "red": 0.1,
+              "green": 0.2,
+              "blue": 0.4,
+              "alpha": 1,
+              "colorSpace": "extendedSRGB"
+             }
+            }
+           }
+          }
+         }
+        }
+       },
+       "newContainerIDs": [
+        {
+         "pinned": {}
+        },
+        "pin-work",
+        {
+         "unpinned": {
+          "_0": {
+           "shared": {}
+          }
+         }
+        },
+        "unpinned-work"
+       ]
+      }
+     },
+     "space-home",
+     {
+      "value": {
+       "id": "space-home",
+       "title": "",
+       "profile": {
+        "default": true
+       },
+       "customInfo": {
+        "iconType": {
+         "emoji": 127968
+        },
+        "windowTheme": {
+         "background": {
+          "gradient": {
+           "_0": {
+            "colors": [
+             {
+              "red": 1.1,
+              "green": 0.5,
+              "blue": 0,
+              "alpha": 1,
+              "colorSpace": "extendedSRGB"
+             },
+             {
+              "red": 0.2,
+              "green": 0.8,
+              "blue": 0.6,
+              "alpha": 1,
+              "colorSpace": "extendedSRGB"
+             }
+            ]
+           }
+          }
+         },
+         "primaryColorPalette": {
+          "midTone": {
+           "red": 0,
+           "green": 0,
+           "blue": 0,
+           "alpha": 1,
+           "colorSpace": "extendedSRGB"
+          }
+         }
+        }
+       },
+       "containerIDs": [
+        "unpinned",
+        "unpinned-home",
+        "pinned",
+        "pin-home"
+       ]
+      }
+     },
+     "space-other",
+     {
+      "value": {
+       "id": "space-other",
+       "title": "Second profile",
+       "profile": {
+        "custom": {
+         "_0": {
+          "directoryBasename": "Profile 1"
+         }
+        }
+       },
+       "customInfo": {},
+       "newContainerIDs": [
+        {
+         "pinned": {}
+        },
+        "pin-other"
+       ]
+      }
+     }
+    ],
+    "topAppsContainerIDs": [
+     {
+      "default": true
+     },
+     "pin-fav"
+    ]
+   }
+  ]
+ }
+}

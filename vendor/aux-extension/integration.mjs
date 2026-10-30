@@ -19,9 +19,14 @@ export const REMOVED_FILES = Object.freeze(['assets/AuxDisplay-Variable-LuohODSt
 /** Chunks Aux doesn't ship: nothing renders them, and transforms.mjs takes them out of every Vite
  * deps table so nothing preloads them either. */
 export const REMOVED_CHUNKS = Object.freeze(['assets/tasks-CtF0WxoJ.js', 'assets/session-feedback-dialog-BjDg0W8m.js',
-  'assets/context-awareness-BocPTg31.js', 'assets/add-on-credits-dialog-Dn5FxOyZ.js', 'assets/billing-DuRDVoRU.js']);
-/** The removed chunks' only asset. */
-export const REMOVED_ASSETS = Object.freeze(['assets/aux-context-awareness-CQFhCmYA.webp']);
+  'assets/context-awareness-BocPTg31.js', 'assets/add-on-credits-dialog-Dn5FxOyZ.js', 'assets/billing-DuRDVoRU.js',
+  'assets/payment-use-CqnbXHDE.js', 'assets/password-LjdLcSRV.js', 'assets/password-import-menu-BuTmw0rs.js',
+  'assets/error-test-BKjD4Ku7.js', 'assets/artifact-test-CdjpLuI1.js', 'assets/liquid-glass-playground-DkwgfDqY.js',
+  'assets/liquid-glass-DlNhZpZV.js', 'assets/liquid-glass-BmSyeXQT.css', 'assets/pricing-table-shared-BWz9Ewvm.js',
+  'assets/openpgp.min-DsXep_gF.js']);
+/** The removed chunks' only assets. */
+export const REMOVED_ASSETS = Object.freeze(['assets/aux-context-awareness-CQFhCmYA.webp', 'assets/aux-payment-use-BBKr-NnX.webp',
+  'assets/aux-password-manager-CZ9IYl_W.webp', 'assets/apple-password-import-L1nnFJTi.webp']);
 
 const DEPS_TABLE = /(const __vite__mapDeps=\(i,m=__vite__mapDeps,d=\(m\.f\|\|\(m\.f=)(\[[^\]]*\])/;
 
@@ -237,7 +242,7 @@ export const ROUTES = Object.freeze({
     'or??"Failed to send feedback.")}},', '4feae993b106655e11ff39c204d5375b2c8d31cf2288974601d9c7e865c71b4c', 5316), block('Settings shell', 'settings-shell.js', 'te=[{label:"Extensions",icon:T1,kind:"chrome",to:"chrome://extensions"}]',
     '(0,t.jsx)(t1,{})})]})]})}', 'c0e43460db70c7d079b14069c2d29c3c4d89797ba8f92b0d9afd00313c5dd93b', 9554)],
   'assets/conversation-D9Q3VEsl.js': [block('Channel chat view', 'conversation.js', 'var t=Ze(),kt=({size:e=24,aria',
-    'dren:(0,t.jsx)(kt,{className:"size-4"})})]})}', '215f89a711a4eb699b3e3b686037a11c2c4246e47a14d97b0741d2e55a877684', 54873)],
+    'dren:(0,t.jsx)(kt,{className:"size-4"})})]})}', 'c5c4660b9e0460e4e0525d1710b687ff50e19c825a915a765de1433e44bc461b', 55276)],
   'assets/sidebar-Cj9gldy1.js': [block('Chats sidebar', 'sidebar.js', 'var e=G(),fe=({size:t=24,ariaH', 'tart",nativeButton:!1,...s,children:t});',
     'c9fc0c814635a6b6707f45a01ab3ee98724a38d60383523857e4b220d3950abc', 9651)],
   'assets/minipopup-LkDLFvnq.js': [block('Mini popup', 'minipopup.js', 'var e=ne(),Ge=({size:s=24,aria', 'emoveEventListener("keydown",n)},[])},Rs=us;',
@@ -309,7 +314,7 @@ export const ROUTES = Object.freeze({
   // The composer, one area per pass; the rest of the chunk stays supplied until its pass.
   'assets/session-composer-Dc0LRfZA.js': [
     block('Composer: icons, tool summaries, prompt history, the editor, the + menu, Send and dictation', 'composer-head.js',
-      'var a=Go(),Da=({size:e=24,ariaHidden:t=!', 'children:t})})};', '393f6b8bcd9da1df987969368c59bf6b5b1738dad1c8c4595304c33eec0d3b26', 31079),
+      'var a=Go(),Da=({size:e=24,ariaHidden:t=!', 'children:t})})};', '718c1c040adf8653dea5a61b0d0698385a1e7ab788d136cabbdfdab814b9b2b9', 29832),
     block('Composer: attachments, input layout, file previews, context usage', 'composer-attachments.js', 'var Xn=({attachment:e,classNam',
       '5 hours",monthly:"Monthly",weekly:"Weekly"};', '810d4c63beaea8510613ea7917b742870e7f6f08c78ccba72960ab594ba82db2', 18914),
     block('Composer: chat commands, the message list, its scroll controller and its context', 'composer-message-list.js',
@@ -537,6 +542,10 @@ export const ROUTES = Object.freeze({
     block('Action confirmation artifact', 'action-confirmation-artifact.js', 'var s=g(),S=({artifact:e,className:r,com',
       'xisting"} / ${r}`:"Creates a new skill"}', '8ef31d63a748efd969249bed20dca958e48f7e52907af1d89f05f1b0cd4b3295', 2921),
   ],
+  'assets/import-password-mvM-KsU6.js': [
+    block('Onboarding: the password manager dialog', 'external-manager-dialog.js', 'import{a as ge,n as xe,r as he,t as we,v as fe}from"./password-import-menu-BuTmw0rs.js";',
+      'import{a as ge,n as xe,r as he,t as we,v as fe}from"./password-import-menu-BuTmw0rs.js";', '2990cf4a132243e5b400f3d0c8a20f2cc53669d44f644ece9c2fca5e2af505a0', 88),
+  ],
   'assets/route-VV0zL3cm.js': [
     block('Channels chat page', 'channel-chat.js', 'var f=W(G(),1),r=X();function Se({channe',
       'atus==="suspended",client:n})}var Je=$e;', '48e167985a014bcdfc88d4539675548fde73bcb3019c3392dbfda7aca99cb2a6', 19977),
@@ -641,9 +650,8 @@ export const TOKEN_CHANGES = Object.freeze([
   ['composer-attachments.js', 'aria-expanded:bg-neutral-100', 'aria-expanded:bg-muted'],
   // The composer card and its queue, question and drop surfaces: the 12px step, like the mini popup composer.
   ['composer-toolbar-model.js', 'rounded-2xl', 'rounded-xl'],
-  // The usage warning takes the same step; the notice drawn under the composer card tucked under and
-  // curved around the card's old 16px corner, so it follows the card to 12px.
-  ['composer-notices.js', 'rounded-2xl', 'rounded-xl'],
+  // The notice drawn under the composer card tucked under and curved around the card's old 16px
+  // corner, so it follows the card to 12px.
   ['composer-notices.js', '-mt-[var(--radius-2xl)]', '-mt-[var(--radius-xl)]'],
   ['composer-notices.js', 'inner-curved-shape-bottom', 'inner-curved-shape-bottom [--_r:var(--radius-xl)]'],
   // The conversation's error row: the 12px step too.
@@ -715,7 +723,8 @@ export const TOKEN_CHANGES = Object.freeze([
 
 /** Route blocks that are Aux's own design rather than the supplied screen with edits: parity has
  * nothing to compare, so routes.test.mjs covers what each must do. */
-export const REWRITTEN = Object.freeze(['onboarding-welcome.js', 'import-browser.js', 'onboarding-done.js', 'appearance-route.js', 'use-browser-importer.js', 'import-progress.js']);
+export const REWRITTEN = Object.freeze(['onboarding-welcome.js', 'import-browser.js', 'onboarding-done.js', 'appearance-route.js', 'use-browser-importer.js', 'import-progress.js',
+  'external-manager-dialog.js', 'voice-dictation-overlay.js']);
 
 const behavior = (file, name, find, replace) => Object.freeze({file, name, find, replace});
 
@@ -781,18 +790,49 @@ export const BEHAVIOR_CHANGES = Object.freeze([
   behavior('appearance-settings.js', 'a stale page says Settings', 'Profile changed. Reopen settings before making changes.', 'Settings changed. Reopen this page before making changes.'),
   // Settings › Import names what it brings, like onboarding does (plan Batch 6); the default search
   // engine only comes when ticked, and the labels for data Aux doesn't import are gone.
-  behavior('general-settings.js', 'the search engine choice', '[f,R]=(0,at.useState)(null),', '[f,R]=(0,at.useState)(null),[auxSearchEngine,auxSetSearchEngine]=(0,at.useState)(false),'),
+  behavior('general-settings.js', 'the search engine choice', '[f,R]=(0,at.useState)(null),', '[f,R]=(0,at.useState)(null),[auxSearchEngine,auxSetSearchEngine]=(0,at.useState)(false),[auxTabs,auxSetTabs]=(0,at.useState)(false),'),
   behavior('general-settings.js', 'a full import names its kinds', 'v=async()=>{if(!x||w&&x.alreadyImported)return;',
-    'auxOffersSearchEngine=w&&!!x?.source.categories?.includes("searchEngine"),auxKinds=()=>[...x.source.supportedDataKinds??[],...auxOffersSearchEngine&&auxSearchEngine?["searchEngine"]:[]],v=async()=>{if(!x||w&&x.alreadyImported)return;'),
+    'auxOffersSearchEngine=w&&!!x?.source.categories?.includes("searchEngine"),auxOffersTabs=w&&!!x?.source.supportedDataKinds?.includes("tabs"),auxKinds=()=>[...(x.source.supportedDataKinds??[]).filter(kind=>kind!=="tabs"),...auxOffersSearchEngine&&auxSearchEngine?["searchEngine"]:[],...auxOffersTabs&&auxTabs?["tabs"]:[]],v=async()=>{if(!x||w&&x.alreadyImported)return;'),
   behavior('general-settings.js', 'the import sends them', 'c.importTarget(x,{dataKinds:e,navigateToProgress:!1})', 'c.importTarget(x,{dataKinds:e??auxKinds(),navigateToProgress:!1})'),
   behavior('general-settings.js', 'the search engine row and the passwords note',
     '(0,A.jsx)(Lm,{disabled:T,lockImported:w,targets:b,value:d,onChange:u})]',
-    '(0,A.jsx)(Lm,{disabled:T,lockImported:w,targets:b,value:d,onChange:u}),auxOffersSearchEngine&&(0,A.jsxs)("label",{className:"text-primary flex items-center justify-between gap-2 px-1 text-sm",children:[`Use ${x.source.name}’s default search engine`,(0,A.jsx)(Ds,{checked:auxSearchEngine,disabled:T,onCheckedChange:auxSetSearchEngine})]}),w&&x&&!x.source.supportedDataKinds?.includes("passwords")&&(0,A.jsx)("p",{className:"text-muted-foreground px-1 text-xs",children:`Passwords can’t come over from ${x.source.name}. They stay there and in your password manager.`})]'),
-  behavior('general-settings.js', 'no labels for data Aux never imports', '["autofill","autofill data"],["paymentCards","payment cards"],["spaces","Spaces and pins"]]', '["spaces","Spaces and pins"],["searchEngine","default search engine"]]'),
+    '(0,A.jsx)(Lm,{disabled:T,lockImported:w,targets:b,value:d,onChange:u}),auxOffersSearchEngine&&(0,A.jsxs)("label",{className:"text-primary flex items-center justify-between gap-2 px-1 text-sm",children:[`Use ${x.source.name}’s default search engine`,(0,A.jsx)(Ds,{checked:auxSearchEngine,disabled:T,onCheckedChange:auxSetSearchEngine})]}),auxOffersTabs&&(0,A.jsxs)("label",{className:"text-primary flex items-center justify-between gap-2 px-1 text-sm",children:[`Open the tabs from ${x.source.name}`,(0,A.jsx)(Ds,{checked:auxTabs,disabled:T,onCheckedChange:auxSetTabs})]}),w&&x&&(0,A.jsx)("p",{className:"text-muted-foreground px-1 text-xs",children:x.source.supportedDataKinds?.includes("passwords")?"Imported passwords fill in on sites. Aux doesn’t save new ones: that stays with your password manager.":`Passwords can’t come over from ${x.source.name}. They stay there and in your password manager.`})]'),
+  behavior('general-settings.js', 'no labels for data Aux never imports', '["autofill","autofill data"],["paymentCards","payment cards"],["spaces","Spaces and pins"]]', '["tabs","open tabs"],["spaces","Spaces and pins"],["searchEngine","default search engine"]]'),
   behavior('general-settings.js', 'a partial import names what it skipped',
     '(0,A.jsx)("span",{className:"block",children:"Imported everything except site sign-ins."})',
     '(0,A.jsx)("span",{className:"block",children:`Imported everything except ${[...new Set(n.skippedDataKinds)].map(kind=>kind==="cookies"?"site sign-ins":Om.get(kind)??kind).join(" and ")}.`})'),
   behavior('general-settings.js', 'Ask before quitting beside the New Tab row', '(0,A.jsx)(Km,{})]', '(0,A.jsx)(Km,{}),(0,A.jsx)(AuxConfirmQuitSetting,{})]'),
+  // No plans, credits or checkout anywhere: the composer says nothing about usage (owner, 2026-10-30, audit Clean-up).
+  behavior('composer-notices.js', 'a notice needs no provider', 'Nr=({selectedProvider:e})=>{', 'Nr=()=>{'),
+  behavior('composer-notices.js', 'no billing lookup', [',h=e==="aux",d=Fe(n.billing', 'staleTime:6e4}));'], ';'),
+  behavior('composer-notices.js', 'no paused plan notice', ['if(!o&&r.length===0&&l)return{kind:"aux-sign-in-required"', 'actionPath:"/auth/sign-in"};'], ''),
+  behavior('composer-notices.js', 'no usage limit', ['const m=d.data,p=m?.credit.used_percent;', 'const f=c&&h&&d.isPending;if(i&&!o&&!f&&s===!1)'], 'if(i&&!o&&s===!1)'),
+  behavior('composer-notices.js', 'no usage banner', ['var kh=({accountId:e,usage:t})=>{', 'Ih=({className:e})=>'], 'var Ih=({className:e})=>'),
+  behavior('composer-notices.js', 'a notice is the connect line', ['dn()||!e||e.kind==="aux-monthly-limit-warning"?null', '(0,a.jsx)(Th,{reason:e})})}'],
+    'dn()||!e?null:(0,a.jsx)("div",{className:Y("text-muted-foreground mx-auto mb-2 flex min-w-0 items-center gap-1 px-2 text-xs font-medium empty:hidden",t),children:(0,a.jsx)(Ah,{reason:e},n)})}'),
+  behavior('composer-notices.js', 'no limit under the card', '!t||t.kind==="aux-monthly-limit-warning"||t.kind==="ai-subscription-connect"&&r', '!t||t.kind==="ai-subscription-connect"&&r'),
+  behavior('composer-notices.js', 'the status bar asks about no provider', 't=Nr({selectedProvider:e.model.provider})', 't=Nr()'),
+  behavior('composer-comments-projects.js', 'the draft asks about no provider', 're=Nr({selectedProvider:X.provider})', 're=Nr()'),
+  behavior('composer-toolbar-model.js', 'the composer asks about no provider', 'd=Nr({selectedProvider:n.model.provider})', 'd=Nr()'),
+  behavior('composer-toolbar-model.js', 'no usage banner above the queue', '(0,a.jsx)(jh,{}),', ''),
+  behavior('channels-setup.js', 'no plan in the Channels cover', ['et=({userId:s,showUpgrade:t=!0})=>{', '{change_plan:1}})};'], 'et=()=>{'),
+  behavior('channels-connections.js', 'the cover takes nothing', '(0,e.jsx)(et,{userId:s,showUpgrade:!1})', '(0,e.jsx)(et,{})'),
+  behavior('chat-preview-card.js', 'a task card reads no plan', ['{data:p}=R(l.billing.getSubscription', 'creditRefreshAt:p?.credit.refresh_at}}):null,'], 'v=f?S(f):null,'),
+  // The Channels composer dictates on this Mac like the main one, and sits on a plain surface: no liquid glass.
+  behavior('conversation.js', 'the composer surface', '(0,t.jsx)(yt,{appearance:E==="dark"?"dark":"light",compositing:"alpha",style:{borderRadius:24},className:"w-full backdrop-blur-xl [&>div]:w-full",children:',
+    '(0,t.jsx)("div",{style:{borderRadius:24},className:"bg-glass border-glass w-full border shadow-xl backdrop-blur-xl",children:'),
+  behavior('conversation.js', 'Voice input needs the native dictation and starts it', ['(0,t.jsx)(A,{type:"button",variant:"ghost",size:"icon",disabled:y,onClick:()=>{if(/Android', 'g.start()},'],
+    'g.supported&&(0,t.jsx)(A,{type:"button",variant:"ghost",size:"icon",disabled:y,onClick:()=>{g.start()},'),
+  // Onboarding's Models step has no plans: the provider list and the API key dialog are all that's left.
+  behavior('onboarding-ai.js', 'no hosted provider', ['if(!AUX_LAUNCH_POLICY.hostedAiEnabled&&i==="aux"){', 'if(i==="aux"||i==="byok"){'], 'if(i==="byok"){'),
+  behavior('onboarding-ai.js', 'no billing refresh', '{broadcastBillingChanged:r}=ie(),', ''),
+  behavior('onboarding-ai.js', 'connecting reads no plan', ['d==="aux"&&(await o.fetchQuery(n.billing', 'await ge(s)),'], ''),
+  behavior('onboarding-ai.js', 'no return from checkout', 'const{checkout:r}=K.useSearch(),t=B(),o=N(),[n,a]=(0,u.useState)(null),l=(0,u.useRef)(!1),c=Ne()', 'const[n,a]=(0,u.useState)(null),c=Ne()'),
+  behavior('onboarding-ai.js', 'no checkout callbacks', [',X=async()=>{await h("aux")},P=(0,u.useCallback)', '},[r,P]),(0,e.jsxs)(e.Fragment'], ';return (0,e.jsxs)(e.Fragment'),
+  behavior('onboarding-ai.js', 'the first row is your own API key', ['provider:AUX_LAUNCH_POLICY.hostedAiEnabled?os:I,icon:', ':void 0})'], 'provider:I})'),
+  behavior('onboarding-ai.js', 'no plans dialog', ['(0,e.jsx)(L,{open:n==="aux"', 'onConnectAux:X})})}),'], ''),
+  // The chat page's playground had a mock to-do list nothing reads.
+  behavior('task-session.js', 'no mock to-dos', ['(0,p.useCallback)(v=>({...v,status:i.streaming', '[h,i.streaming,i.todoList]);const w='], 'const w='),
   // Math and unit answers head the command bar (plan Batch 7); Enter copies.
   behavior('tabsearch.js', 'the answer heads the results', 'navigationSections(auxNavContext,r,Pe($,r))', 'auxAnswerSections(r,navigationSections(auxNavContext,r,Pe($,r)))'),
   behavior('tabsearch.js', 'Enter copies the answer', 'if(n.kind==="aux-settings"){', 'if(n.kind==="aux-answer"){await navigator.clipboard.writeText(n.text);auxNavSuccess=true;return}if(n.kind==="aux-settings"){'),

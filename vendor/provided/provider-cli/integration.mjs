@@ -12,16 +12,40 @@ const edit = (name, find, replace, count = 1) => Object.freeze({name, find, repl
 const NEW_ROWS = ['cursor-cli', 'grok-cli', 'opencode-cli', 'copilot-cli', 'gemini-cli', 'local-agent-cli'];
 
 export const DAEMON_EDITS = Object.freeze([
-  // A second download waits its turn for a filename instead of failing (plan 8.23).
+  // A second download waits its turn for a filename instead of failing (plan 8.23): each account has a
+  // queue, a request runs when the one ahead settles, its 30 seconds start then, and closing a file's
+  // review or shutting down takes it out of the queue before it costs a model call.
   edit('filename suggestions queue per account',
-    "if(auxDownloadNameRequests.has(accountId))throw Error('A filename suggestion is already running.');",
-    "while(auxDownloadNameRequests.has(accountId))await auxDownloadNameRequests.get(accountId).settled;"),
-  edit('a filename request says when it is settled',
-    "const entry={requestId:input.requestId,controller,guard};auxDownloadNameRequests.set(accountId,entry);",
-    "let auxSettle;const entry={requestId:input.requestId,controller,guard,settled:new Promise(done=>{auxSettle=done})};auxDownloadNameRequests.set(accountId,entry);"),
+    `  if(auxDownloadNameRequests.has(accountId))throw Error('A filename suggestion is already running.');
+  const controller=new AbortController();
+  const guard=auxCreateProductivityAccountGuard(accountId,account,input.profileId,controller,boundary);
+  const entry={requestId:input.requestId,controller,guard};auxDownloadNameRequests.set(accountId,entry);
+  const timer=setTimeout(()=>controller.abort(Error('Filename suggestion timed out.')),30000);
+  try{
+`,
+    `  const controller=new AbortController();
+  const guard=auxCreateProductivityAccountGuard(accountId,account,input.profileId,controller,boundary);
+  const queue=auxDownloadNameRequests.get(accountId)??[],ahead=queue.at(-1)?.settled;
+  let auxSettle,timer;
+  const entry={requestId:input.requestId,controller,guard,settled:new Promise(done=>{auxSettle=done})};
+  queue.push(entry);auxDownloadNameRequests.set(accountId,queue);
+  try{
+    await ahead;controller.signal.throwIfAborted();
+    timer=setTimeout(()=>controller.abort(Error('Filename suggestion timed out.')),30000);
+`),
   edit('a settled filename request lets the next one go',
     "if(auxDownloadNameRequests.get(accountId)===entry)auxDownloadNameRequests.delete(accountId)}",
-    "if(auxDownloadNameRequests.get(accountId)===entry)auxDownloadNameRequests.delete(accountId);auxSettle()}"),
+    "queue.splice(queue.indexOf(entry),1);queue.length||auxDownloadNameRequests.delete(accountId);auxSettle()}"),
+  edit('shutdown empties the filename queues',
+    "for(const entry of auxDownloadNameRequests.values())entry.controller.abort(Error('Aux is shutting down.'))",
+    "for(const queue of auxDownloadNameRequests.values())for(const entry of queue)entry.controller.abort(Error('Aux is shutting down.'))"),
+  edit('a filename request can be cancelled while it waits',
+    "const entry=auxDownloadNameRequests.get(accountId);\n  if(entry?.requestId===input.requestId&&entry.guard.profileId===input.profileId&&",
+    "const entry=auxDownloadNameRequests.get(accountId)?.find(item=>item.requestId===input.requestId);\n  if(entry&&entry.guard.profileId===input.profileId&&"),
+  // Dictation runs in the browser; nothing posts audio, so the hosted route isn't served (plan 8.2).
+  edit('no hosted speech route',
+    'ei.route(`/`,createVocHttpRouter()),ei.route(`/`,createSttHttpRouter()),ei}',
+    'ei.route(`/`,createVocHttpRouter()),ei}'),
   // The Computer Use app picker leaves out Aux itself; the Canary's bundle ID has a dot.
   edit('the app picker leaves out Aux Canary',
     'new Set([`dev.aux.browser`,`dev.aux.browserCanary`])',

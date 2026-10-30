@@ -493,6 +493,7 @@ var /** The appearance and Aux CLI rows. */
             await (async () => {
               try {
                 localStorage.setItem('aux.onboarding.completed.v1', '1');
+                chrome.auxBrowserPreferences?.setOnboardingCompleted?.(true)?.catch?.(() => {});
               } catch {}
               if ((await queryClient.fetchQuery(trpc.accounts.get.queryOptions({accountId})))?.mode === 'cloud')
                 await completeOnboarding.mutateAsync({accountId});

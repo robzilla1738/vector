@@ -2182,18 +2182,6 @@ test('the Agent panel header renders and acts like the supplied one', async () =
     props: [world => ({leading: world.stub('leading')}), {}]});
 });
 
-test('voice dictation records, transcribes and draws its overlay like the supplied one', async () => {
-  const chunk = 'assets/voice-dictation-overlay-CtbBZWfm.js';
-  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 12, defaults: false,
-    renamed: renamedBindings, scenes: [
-      {imports: {'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}}, state: ['idle', null, null]},
-      world => ({imports: {'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}}, state: ['recording', world.stub('stream'), 'Microphone permission denied.']}),
-      {imports: {'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 0}}, state: ['transcribing', null, null]},
-    ],
-    props: [world => ({status: 'recording', stream: world.stub('stream'), onCancel: world.stub('spy:onCancel'), onConfirm: world.stub('spy:onConfirm')}),
-      {status: 'transcribing', stream: null}, {status: 'idle'}]});
-});
-
 test('the capture toolbar picks modes, captures, closes and drags like the supplied one', async () => {
   const chunk = 'assets/capture-toolbar-HNeL44hk.js';
   const imports = world => ({'./translate-status-K6en4VW6.js#l': {ref: world.stub('frameRef'), sendMessage: world.stub('spy:send')},
@@ -3152,37 +3140,6 @@ test('onboarding sets the default model and submits a provider like the supplied
   for (const [provider, failing] of [['claude-code'], ['github-copilot'], ['gemini', true], ['aux'], ['custom']]) assert.equal(await route(ours, provider, failing), await route(supplied, provider, failing));
   const offline = await route(ours, 'gemini', true);
   assert.ok(offline.includes('Failed to set the default model for this provider.') && offline.includes('/onboarding/done'));
-});
-
-test('onboarding checkout helpers read real values like the supplied ones', async () => {
-  const {world, supplied, ours} = await bothSides(ONBOARDING_AI, {'./queries-ldd77hNk.js#S': 'https://app.aux.test/'});
-  const check = (name, ...args) => { assert.equal(JSON.stringify(ours[`__pair_${name}`](...args)), JSON.stringify(supplied[`__pair_${name}`](...args)), name); return ours[`__pair_${name}`](...args); };
-  const message = {type: 'aux:billing-embedded-checkout', status: 'complete'};
-  same([message, {...message, status: 'error', error: 'No'}, {...message, status: 'error', error: 3}, {...message, status: 'open'}, {...message, type: 'x'}, null, 'text'].map(value => check('isCheckoutMessage', value)), [true, true, false, false, false, false, false]);
-  same([paid, {plan: {slug: 'free'}, status: 'active'}, {plan: {slug: 'pro'}, status: 'trialing'}, {plan: {slug: 'pro'}, status: 'canceled'}, null].map(value => check('hasPaidPlan', value)), [true, false, true, false, false]);
-  same(['free', 'pro', 'team'].map(id => check('isOnboardingPlan', {id})), [true, true, false]);
-  assert.equal(check('hostedCheckoutUrl', {clientSecret: 'a&b', publishableKey: 'pk_1'}), 'https://app.aux.test/billing/embedded-checkout#client_secret=a%26b&publishable_key=pk_1');
-  world.enter({imports: {'./route-context-BT2HpiwG.js#r': async () => ({profileId: 'p 1', windowId: 4})}});
-  const url = await ours.__pair_checkoutReturnUrl(7);
-  assert.equal(url, await supplied.__pair_checkoutReturnUrl(7));
-  assert.equal(url, 'https://app.aux.test/billing/return?accountId=7&target=onboarding-ai&checkout=success&session_id={CHECKOUT_SESSION_ID}&profileId=p+1&windowId=4');
-  world.enter({imports: {'./route-context-BT2HpiwG.js#r': async () => ({profileId: 'p'})}});
-  assert.ok(!(await ours.__pair_checkoutReturnUrl(7)).includes('windowId'));
-  const wait = async (side, answers) => {
-    let asked = 0;
-    const timers = [];
-    world.enter({timers});
-    const done = side.__pair_waitForPaidPlan({accountId: 7, queryClient: {query: async () => ({subscription: answers(asked++)})}, trpc: {billing: {getSubscription: {queryOptions: () => ({})}}}});
-    for (;;) {
-      await new Promise(resolve => setImmediate(resolve));
-      if (!timers.length) break;
-      timers.shift()[0]();
-    }
-    return [await done, asked];
-  };
-  same(await wait(ours, () => null), [false, 10]);
-  same(await wait(ours, count => (count === 2 ? paid : null)), [true, 3]);
-  same(await wait(supplied, () => null), [false, 10]);
 });
 
 const EXPERIMENTAL = 'assets/experimental-Xq3YsEPK.js';

@@ -10,7 +10,7 @@
  "ae": "FailedIcon",
  "It": "CloseIcon",
  "Rt": "ReactionIcon",
- "Mt": "UnusedIcon",
+ "Mt": "MicIcon",
  "Ce": "AttentionIcon",
  "Ns": "channelSchema",
  "Ls": "channelEnvironmentSchema",

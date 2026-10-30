@@ -9,7 +9,7 @@
  *   strip-markdown: de account token, We host URL, Z cloud origin, Ge Badge, Ke paperclip icon, H useReducedMotion,
  *     Qe RelativeTime, Le Input, Xe/Ye/et Popover root/trigger/content, K Skeleton, Je plain-text preview
  *   tooltip: xt Tooltip, pt TooltipTrigger, ft TooltipContent; button A Button; kbd be Kbd; dist B toast
- *   react-Da396Co4 V motion; AnimatePresence wt; liquid-glass yt; link ce Link; translate-status qe useTheme
+ *   react-Da396Co4 V motion; AnimatePresence wt; link ce Link; translate-status qe useTheme
  *   error-tracking Fe spinner, He copy icon; tag-icon tt/st channel icons and colours
  *   tool-definition-registry it toolFor, nt toolInput, ge renderToolPart; draft-artifacts Y bubble tail, lt image grid
  *   markdown ue Markdown, ut remark plugins; message mt message renderer; file-attachments jt accept list,
@@ -146,7 +146,7 @@ var jsxRuntime = Ze(),
         fill: 'currentColor',
       }),
     }),
-  UnusedIcon = ({size = 24, ariaHidden = true, ...props}) =>
+  MicIcon = ({size = 24, ariaHidden = true, ...props}) =>
     (0, jsxRuntime.jsx)('svg', {
       viewBox: '0 0 24 24',
       fill: 'none',
@@ -702,11 +702,9 @@ function Ts({draftKey, replyTo, reply = false, onCancelReply, onSubmit, onTyping
     (0, React.useEffect)(() => {
       replyId && textarea.current?.focus();
     }, [replyId]),
-    (0, jsxRuntime.jsx)(yt, {
-      appearance: resolvedTheme === 'dark' ? 'dark' : 'light',
-      compositing: 'alpha',
+    (0, jsxRuntime.jsx)('div', {
       style: {borderRadius: 24},
-      className: 'w-full backdrop-blur-xl [&>div]:w-full',
+      className: 'bg-glass border-glass w-full border shadow-xl backdrop-blur-xl',
       children: (0, jsxRuntime.jsxs)('form', {
         'aria-label': replyTo || reply ? 'Reply to message' : 'Ask Aux',
         className: 'w-full p-2',
@@ -905,6 +903,19 @@ function Ts({draftKey, replyTo, reply = false, onCancelReply, onSubmit, onTyping
                   })
                 : (0, jsxRuntime.jsxs)(jsxRuntime.Fragment, {
                     children: [
+                      dictation.supported &&
+                        (0, jsxRuntime.jsx)(A, {
+                          type: 'button',
+                          variant: 'ghost',
+                          size: 'icon',
+                          disabled: sending,
+                          onClick: () => {
+                            dictation.start();
+                          },
+                          'aria-label': 'Voice input',
+                          className: 'rounded-full',
+                          children: (0, jsxRuntime.jsx)(MicIcon, {className: 'size-5'}),
+                        }),
                       (draft.trim() || attachments.length > 0) &&
                         (0, jsxRuntime.jsx)(A, {
                           type: 'submit',

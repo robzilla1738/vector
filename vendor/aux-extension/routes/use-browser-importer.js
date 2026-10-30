@@ -169,6 +169,12 @@ var f = B(K(), 1),
   /** Explains the system prompt before reading browser data. */
   GrantPermissionDialog = ({dialog, onOpenChange, onProceed}) => {
     const storage = dialog?.source ? safeStorage(dialog.source) : 'Chrome Safe Storage',
+      kinds = dialog?.dataKinds,
+      comingOver = !kinds || (kinds.includes('passwords') && kinds.includes('cookies'))
+        ? 'your passwords and sign-ins'
+        : kinds.includes('passwords')
+          ? 'your passwords'
+          : 'your sign-ins',
       proceed = () => {
         dialog?.type === 'grant-permission' && onProceed(dialog);
       },
@@ -190,7 +196,7 @@ var f = B(K(), 1),
               (0, jsxRuntime.jsx)(D, {className: 'font-display text-xl', children: `macOS will ask about ${storage}`}),
               (0, jsxRuntime.jsxs)(C, {
                 children: [
-                  `macOS will ask to let Aux read ${storage}, so your passwords and sign-ins come over.`,
+                  `macOS will ask to let Aux read ${storage}, so ${comingOver} come over.`,
                   (0, jsxRuntime.jsx)('br', {}),
                   'Choose Always Allow.',
                 ],

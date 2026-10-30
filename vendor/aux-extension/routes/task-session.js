@@ -1218,11 +1218,6 @@ var /** The files the session wrote. */
     {key: 'subagents', label: 'Subagents'},
     {key: 'outputArtifacts', label: 'Output artifacts'},
   ],
-  PLAYGROUND_TODOS = [
-    {id: 'mock-todo-1', content: 'Review the latest task context', status: 'completed'},
-    {id: 'mock-todo-2', content: 'Work through the active browser task', status: 'in_progress'},
-    {id: 'mock-todo-3', content: 'Summarize the result for the user', status: 'pending'},
-  ],
   PLAYGROUND_MARKDOWN = `# Task result
 
 This preview is rendered by the same output-artifact component as a real task.
@@ -1269,17 +1264,6 @@ var /** The task page: session, layout and pinned summary providers around the h
           }));
       }, [i.subagentSeed, i.subagents, u.model, sessionId, data]),
       f = void 0;
-    (0, React.useCallback)(
-      v => ({
-        ...v,
-        status: i.streaming || i.todoList ? 'running' : 'idle',
-        suspension: void 0,
-        queuedMessages: [],
-        steeringMessages: [],
-        toolState: {...v.toolState, todo: {todos: i.todoList ? PLAYGROUND_TODOS : []}, subagent: {subagents: h}},
-      }),
-      [h, i.streaming, i.todoList],
-    );
     const w = (0, React.useCallback)(
       v => navigateToSession(v, {projectId: u.projectId}),
       [navigateToSession, u.projectId],

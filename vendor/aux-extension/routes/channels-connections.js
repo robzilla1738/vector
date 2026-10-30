@@ -634,7 +634,7 @@ function fa() {
       (0, jsxRuntime.jsxs)('div', {
         className: 'flex flex-col gap-8',
         children: [
-          (0, jsxRuntime.jsx)(et, {userId, showUpgrade: false}),
+          (0, jsxRuntime.jsx)(et, {}),
           r && (0, jsxRuntime.jsx)(S.Suspense, {fallback: (0, jsxRuntime.jsx)(Bs, {}), children: (0, jsxRuntime.jsx)(ConnectionList, {})}),
         ],
       }),

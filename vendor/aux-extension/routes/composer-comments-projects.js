@@ -446,7 +446,7 @@
         [draftModelOverride, overrideModel, overrideUsable],
       ),
       model = override || {provider: modelProvider, modelId, thinkingLevel: thinking, fastMode},
-      notice = Nr({selectedProvider: model.provider}),
+      notice = Nr(),
       modelAvailable = !!findModel(modelsByProvider, model.provider, model.modelId),
       mode = resolveDraftMode(draftMode, forcedMode),
       modeForced = forcedMode != null,

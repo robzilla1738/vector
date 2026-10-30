@@ -317,6 +317,7 @@ var /** Runs the import for each attempt and moves on when it succeeds. */
     ['bookmarks', 'bookmarks'],
     ['passwords', 'passwords'],
     ['cookies', 'cookies'],
+    ['tabs', 'open tabs'],
     ['spaces', 'Spaces and pins'],
     ['searchEngine', 'default search engine'],
   ]),

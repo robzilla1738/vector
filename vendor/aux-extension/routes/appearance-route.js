@@ -457,7 +457,7 @@ function AuxShortcutProfiles({onUpdated}) {
       H,
       null,
       el(b, {
-        title: 'Browser shortcut profiles',
+        title: 'Browser shortcuts',
         description: 'Import, export or reset in-app shortcuts. The global Mini popup shortcut is managed separately.',
       }),
       el(

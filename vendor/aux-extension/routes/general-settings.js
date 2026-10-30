@@ -437,6 +437,7 @@ var /** The account card: local, paused or signed in. */
       [y, g] = (0, at.useState)(null),
       [f, R] = (0, at.useState)(null),
       [auxSearchEngine, auxSetSearchEngine] = (0, at.useState)(false),
+      [auxTabs, auxSetTabs] = (0, at.useState)(false),
       b = (0, at.useMemo)(
         () =>
           dataKinds ? c.targets.filter(k => dataKinds.every(N => k.source.supportedDataKinds.includes(N))) : c.targets,
@@ -458,10 +459,12 @@ var /** The account card: local, paused or signed in. */
         (_('idle'), g(null), R(null));
       },
       auxOffersSearchEngine = w && !!x?.source.categories?.includes('searchEngine'),
-      /** A full import names its kinds, so a new default search engine only comes when ticked. */
+      auxOffersTabs = w && !!x?.source.supportedDataKinds?.includes('tabs'),
+      /** A full import names its kinds, so a new default search engine or a window of tabs only comes when ticked. */
       auxKinds = () => [
-        ...(x.source.supportedDataKinds ?? []),
+        ...(x.source.supportedDataKinds ?? []).filter(kind => kind !== 'tabs'),
         ...(auxOffersSearchEngine && auxSearchEngine ? ['searchEngine'] : []),
+        ...(auxOffersTabs && auxTabs ? ['tabs'] : []),
       ],
       v = async () => {
         if (!x || (w && x.alreadyImported)) return;
@@ -525,12 +528,21 @@ var /** The account card: local, paused or signed in. */
                       (0, A.jsx)(Ds, {checked: auxSearchEngine, disabled: T, onCheckedChange: auxSetSearchEngine}),
                     ],
                   }),
+                auxOffersTabs &&
+                  (0, A.jsxs)('label', {
+                    className: 'text-primary flex items-center justify-between gap-2 px-1 text-sm',
+                    children: [
+                      `Open the tabs from ${x.source.name}`,
+                      (0, A.jsx)(Ds, {checked: auxTabs, disabled: T, onCheckedChange: auxSetTabs}),
+                    ],
+                  }),
                 w &&
                   x &&
-                  !x.source.supportedDataKinds?.includes('passwords') &&
                   (0, A.jsx)('p', {
                     className: 'text-muted-foreground px-1 text-xs',
-                    children: `Passwords can’t come over from ${x.source.name}. They stay there and in your password manager.`,
+                    children: x.source.supportedDataKinds?.includes('passwords')
+                      ? 'Imported passwords fill in on sites. Aux doesn’t save new ones: that stays with your password manager.'
+                      : `Passwords can’t come over from ${x.source.name}. They stay there and in your password manager.`,
                   }),
               ],
             }),
@@ -740,6 +752,7 @@ var /** The account card: local, paused or signed in. */
     ['bookmarks', 'bookmarks'],
     ['passwords', 'passwords'],
     ['cookies', 'cookies'],
+    ['tabs', 'open tabs'],
     ['spaces', 'Spaces and pins'],
     ['searchEngine', 'default search engine'],
   ]),

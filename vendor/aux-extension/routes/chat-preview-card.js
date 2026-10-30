@@ -290,25 +290,7 @@ var MARKDOWN_COMPONENTS = {img: () => null},
               .filter(Boolean).join(`
 
 `)),
-      {data: billing} = R(
-        trpc.billing.getSubscription.queryOptions(
-          {accountId, fresh: true},
-          {enabled: !!sessionError && S(sessionError).kind === 'credits-aux-v2', staleTime: 6e4},
-        ),
-      ),
-      classifiedError = sessionError
-        ? S({
-            ...sessionError,
-            billing: {
-              plan: billing
-                ? billing.subscription && ['active', 'trialing'].includes(billing.subscription.status)
-                  ? billing.subscription.plan.slug
-                  : 'free'
-                : void 0,
-              creditRefreshAt: billing?.credit.refresh_at,
-            },
-          })
-        : null,
+      classifiedError = sessionError ? S(sessionError) : null,
       openRoutine = event => {
         (event.preventDefault(), event.stopPropagation(), session.routine && onOpenRoutine(session.routine.id));
       };

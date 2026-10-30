@@ -40,28 +40,7 @@ var jsxRuntime = se(),
       }),
     }),
   React = Y(ee()),
-  CLI_ILLUSTRATION = '/assets/aux-cli-3UABIqGq.webp' /** Questions and answers about the Aux CLI. */,
-  CLI_QUESTIONS = [
-    {
-      id: 'using-cli',
-      question: 'How can I use Aux CLI?',
-      answer:
-        'Choose the command that matches the task:\n\n- `aux exec "..."` delegates a complete browser task to Aux\'s agent. Use it to gather account data across signed-in sites or complete a multi-step workflow using your cookies, browsing history, and memory.\n- `aux repl` runs Playwright-like JavaScript for direct browser control and verifiable evidence. Use it to inspect the DOM, reproduce a UI bug, capture a screenshot, check network requests, or download a file.\n- `aux mcp` lets an MCP-compatible coding agent call Aux browser tools itself.\n\nRun `aux --help`, `aux exec --help`, or `aux repl --help` for current command options.',
-    },
-    {
-      id: 'coding-agents',
-      question: 'Can’t this already be done with Codex or Claude?',
-      answer: `Codex, Claude, Cursor, and OpenCode plan the work and edit code. Aux connects them to your signed-in browser sessions and supplies browser access and automation.
-
-For example, your coding agent can verify a local UI against live account data or investigate a production flow that requires an existing login. Your credentials and cookies stay in Aux Browser instead of being copied into prompts.`,
-    },
-    {
-      id: 'cli-vs-mcp',
-      question: 'What’s the difference between Aux CLI and MCP?',
-      answer:
-        'Aux CLI is the command-line entry point for humans and scripts. It includes `exec`, `repl`, and `mcp`. MCP is the protocol integration that lets a compatible agent invoke Aux tools over stdio.\n\nChoose the CLI for terminal workflows and repeatable scripts. Add MCP when the host agent should discover and call browser tools during its own run.',
-    },
-  ]; /** The Developers page. */
+  CLI_ILLUSTRATION = '/assets/aux-cli-3UABIqGq.webp';
 function ss() {
   return (0, jsxRuntime.jsxs)(jsxRuntime.Fragment, {
     children: [
@@ -316,111 +295,6 @@ var /** Install, update or reinstall the Aux CLI, or copy its install command. *
     {id: 'claude-code', name: 'Claude Code', icon: ue, path: '~/.claude/skills'},
     {id: 'cursor', name: 'Cursor', icon: CursorIcon, path: '~/.cursor/skills'},
     {id: 'opencode', name: 'OpenCode', icon: he, path: '~/.config/opencode/skills'},
-  ] /** The Aux MCP server: enable it, and how to set it up. */,
-  McpServer = () => {
-    const t = A(),
-      {capture} = I(),
-      {data, isPending} = v(t.developers.checkCliInstallation.queryOptions()),
-      c = (0, React.useMemo)(
-        () => JSON.stringify({mcpServers: {aux: {command: data?.commandPath ?? 'aux', args: ['mcp']}}}, null, 2),
-        [data?.commandPath],
-      ),
-      l = m => {
-        const o = m.target;
-        if (o instanceof Element) {
-          if (o.closest('[data-streamdown="code-block-copy-button"]')) {
-            capture('settings.developers.mcp.copy-config');
-            return;
-          }
-          o.closest('[data-streamdown="code-block-download-button"]') &&
-            capture('settings.developers.mcp.download-config');
-        }
-      };
-    return (0, jsxRuntime.jsxs)(N, {
-      children: [
-        (0, jsxRuntime.jsxs)('div', {
-          className: 'min-w-0 grow px-1',
-          children: [
-            (0, jsxRuntime.jsx)('h4', {
-              className: 'text-primary text-sm font-medium',
-              'data-settings-field': 'Enable Aux MCP server',
-              children: 'Enable Aux MCP server',
-            }),
-            (0, jsxRuntime.jsxs)(z, {
-              children: [
-                (0, jsxRuntime.jsxs)(V, {
-                  render: (0, jsxRuntime.jsx)(w, {
-                    variant: 'ghost',
-                    className: 'text-muted-foreground h-auto gap-1 rounded-sm p-0 text-xs font-medium',
-                  }),
-                  children: [
-                    (0, jsxRuntime.jsx)(F, {className: 'size-3'}),
-                    (0, jsxRuntime.jsx)('span', {
-                      className: 'decoration-muted-foreground/50 underline decoration-dotted underline-offset-2',
-                      children: 'How to set up MCP server?',
-                    }),
-                  ],
-                }),
-                (0, jsxRuntime.jsxs)(W, {
-                  className: 'min-w-0 overflow-hidden sm:max-w-lg',
-                  children: [
-                    (0, jsxRuntime.jsxs)(G, {
-                      children: [
-                        (0, jsxRuntime.jsx)(Z, {children: 'Set up Aux MCP server'}),
-                        (0, jsxRuntime.jsxs)($, {
-                          children: [
-                            'Install Aux CLI, then copy and paste this configuration into the ',
-                            (0, jsxRuntime.jsx)(Code, {children: 'mcp.json'}),
-                            ' (or equivalent MCP configuration) of your agent or tool.',
-                          ],
-                        }),
-                      ],
-                    }),
-                    (0, jsxRuntime.jsx)('div', {
-                      className: 'max-w-full min-w-0 overflow-hidden',
-                      onClickCapture: l,
-                      children: (0, jsxRuntime.jsx)(U, {
-                        className:
-                          'h-auto w-full max-w-full min-w-0 **:data-[streamdown="code-block-actions"]:-translate-y-2',
-                        children: `\`\`\`mcp.json
-${c}
-\`\`\`
-              `,
-                      }),
-                    }),
-                  ],
-                }),
-              ],
-            }),
-          ],
-        }),
-        (0, jsxRuntime.jsx)(R, {
-          children: (0, jsxRuntime.jsxs)(Q, {
-            children: [
-              (0, jsxRuntime.jsx)(H, {children: (0, jsxRuntime.jsx)(K, {disabled: true, checked: data?.installed})}),
-              !isPending &&
-                !data?.installed &&
-                (0, jsxRuntime.jsx)(M, {
-                  children: (0, jsxRuntime.jsxs)('div', {
-                    children: ['Install ', (0, jsxRuntime.jsx)(Code, {children: 'aux'}), ' CLI to run MCP server'],
-                  }),
-                }),
-              !isPending &&
-                data?.installed &&
-                (0, jsxRuntime.jsx)(M, {
-                  children: (0, jsxRuntime.jsxs)('div', {
-                    children: [
-                      'Add ',
-                      (0, jsxRuntime.jsx)(Code, {children: 'aux mcp'}),
-                      ' to your agent tool, and it will run Aux over stdio when needed.',
-                    ],
-                  }),
-                }),
-            ],
-          }),
-        }),
-      ],
-    });
-  },
+  ],
   Code = ({children}) =>
     (0, jsxRuntime.jsx)('code', {className: 'bg-secondary rounded-sm px-1 py-px font-mono', children});

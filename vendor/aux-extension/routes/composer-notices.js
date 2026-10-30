@@ -1,34 +1,26 @@
 /* Aux-owned source, composer pass 4: the composer's notices and status pills
  * (assets/session-composer-Dc0LRfZA.js, from the notice hook to the file-attachment test). The
- * provider, sign-in and subscription notices, the monthly usage warning with its upgrade and credit
- * buttons, the connection notice, and the pills above the composer (todos, subagents, scroll to
- * bottom). This block starts inside the chunk's `var` list.
- * Names the chunk uses elsewhere keep their chunk names: Nr useComposerNotice, jh UsageWarning,
+ * provider and connect notices, the connection notice, and the pills above the composer (todos,
+ * subagents, scroll to bottom). This block starts inside the chunk's `var` list.
+ * Names the chunk uses elsewhere keep their chunk names: Nr useComposerNotice,
  * Ih ComposerNotice (exported j), T1 ComposerCardNotice (exported A, drawn under the composer card),
  * Nh ComposerStatusBar, Er isFileAttachment.
  * Chunk names used: a JSX runtime, g React, Y cn, ge useApp, Ce useTRPC, Fe useQuery, on the model
  * settings, me useSession, zt the session controller, dn disconnected, un stream status, Ia a
- * dismissal, at dayjs, bi relative time, br openPage, pn page href, wr link click, J Button,
+ * dismissal, at dayjs, pn page href, wr link click, J Button,
  * Ae/Pe/Ie tooltip parts, Bl dismissible nudge, Sn message list, ch/Xa scroll state, Sr
  * AnimatePresence, Mt motion, $t the side panel, Ut openSession, Rt the subagent icon, an shimmer.
- * Aux change: the usage warning takes the 12px scale corner (rounded-xl), and the notice under the
- * composer card tucks under and curves around the card's 12px corner (it followed the 16px one). */
-/** useComposerNotice: what the composer should say about the selected provider: connect one, sign in, the monthly limit, or connect a subscription. */
-  Nr = ({selectedProvider}) => {
+ * Aux changes: the notice under the composer card tucks under and curves around the card's 12px
+ * corner (it followed the 16px one); no plans or credits, so no usage warning, no billing lookup and
+ * no paused-plan notice. */
+/** useComposerNotice: what the composer should say about the models: connect one, or connect a subscription. */
+  Nr = () => {
     const {accountId} = ge(),
       trpc = Ce(),
       {availableModels, hasExternalSubscription, isLoading} = on(),
       {data: account} = Fe(trpc.accounts.get.queryOptions({accountId})),
-      signedIn = account?.mode === 'cloud' && account.authStatus !== 'paused',
-      paused = account?.mode === 'cloud' && account.authStatus === 'paused',
-      local = account?.mode === 'local',
-      auxProvider = selectedProvider === 'aux',
-      subscriptionQuery = Fe(
-        trpc.billing.getSubscription.queryOptions(
-          {accountId},
-          {enabled: signedIn && auxProvider, retry: false, staleTime: 6e4},
-        ),
-      );
+      local = account?.mode === 'local';
+
     if (!isLoading && availableModels.length === 0 && local)
       return {
         kind: 'ai-subscription-connect',
@@ -36,27 +28,7 @@
         actionLabel: 'Connect',
         actionPath: `/u/${accountId}/settings/model`,
       };
-    if (!isLoading && availableModels.length === 0 && paused)
-      return {
-        kind: 'aux-sign-in-required',
-        description: paused
-          ? 'Your session is paused, so Aux plan models are unavailable for Ask AI.'
-          : 'Sign in to use Aux provider',
-        actionLabel: 'Sign in',
-        actionPath: '/auth/sign-in',
-      };
-    const billing = subscriptionQuery.data,
-      usedPercent = billing?.credit.used_percent;
-    if (signedIn && auxProvider && billing && !subscriptionQuery.isPending && $l(usedPercent))
-      return {
-        kind: 'aux-monthly-limit-warning',
-        usedPercent,
-        exhausted: BigInt(billing.credit.balance_micros) + BigInt(billing.credit.add_on_balance_micros) <= 0n,
-        resetsAt: billing.credit.refresh_at,
-        plan: billing.subscription?.plan.slug ?? 'free',
-      };
-    const subscriptionPending = signedIn && auxProvider && subscriptionQuery.isPending;
-    if (account && !isLoading && !subscriptionPending && hasExternalSubscription === false)
+    if (account && !isLoading && hasExternalSubscription === false)
       return {
         kind: 'ai-subscription-connect',
         description: 'Connect my AI subscription',
@@ -110,107 +82,21 @@
 function connectionMessage() {
   return dn() ? 'Task status will update when the connection is restored.' : null;
 }
-var /** The monthly usage warning: how much is used or when credits reset, with upgrade and credit buttons. */
-  UsageBanner = ({accountId, usage}) => {
-    const {isDismissed, dismiss} = Ia(
-      `composer.usageBanner.${accountId}.${usage.resetsAt}`,
-      at.default.duration(Math.max(0, (0, at.default)(usage.resetsAt).diff((0, at.default)()))),
-    );
-    if (!AUX_LAUNCH_POLICY.hostedAiEnabled || (!usage.exhausted && isDismissed)) return null;
-    const {plan, resetsAt} = usage,
-      action = plan === 'free' ? 'Upgrade your plan' : plan === 'max' ? 'Buy credits' : 'Upgrade or buy credits',
-      resetsLabel = bi(new Date(resetsAt), new Date()),
-      detail = usage.exhausted
-        ? `${action} to keep going${resetsLabel ? `, or wait until your credits reset ${resetsLabel}` : ''}.`
-        : [`${usage.usedPercent}% used`, resetsIn(resetsAt)].filter(Boolean).join(' · '),
-      buttons = [
-        ...(plan === 'max' ? [] : [{label: 'Upgrade', search: '?change_plan=1', primary: true}]),
-        ...(plan === 'free' ? [] : [{label: 'Buy credits', search: '?add_credits=1', primary: plan === 'max'}]),
-      ],
-      openBilling = search => () => br(`/u/${accountId}/settings/billing${search}`);
-    return (0, a.jsx)('div', {
-      role: 'status',
-      'aria-label': 'Usage warning',
-      className: 'bg-muted mb-2 rounded-xl py-2 pr-2 pl-3 text-xs',
-      children: (0, a.jsxs)('div', {
-        className: 'flex min-w-0 items-start gap-1',
-        children: [
-          (0, a.jsxs)('div', {
-            className: 'flex min-w-0 grow flex-wrap items-center gap-x-2.5 gap-y-2 py-0.5',
-            children: [
-              (0, a.jsxs)('div', {
-                className: 'min-w-0 grow basis-56',
-                children: [
-                  (0, a.jsx)('p', {
-                    className: 'font-medium',
-                    children: usage.exhausted ? 'Monthly usage limit reached' : 'Approaching monthly usage limit',
-                  }),
-                  (0, a.jsx)('p', {className: 'text-muted-foreground', children: detail}),
-                ],
-              }),
-              (0, a.jsx)('div', {
-                className: 'flex shrink-0 gap-1.5',
-                children: buttons.map(button =>
-                  (0, a.jsx)(
-                    J,
-                    {
-                      variant: button.primary ? 'default' : 'secondary',
-                      size: 'xs',
-                      shape: 'pill',
-                      onClick: openBilling(button.search),
-                      children: button.label,
-                    },
-                    button.label,
-                  ),
-                ),
-              }),
-            ],
-          }),
-          !usage.exhausted &&
-            (0, a.jsx)(J, {
-              variant: 'ghost',
-              size: 'icon-xs',
-              shape: 'pill',
-              'aria-label': 'Dismiss usage warning',
-              className: 'shrink-0',
-              onClick: dismiss,
-              children: (0, a.jsx)(Nc, {className: 'size-3.5'}),
-            }),
-        ],
-      }),
-    });
-  } /** Resets in 2 days 3 hours, or 4 hours 5 min, or 6 min. */,
-  resetsIn = resetsAt => {
-    const minutes = Math.ceil((0, at.default)(resetsAt).diff((0, at.default)(), 'minute', true));
-    if (!Number.isFinite(minutes) || minutes <= 0) return '';
-    const unit = (count, name) => (count ? `${count} ${name}${count === 1 ? '' : 's'}` : ''),
-      [days, hours, mins] = [Math.floor(minutes / 1440), Math.floor((minutes % 1440) / 60), minutes % 60];
-    return `Resets in ${(days ? [unit(days, 'day'), unit(hours, 'hour')] : hours ? [unit(hours, 'hour'), mins ? `${mins} min` : ''] : [`${mins} min`]).filter(Boolean).join(' ')}`;
-  } /** UsageWarning: the usage banner for the current session, while connected. */,
-  jh = () => {
-    const notice = zt()?.notice,
-      {accountId} = ge();
-    return dn() || notice?.kind !== 'aux-monthly-limit-warning'
-      ? null
-      : (0, a.jsx)(UsageBanner, {accountId, usage: notice}, `${accountId}.${notice.resetsAt}.${notice.exhausted}`);
-  } /** ComposerNotice: the provider notice for the current session. */,
+var /** ComposerNotice: the provider notice for the current session. */
   Ih = ({className}) => {
     const notice = zt()?.notice;
     return (0, a.jsx)(ProviderNotice, {reason: notice, className});
-  } /** A provider notice: the subscription nudge, or the sign-in or connect line with its action. */,
+  } /** A provider notice: the subscription nudge. */,
   ProviderNotice = ({reason, className}) => {
     const {accountId} = ge();
-    return dn() || !reason || reason.kind === 'aux-monthly-limit-warning'
+    return dn() || !reason
       ? null
       : (0, a.jsx)('div', {
           className: Y(
             'text-muted-foreground mx-auto mb-2 flex min-w-0 items-center gap-1 px-2 text-xs font-medium empty:hidden',
             className,
           ),
-          children:
-            reason.kind === 'ai-subscription-connect'
-              ? (0, a.jsx)(SubscriptionNudge, {reason}, accountId)
-              : (0, a.jsx)(SignInNotice, {reason}),
+          children: (0, a.jsx)(SubscriptionNudge, {reason}, accountId),
         });
   } /** ComposerCardNotice: the notice under the composer card: offline, or what the provider needs. */,
   T1 = ({className}) => {
@@ -219,9 +105,7 @@ var /** The monthly usage warning: how much is used or when credits reset, with 
       {isDismissed} = useSubscriptionNudge();
     return disconnected
       ? (0, a.jsx)(ConnectionNotice, {className})
-      : !notice ||
-          notice.kind === 'aux-monthly-limit-warning' ||
-          (notice.kind === 'ai-subscription-connect' && isDismissed)
+      : !notice || (notice.kind === 'ai-subscription-connect' && isDismissed)
         ? null
         : (0, a.jsx)('div', {
             role: 'status',
@@ -268,30 +152,7 @@ var /** The monthly usage warning: how much is used or when credits reset, with 
           onDismiss: dismissForever,
           children: (0, a.jsx)('span', {className: 'truncate', children: reason.description}),
         });
-  },
-  SignInNotice = ({reason}) =>
-    (0, a.jsxs)(a.Fragment, {
-      children: [
-        (0, a.jsxs)('div', {
-          className:
-            'bg-surface-secondary ring-border-surface-strong inline-flex h-6 min-w-0 items-center gap-1 rounded-full px-2 shadow-xs ring-[0.5px]',
-          title: reason.description,
-          children: [
-            (0, a.jsx)(Fi, {className: '-ml-0.5 size-3.5 shrink-0'}),
-            (0, a.jsx)('span', {className: 'truncate', children: reason.description}),
-          ],
-        }),
-        (0, a.jsx)(J, {
-          variant: 'outline',
-          className: 'shrink-0',
-          size: 'xs',
-          shape: 'pill',
-          nativeButton: false,
-          render: (0, a.jsx)('a', {href: pn(reason.actionPath), onClick: wr}),
-          children: reason.actionLabel,
-        }),
-      ],
-    }) /** ComposerStatusBar: the pills and notices floating above the composer. */,
+  } /** ComposerStatusBar: the pills and notices floating above the composer. */,
   Nh = () => {
     const {isReadonly} = Sn();
     return (0, a.jsx)('div', {
@@ -319,7 +180,7 @@ var /** The monthly usage warning: how much is used or when credits reset, with 
   } /** The provider notice in the status bar, for an open session. */,
   SessionProviderNotice = () => {
     const {currentSession} = me(),
-      notice = Nr({selectedProvider: currentSession.model.provider});
+      notice = Nr();
     return currentSession.id
       ? (0, a.jsx)(ProviderNotice, {reason: notice, className: '*:bg-popover! mx-0 mb-0 max-w-full px-0'})
       : null;

@@ -1,10 +1,4 @@
 {
  "F": "CheckIcon",
- "G": "useLatestRef",
- "P": "MAX_RECORDING_MS",
- "q": "WARM_MIC_MS",
- "S": "stopTracks",
- "j": "BAR_COUNT",
- "A": "SILENT_BAR_PX",
- "H": "METER_INTERVAL_MS"
+ "j": "BAR_COUNT"
 }

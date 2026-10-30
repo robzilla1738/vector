@@ -40,14 +40,8 @@ var S = ds(ps(), 1),
     }),
   }),
   COVER = '/assets/cover-BBxO7594.webp',
-  jsxRuntime = us() /** The Channels cover: Aux, Anywhere, and upgrading when channels need a plan. */,
-  et = ({userId, showUpgrade = true}) => {
-    const n = Ue(),
-      {capture} = R(),
-      r = () => {
-        (capture('settings.channels.access.upgrade'),
-          n({to: '/u/$userId/settings/billing', params: {userId}, search: {change_plan: 1}}));
-      };
+  jsxRuntime = us() /** The Channels cover: Aux, Anywhere. */,
+  et = () => {
     return (0, jsxRuntime.jsx)(Z, {
       children: (0, jsxRuntime.jsxs)(T, {
         className: 'items-stretch gap-2.5 p-1',

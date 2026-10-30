@@ -19,6 +19,7 @@ var h = A(z(), 1),
     ['spaces', 'Spaces and pins'],
     ['bookmarks', 'Bookmarks'],
     ['history', 'History'],
+    ['tabs', 'Open tabs'],
     ['cookies', 'Stay signed in to sites'],
     ['extensions', 'Extensions'],
     ['passwords', 'Passwords'],
@@ -182,11 +183,12 @@ var h = A(z(), 1),
                     ),
                   ),
                 }),
-              !supported.includes('passwords') &&
-                (0, jsxRuntime.jsx)('p', {
-                  className: 'text-muted-foreground text-xs',
-                  children: `Passwords can’t come over from ${browser?.source.name}. They stay there and in your password manager.`,
-                }),
+              (0, jsxRuntime.jsx)('p', {
+                className: 'text-muted-foreground text-xs',
+                children: supported.includes('passwords')
+                  ? 'Imported passwords fill in on sites. Aux doesn’t save new ones: that stays with your password manager.'
+                  : `Passwords can’t come over from ${browser?.source.name}. They stay there and in your password manager.`,
+              }),
             ],
           }),
         (0, jsxRuntime.jsxs)(L, {

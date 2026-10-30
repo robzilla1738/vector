@@ -1155,7 +1155,7 @@ var /** Where the mini popup opens a menu window: beside its anchor, kept on scr
       h = availableModels.some(
         p => p.provider === currentSession.model.provider && p.id === currentSession.model.modelId,
       ),
-      d = Nr({selectedProvider: currentSession.model.provider}),
+      d = Nr(),
       m = p => {
         !canMove || isMoveLocked || handleMove(p);
       };
@@ -1296,7 +1296,7 @@ var /** Where the mini popup opens a menu window: beside its anchor, kept on scr
               children: (0, a.jsxs)('div', {
                 className: Y('@container/composer mx-auto w-full px-3 pb-2', className),
                 'data-agent-session-ui': 'chat',
-                children: [(0, a.jsx)(jh, {}), (0, a.jsx)(QueuedMessages, {children}, currentSession.id)],
+                children: [(0, a.jsx)(QueuedMessages, {children}, currentSession.id)],
               }),
             }),
           }),

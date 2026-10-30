@@ -61,14 +61,68 @@ test('setup: Run setup again opens after finishing, with no redirect anywhere', 
   const {visit} = onboardingGuard({account: {mode: 'local'}, done: true});
   for (const path of ['/onboarding/glance', '/onboarding/import-browser', '/onboarding/ai']) assert.equal(await visit(path), undefined, path);
   const main = staged(MAIN);
-  const due = new Function('localStorage', 'chrome', `${main.match(/function auxOnboardingDue\(\)\{.*?\}catch\{return!1\}\}/)[0]};return auxOnboardingDue`);
-  assert.equal(due({getItem: () => '1'}, {extension: {}})(), false, 'Settings doesn’t send a finished person back');
-  assert.equal(due({getItem: () => null}, {extension: {}})(), true);
-  assert.equal(due({getItem: () => null}, {extension: {inIncognitoContext: true}})(), false);
+  const due = new Function('localStorage', 'chrome', `${main.match(/async function auxOnboardingDue\(\)\{.*?\}catch\{return!1\}\}/)[0]};return auxOnboardingDue`);
+  assert.equal(await due({getItem: () => '1'}, {extension: {}})(), false, 'Settings doesn’t send a finished person back');
+  assert.equal(await due({getItem: () => null}, {extension: {}})(), true, 'an older browser without the native record');
+  assert.equal(await due({getItem: () => null}, {extension: {inIncognitoContext: true}})(), false);
   const world = createWorld();
   const general = await load(world, 'assets/general-3dgRbrRk.js', ['Gg']);
   assert.match(text(world.render(general.__Gg, {})), /Run setup again/);
   assert.match(readFileSync(new URL('./routes/general-settings.js', import.meta.url), 'utf8'), /main\.html#\/onboarding\/glance/);
+});
+
+test('setup: finishing is per browser, so a new isolated data group doesn’t start over', async () => {
+  const main = staged(MAIN);
+  assert.match(main, /if\(!t&&await auxOnboardingDue\(\)\)throw/);
+  const due = new Function('localStorage', 'chrome', `${main.match(/async function auxOnboardingDue\(\)\{.*?\}catch\{return!1\}\}/)[0]};return auxOnboardingDue`);
+  const store = values => ({getItem: key => values[key] ?? null, setItem: (key, value) => { values[key] = value; }});
+  const saved = {};
+  assert.equal(await due(store(saved), {extension: {}, auxBrowserPreferences: {getOnboardingCompleted: async () => true}})(), false, 'finished elsewhere in this browser');
+  assert.equal(saved['aux.onboarding.completed.v1'], '1', 'and remembered here');
+  assert.equal(await due(store({}), {extension: {}, auxBrowserPreferences: {getOnboardingCompleted: async () => false}})(), true);
+  let told;
+  assert.equal(await due(store({'aux.onboarding.completed.v1': '1'}), {extension: {}, auxBrowserPreferences: {setOnboardingCompleted: async value => { told = value; }}})(), false);
+  assert.equal(told, true, 'a person who finished before the native record is carried over');
+  const done = readFileSync(new URL('./routes/onboarding-done.js', import.meta.url), 'utf8');
+  assert.ok(done.includes('setOnboardingCompleted?.(true)'));
+  assert.ok(staged('background.js').includes('getOnboardingCompleted?.()'), 'installing into a new group doesn’t reopen it');
+});
+
+test('setup: Make it yours previews the Spaces an import brought', async () => {
+  const world = createWorld();
+  const {__SpacesPreview: preview} = await load(world, 'assets/glance-BfAlmExy.js', ['SpacesPreview']);
+  const rendered = text(world.render(preview, {spaces: [{id: 'a', name: 'Work', icon: '💼', color: '#123456', order: 0}, {id: 'b', name: 'Home', icon: '', order: 1}]}));
+  for (const part of ['Work', '💼', '#123456', 'Home']) assert.ok(rendered.includes(part), part);
+});
+
+test('dictation: both composers listen through the browser and post nothing', async () => {
+  const chunk = 'assets/voice-dictation-overlay-CtbBZWfm.js';
+  assert.doesNotMatch(released(chunk), /stt\/transcribe|MediaRecorder/);
+  assert.match(released('assets/session-composer-Dc0LRfZA.js'), /const o=Mc\(insertText\)|o = Mc\(insertText\)/);
+  const source = readFileSync(new URL('./routes/voice-dictation-overlay.js', import.meta.url), 'utf8');
+  const hook = source.slice(source.indexOf('function Y(onTranscript)'), source.indexOf("/** The meter's bars. */"));
+  const react = {useState: value => [value, () => {}], useRef: current => ({current}), useCallback: run => run, useEffect: () => {}};
+  const heard = [], spoken = [];
+  const browser = {auxBrowserPreferences: {startDictation: async () => heard.push('start'), stopDictation: async () => (heard.push('stop'), ' hello ')}};
+  const dictation = new Function('t', 'chrome', `${hook};return Y`)(react, browser)(text => spoken.push(text));
+  assert.equal(dictation.supported, true);
+  await dictation.start();
+  await dictation.confirm();
+  assert.deepEqual([heard, spoken], [['start', 'stop'], ['hello']]);
+  assert.equal(new Function('t', 'chrome', `${hook};return Y`)(react, {})(() => {}).supported, false, 'no Dictate button without the native API');
+  const composer = released('assets/conversation-D9Q3VEsl.js');
+  assert.match(composer, /dictation\.supported &&/);
+  assert.match(composer, /'aria-label': 'Voice input'/);
+});
+
+test('dead code: no billing, payment, password or test route, no liquid glass, and no plan copy', () => {
+  const main = staged(MAIN);
+  for (const route of ['settings/billing', 'settings/payment-use', 'settings/password', '/artifact-test/', '/error-test/', '/liquid-glass-playground/'])
+    assert.ok(!main.includes(route), route);
+  for (const chunk of ['assets/session-composer-Dc0LRfZA.js', 'assets/channels-CJn5l9_T.js', 'assets/ai-CzEX5E7S.js', 'assets/chat-preview-card-J0uel3r2.js'])
+    assert.doesNotMatch(released(chunk), /Upgrade|Buy credits|settings\/billing|billing\.get|Stripe|Checkout/, chunk);
+  for (const chunk of ['assets/conversation-D9Q3VEsl.js', 'assets/ai-CzEX5E7S.js', 'assets/import-password-mvM-KsU6.js'])
+    assert.equal(dropRemovedChunks(released(chunk)), dropRemovedChunks(dropRemovedChunks(released(chunk))), chunk);
 });
 
 test('setup: Welcome and Make it yours open before the daemon; the other steps wait inline', async () => {
@@ -127,11 +181,13 @@ test('import: what comes over is chosen, passwords say when they can’t, and th
   const open = (source, unchecked) => world.render(Dialog, {browsers: [browserRow(source)], initialBrowserId: source.id, initialStep: 'data', onCancel: () => {}, onImport: (_, options) => sent.push(options)},
     {state: ['data', source.id, '', unchecked, 'merge'], event: {}});
   const fromChrome = text(open(chrome, ['searchEngine']));
+  assert.ok(fromChrome.includes('Imported passwords fill in on sites.'));
   for (const row of ['Passwords', 'Extensions', 'Default search engine', 'Stay signed in to sites']) assert.ok(fromChrome.includes(row), row);
   assert.ok(!fromChrome.includes('can’t come over'));
   assert.deepEqual(plain(sent.at(-1).dataKinds), ['bookmarks', 'history', 'cookies', 'extensions', 'passwords'], 'unticked by default, so it isn’t sent');
   open(chrome, []);
   assert.ok(sent.at(-1).dataKinds.includes('searchEngine'), 'ticked, it is');
+  assert.ok(text(open({...chrome, supportedDataKinds: [...chrome.supportedDataKinds, 'tabs']}, ['searchEngine'])).includes('Open tabs'));
   const fromFirefox = text(open(firefox, ['searchEngine']));
   assert.ok(fromFirefox.includes('Passwords can’t come over from Firefox.'));
   for (const row of ['"Passwords"', 'Extensions', 'Default search engine']) assert.ok(!fromFirefox.includes(row), row);

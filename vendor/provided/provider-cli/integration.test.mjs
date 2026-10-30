@@ -43,6 +43,41 @@ test('inputs are the sealed candidate files', () => {
   for (const rule of CONNECT_DIALOG_EDITS) assert.equal(count(input.dialog, rule.find), rule.count, rule.name);
 });
 
+test('daemon: filename suggestions queue per account, and a waiting one can be cancelled', async () => {
+  const from = output.daemon.indexOf('async function auxRunDownloadNameRequest(');
+  const code = output.daemon.slice(from, output.daemon.indexOf('function transformAuxFilesDaemon', from));
+  const calls = [], gates = [];
+  const scope = new Function('auxBrokerBoundary', 'auxCreateProductivityAccountGuard', 'settings', 'models', 'proposeDownloadName', 'modelRuntime', `
+    const init_runtime$1 = () => {}, init_models = () => {}, init_settings$1 = () => {}, auxDownloadNameRequests = new Map();
+    ${code}
+    return {run: auxRunDownloadNameRequest, cancel: auxCancelDownloadNameRequest, stop: auxStopDownloadNameRequests, waiting: () => auxDownloadNameRequests.get(1)?.length ?? 0};`)(
+    () => ({assertOwner() {}, registerProducerStop() {}, awaited: run => run()}),
+    (accountId, account, profileId) => ({assertCurrent() {}, dispose() {}, profileId, createdAt: account.createdAt, incarnation: account.incarnationId}),
+    () => ({get() {}}), () => ({}),
+    input => (calls.push(input.requestId), new Promise(resolve => gates.push(() => resolve(input.requestId)))), {});
+  const account = {createdAt: 1, incarnationId: 'i'};
+  const request = requestId => scope.run(1, {requestId, profileId: 'p'}, account);
+  const [first, second, third] = [request('a'), request('b'), request('c')];
+  await new Promise(setImmediate);
+  assert.deepEqual([calls, scope.waiting()], [['a'], 3], 'one at a time, and nothing fails');
+  scope.cancel(1, {requestId: 'b', profileId: 'p'}, account);
+  gates.shift()();
+  assert.equal(await first, 'a');
+  await assert.rejects(second, /File review closed/);
+  await new Promise(setImmediate);
+  assert.deepEqual(calls, ['a', 'c'], 'the cancelled one never reached the model');
+  gates.shift()();
+  assert.equal(await third, 'c');
+  assert.equal(scope.waiting(), 0);
+  const [running, queued] = [request('d'), request('e')];
+  await new Promise(setImmediate);
+  scope.stop();
+  gates.shift()();
+  await running;
+  await assert.rejects(queued, /shutting down/);
+  assert.equal(scope.waiting(), 0);
+});
+
 test('daemon: borrowed identities gone, every hook in place, still parses', () => {
   check('entry', output.daemon);
   for (const marker of FORBIDDEN) assert.equal(count(output.daemon, marker), 0, marker);

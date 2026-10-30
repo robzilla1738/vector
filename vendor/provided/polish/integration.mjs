@@ -267,7 +267,7 @@ const SETTINGS_SHELL = [
     '{label:"Appearance",icon:B,activeIcon:B,href:"/u/$userId/settings/appearance"},{label:"Shortcuts",icon:F1,activeIcon:O1,href:"/u/$userId/settings/shortcuts"},'),
   edit('search finds shortcuts on their own page',
     '{title:"Transparency"},{title:"Extension shortcuts",description:"Manage shortcuts for Aux extensions"}]},',
-    '{title:"Transparency"}]},{path:"/u/$userId/settings/shortcuts",title:"Shortcuts",sections:["Keyboard shortcuts"],fields:[{title:"Keyboard shortcuts",searchTerms:["shortcut","hotkey","keys","keyboard"]},{title:"Browser shortcut profiles",description:"Import, export or reset in-app shortcuts."},{title:"Extension shortcuts",description:"Manage shortcuts for Aux extensions"}]},'),
+    '{title:"Transparency"}]},{path:"/u/$userId/settings/shortcuts",title:"Shortcuts",sections:["Keyboard shortcuts"],fields:[{title:"Keyboard shortcuts",searchTerms:["shortcut","hotkey","keys","keyboard"]},{title:"Browser shortcuts",description:"Import, export or reset in-app shortcuts."},{title:"Extension shortcuts",description:"Manage shortcuts for Aux extensions"}]},'),
   edit('Appearance search has no shortcuts section',
     'title:"Appearance",sections:["Appearance","Tabs","Keyboard shortcuts"]',
     'title:"Appearance",sections:["Appearance","Tabs"]'),
@@ -464,6 +464,7 @@ const ONBOARDING_PASSWORD = [
     'You can add one later from Extensions.'),
 ];
 const ONBOARDING_MODELS = [
+  edit('Models has no pricing', 'import{i as Ze,n as He,o as Ue,r as ze,s as qe,t as Ge}from"./pricing-table-shared-BWz9Ewvm.js";', ''),
   edit('Models goes back to the password manager step',
     'render:(0,e.jsx)(ne,{to:"/onboarding/glance",replace:!0}),children:[(0,e.jsx)(de,{"data-icon":"inline-start"}),(0,e.jsx)("span",{children:"Back"})]',
     'render:(0,e.jsx)(ne,{to:"/onboarding/make-it-yours",replace:!0}),children:[(0,e.jsx)(de,{"data-icon":"inline-start"}),(0,e.jsx)("span",{children:"Back"})]'),
@@ -489,8 +490,40 @@ const ONBOARDING_DONE = [
     'await S.mutateAsync({accountId:d}),',
     'await(async()=>{try{localStorage.setItem("aux.onboarding.completed.v1","1")}catch{}if((await r.fetchQuery(n.accounts.get.queryOptions({accountId:d})))?.mode==="cloud")await S.mutateAsync({accountId:d})})(),'),
 ];
-// Test and playground routes, and the Context Awareness route (no one can reach it, and it isn't real yet).
+// Test, playground, billing, payment and built-in password routes, and the Context Awareness route
+// (no one can reach them, and Aux has none of those products); their chunks are in REMOVED_CHUNKS.
 const REMOVED_ROUTES = [
+  edit('no chunk needs the payment route', 'rn as f,', ''),
+  edit('no chunk needs the password route', 'en as p,', ''),
+  edit('no chunk needs the billing route', 'Lo as v,', ''),
+  edit('no billing route',
+    'Oo=()=>s(()=>import("./billing-DuRDVoRU.js"),__vite__mapDeps([296,2,10,11,1,3,4,5,6,7,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,92,52,138,94,139,54,62,67,288,297,196,150,243,183,170,184,185,69,186,86,50,298,79,283])),Lo=n("/_web/(settings)/u/$userId/settings/billing/")({beforeLoad:({params:{userId:e}})=>{throw c({to:"/u/$userId/settings/general",params:{userId:e},replace:!0})},component:a(()=>Jo(),"component"),validateSearch:l({add_credits:Z().pipe(x(1)).optional(),change_plan:Z().pipe(x(1)).optional()})}),', ''),
+  edit('no password route',
+    'Xo=()=>s(()=>import("./password-LjdLcSRV.js"),__vite__mapDeps([315,2,10,11,1,3,4,5,6,7,72,50,18,73,13,14,15,16,17,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,172,93,272,304,138,94,139,213,95,223,54,210,209,76,144,145,80,67,173,214,58,184,185,197,149,150,157,215,216,200,201,199,217,57,227,224,196,86])),en=n("/_web/(settings)/u/$userId/settings/password/")({beforeLoad:({params:{userId:e}})=>{throw c({to:"/u/$userId/settings/general",params:{userId:e},replace:!0})},component:a(Xo,"component"),validateSearch:l({dialog:v(["import","share","vaults"]).optional(),pwmAccountId:B().optional(),vaultId:I().optional()})}),', ''),
+  edit('no payment route',
+    'tn=()=>s(()=>import("./payment-use-CqnbXHDE.js"),__vite__mapDeps([316,2,11,1,3,4,5,6,7,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,138,94,139,223,297,196,126,150,86,50,10,200,301])),rn=n("/_web/(settings)/u/$userId/settings/payment-use/")({component:a(tn,"component"),beforeLoad:({params:{userId:r}})=>{throw c({to:"/u/$userId/settings/general",params:{userId:r},replace:!0})}}),', ''),
+  edit('no artifact test route',
+    'Gt=()=>s(()=>import("./artifact-test-CdjpLuI1.js"),__vite__mapDeps([71,2,72,10,11,1,3,4,5,6,7,50,18,73,13,14,15,16,17,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,74,75,76,77,78,79,80,81,82,83,84,85,86])),Zt=n("/artifact-test/")({beforeLoad:()=>{throw c({to:"/",replace:!0})},component:a(Gt,"component")}),', ''),
+  edit('no error test route',
+    'Jt=()=>s(()=>import("./error-test-BKjD4Ku7.js"),__vite__mapDeps([87,2,72,10,11,1,3,4,5,6,7,50,18,73,13,14,15,16,17,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,88,89,90,75,76,77,74,78,79,80,81,82,83,84,91,92,93,94,95,65,67,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,69,116,45,86])),Yt=n("/error-test/")({beforeLoad:()=>{throw c({to:"/",replace:!0})},component:a(Jt,"component")}),', ''),
+  edit('the test routes are out of the tree',
+    'Vn=Zt.update({id:"/artifact-test/",path:"/artifact-test/",getParentRoute:()=>R}),kn=Yt.update({id:"/error-test/",path:"/error-test/",getParentRoute:()=>R}),', ''),
+  edit('the billing route is out of the tree',
+    'Ea=Lo.update({id:"/billing/",path:"/billing/",getParentRoute:()=>m}),', ''),
+  edit('the password route is out of the tree',
+    'Da=en.update({id:"/password/",path:"/password/",getParentRoute:()=>m}),', ''),
+  edit('the payment route is out of the tree',
+    'ja=rn.update({id:"/payment-use/",path:"/payment-use/",getParentRoute:()=>m}),', ''),
+  edit('the test routes are out of the root',
+    'ArtifactTestIndexRoute:Vn,', ''),
+  edit('the error route is out of the root',
+    'ErrorTestIndexRoute:kn,', ''),
+  edit('the billing route is out of Settings',
+    'WebsettingsUUserIdSettingsBillingIndexRoute:Ea,', ''),
+  edit('the password route is out of Settings',
+    'WebsettingsUUserIdSettingsPasswordIndexRoute:Da,', ''),
+  edit('the payment route is out of Settings',
+    'WebsettingsUUserIdSettingsPaymentUseIndexRoute:ja,', ''),
   edit('no liquid glass playground route',
     'Xt=()=>s(()=>import("./liquid-glass-playground-DkwgfDqY.js"),__vite__mapDeps([117,2,86,50,10,11,1,3,4,5,6,7,118,119])),er=n("/liquid-glass-playground/")({beforeLoad:()=>{throw c({to:"/",replace:!0})},component:a(Xt,"component")}),', ''),
   edit('the playground route is out of the tree',
@@ -543,7 +576,7 @@ const ONBOARDING_ROUTES = [
   // Local users reach setup through any page of the app, not only a first-install tab.
   edit('the app sends a first run to setup',
     'if(!t&&e.pathname.startsWith("/u/")&&ee(e.pathname)!==u)throw c({href:V(e.href,u),replace:!0});return{accountId:u}',
-    'if(!t&&auxOnboardingDue())throw c({to:"/onboarding/glance",replace:!0});if(!t&&e.pathname.startsWith("/u/")&&ee(e.pathname)!==u)throw c({href:V(e.href,u),replace:!0});return{accountId:u}'),
+    'if(!t&&await auxOnboardingDue())throw c({to:"/onboarding/glance",replace:!0});if(!t&&e.pathname.startsWith("/u/")&&ee(e.pathname)!==u)throw c({href:V(e.href,u),replace:!0});return{accountId:u}'),
   // Steps that need the daemon wait for it inline; Welcome and Make it yours don't need it.
   edit('onboarding opens before the daemon is ready',
     'Qt=n("/_public/onboarding")({beforeLoad:async({context:e,location:t})=>{if(await te(),Ht(t.pathname)||Y)return;',
@@ -557,60 +590,31 @@ const ONBOARDING_ROUTES = [
   edit('Models waits inline', 'n("/_public/onboarding/ai/")({validateSearch:', 'n("/_public/onboarding/ai/")({pendingMs:0,pendingComponent:auxAgentReady,validateSearch:'),
   edit('the local record of finishing setup',
     'function Ht(e){return e.replace(/\\/+$/,"")===Mt}',
-    'function Ht(e){return e.replace(/\\/+$/,"")===Mt}function auxAgentReady(){return(0,i.jsx)("div",{className:"text-muted-foreground flex h-screen items-center justify-center text-sm",children:"Getting your agent ready…"})}function auxOnboardingDue(){try{return!chrome.extension?.inIncognitoContext&&localStorage.getItem("aux.onboarding.completed.v1")!=="1"}catch{return!1}}'),
+    'function Ht(e){return e.replace(/\\/+$/,"")===Mt}function auxAgentReady(){return(0,i.jsx)("div",{className:"text-muted-foreground flex h-screen items-center justify-center text-sm",children:"Getting your agent ready…"})}async function auxOnboardingDue(){try{if(chrome.extension?.inIncognitoContext)return!1;const key="aux.onboarding.completed.v1",api=chrome.auxBrowserPreferences;if(localStorage.getItem(key)==="1")return api?.setOnboardingCompleted?.(!0)?.catch(()=>{}),!1;if(await api?.getOnboardingCompleted?.())return localStorage.setItem(key,"1"),!1;return!0}catch{return!1}}'),
 ];
 const BACKGROUND = [
   // A new profile starts with setup; updates and restarts don't.
   edit('a new profile opens onboarding',
     'onInstalled.addListener(() => Vt(!0))',
-    'onInstalled.addListener((details) => { Vt(!0); if (details?.reason === "install") chrome.tabs.create({ url: chrome.runtime.getURL("main.html#/onboarding/glance") }); })'),
+    'onInstalled.addListener(async (details) => { Vt(!0); if (details?.reason === "install" && !(await chrome.auxBrowserPreferences?.getOnboardingCompleted?.().catch(() => false))) chrome.tabs.create({ url: chrome.runtime.getURL("main.html#/onboarding/glance") }); })'),
   // The agent panel listens for this and goes back to the home thread.
   edit('the agent button returns the panel to the home thread',
     'chrome.action.onClicked.addListener(async (e) => {\n  e.windowId && await chrome.sidePanel.open({ windowId: e.windowId });\n});',
     'chrome.action.onClicked.addListener(async (e) => {\n  e.windowId && await chrome.sidePanel.open({ windowId: e.windowId });\n  e.windowId && chrome.runtime.sendMessage({ type: "aux-agent-home", windowId: e.windowId }).catch(() => {});\n});'),
 ];
 
-// Dictation runs on this Mac through the browser (auxBrowserPreferences.startDictation and
-// stopDictation, macOS Speech) instead of posting audio to a hosted /stt/transcribe route that
-// doesn't exist. Same shape as the bundled hook, so the Dictate button and overlay are unchanged.
-// The overlay's level meter wants a MediaStream; native capture has none, so `stream` is just
-// `true` while listening (the meter stays flat, Convert is enabled). Without the native API
-// (an older browser build) there is no Dictate button.
-const auxDictationHook = 'auxDictation=insert=>{'
-  + 'const api=typeof chrome<"u"?chrome.auxBrowserPreferences:void 0,'
-  + '[status,setStatus]=(0,g.useState)("idle"),[listening,setListening]=(0,g.useState)(!1),'
-  + '[error,setError]=(0,g.useState)(null),phase=(0,g.useRef)("idle"),inserter=(0,g.useRef)(insert);'
-  + 'inserter.current=insert;'
-  + 'const move=next=>{phase.current=next,setStatus(next),setListening(!1)},'
-  + 'start=(0,g.useCallback)(async()=>{if(phase.current!=="idle")return;setError(null),move("recording");'
-  + 'try{await api.startDictation(),phase.current==="recording"&&setListening(!0)}'
-  + 'catch(e){phase.current==="recording"&&(move("idle"),setError(e?.message||"Dictation couldn\'t start."))}},[api]),'
-  + 'finish=(0,g.useCallback)(async keep=>{if(phase.current!=="recording")return;move(keep?"transcribing":"idle");'
-  + 'try{const text=(await api.stopDictation()).trim();keep&&(text?inserter.current(text):setError("Nothing was heard. Try again."))}'
-  + 'catch(e){keep&&setError(e?.message||"Dictation failed.")}finally{keep&&move("idle")}},[api]);'
-  + '(0,g.useEffect)(()=>()=>{phase.current==="recording"&&api.stopDictation().catch(()=>{})},[api]);'
-  + 'return{supported:typeof api?.startDictation=="function",status,stream:listening||null,error,start,'
-  + 'cancel:()=>finish(!1),confirm:()=>finish(!0),warmMic:()=>{}}},';
 const COMPOSER = [
   edit('the composer imports no plan or add-on dialogs',
     'import{d as ql,l as Wl,t as Gl,u as Ql}from"./add-on-credits-dialog-Dn5FxOyZ.js";', ''),
   edit('the composer imports no Ultrabrowse parts',
     'import{c as Gr,d as wl,i as Sl,l as Ta,n as Pl,o as kl,s as Ml,t as jl,u as Il}from"./model-select-BvZsM1Kl.js"',
     'import{c as Gr,i as Sl,l as Ta,n as Pl,o as kl,s as Ml,t as jl}from"./model-select-BvZsM1Kl.js"'),
-  edit('the Dictate button uses on-device dictation',
-    'xn=(0,g.createContext)(null),Su=({children:e})=>{',
-    `xn=(0,g.createContext)(null),${auxDictationHook}Su=({children:e})=>{`),
-  edit('the composer listens through the browser, not a hosted route',
-    'const o=Mc(n);',
-    'const o=auxDictation(n);'),
   edit('no Dictate button without the native dictation API',
     '(0,a.jsx)(xn,{value:{...o,hasLiveText:r},',
     '(0,a.jsx)(xn,{value:o.supported?{...o,hasLiveText:r}:null,'),
 ];
 const CONVERSATION = [
-  edit('no Voice input button while dictation has no working backend',
-    "(0,t.jsx)(A,{type:\"button\",variant:\"ghost\",size:\"icon\",disabled:y,onClick:()=>{if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||navigator.platform===\"MacIntel\"&&navigator.maxTouchPoints>1){R.current?.focus(),B.info(\"Use the microphone on your device keyboard for voice input.\");return}g.start()},\"aria-label\":\"Voice input\",className:\"rounded-full\",children:(0,t.jsx)(Mt,{className:\"size-5\"})}),",
-    ''),
+  edit('the chat view has no liquid glass', 'import{t as yt}from"./liquid-glass-DlNhZpZV.js";', ''),
 ];
 
 /** Edits per extension chunk, relative to dist/. */

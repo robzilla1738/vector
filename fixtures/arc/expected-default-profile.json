@@ -1,0 +1,51 @@
+{
+ "spaces": [
+  {
+   "title": "Work",
+   "icon": "💼",
+   "colors": [
+    "#1A3366"
+   ],
+   "entries": [
+    {
+     "url": "https://docs.example.com/handbook",
+     "title": "Team handbook",
+     "renamed": true
+    },
+    {
+     "title": "Reading",
+     "children": [
+      {
+       "url": "https://papers.example.org/1234",
+       "title": "A paper"
+      },
+      {
+       "title": "Untitled Folder",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Untitled Space",
+   "icon": "🏠",
+   "colors": [
+    "#FF8000",
+    "#33CC99"
+   ],
+   "entries": [
+    {
+     "url": "https://news.example.net/",
+     "title": "News"
+    }
+   ]
+  }
+ ],
+ "pins": [
+  {
+   "url": "https://mail.example.com/",
+   "title": "Mail"
+  }
+ ]
+}
