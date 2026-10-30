@@ -258,7 +258,7 @@
   "native/lib/libnspr4.dylib": {
    "originalSha256": "1e6ffe8b0792dfdab53a7ce134cb3ac2ad3b37892b1153106d0a81b0b7e83c37",
    "rpaths": [],
-   "sha256": "77619f402146a7f9363a1911a195ceafab5a621b30be4753e5afe6b45bc45412"
+   "sha256": "68732e7a16558a157816e831f4876a000c818064e7f73a810210f4cb5a467672"
   },
   "native/lib/libnss3.dylib": {
    "originalSha256": "e65b6817a0328817bab840a1234964e46a5a7b0fb96689e07a89d8c5696c66f1",
@@ -285,12 +285,12 @@
   "native/lib/libplc4.dylib": {
    "originalSha256": "2eb1a7b0bac634e67eb4708ca00d4873faad1351f295429da48b31bea79d541b",
    "rpaths": [],
-   "sha256": "14efbb106790c85f5c2d3afc8696c67b11fd9885fc34265867e9a9e5c0cfb93c"
+   "sha256": "5a3b7bdedf2e6abcd18acb208542a72194a43835b7400a4ee47d65466b691213"
   },
   "native/lib/libplds4.dylib": {
    "originalSha256": "cddfad9344daa2b40a4b0175a098893213b573a5571b44637d629c34db33324d",
    "rpaths": [],
-   "sha256": "8762e3207fc1c3e7882c3799071bf12df2e8f25d5dc675e7debf60b2eb48ce87"
+   "sha256": "51ca73b6e0cf40ce5440fd65941fa6aecb4a89d723404b91ffc7790f53fbb335"
   },
   "native/lib/libpng16.16.dylib": {
    "originalSha256": "fb0c2c7d30d5552cf44ab56b352795db100aefa98cd56c19171bdc6a6ee77232",

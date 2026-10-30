@@ -6,77 +6,91 @@ Robert asked for a thorough review of the browser experience — the agent, qual
 
 **Sources:** nine read-only code reviews of build 77 and the durable checkout, plus an on-screen look at build 77 beside the running Aside and the saved Arc references (`out/acceptance/20261027/ref/`). Findings marked *(check)* were inferred from code and need one look on screen before or while fixing. File paths are under the durable checkout's `src/` unless they start with `vendor/`, `scripts/` or `docs/`; `frame/` means `chrome/browser/ui/views/frame/`.
 
-## Progress (build 91, 2026-10-29)
+## Progress (build 95, 2026-10-29)
 
-Build 91 (`out/release/1.0.0-91`) carries everything below, built from the durable checkout and the release transforms and checked on screen as noted. Not yet done is listed at the end.
+Build 95 (`out/release/1.0.0-95`) carries everything below. It is assembled from the durable checkout with the release transforms and `--pdf-runtime`. It launches, and the items marked *(seen)* were checked on screen. The rest is built and unit-tested but not yet driven by hand.
 
 **Done**
 - **Batch 1:**
-  - Shortcuts: page-first, Ask Aux on Ctrl+Command+E in every table, Ctrl+1–9 for Spaces.
-  - Startup no longer waits for the daemon (it waits for the agent extension, at most 5 s).
-  - Sidebar rows persist; Clear works per Space; close falls back safely.
-  - The extensions button is in the address row; the find bar sits in the card; the download bubble anchors on the footer button; the Space row has overflow and 24 px targets.
-  - Import is trimmed to history and bookmarks (cookies too, except from files); File › Import opens Aux's import route.
-  - The first-run screens are off in all builds.
-- **Batch 2 (data groups):**
-  - A browser-wide Space directory in local state (`chrome/browser/aux/organization/space_directory.*`) lists every Space in every profile, in one order. Each profile keeps it in sync.
-  - The footer row, the Spaces menu, Ctrl+1–9 and next/previous Space all use it.
-  - Opening a Space in another group moves the window to that group's profile, then selects the Space.
-  - Isolated Spaces show a lock and a "(own sign-ins and cookies)" tooltip.
-  - Create a Space offers **Sign-ins and cookies:** shared with any group's Space, or Isolated (a new profile whose first Space becomes this one). On screen: the choice shows with "Shared with Main".
-  - The profile dots and the startup profile picker are gone.
-  - `aux open --space` works on its own; routing finds the group.
+  - Shortcuts: page-first; Ask Aux on Ctrl+Command+E; Ctrl+1–9 for Spaces.
+  - The window opens before the daemon is ready.
+  - Sidebar rows persist *(seen)*; Clear works per Space; close falls back safely.
+  - Find bar in the card; downloads popover on the footer button.
+  - Import is history, bookmarks and cookies, with File › Import going to Aux's route; first-run screens are off.
+- **Batch 2, Spaces replace profiles:**
+  - A browser-wide Space directory (`chrome/browser/aux/organization/space_directory.*`) gives one footer row, the Spaces menu, Ctrl+1–9, next/previous and the two-finger swipe, across every data group *(seen)*.
+  - Opening a Space in another group moves the window to that group's profile.
+  - Create a Space offers "Sign-ins and cookies": shared with a group, or Isolated, which makes a new profile *(seen)*. Isolated Spaces show a lock.
+  - The profile dots, the startup picker and the footer profile button are gone. `aux open --space` works alone.
+  - One agent across Spaces: name, look and setup live once (`agent-shared`); Instructions and personality saves are written to every local account; each group keeps its own home thread.
 - **Batch 3:**
-  - Row state, accessibility, keyboard, rename, the shared context menu, archived view and split-as-one-row (seen on screen).
-  - Ctrl+Tab and Cmd+1–9 follow the sidebar. The Ctrl+Tab panel takes the Space theme and reacts to the Control key's release instead of polling every 30 ms.
-  - Cmd+Shift+T reopens in place; New folder in the Tabs header.
-  - Pins: "Back to pinned page" (corner mark, tooltip line, menu item), a 6 px drag threshold, and no "Pins" header (seen on screen; it stays as the section's accessible name).
-  - Archive: a filter field (Escape leaves, Return opens the first match) and "last used" relative dates.
-  - Multi-select: archive, unload, pin, move, New folder and Delete act on the whole selection.
-  - Tab cleanup is stored in hours, offering 12 h, 24 h, 7 days and 30 days; policies saved in days still read.
+  - Row state, accessibility, keyboard, rename, the shared menu, archive (sorted, filter field, relative dates) and multi-select actions.
+  - A split shows as one row *(seen)*.
+  - Ctrl+Tab and Cmd+1–9 follow the sidebar; the Ctrl+Tab panel takes the theme and reacts to the Control key's release.
+  - Pins: "Back to pinned page", no "Pins" header *(seen)*, 6 px drag threshold.
+  - Tab cleanup offers 12 h, 24 h, 7 days and 30 days.
+  - Sidebar inks go through `SidebarInk` (bookmark rows, headers, header actions, footer, Space dots); the shared-update dot uses the accent.
 - **Batch 4:**
-  - Drag Space icons to reorder.
-  - Drop a tab on a Space icon to move it there; resting on the icon opens that Space first.
-  - Emoji search by name in the icon picker.
-  - The Create a Space panel locks while it saves and checks the name's length.
+  - Reorder Space icons by dragging.
+  - Drop a tab on a Space icon; resting on it opens that Space.
+  - Emoji search; swipe between Spaces (the sidebar slides in its own group, with a live preview across groups); the dead `AuxSpacesSwitcher` is removed.
 - **Batch 5:**
-  - One set of frame metrics (gutter 6, pane gap 6, radii 8/10/12).
-  - The split handle is easier to grab; the active-pane outline is softer.
-  - Theme backdrops are cached and readable.
-  - The gutter drags the window; the preview reveal is 240 ms.
+  - One frame metric set; the card corner is the window's own corner less the gutter, which is 16 points on macOS 26+ (measured on 27) and 10 on 15.
+  - A soft card shadow.
+  - **Arc-style sidebar top** *(seen)*: window controls, toggle, extensions, back, forward and reload on one row, and the address field the full width under it. The Agent button leads the footer, and the footer sits lower.
+  - **One window surface** *(seen)*: the sidebar, the gutter around the page and the Agent card's surround all paint the Space theme and backdrop, or nothing so the window material shows. There is no outline at the sidebar edge and no page-colored toolbar.
+  - The Agent panel is a card with the same gutter and corner.
+  - The doubled collapse icon in a revealed sidebar is fixed.
+  - The command bar clamps to the window, sits in the upper third and animates scale and opacity.
+  - The narrow sidebar is clamped to its address row.
+  - Peek is an in-window sheet (Option-Shift-click) with Open in split and Expand to tab, and failures show as a status.
+  - Little Aux opens with no window, remembers its frame, has Move to Space and a Settings switch.
+  - Frame behavior is keyed on the build flag.
+- **Batch 6:**
+  - Arc's pinned Spaces, folders, favorites and themes import into Aux Spaces.
+  - Partial imports succeed with a plain message and Try again (onboarding and Settings).
+  - Edge is a source; the password writer is removed.
 - **Batch 7:**
-  - Crash-report consent, a version line ("Aux 1.0.0 (N) · local build") and the theme picker API.
-  - A Spaces menu, plus Tab, View and Help menu items.
-  - Settings rows cleaned up: Developers, account Sync, billing and Context Awareness are gone. Feedback opens mail; Lasso and background copy are fixed.
-  - Onboarding: import → password → AI → done, with local completion.
+  - A Shortcuts page; command-bar commands (Settings pages, window, find, zoom, bookmark, duplicate, mute, full screen, pause ad blocking).
+  - Per-site ad-block pause (command bar and Settings › Paused sites).
+  - Crash consent, version line and theme picker API.
+  - Menus.
+  - Billing, Ads and Sync rows removed.
+  - Copy fixes; diagnostic logs removed.
 - **Batch 8:**
-  - Web search runs in the local browser (Google results through the browser's own fetch) instead of the missing cloud `/search` route.
-  - The local-agent work, 8.3–8.10 and 8.24: no in-app sign-in, detection at daemon start, an ACP driver, CLI tools under Aux approvals, the system prompt, capabilities, tool cards, one session per thread, a process watchdog, real model lists, and sign-in errors.
-  - The agent button status combines all sessions and returns the panel to the home thread.
-  - Command-bar Ask sends to the home thread, falling back to the New Tab composer when there is no home thread yet.
-  - Instructions-read guard; Escape in Customize and Meet; the no-model empty state; the Side chats menu; memory in the home prompt.
+  - Browser-backed web search.
+  - Local agent CLIs: ACP driver, Aux approvals, one session per thread, watchdog, real model lists, sign-in errors.
+  - Panel home thread, Stop on the agent button, "Can't reach" with backoff, the status in the button's accessible name.
+  - Command-bar Ask to the home thread.
+  - On-device dictation (Speech framework).
 - **Batch 9:**
-  - The floor is macOS 15 (`LSMinimumSystemVersion` 15.0.0).
-  - The private glass-variant call and the `_NSThemeWidget` CHECKs are guarded.
-  - Endpoint Security custody is macOS 27+ only.
+  - The floor is macOS 15. The glass variant and `_NSThemeWidget` CHECKs are guarded, and Endpoint Security custody is 27+ only.
+  - The 34 poppler/nss/glib/gpgme runtime files are rebuilt from pinned sources for 15.0 (`scripts/runtime/build-pdf-runtime.py`, assembled with `--pdf-runtime`).
+- **Batch 10:**
+  - Aux's own text for all 51 built-in skills (`vendor/aux-skills/`).
+  - CLI `spaces`, `tabs`, `chats`, `status`, `list` and `resolve`.
+  - Specs for the Computer Use helper protocol and the memory helper formats (`docs/spec/`).
 
-**Not done yet**
-- **Agent across groups (Batch 2):**
-  - The daemon still allows one account per profile (`normalizeProfileBindingState`, `pauseDuplicateCloudAccountSlots`, the browser-binding checks). One agent across isolated Spaces needs those invariants changed and a live check.
-  - Until then, an isolated Space has its own agent account.
-- **Profile swipe:** the swipe between profiles (`aux_profile_preview_*`) still exists and should become a swipe between Spaces. The profile pager's view is hidden but its class remains.
-- **Organization unit tests:** they compile but can't link, because `build/toolchain/apple/aux_host_link_filter.py` admits only reviewed link outputs. Adding the test binary and `libtest_trace_processor` to `host-output-allowlist.json` is Robert's review.
-- **Import (1.9b):** the unreachable password writer in `import_service.cc` and `chromium_new_target_import.cc` still needs removing.
-- **Batch 3:** a multi-row drag; one painter shared by bookmark and tab rows; SidebarForeground in every remaining ink.
-- **Batch 4:** the animated swipe between Spaces; preview scope per window.
-- **Batch 5:** the card radius from the real window corner, a shadow instead of the rim, cards in every mode, Peek as a sheet, Little Aux without a window, and command-bar animation.
-- **Batch 6:** Arc import into Spaces, pins and themes; partial-success import; Edge.
-- **Batch 7 remainder:** the Shortcuts section, ad-block per-site pause, the chrome://settings lockdown, and the copy fixes listed there.
-- **Batch 8 remainder:**
-  - On-device dictation; "Add a local agent…"; effort for Grok, Cursor, OpenCode and ACP.
-  - Live checks with Robert's own CLI logins (the approval card on a CLI turn, Cursor ask mode, the Copilot and Gemini ACP flags).
-- **Batch 9:** rebuilding poppler and the other runtime binaries for macOS 15, and a check on a macOS 15 VM.
-- **Batch 10:** all of it.
+**Not done, and why**
+- **Batch 10 rewrites:**
+  - Not yet written: the Computer Use helper as a new Swift app, the memory helper rewrite, the daemon router-by-router replacement, the extension route-by-route rewrite and the native addons.
+  - Each is a long rewrite. The two specs are the first step; the launch records in `aux-daemon` must change with them.
+- **Organization model unit tests:**
+  - They compile, but linking a test binary needs `aux_test` outputs in `build/toolchain/apple/host-output-allowlist.json`.
+  - The permission classifier refused that edit even with Robert's approval, so Robert adds it by hand.
+- **Not built, with reasons:**
+  - The CLI `ask`, `exec`, `repl` and `mcp` (they need an approval design).
+  - The Web Store banner rule (the selector can't be seen from here).
+  - The page-info ad-block switch (no Aux section in page info).
+  - The `aside_*` popup names (set by the supplied extension).
+  - The traffic-light offset constant (not found).
+- **Live checks still owed:**
+  - CLI provider turns with Robert's logins.
+  - A themed Space on screen with the new single surface.
+  - Peek and Little Aux by hand.
+  - Dictation permission prompts.
+  - A macOS 15 VM run.
+  - Arc import against a real `StorableSidebar.json`.
 
 ## Decisions kept
 

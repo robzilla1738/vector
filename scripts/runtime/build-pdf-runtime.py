@@ -133,10 +133,10 @@ def meson(src: Path, env: dict, *options):
     run([TOOLS / 'bin/meson', 'install', '-C', build], env=env)
 
 
-def configure(src: Path, env: dict, *options, script: str = 'configure'):
-    run([src / script, f'--prefix={PREFIX}', '--disable-static', '--disable-dependency-tracking', *options],
+def configure(src: Path, env: dict, *options, make: tuple = ()):
+    run([src / 'configure', f'--prefix={PREFIX}', '--disable-static', '--disable-dependency-tracking', *options],
         cwd=src, env=env)
-    run(['make'], cwd=src, env=env)
+    run(['make', *make], cwd=src, env=env)
     run(['make', 'install'], cwd=src, env=env)
 
 
@@ -216,7 +216,9 @@ def recipes(env: dict, sdk: str) -> dict:
                                        '--disable-cxx', '--disable-tools', '--disable-tests', '--disable-docs',
                                        '--disable-contrib', '--without-x'),
         'nspr': lambda s: (configure(s / 'nspr', env, '--enable-64bit', '--enable-optimize', '--disable-debug',
-                                     '--with-pthreads', '--enable-ipv6', '--enable-macos-target=15.0'),
+                                     '--with-pthreads', '--enable-ipv6', '--enable-macos-target=15.0',
+                                     # NSPR records its build time; pin it so rebuilds are byte-identical.
+                                     make=('SH_DATE=2026-10-01 00:00:00', 'SH_NOW=1790812800000000')),
                            absolute_ids(['libnspr4.dylib', 'libplc4.dylib', 'libplds4.dylib'], PREFIX / 'lib')),
         'nss': lambda s: build_nss(s, env),
         'libgpg-error': lambda s: configure(s, env, '--disable-doc', '--disable-tests',
