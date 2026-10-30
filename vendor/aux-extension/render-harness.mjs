@@ -7,6 +7,8 @@ import {createHash} from 'node:crypto';
 
 const hash = text => createHash('sha256').update(text).digest('hex').slice(0, 12);
 const LABEL = Symbol('label');
+/** Where a spread stub came from: `options[STUB_PATH]` (see the stub's ownKeys). */
+export const STUB_PATH = Symbol.for('aux.stub.path');
 
 /** One stub world, shared by the chunks being compared, so an imported value is the same object in each. */
 // Chunk code under stubs may start async work that fails (an effect's fire-and-forget fetch); that
@@ -58,6 +60,11 @@ export function createWorld() {
       },
       construct: (_, args) => stub(`new ${path}(${signature(args)})`),
       has: () => false,
+      // Spreading a stub ({...trpc.x.queryOptions(), retry: false}) keeps its path under STUB_PATH,
+      // so a scene can still tell which query it is.
+      ownKeys: target => [...Reflect.ownKeys(target), STUB_PATH],
+      getOwnPropertyDescriptor: (target, key) => (key === STUB_PATH ? {value: path, enumerable: true, configurable: true}
+        : Reflect.getOwnPropertyDescriptor(target, key)),
     });
     proxies.set(path, proxy);
     return proxy;
@@ -243,7 +250,7 @@ export function createWorld() {
       encodeURIComponent, decodeURIComponent, isFinite, Uint8Array, Uint8ClampedArray, ArrayBuffer, DataView, BigInt, WeakRef,
       CSS: stub('CSS'), crypto: stub('crypto'), location: stub('location'), history: stub('history'), localStorage: stub('localStorage'),
       sessionStorage: stub('sessionStorage'), fetch: stub('fetch'), chrome: stub('chrome'), self: undefined, global: undefined,
-      HTMLElement: stub('HTMLElement'), Element: stub('Element'), Node: stub('Node'), CustomEvent: stub('CustomEvent'),
+      HTMLElement: stub('HTMLElement'), Audio: stub('Audio'), FileReader: stub('FileReader'), Element: stub('Element'), Node: stub('Node'), CustomEvent: stub('CustomEvent'),
     });
     context.globalThis = context;
     chunkIdentifiers.add(identifier);

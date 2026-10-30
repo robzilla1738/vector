@@ -6,6 +6,7 @@ import test from 'node:test';
 import {requireInput} from '../../scripts/lib/inputs.mjs';
 import {GLOBALS_CSS, ROUTES, TOKEN_CHANGES, integrateRoutes, integrateStyles, readRoute, renamedBindings} from './integration.mjs';
 import {assertFreeNames, assertParity, createWorld, evaluatePair} from './parity.mjs';
+import {STUB_PATH} from './render-harness.mjs';
 import {stagedText} from './staged.mjs';
 
 const candidate = requireInput('candidateApp');
@@ -874,5 +875,208 @@ test('the privacy settings manage filters and browsing data like the supplied pa
     side => side.__pair_deleteBrowsingData({period: 'all', items: ['cookies']}),
   ];
   for (const [index, work] of works.entries()) assert.equal(await run(ours, work), await run(supplied, work), `work ${index}`);
+});
+
+// Settings pages answer their queries by name; a spread query's name is kept under STUB_PATH.
+const queryName = options => String(options?.[STUB_PATH] ?? options);
+const queries = answers => options => {
+  const name = queryName(options);
+  const key = Object.keys(answers).find(part => name.includes(part));
+  return key ? answers[key] : {data: undefined, isLoading: true};
+};
+
+// The Account page with a cloud account, its profile, devices, sync key and a waiting CLI login.
+test('the Account page renders like the supplied one with an account and devices', async () => {
+  const chunk = 'assets/account-Dr_CA8LL.js';
+  const account = {id: 7, mode: 'cloud', authStatus: 'active', email: 'r@aux.example', name: 'r@aux.example', profileUrl: null, userId: 'u1'};
+  const devices = [{id: 'd1', deviceName: 'Studio', platform: 'macos', lastUsedAt: '2026-10-29T10:00:00Z', appVersion: '1.4.0', isCurrent: true},
+    {id: 'd2', platform: 'windows', lastSeenAt: '2026-09-01T00:00:00Z', isCurrent: false}, {id: 'd3', platform: 'linux'}];
+  const scene = (world, {mode = 'cloud', authStatus = 'active', status = {canEnroll: true, syncGeneration: 2, state: 'missing'}, me = {email: 'r@aux.example', name: 'Robert',
+    profileUrl: 'https://img.example/me.png', userId: 'u1'}, pending = [{requestId: 'q1', deviceName: 'Terminal', expiresAt: '2026-10-30T12:05:00Z'}]} = {}) => ({imports: {
+    './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')},
+    './strip-markdown-DRcmtuJc.js#tr': queries({'accounts.get': {data: {...account, mode, authStatus}}, 'auth.devices': {data: devices}, deviceCodePending: {data: pending}}),
+    './strip-markdown-DRcmtuJc.js#nr': queries({'auth.me': {data: me}, syncKeyStatus: {data: status, error: null}, 'auth.devices': {data: devices}}),
+    './strip-markdown-DRcmtuJc.js#er': options => ({isPending: false, mutate: world.stub('spy:mutate'), mutateAsync: world.stub('spy:mutateAsync'), variables: undefined,
+      name: queryName(options)}),
+    './date-CxUVm-Dr.js#n.default': at => ({isValid: () => Boolean(at), fromNow: () => 'a day ago', format: pattern => `${at} as ${pattern}`, diff: () => 1}),
+  }});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 60, defaults: false,
+    renamed: renamedBindings,
+    scenes: [world => scene(world), world => scene(world, {authStatus: 'paused', me: undefined, pending: []}), world => scene(world, {mode: 'local'}),
+      world => scene(world, {status: {canEnroll: false, syncGeneration: 0, state: 'mismatched'}}), world => ({...scene(world), state: [true]})],
+    props: [{account, accountId: 7, userId: 'u1', email: 'r@aux.example', request: {requestId: 'q1', deviceName: 'Terminal', expiresAt: '2026-10-30T12:05:00Z'},
+      device: devices[0], open: true, profile: {email: 'r@aux.example', name: 'Robert', profileUrl: 'https://img.example/me.png'}, ownerId: 'u1', needsSignIn: false,
+      status: {canEnroll: true, syncGeneration: 1, state: 'usable_owned'}}, {account: {...account, authStatus: 'paused'}, accountId: 7, device: devices[1], open: false,
+      profile: {email: 'x@y', name: 'x@y'}, needsSignIn: true, status: {canEnroll: false, state: 'usable_ownerless'}, statusError: {message: 'Offline'}}]});
+});
+
+test('the Account page helpers name devices and profiles like the supplied ones', async () => {
+  const chunk = 'assets/account-Dr_CA8LL.js';
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  world.enter({imports: {'./date-CxUVm-Dr.js#n.default': at => ({isValid: () => Boolean(at), fromNow: () => `since ${at}`})}});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  const devices = [{deviceName: 'Studio', platform: 'macos', lastUsedAt: 'x', appVersion: '1.4'}, {platform: 'windows', lastSeenAt: 'y'}, {platform: 'linux'}, {}];
+  for (const device of devices) { same('__pair_deviceName', device); same('__pair_deviceDetail', device); same('__pair_platformName', device.platform); }
+  for (const profile of [{name: 'a@b', email: 'a@b'}, {name: 'Robert', email: 'a@b'}]) same('__pair_editableName', profile);
+  assert.equal(JSON.stringify(ours.__pair_SYNC_KEY_PROBLEMS), JSON.stringify(supplied.__pair_SYNC_KEY_PROBLEMS));
+  const run = side => { const calls = []; const client = {setQueryData: (key, value) => calls.push([String(key), typeof value === 'function' ? value({name: 'old', id: 7}) : value])};
+    side.__pair_storeProfile(client, {accounts: {auth: {me: {queryKey: input => `me:${JSON.stringify(input)}`}}, get: {queryKey: input => `get:${JSON.stringify(input)}`}}},
+      7, {name: 'New'}); return JSON.stringify(calls); };
+  world.enter({imports: {'./-utils-B_lbplVm.js#t': (account, profile) => ({...account, ...profile})}});
+  assert.equal(run(ours), run(supplied));
+});
+
+// The Models page: limits as typed, vendors, usage left and provider kinds, then the page with providers.
+test('the Models page parses limits, groups vendors and lists providers like the supplied one', async () => {
+  const chunk = 'assets/model-BrFuJM2w.js';
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const kindImports = {'./use-agent-settings-DiedG0R1.js#c': id => id === 'ollama', './strip-markdown-DRcmtuJc.js#Dt': id => id === 'lmstudio'};
+  world.enter({imports: kindImports});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  for (const text of ['120000', '120k', '1.5M', '1,500_000', ' 2 m ', '0', '-5', 'abc', '1e3', '']) same('__pair_parseTokens', text);
+  for (const value of [1234567, 0]) same('__pair_formatTokens', value);
+  for (const text of ['80%', ' 75 ', '7 5%', '', 'x', '33.6']) same('__pair_parsePercent', text);
+  const ids = ['openai/gpt-5', 'anthropic/claude', 'openai/o3', 'workers-ai/@cf/meta/llama', 'workers-ai/@cf', 'groq/llama/x', 'fireworks/accounts/m', 'groq',
+    'moonshotai/kimi', 'some-ai-studio/x', 'mcp_tools-gpt/x', '/odd', 'workers-ai/other/x', 'xai/grok'];
+  for (const id of ids) { same('__pair_vendorOf', id); same('__pair_vendorName', id.split('/')[0]); }
+  same('__pair_groupByVendor', ids.map(id => ({id})));
+  for (const usedPercent of [0, 33.4, 100, 140, -3]) { same('__pair_percentLeft', {usedPercent}); same('__pair_leftLabel', {usedPercent}); }
+  const providers = [{id: 'openrouter', method: 'api_key'}, {id: 'vercel-ai-gateway', method: 'models_json'}, {id: 'ollama', method: 'models_json'},
+    {id: 'custom', method: 'models_json'}, {id: 'custom2', method: 'models_json', oauthOnly: true}, {id: 'lmstudio', method: 'models_json'}, {id: 'openai', method: 'oauth'},
+    {id: 'anthropic', method: 'api_key'}];
+  for (const provider of providers) {
+    same('__pair_isGateway', provider.id);
+    same('__pair_isGateway', 'cloudflare-ai-gateway');
+    same('__pair_usesModelsJson', provider);
+    same('__pair_canReauthenticate', provider);
+  }
+  for (const [provider, plan] of [[{state: 'auth-expired', id: 'x'}], [{id: 'aux'}, 'pro'], [{id: 'openai', type: 'subscription'}], [{id: 'anthropic', type: 'api'}]])
+    same('__pair_providerDescription', provider, plan);
+  // The page with connected providers, usage windows and limits.
+  const connected = new Map([['openai', {id: 'openai', name: 'OpenAI', method: 'oauth', type: 'subscription'}], ['openrouter', {id: 'openrouter', name: 'OpenRouter',
+    method: 'api_key', type: 'api'}], ['custom', {id: 'custom', name: 'Custom', method: 'models_json'}], ['anthropic', {id: 'anthropic', name: 'Anthropic', method: 'api_key',
+    state: 'auth-expired'}]]);
+  const scene = (world, extra = {}) => ({imports: {...kindImports, './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7},
+    './provider-context-A_wu0fRN.js#n': {accountId: 7, subscriptionPlan: 'pro', connected, refetch: world.stub('spy:refetch'), setCurrentProvider: world.stub('spy:setProvider'),
+      ...extra},
+    './subscription-usage-BB4arJ0Z.js#t': id => (id === 'openai' ? {five_hour: {usedPercent: 40}, weekly: {usedPercent: 90}} : null),
+    './strip-markdown-DRcmtuJc.js#tr': queries({'accounts.get': {data: {mode: 'local'}}, listSupported: {data: [{provider: 'openai', id: 'gpt-image', supportsImages: true}]},
+      'settings.getAll': {data: {defaultImageModel: {provider: 'openai', modelId: 'gpt-image'}, compaction: {thresholdPercent: 80, modelThresholdTokens: {'openai/gpt-5': 120000}}}}}),
+    './strip-markdown-DRcmtuJc.js#er': {isPending: false, mutate: world.stub('spy:mutate'), mutateAsync: world.stub('spy:mutateAsync')}}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 60, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world), world => scene(world, {subscriptionPlan: 'free', connected: new Map()}), world => ({...scene(world), state: ['120k']})],
+    props: [{providerId: 'openrouter', modelKey: 'openai/gpt-5', label: 'Five hours', window: {usedPercent: 20}, provider: 'openai', checked: true, model: {id: 'openai/gpt-5', name: 'GPT-5'},
+      value: 120000, format: value => `${value}`, parse: text => Number(text) || null, children: 'Limit'}, {providerId: 'vercel-ai-gateway', window: null, provider: 'custom',
+      checked: false, model: {id: 'x', name: 'X'}}]});
+});
+
+// The Developers page: the CLI not installed, up to date and outdated; agents with and without the
+// skill; remote control off, connecting and connected.
+test('the Developers page renders like the supplied one with the CLI, agents and remote control', async () => {
+  const chunk = 'assets/developers-DTvaoVBC.js';
+  const scene = (world, {cli = {installed: true, updateAvailable: false, installCommand: 'curl -fsSL aux.sh | sh', commandPath: '/usr/local/bin/aux', currentVersion: '1.4.0',
+    latestVersion: '1.4.0'}, agents = [{id: 'codex', installed: true, skill: {installed: true}}, {id: 'cursor', installed: true, skill: {installed: false}}, {id: 'opencode', installed: false, skill: {installed: false}}],
+    remote = {status: 'connected', deviceName: 'Studio'}, account = {mode: 'cloud', authStatus: 'active'}, pending = false} = {}) => ({imports: {
+    './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')},
+    './strip-markdown-DRcmtuJc.js#nr': queries({checkCliInstallation: {data: cli, isPending: pending}, checkAgentInstallations: {data: {agents}},
+      'accounts.get': {data: account}, 'remoteControl.status': {data: remote}}),
+    './strip-markdown-DRcmtuJc.js#er': options => ({isPending: false, mutate: world.stub(`spy:mutate:${queryName(options).split('.').at(-2)}`), variables: undefined}),
+    './Match-OymXmaXz.js#o': world.stub('spy:navigate')}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 30, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world),
+      world => scene(world, {cli: {installed: false, installCommand: 'curl aux.sh | sh'}, agents: [], remote: {status: 'disabled'}, account: {mode: 'local'}}),
+      world => scene(world, {cli: {installed: true, updateAvailable: true, currentVersion: '1.3', latestVersion: '1.4'}, remote: {status: 'connecting'}}),
+      world => scene(world, {pending: true, remote: {status: 'errored', error: 'Port in use'}}), world => ({...scene(world), state: ['codex']})],
+    props: [{children: 'aux exec'}, {}]});
+});
+
+test('the Developers page lists the same questions, agents and statuses', async () => {
+  const chunk = 'assets/developers-DTvaoVBC.js';
+  const {supplied, ours} = await evaluatePair({world: createWorld(), chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  for (const name of ['__pair_CLI_QUESTIONS', '__pair_SKILL_AGENTS', '__pair_REMOTE_STATUS', '__pair_CLI_ILLUSTRATION'])
+    assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
+});
+
+// The Agent page: permission rules and file roots merged and labelled, then the page with a sandbox,
+// rules, roots, the runtime installed or installing, and its settings.
+test('the Agent page merges permissions and renders like the supplied one', async () => {
+  const chunk = 'assets/agents-urkO3LLg.js';
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), `${name}(${JSON.stringify(args).slice(0, 80)})`);
+  const permission = {sandbox: {enabled: true}, rules: {allow: [{type: 'tool', tool: 'read'}], deny: [{type: 'browser', action: 'navigate', url: 'https://bank.example'}],
+    default: 'ask'}, files: {readableRoots: ['/w/docs'], outsideWrite: 'deny'}};
+  for (const value of [permission, undefined, {}]) { same('__pair_toolRules', value); same('__pair_fileRules', value); }
+  for (const change of [{rules: {ask: [{type: 'tool', tool: 'bash'}]}}, {files: {writableRoots: ['/w/out']}}, {sandbox: {enabled: false}}, {}])
+    for (const value of [permission, undefined]) same('__pair_mergePermission', value, change);
+  same('__pair_unique', ['a', 'b'], 'b', 'c', 'a');
+  for (const rule of [{type: 'tool', tool: 'bash'}, {type: 'browser', action: 'click'}, {type: 'browser', action: 'navigate', url: 'https://x'}, {type: 'url', url: 'https://y'}])
+    same('__pair_ruleLabel', rule);
+  for (const action of ['allow', 'ask', 'deny']) same('__pair_actionDescription', action);
+  same('__pair_runtimeVersion', '22.4');
+  for (const name of ['__pair_TAB_CLEANUP_OPTIONS', '__pair_NOTIFICATION_KINDS', '__pair_RULE_ACTIONS', '__pair_DEFAULT_RULES', '__pair_DEFAULT_FILES',
+    '__pair_DEFAULT_NOTIFICATIONS', '__pair_SOUND_TYPES', '__pair_SOUND_MAX_BYTES']) assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
+  const settings = {permission, completionSound: {enabled: true, data: 'AAAA', mimeType: 'audio/wav', name: 'ding.wav'}, followUpBehavior: 'steer',
+    agentTabs: {autoClose: true, closeAfterMinutes: 10}, agentTaskNotifications: {needsAttention: true, taskCompletions: false}, defaultPermissionMode: 'ask'};
+  const scene = (world, {runtime = {installed: true, version: '22.4', healthy: true}, job = {state: 'idle'}, sandbox = permission, mode = 'new'} = {}) => ({
+    context: {accountSettings: {...settings, permission: sandbox}, accountDir: '/w/aux', patchPermission: world.stub('spy:patchPermission')},
+    imports: {'./strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')},
+      './strip-markdown-DRcmtuJc.js#nr': queries({'settings.getAll': {data: settings}, 'agentRuntime.status': {data: runtime}, 'agentRuntime.job': {data: job},
+        getSkillsDirectory: {data: '/w/aux/skills'}}),
+      './strip-markdown-DRcmtuJc.js#tr': queries({'settings.getAll': {data: settings}, getSkillsDirectory: {data: '/w/aux/skills'}}),
+      './strip-markdown-DRcmtuJc.js#er': {isPending: false, mutate: world.stub('spy:mutate'), mutateAsync: world.stub('spy:mutateAsync')},
+      './use-update-settings-ahXnGzre.js#t': {isPending: false, mutate: world.stub('spy:update')},
+      './use-sidepanel-session-on-tab-change-BE8mSy2N.js#t': {mode}}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 60, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world), world => scene(world, {runtime: {installed: false}, job: {state: 'running', progress: 0.4}, sandbox: {sandbox: {enabled: false}},
+      mode: 'keep'}), world => scene(world, {job: {state: 'failed', error: 'Disk full'}, sandbox: undefined}), world => ({...scene(world), state: [true]})],
+    props: [{mode: 'read', group: 'allow', label: 'Allowed tools', onAdd: world.stub('spy:onAdd'), children: 'child'}, {mode: 'write', group: 'deny', label: 'Denied'}]});
+});
+
+// The Projects pages with active and archived Projects, none, and an error; the Plugins header on each tab.
+test('the Projects pages and the Plugins header render like the supplied ones', async () => {
+  const projects = [{id: 'p1', name: 'Aux', updatedAt: 2}, {id: 'p2', name: 'Old', archivedAt: 1}, {id: 'p3', name: 'Docs', updatedAt: 1}];
+  const sort = list => [...list].sort((a, b) => a.name.localeCompare(b.name));
+  const scene = (world, {list = projects, pending = false, error = false, path = '/u/7/settings/plugins/skills', mode} = {}) => ({imports: {
+    './strip-markdown-DRcmtuJc.js#tr': {data: list}, './strip-markdown-DRcmtuJc.js#nr': {data: list, isPending: pending, isError: error},
+    './project-list-BmtBNv8P.js#r': sort, './Match-OymXmaXz.js#o': world.stub('spy:navigate'),
+    './extension-main-Dz1-AsCT.js#d.useParams': () => ({userId: '7'}), './extension-main-Dz1-AsCT.js#T.useParams': () => ({userId: '7'}),
+    './extension-main-Dz1-AsCT.js#T.useSearch': () => ({mode}), './useRouterState-vMU34Fpy.js#t': ({select}) => select({location: {pathname: path}}),
+    './link-q1zvRKtc.js#m': () => ({userId: '7'})}});
+  const blocksByChunk = Object.fromEntries(['assets/projects-D4kjkizu.js', 'assets/projects-D_csJvC9.js', 'assets/plugins-header-28yyYrQl.js'].map(chunk => [chunk, ROUTES[chunk]]));
+  await assertParity({blocksByChunk, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 20, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world), world => scene(world, {list: [], path: '/u/7/settings/plugins/mcps', mode: 'create'}), world => scene(world, {pending: true}),
+      world => scene(world, {error: true}), world => ({...scene(world), state: [true]})],
+    props: [{userId: '7', initiallyCreating: true, actions: 'Add', onCreate: world => world}, {userId: '7'}]});
+});
+
+// The Routines page and a routine's row, menu and run history, with routines in every state.
+test('the Routines page and a routine menu render like the supplied ones', async () => {
+  const routine = (id, extra = {}) => ({id, name: `Routine ${id}`, prompt: 'Do it', rrule: 'FREQ=DAILY', type: 'standalone', environment: 'device', status: 'active',
+    parentSessionId: `s-${id}`, revision: 2, appliedRevision: 2, ...extra});
+  const routines = [routine('r1'), routine('r2', {status: 'paused', appliedRevision: 1}), routine('r3', {environment: 'cloud'}), routine('r4', {type: 'internal'})];
+  const runs = [{id: 'run1', title: 'Today', status: 'completed', createdAt: '2026-10-30T08:00:00Z'}, {id: 'run2', title: 'Yesterday', status: 'failed',
+    createdAt: '2026-10-29T08:00:00Z'}];
+  const scene = (world, {list = routines, history = {data: {pages: [runs]}, hasNextPage: true, isPending: false, isError: false}, session = {data: {id: 'run1'}}} = {}) => ({
+    imports: {'./strip-markdown-DRcmtuJc.js#tr': queries({'routines.list': {data: list}, 'accounts.get': {data: {subscriptionPlan: 'free'}}}),
+      './strip-markdown-DRcmtuJc.js#$n': history, './strip-markdown-DRcmtuJc.js#nr': session, './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7},
+      './extension-main-Dz1-AsCT.js#u.useParams': () => ({userId: '7'}), './extension-main-Dz1-AsCT.js#u.useSearch': () => ({mode: 'edit', id: 'r1'}),
+      './extension-main-Dz1-AsCT.js#u.useNavigate': () => world.stub('spy:navigate'),
+      './tool-definition-registry-Cc6FCFb2.js#f': item => `Every day (${item.rrule})`,
+      './provider-Cw0zhujt.js#L': {updateRoutine: {isPending: false, mutate: world.stub('spy:update')}, deleteRoutine: {isPending: false, mutate: world.stub('spy:delete')},
+        runRoutine: {isPending: false, mutate: world.stub('spy:run')}},
+      './date-CxUVm-Dr.js#n.default': at => ({format: pattern => `${at} as ${pattern}`, fromNow: () => 'today'})}});
+  const blocksByChunk = Object.fromEntries(['assets/routines-BNdQOEUt.js', 'assets/routine-item-menu-DJrYR2RE.js'].map(chunk => [chunk, ROUTES[chunk]]));
+  await assertParity({blocksByChunk, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 30, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world), world => scene(world, {list: [], history: {data: {pages: [[]]}, hasNextPage: false}, session: {data: null}}),
+      world => scene(world, {history: {isPending: true}, session: {isError: true}}), world => ({...scene(world), state: ['run2']}), world => ({...scene(world), state: [true]})],
+    props: [{routine: routines[0], showSwitch: true, children: 'row', routineId: 'r1', name: 'Morning', sessionId: 'run1', pending: false, contextMenu: true},
+      {routine: routines[1], routineId: 'r2', name: 'Weekly', sessionId: 'gone', pending: true, contextMenu: false}]});
 });
 

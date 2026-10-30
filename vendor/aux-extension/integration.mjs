@@ -211,6 +211,24 @@ export const ROUTES = Object.freeze({
     'space-y-8",children:(0,e.jsx)(re,{})})})]})}', 'f38ed06eb5f422fbd5debc82ebc9441a97c5ee7b09f545890a841310e175d6af', 11883)],
   'assets/privacy-BeEEt9Qu.js': [block('Security & Privacy settings', 'privacy-settings.js', 'var h=He(Ke(),1);function Gt(t,r){const ',
     'ock",children:"Block all"})]})]})})]})};', '7c26463bf54fe5fc997ef754d130f280e5cf7e3c4f8e555481a7cbae314b127e', 28867)],
+  'assets/account-Dr_CA8LL.js': [block('Account settings', 'account-settings.js', 'var e=ue(),H=({size:s=24,ariaHidden:a=!0',
+    't?.mode==="local"&&(0,e.jsx)(as,{})]})};', 'c0cfa3cbbb508d7796dba8869b49177a285b4022bdfbdc70c11f1677367f3cdc', 22060)],
+  'assets/model-BrFuJM2w.js': [block('Models settings', 'model-settings.js', 'var i=Ue(Ve(),1),e=We(),Me="compaction-l',
+    'x)(Ot,{})})]}),(0,e.jsx)(kt,{})]})})]})}', 'd0c57dbe9df98718e98f037b35936ff7072948a791b08ddf23e96d4a3215269e', 26211)],
+  'assets/developers-DTvaoVBC.js': [block('Developers settings', 'developers-settings.js', 'var e=se(),ke=({size:t=24,ariaHidden:r=!',
+    'd-sm px-1 py-px font-mono",children:t});', '290d4d268361706be4ccf21d138294eb58051450ba4a34f96dfd1125a8ba3bae', 16361)],
+  'assets/agents-urkO3LLg.js': [block('Agent settings', 'agent-settings.js', 'var e=ge(),Qe=({size:s=24,ariaHidden:t=!',
+    ',e.jsx)(ls,{}),(0,e.jsx)(Je,{})]})})]})}', '7593dbd434f203fabb7f7e96085498d069ee8a6a07f5aba45b4f559c75c734d9', 20528)],
+  'assets/projects-D4kjkizu.js': [block('Projects settings', 'projects-settings.js', 'var p=S(f(),1),e=v(),O=({userId:t})=>{co',
+    '),children:(0,e.jsx)(O,{userId:t})})]})}', 'ba6646afa1ec5c9ac17aee681d91c516d2c782e696b32e6eb736497994d4b696', 1114)],
+  'assets/projects-D_csJvC9.js': [block('Projects page', 'projects-page.js', 'var q=P(N(),1),e=C(),M=({initiallyCreati',
+    'itiallyCreating:t==="create",userId:s})}', 'be88bb4fd94f7e859742277df6ea7284b430f379b10b824b7c16fd060912d04b', 2230)],
+  'assets/plugins-header-28yyYrQl.js': [block('Plugins & MCPs header', 'plugins-header.js', 'var s=l(),h=({actions:i})=>{const t=o({s',
+    'Id:e}}),children:"MCPs"})]})}),i]})]})};', 'dc5b87f167e417eabb5745d91bc5c1b4cc564bed8e92fc84c4d48ebe8c3a1df8', 896)],
+  'assets/routines-BNdQOEUt.js': [block('Routines settings', 'routines-settings.js', 'var O=o(["standalone","child","internal"',
+    '(0,e.jsx)(x,{title:"Create"})]})]})]})};', 'eddb999ec82b2a0d07f19ba3990cc57c4d45f40ca2ed680507e761eff3cc8dd5', 3656)],
+  'assets/routine-item-menu-DJrYR2RE.js': [block('Routine row and menu', 'routine-item-menu.js', 'var j=z(k(),1),e=E(),v=50,le=({routineId',
+    'e,{className:"size-4"}),"Remove"]})]})};', '29dccba48587313e77461322ce94bdbac59307eab9cf8eca7031b3aa4ebad589', 6333)],
   // The composer, one area per pass; the rest of the chunk stays supplied until its pass.
   'assets/session-composer-Dc0LRfZA.js': [
     block('Composer: icons, tool summaries, prompt history, the editor, the + menu, Send and dictation', 'composer-head.js',
@@ -275,6 +293,8 @@ export const TOKEN_CHANGES = Object.freeze([
   ['composer-notices.js', 'inner-curved-shape-bottom', 'inner-curved-shape-bottom [--_r:var(--radius-xl)]'],
   // The conversation's error row: the 12px step too.
   ['composer-conversation.js', 'rounded-2xl', 'rounded-xl'],
+  // The remote-control status box on the Developers page used a fixed neutral-100 in light mode.
+  ['developers-settings.js', 'bg-neutral-100', 'bg-muted'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');
