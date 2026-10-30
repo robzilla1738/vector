@@ -89,7 +89,8 @@ test('daemon: the chat-turn branch hands the session tools to the CLI, run in is
   const statement = output.daemon.slice(start, output.daemon.indexOf('let ai=Cn.provider===`aux`?', start));
   const calls = [];
   const tool = {name: 'repl'};
-  const Ci = {state: {tools: [tool], messages: ['m']}, beforeToolCall: async (call, signal) => ['before', call, signal], afterToolCall: async call => ['after', call]};
+  const Ci = {state: {tools: [tool], messages: ['m']}, beforeToolCall: async (call, signal) => ['before', call, signal], afterToolCall: async call => ['after', call],
+    processEvents: async event => ['event', event]};
   const sandbox = {
     auxProviderCli: {owns: provider => provider === 'claude-code'},
     modelRuntime: {streamSimple: (model, context, options) => { calls.push([model, context, options]); return 'cli-stream'; }},
@@ -109,6 +110,7 @@ test('daemon: the chat-turn branch hands the session tools to the CLI, run in is
   assert.deepEqual(await scope.beforeToolCall('call', 'signal'), ['before', 'call', 'signal']);
   assert.deepEqual(await scope.afterToolCall('call'), ['after', 'call']);
   assert.equal(scope.execute, sandbox.auxExecuteRegisteredBrowserTool);
+  assert.deepEqual(await scope.emit({type: 'tool_execution_start'}), ['event', {type: 'tool_execution_start'}], 'CLI tool activity reaches the Agent as tool events');
 });
 
 test('daemon: shutdown awaits the provider CLIs, run in isolation', async () => {
@@ -138,7 +140,8 @@ test('Agent provider list: CLI rows in, OAuth-only rows out, still parses', () =
   const list = JSON.parse(output.list.slice(output.list.indexOf('var Zf=') + 7, output.list.indexOf(']', output.list.indexOf('var Zf=')) + 1));
   for (const id of ['claude-code', 'openai-codex', 'cursor-cli', 'grok-cli', 'opencode-cli', 'meta', 'kimi-coding']) assert.ok(list.includes(id), id);
   for (const id of ['meta-muse', 'xai-grok-oauth', 'kimi-code', 'github-copilot', 'copilot-cli']) assert.ok(!list.includes(id), `${id} is not a fixed row`);
-  for (const id of ['cursor-cli', 'grok-cli', 'opencode-cli', 'copilot-cli']) assert.equal(count(output.list, `"${id}":{name:`), 1, id);
+  for (const id of ['cursor-cli', 'grok-cli', 'opencode-cli', 'copilot-cli', 'gemini-cli']) assert.equal(count(output.list, `"${id}":{name:`), 1, id);
+  assert.equal(count(output.list, 'Aux support is not verified yet'), 0);
   assert.equal(count(output.list, 'Reuse your Claude Pro or Max subscription'), 0);
   assert.equal(count(output.list, 'Reuse your ChatGPT Plus or Pro subscription'), 0);
   assert.throws(() => integrateAgentList(output.list), /drift/);
@@ -148,7 +151,9 @@ test('Agent provider list: CLI rows in, OAuth-only rows out, still parses', () =
 test('connect dialogs: ChatGPT and Claude are CLI status rows built from the supplied parts', () => {
   check('dialog', output.dialog);
   for (const marker of FORBIDDEN_DIALOG) assert.equal(count(output.dialog, marker), 0, marker);
-  for (const id of ['openai-codex', 'claude-code', 'cursor-cli', 'grok-cli', 'opencode-cli', 'copilot-cli']) assert.equal(count(output.dialog, `(0,e.jsx)(auxCliDialog,{provider:"${id}"})`), 1, id);
+  for (const id of ['openai-codex', 'claude-code', 'cursor-cli', 'grok-cli', 'opencode-cli', 'copilot-cli', 'gemini-cli']) assert.equal(count(output.dialog, `(0,e.jsx)(auxCliDialog,{provider:"${id}"})`), 1, id);
+  // Models are local agents or API keys: no in-app subscription sign-in dialog is left.
+  for (const id of ['github-copilot', 'meta-muse', 'xai-grok-oauth', 'kimi-code']) assert.equal(count(output.dialog, `(P,{provider:"${id}"`), 0, id);
   assert.equal(count(output.dialog, 'auxCliDialog=({provider:t})=>{'), 1);
   // The dialog's free names are the chunk's own imports and declarations.
   const imported = new Set([...output.dialog.matchAll(/import\{([^}]*)\}from/g)].flatMap(match => match[1].split(',').map(part => part.trim().split(/\s+as\s+/).pop())));

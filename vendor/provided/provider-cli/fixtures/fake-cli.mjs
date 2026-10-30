@@ -1,7 +1,8 @@
 /** Fake provider CLI for tests. argv[2] is the CLI name; FAKE_CLI_MODE picks the state:
- * ready | signed-out | crash | slow | malformed | warming. Output shapes mirror the real
- * CLIs' status output observed on 2026-10-28 and their documented stream formats. */
-import {appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+ * ready | signed-out | crash | slow | malformed | warming. Output shapes mirror the real CLIs'
+ * status output observed on 2026-10-28, their documented stream formats, the Codex app-server
+ * schema (codex 0.165.0) and the Agent Client Protocol (`gemini`). */
+import {appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync} from 'node:fs';
 import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 
@@ -21,7 +22,7 @@ const crash = () => { process.stderr.write('fatal: provider crashed\n'); process
 
 log({args, cwd: process.cwd(), hasToken: !!process.env.AUX_MCP_TOKEN, auxLeak: Object.keys(process.env).filter(key => key.startsWith('AUX_') && key !== 'AUX_MCP_TOKEN')});
 
-const versions = {codex: 'codex-cli 0.164.0', claude: '2.1.308 (Claude Code)', 'cursor-agent': '2026.10.22-27dcf5f', grok: 'grok 1.0.67 (2fe064390d07) [stable]', opencode: 'opencode v2.2.0'};
+const versions = {codex: 'codex-cli 0.164.0', claude: '2.1.308 (Claude Code)', 'cursor-agent': '2026.10.22-27dcf5f', grok: 'grok 1.0.67 (2fe064390d07) [stable]', opencode: 'opencode v2.2.0', gemini: '0.12.0'};
 if (has('--version')) { if (mode === 'crash') crash(); out(versions[name] ?? 'unknown 0'); process.exit(0); }
 
 async function status() {
@@ -42,8 +43,16 @@ async function status() {
   }
 }
 
+const configFile = () => has('--mcp-config') ? args[args.indexOf('--mcp-config') + 1] : existsSync('opencode.json') ? 'opencode.json' : null;
+if (configFile()) log({config: readFileSync(configFile(), 'utf8'), configMode: statSync(configFile()).mode & 0o777});
+
 async function claudeLike() {
-  if (name === 'claude') { let prompt = ''; for await (const chunk of process.stdin) prompt += chunk; log({prompt}); }
+  if (name === 'claude') {
+    let input = '';
+    for await (const chunk of process.stdin) input += chunk;
+    const content = JSON.parse(input).message.content;
+    log({prompt: content.find(part => part.type === 'text').text, images: content.filter(part => part.type === 'image').length});
+  }
   out({type: 'system', subtype: 'init', session_id: 'session-1'});
   if (mode === 'crash') crash();
   if (mode === 'slow') return linger();
@@ -96,6 +105,39 @@ async function opencode() {
   out({type: 'step_finish', sessionID: 'ses_1', part: {reason: 'stop', tokens: {input: 1}}});
 }
 
+/** An ACP agent: one session, a streamed reply, a tool call that asks permission. */
+async function acpAgent() {
+  if (mode === 'crash') crash();
+  const input = createInterface({input: process.stdin});
+  const update = (sessionId, value) => out({jsonrpc: '2.0', method: 'session/update', params: {sessionId, update: value}});
+  let prompt;
+  for await (const line of input) {
+    const message = JSON.parse(line);
+    log({rpc: message.method ?? 'response', params: message.params, result: message.result});
+    const reply = result => out({jsonrpc: '2.0', id: message.id, result});
+    if (message.method === 'initialize') reply({protocolVersion: 1, authMethods: [], agentCapabilities: {loadSession: true, mcpCapabilities: {http: true}, promptCapabilities: {image: true}}});
+    else if (message.method === 'session/new') {
+      if (mode === 'signed-out') out({jsonrpc: '2.0', id: message.id, error: {code: -32000, message: 'Authentication required'}});
+      else reply({sessionId: 'acp-1'});
+    } else if (message.method === 'session/load') {
+      update('acp-1', {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'REPLAYED'}});
+      reply(null);
+    } else if (message.method === 'session/prompt') {
+      prompt = message.id;
+      if (mode === 'slow') { linger(); continue; }
+      if (mode === 'malformed') { out('nope'); process.exit(0); }
+      update('acp-1', {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'Gem'}});
+      update('acp-1', {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'ini'}});
+      update('acp-1', {sessionUpdate: 'tool_call', toolCallId: 'a1', title: 'Run touch notes.txt', kind: 'execute', status: 'pending', rawInput: {command: 'touch notes.txt'}});
+      out({jsonrpc: '2.0', id: 700, method: 'session/request_permission', params: {sessionId: 'acp-1', toolCall: {toolCallId: 'a1', title: 'Run touch notes.txt', kind: 'execute', rawInput: {command: 'touch notes.txt'}},
+        options: [{optionId: 'yes', name: 'Allow', kind: 'allow_once'}, {optionId: 'no', name: 'Reject', kind: 'reject_once'}]}});
+    } else if (message.id === 700) {
+      update('acp-1', {sessionUpdate: 'tool_call_update', toolCallId: 'a1', status: message.result.outcome.optionId === 'yes' ? 'completed' : 'failed', content: [{type: 'content', content: {type: 'text', text: 'ran'}}]});
+      out({jsonrpc: '2.0', id: prompt, result: {stopReason: 'end_turn'}});
+    } else if (message.method === 'session/cancel') out({jsonrpc: '2.0', id: prompt, result: {stopReason: 'cancelled'}});
+  }
+}
+
 async function codexAppServer() {
   if (mode === 'crash') crash();
   const input = createInterface({input: process.stdin});
@@ -105,7 +147,14 @@ async function codexAppServer() {
     try { message = JSON.parse(line); } catch { continue; }
     log({rpc: message.method ?? 'response', params: message.params, result: message.result});
     if (message.method === 'initialize') out({id: message.id, result: {codexHome: '/x', platformFamily: 'unix', platformOs: 'macos', userAgent: 'fake'}});
-    else if (message.method === 'thread/start') {
+    else if (message.method === 'model/list') out({id: message.id, result: message.params.cursor
+      ? {data: [{id: 'gpt-5.4-mini', displayName: 'GPT-5.4 mini', hidden: false, supportedReasoningEfforts: [{reasoningEffort: 'low', description: ''}], inputModalities: ['text']}], nextCursor: null}
+      : {data: [{id: 'gpt-5.5', displayName: 'GPT-5.5', hidden: false, supportedReasoningEfforts: ['minimal', 'low', 'medium', 'high', 'xhigh'].map(reasoningEffort => ({reasoningEffort, description: ''}))},
+        {id: 'secret-model', displayName: 'Hidden', hidden: true, supportedReasoningEfforts: []}], nextCursor: 'page-2'}});
+    else if (message.method === 'thread/resume') {
+      if (message.params.threadId !== 'thr_1') { out({id: message.id, error: {code: -32600, message: `no rollout found for thread id ${message.params.threadId}`}}); continue; }
+      out({id: message.id, result: {thread: {id: 'thr_1'}}});
+    } else if (message.method === 'thread/start') {
       if (mode === 'signed-out') { out({id: message.id, error: {code: -32000, message: 'Not logged in. Please sign in with codex login.'}}); continue; }
       out({id: message.id, result: {thread: {id: 'thr_1'}}});
       note('thread/started', {thread: {id: 'thr_1'}});
@@ -117,7 +166,7 @@ async function codexAppServer() {
       note('item/agentMessage/delta', {threadId: 'thr_1', turnId: 'turn_1', itemId: 'i1', delta: 'Co'});
       note('item/agentMessage/delta', {threadId: 'thr_1', turnId: 'turn_1', itemId: 'i1', delta: 'dex'});
       note('item/started', {threadId: 'thr_1', turnId: 'turn_1', startedAtMs: 1, item: {type: 'mcpToolCall', id: 'x1', server: 'aux', tool: 'open_tab', arguments: {}, status: 'inProgress'}});
-      out({id: 900, method: 'item/commandExecution/requestApproval', params: {threadId: 'thr_1', turnId: 'turn_1', itemId: 'x2'}});
+      out({id: 900, method: 'item/commandExecution/requestApproval', params: {threadId: 'thr_1', turnId: 'turn_1', itemId: 'x2', command: 'touch notes.txt', cwd: '/tmp'}});
     } else if (message.id === 900) {
       note('item/completed', {threadId: 'thr_1', turnId: 'turn_1', completedAtMs: 2, item: {type: 'mcpToolCall', id: 'x1', server: 'aux', tool: 'open_tab', arguments: {}, status: 'completed', result: {content: []}}});
       note('turn/completed', {threadId: 'thr_1', turn: {id: 'turn_1', items: [], status: 'completed'}});
@@ -135,3 +184,4 @@ else if (name === 'claude') await claudeLike();
 else if (name === 'cursor-agent') await cursor();
 else if (name === 'grok') await grok();
 else if (name === 'opencode') await opencode();
+else if (name === 'gemini') await acpAgent();

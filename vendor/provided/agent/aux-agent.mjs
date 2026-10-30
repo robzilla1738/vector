@@ -19,6 +19,11 @@ const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 // The home thread's frozen prompt is rebuilt at most this often so memory stays current
 // without defeating the provider's prompt cache between turns.
 const HOME_PROMPT_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+// What the home thread loads into its prompt, under the account task root: personality,
+// instructions, and the prompt-loaded (L1) memory.
+const CONTEXT_FILES = ['SOUL.md', 'AGENTS.md', 'memory/MEMORY.md', 'memory/USER.md'];
+// Chat states that need the agent button's attention, least to most urgent.
+const BUSY_STATUSES = ['running', 'awaiting-answer', 'awaiting-approval'];
 
 /** A name the prompt can carry safely: one line, no markup, 1–32 characters. */
 export function cleanName(value) {
@@ -105,7 +110,7 @@ export function createAuxAgent(roots) {
   });
 
   const contextStamp = (account, profile) =>
-    sha([profile.revision, readText(path.join(roots.task(account), 'SOUL.md')), readText(path.join(roots.task(account), 'AGENTS.md'))].join('\0')).slice(0, 16);
+    sha([profile.revision, ...CONTEXT_FILES.map(file => readText(path.join(roots.task(account), file)))].join('\0')).slice(0, 16);
 
   return {
     read, view, identityBlock,
@@ -141,18 +146,23 @@ export function createAuxAgent(roots) {
       return identityBlock(read(account)) + prompt.slice(ORIGINAL_OPENER.length);
     },
     /** Whether a session's frozen prompt predates the agent's identity, or for the home
-     * thread its SOUL.md/AGENTS.md or memory. Rebuilding is the supplied path for an empty
+     * thread its SOUL.md, AGENTS.md or memory. Rebuilding is the supplied path for an empty
      * prompt; only prompts this agent produced are ever considered. */
     promptStale(account, session, prompt) {
       if (!prompt || typeof prompt !== 'string') return false;
       if (!prompt.startsWith(ORIGINAL_OPENER) && !(prompt.startsWith('You are ') && prompt.includes(AGENT_PHRASE))) return false;
-      const profile = read(account), home = session?.id === profile.homeSessionId;
+      const profile = read(account);
       const stale = !prompt.startsWith(identityBlock(profile));
-      if (!home) return stale;
-      const stamp = contextStamp(account, profile), built = profile.homePrompt;
-      if (!stale && built?.stamp === stamp && Date.now() - built.at < HOME_PROMPT_MAX_AGE_MS) return false;
-      save(account, {...profile, homePrompt: {stamp, at: Date.now()}});
-      return true;
+      if (session?.id !== profile.homeSessionId) return stale;
+      const built = profile.homePrompt;
+      return stale || built?.stamp !== contextStamp(account, profile) || Date.now() - built.at >= HOME_PROMPT_MAX_AGE_MS;
+    },
+    /** Records the home thread's context once its prompt was rebuilt and stored, so a failed
+     * rebuild is tried again on the next turn. */
+    promptBuilt(account, session, prompt) {
+      const profile = read(account);
+      if (session?.id !== profile.homeSessionId || typeof prompt !== 'string' || !prompt.startsWith(identityBlock(profile))) return;
+      save(account, {...profile, homePrompt: {stamp: contextStamp(account, profile), at: Date.now()}});
     },
     /** A note for the home thread after a rename: a long conversation otherwise keeps
      * answering with the name in its own earlier replies (seen live, 2026-10-28). */
@@ -160,15 +170,20 @@ export function createAuxAgent(roots) {
       return {role: 'system-message', kind: 'agent_identity', metadata: {}, timestamp: Date.now(),
         content: `The user renamed you to ${name}. Your name is ${name} from now on; earlier replies that used another name are out of date.`};
     },
-    /** The native Chats feed with the home thread taken out and the agent's state added. */
-    chromeChats(account, {pinned, recents}, preview, homePreview) {
+    /** The native Chats feed with the home thread taken out and the agent's state added.
+     * active: every running or suspended session, side chats and routines included; the
+     * button shows the most urgent of them (approval, then question, then working), else
+     * the home thread's own state. */
+    chromeChats(account, {pinned, recents}, preview, homePreview, active) {
       const profile = read(account);
       const home = profile.homeSessionId ? homePreview(profile.homeSessionId) : undefined;
       const others = rows => rows.filter(row => row.id !== profile.homeSessionId).map(preview);
+      const urgent = (a, b) => BUSY_STATUSES.indexOf(b) > BUSY_STATUSES.indexOf(a) ? b : a;
       return {
         pinned: others(pinned), recents: others(recents),
         agent: {name: profile.name, homeSessionId: home ? profile.homeSessionId : null,
-          status: home ? preview(home).status : 'idle', avatarRevision: profile.avatarRevision},
+          status: active.map(row => preview(row).status).reduce(urgent, home ? preview(home).status : 'idle'),
+          avatarRevision: profile.avatarRevision},
       };
     },
   };

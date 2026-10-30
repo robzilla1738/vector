@@ -1,10 +1,11 @@
 /** Find each provider CLI and ask it for its own login state. Reads no token files,
- * runs only --version and the CLI's status command, sends no prompt. */
+ * runs only --version, the CLI's status command and Codex's model list, sends no prompt. */
 import {accessSync, constants, statSync} from 'node:fs';
 import {homedir, userInfo} from 'node:os';
 import path from 'node:path';
 import {PROVIDERS, parseAuthStatus} from './catalog.mjs';
 import {capture} from './process.mjs';
+import {codexModels} from './drivers.mjs';
 
 const START = '__AUX_PATH_START__', END = '__AUX_PATH_END__';
 
@@ -73,10 +74,15 @@ export async function detectProvider(entry, context) {
     if (!parsed.retry) break;
   }
   const {retry, ...state} = parsed;
+  if (entry.driver === 'codex-app-server' && state.state === 'ready') {
+    // The model list changes with the CLI and the account, not between focus checks.
+    const before = context.previous?.find(found => found.id === entry.id);
+    state.models = before?.state === 'ready' && before.version === match[1] && before.models?.length ? before.models
+      : await codexModels(file, {env: context.env, timeoutMs: context.statusTimeoutMs ?? 20000});
+  }
   return {id: entry.id, path: file, version: match[1], ...state};
 }
 
-/** Detect every provider in parallel. Options override discovery for tests. */
 /** The account's login shell first (what Terminal would start), then $SHELL. An rc file
  * that hands off to another shell prints nothing, so try the next candidate. */
 export async function userLoginPath({shells, env = process.env} = {}) {
@@ -89,10 +95,13 @@ export async function userLoginPath({shells, env = process.env} = {}) {
   return null;
 }
 
-export async function detectAll({providers = PROVIDERS, env = process.env, home = homedir(), shells, searchDirectories, ...timeouts} = {}) {
+/** Detect every provider in parallel. `searchDirectories` skips the login-shell lookup (a
+ * re-check reuses the last one); `previous` is the last result, whose Codex models are reused
+ * while the version and state hold. */
+export async function detectAll({providers = PROVIDERS, env = process.env, home = homedir(), shells, searchDirectories, previous, ...timeouts} = {}) {
   const shellPath = searchDirectories ? null : await userLoginPath({shells, env});
   const directories = searchPath(searchDirectories ?? [...(shellPath ?? env.PATH ?? '').split(':'), ...fallbackDirectories(home)]);
-  const context = {directories, env: childEnvironment(env, directories), ...timeouts};
+  const context = {directories, env: childEnvironment(env, directories), previous, ...timeouts};
   const results = await Promise.all(providers.map(entry => detectProvider(entry, context)));
   return {directories, loginShellPath: shellPath !== null, providers: results};
 }

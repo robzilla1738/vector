@@ -9,7 +9,7 @@ export const RUNTIME_FILES = Object.freeze(['aux-daemon.mjs', 'index.mjs', 'cata
 export const CONNECT_DIALOG_PATH = 'assets/connect-dialog-CacgpFap.js';
 
 const edit = (name, find, replace, count = 1) => Object.freeze({name, find, replace, count});
-const NEW_ROWS = ['cursor-cli', 'grok-cli', 'opencode-cli', 'copilot-cli'];
+const NEW_ROWS = ['cursor-cli', 'grok-cli', 'opencode-cli', 'copilot-cli', 'gemini-cli'];
 
 export const DAEMON_EDITS = Object.freeze([
   edit('load the provider CLI module beside the entry',
@@ -38,7 +38,7 @@ export const DAEMON_EDITS = Object.freeze([
     'ti=/* @__PURE__ */ new Set([...this.credentials.list(),...this.modelsJson.listProviderAuthIds(),...auxProviderCli.providerIds()])'),
   edit('chat turns on a CLI provider run the CLI with the session browser tools',
     'Ci=new Agent$1({streamFn:async(Cn,ni,ri)=>{let ai=Cn.provider===`aux`?',
-    'Ci=new Agent$1({streamFn:async(Cn,ni,ri)=>{if(auxProviderCli.owns(Cn.provider))return modelRuntime.streamSimple(Cn,ni,{...ri,auxProviderCli:{tools:()=>Ci.state.tools,context:()=>({systemPrompt:ti.systemPrompt,messages:Ci.state.messages,tools:Ci.state.tools}),prepareArguments:(Cn,ei)=>validateToolArguments(Cn,prepareToolCallArguments(Cn,ei)),beforeToolCall:(Cn,ei)=>Ci.beforeToolCall?.(Cn,ei),afterToolCall:(Cn,ei)=>Ci.afterToolCall?.(Cn,ei),execute:auxExecuteRegisteredBrowserTool}});let ai=Cn.provider===`aux`?'),
+    'Ci=new Agent$1({streamFn:async(Cn,ni,ri)=>{if(auxProviderCli.owns(Cn.provider))return modelRuntime.streamSimple(Cn,ni,{...ri,auxProviderCli:{tools:()=>Ci.state.tools,context:()=>({systemPrompt:ti.systemPrompt,messages:Ci.state.messages,tools:Ci.state.tools}),prepareArguments:(Cn,ei)=>validateToolArguments(Cn,prepareToolCallArguments(Cn,ei)),beforeToolCall:(Cn,ei)=>Ci.beforeToolCall?.(Cn,ei),afterToolCall:(Cn,ei)=>Ci.afterToolCall?.(Cn,ei),execute:auxExecuteRegisteredBrowserTool,emit:Cn=>Ci.processEvents(Cn)}});let ai=Cn.provider===`aux`?'),
   edit('provider CLI status procedures',
     'getSubscriptionUsage:accountProcedure.input(object({providerId:_enum([`aux`,`claude-code`,`kimi-code`,`openai-codex`,`xai-grok-oauth`])})).query(',
     'providerCliStatus:accountProcedure.query(()=>auxProviderCli.status()),providerCliRefresh:accountProcedure.mutation(()=>auxProviderCli.status({refresh:!0})),getSubscriptionUsage:accountProcedure.input(object({providerId:_enum([`aux`,`claude-code`,`kimi-code`,`openai-codex`,`xai-grok-oauth`])})).query('),
@@ -54,10 +54,16 @@ export const DAEMON_EDITS = Object.freeze([
   edit('start: run folder, MCP origin, abrupt-exit cleanup',
     'async function main(){await auxProvisionBundledMemoryV2();',
     'async function main(){auxProviderCli.start({runRoot:()=>path.join(AUX_HOME_PATH,`agent-cli`),mcpOrigin:`http://127.0.0.1:${PORT}`});await auxProvisionBundledMemoryV2();'),
+  edit('web search runs in the local browser, not a cloud route',
+    'execute:async(ei,{objective:ti,search_queries:ni,mode:ri},ii)=>{let{details:ai,result:oi}=buildWebSearchToolResult(await fetchAuxAPI(`/search`,{method:`POST`,signal:ii,timeout:1e4,body:{objective:ti,search_queries:ni,mode:ri||`basic`,max_chars_total:DEFAULT_MAX_CHARS_TOTAL,session_id:Cn.session.id,client_model:Cn.session.model.modelId}}));',
+    'execute:async(ei,{objective:ti,search_queries:ni},ii)=>{if(!Cn.browser)throw Error(`Web search needs the Aux browser.`);let client=new GoogleSearchClient({fetch:(url,options)=>Cn.browser.fetch(url,{...options,signal:ii})}),seen=new Set,results=[];for(let found of await Promise.allSettled([ti,...ni].map(query=>client.search(query,{limit:6}))))for(let item of found.status===`fulfilled`?found.value:[])if(!seen.has(item.url)&&results.length<10)seen.add(item.url),results.push({url:item.url,title:item.title,publish_date:item.publishedAtText??null,excerpts:item.snippet?[item.snippet]:[]});if(!results.length)throw Error(`Web search found nothing for “${ti}”.`);let{details:ai,result:oi}=buildWebSearchToolResult({session_id:Cn.session.id,results});'),
+  edit('web search loads the browser search client',
+    'init_websearch=__esmMin((()=>{init_dist$26(),init_nanoid$1(),init_api_client(),',
+    'init_websearch=__esmMin((()=>{init_dist$26(),init_nanoid$1(),init_api_client(),init_google_search(),'),
 ]);
 
-/** Agent provider list: Cursor, Grok and OpenCode CLI rows, Copilot CLI (shown only when
- * installed), and copy that says which CLI each subscription row uses. */
+/** Agent provider list: Cursor, Grok and OpenCode CLI rows, the Copilot and Gemini CLIs (shown
+ * only when installed), and copy that says which CLI each subscription row uses. */
 export const AGENT_LIST_EDITS = Object.freeze([
   edit('CLI rows in the provider order',
     '"openai-codex","meta","openrouter"',
@@ -71,7 +77,8 @@ export const AGENT_LIST_EDITS = Object.freeze([
       + '"cursor-cli":{name:"Cursor",type:"subscription",description:"Use your Cursor plan through the Cursor CLI",icon:"unknown",oauthOnly:!0},'
       + '"grok-cli":{name:"Grok Build",type:"subscription",description:"Use your Grok plan through Grok Build",icon:"xai",oauthOnly:!0},'
       + '"opencode-cli":{name:"OpenCode CLI",type:"subscription",description:"Use the providers you signed in to in OpenCode",icon:"opencode",oauthOnly:!0},'
-      + '"copilot-cli":{name:"GitHub Copilot CLI",type:"subscription",description:"Installed; Aux support is not verified yet",icon:"github-copilot",oauthOnly:!0},'),
+      + '"copilot-cli":{name:"GitHub Copilot CLI",type:"subscription",description:"Use your Copilot plan through the GitHub Copilot CLI",icon:"github-copilot",oauthOnly:!0},'
+      + '"gemini-cli":{name:"Gemini CLI",type:"subscription",description:"Use your Gemini plan through the Gemini CLI",icon:"unknown",oauthOnly:!0},'),
 ]);
 
 /** One status dialog for every CLI row, built from the supplied dialog parts: P (dialog), I
@@ -93,23 +100,34 @@ const CLI_DIALOG = 'auxCliDialog=({provider:t})=>{'
   + ':y.kind==="copy"?(0,e.jsxs)("div",{className:"flex items-center justify-between gap-2 rounded-lg border p-2",children:[(0,e.jsx)("code",{className:"font-mono text-xs break-all",children:y.command}),(0,e.jsx)(re,{type:"button",variant:"outline",onClick:()=>c(y.command),children:y.label})]},g)'
   + ':y.kind==="explain"?(0,e.jsx)("p",{className:"text-muted-foreground",children:y.text},g):null)]}),'
   + '(0,e.jsxs)(w,{children:[(0,e.jsx)(_,{children:"Close"}),'
-  + 'u?.state==="ready"&&u.runnable?(0,e.jsx)(re,{type:"button",onClick:()=>o(t),children:"Done"})'
+  + 'u?.state==="ready"?(0,e.jsx)(re,{type:"button",onClick:()=>o(t),children:"Done"})'
   + ':(0,e.jsxs)(re,{type:"button",disabled:i.isPending,onClick:h,children:[i.isPending&&(0,e.jsx)(D,{}),(0,e.jsx)("span",{children:"Check again"})]})]})]})},';
 
-const oauthDialog = (name, provider, product, popup) => `${name}=()=>(0,e.jsx)(P,{provider:"${provider}",children:(0,e.jsxs)(ie,{children:[(0,e.jsx)(I,{children:(0,e.jsxs)(A,{children:["Aux will use your subscription to access ${product} supported models. ",(0,e.jsx)("br",{}),"Sign in with ${product} to connect your account."]})}),${provider === 'openai-codex' ? '(0,e.jsx)(En,{}),' : ''}(0,e.jsx)(le,{}),(0,e.jsxs)(w,{children:[(0,e.jsx)(ce,{}),(0,e.jsx)(de,{popup:{name:"${popup}",features:"popup=yes,width=540,height=720"}})]})]})}),`;
+const popup = name => `(0,e.jsxs)(w,{children:[(0,e.jsx)(ce,{}),(0,e.jsx)(de,{popup:{name:"${name}",features:"popup=yes,width=540,height=720"}})]})`;
+const oauthDialog = (name, provider, product, popupName, account = product) => `${name}=()=>(0,e.jsx)(P,{provider:"${provider}",children:(0,e.jsxs)(ie,{children:[(0,e.jsx)(I,{children:(0,e.jsxs)(A,{children:["Aux will use your subscription to access ${product} supported models. ",(0,e.jsx)("br",{}),"Sign in with ${account} to connect your account."]})}),${provider === 'openai-codex' ? '(0,e.jsx)(En,{}),' : ''}(0,e.jsx)(le,{}),${popup(popupName)}]})}),`;
+const META_DIALOG = `wn=()=>(0,e.jsx)(P,{provider:"meta-muse",children:(0,e.jsxs)(ie,{children:[(0,e.jsx)(I,{children:(0,e.jsx)(A,{children:"Sign in with Meta to use Muse Spark through your Muse subscription."})}),(0,e.jsx)(le,{}),${popup('aux-meta-muse-oauth')}]})}),`;
+const KIMI_DIALOG = `kn=()=>{const[t,n]=(0,d.useState)("global");return(0,e.jsx)(P,{provider:"kimi-code",children:(0,e.jsxs)(ie,{kimiRegion:t,children:[(0,e.jsx)(I,{children:(0,e.jsxs)(A,{children:["Aux will use your subscription to access Kimi Code supported models. ",(0,e.jsx)("br",{}),"Sign in with Kimi Code to connect your account."]})}),(0,e.jsx)(On,{value:t,onValueChange:n}),(0,e.jsx)(le,{}),${popup('aux-kimi-code')}]})})},`;
+const SUPPLIED_DIALOGS = ['In', 'wn', 'bn', 'kn', 'Sn', 'An'].map(name => `(0,e.jsx)(${name},{})`).join(',');
 
 /** Connect dialogs: ChatGPT and Claude become CLI status rows, the new CLI rows get the same
- * dialog, and their ids are reserved from custom providers. */
+ * dialog and their ids are reserved from custom providers, and the in-app subscription sign-ins
+ * (GitHub Copilot, Meta Muse, xAI Grok, Kimi Code) leave: models are local agents or API keys. */
 export const CONNECT_DIALOG_EDITS = Object.freeze([
   edit('ChatGPT connects through the Codex CLI', oauthDialog('In', 'openai-codex', 'ChatGPT', 'aux-openai-codex-oauth'), 'In=()=>(0,e.jsx)(auxCliDialog,{provider:"openai-codex"}),'),
   edit('Claude connects through Claude Code', oauthDialog('Sn', 'claude-code', 'Claude', 'aux-claude-oauth'), 'Sn=()=>(0,e.jsx)(auxCliDialog,{provider:"claude-code"}),'),
+  edit('no GitHub Copilot sign-in', oauthDialog('An', 'github-copilot', 'GitHub Copilot', 'aux-github-copilot-oauth', 'GitHub'), ''),
+  edit('no Meta Muse sign-in', META_DIALOG, ''),
+  edit('no xAI Grok sign-in', oauthDialog('bn', 'xai-grok-oauth', 'Grok', 'aux-xai-grok-oauth', 'xAI'), ''),
+  edit('no Kimi Code sign-in', KIMI_DIALOG, ''),
+  edit('no Meta sign-in label', 'l==="meta-muse"&&(u=i?"Open sign-in window":"Sign in with Meta"),', ''),
   edit('CLI status dialog', 'he=t=>t==="claude-code"||t==="openai-codex",', `${CLI_DIALOG}he=t=>t==="claude-code"||t==="openai-codex",`),
-  edit('dialogs for the new CLI rows', '(0,e.jsx)(Sn,{}),(0,e.jsx)(An,{})]})', `(0,e.jsx)(Sn,{}),(0,e.jsx)(An,{}),${NEW_ROWS.map(id => `(0,e.jsx)(auxCliDialog,{provider:"${id}"})`).join(',')}]})`),
+  edit('dialogs: CLI rows only', `${SUPPLIED_DIALOGS}]})`, `(0,e.jsx)(In,{}),(0,e.jsx)(Sn,{}),${NEW_ROWS.map(id => `(0,e.jsx)(auxCliDialog,{provider:"${id}"})`).join(',')}]})`),
   edit('reserve the CLI row ids', '"xiaomi-token-plan-sgp","custom-json"]),on=', `"xiaomi-token-plan-sgp","custom-json",${NEW_ROWS.map(id => `"${id}"`).join(',')}]),on=`),
 ]);
 
 /** Strings that must not ship once the dialogs are re-pointed. */
-export const FORBIDDEN_DIALOG = Object.freeze(['aux-openai-codex-oauth', 'aux-claude-oauth', 'Sign in with ChatGPT', 'Sign in with Claude']);
+export const FORBIDDEN_DIALOG = Object.freeze(['aux-openai-codex-oauth', 'aux-claude-oauth', 'aux-github-copilot-oauth', 'aux-meta-muse-oauth',
+  'aux-xai-grok-oauth', 'aux-kimi-code', 'Sign in with']);
 
 export function applyExactEdits(label, edits, text) {
   if (typeof text !== 'string') throw TypeError(`${label}: source text required`);

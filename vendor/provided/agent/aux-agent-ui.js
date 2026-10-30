@@ -10,6 +10,7 @@ import {t as Textarea} from "./textarea-5TASg52t.js";
 import {t as Tooltip} from "./simple-tooltip-CHhnBkHz.js";
 import {a as openExtensionPage, i as isSidepanel} from "./extension-page-url-BH3pfT7h.js";
 import {a as SettingText, c as SettingSection, i as SettingRow, l as SettingGroup, n as SettingControl} from "./-layouts-CcApOQbE.js";
+import {n as useAgentSettings} from "./use-agent-settings-DiedG0R1.js";
 
 const React = interop(requireReact(), 1);
 const j = requireJsx();
@@ -17,6 +18,11 @@ const {useCallback, useEffect, useRef, useState, useSyncExternalStore} = React;
 
 const DEFAULT = Object.freeze({name: "Aux", homeSessionId: null, avatarRevision: "", setupCompleted: true, isDefault: true});
 const NAME_KEY = "aux.agent.name.v1";
+// Dispatched on the side panel's window when the agent button is clicked: back to the home thread.
+const HOME_EVENT = "aux-agent-home";
+// The command bar's question for this window's panel, and how long it waits to be picked up.
+const PENDING_ASK_KEY = "aux.agent.pendingAsk.v1";
+const PENDING_ASK_MS = 15000;
 // ---------------------------------------------------------------------------------- store
 
 const stores = new Map();
@@ -107,10 +113,13 @@ function setSideChatDraft(value) {
 }
 /** "+" in the side panel opens a side chat draft instead of the home thread. */
 export function auxAgentStartSideChat() { setSideChatDraft(true); }
-/** Chat menu rows without the home thread, which the title already represents. */
+/** Chats started in the side panel or the full view; routines, channels, New Tab and other
+ * surfaces carry their own trigger. */
+const isSideChat = ({trigger}) => !trigger || trigger.type === "user" && trigger.source === "sidepanel";
+/** Chat menu rows: side chats only, without the home thread, which the title represents. */
 export function auxAgentSideChats(rows) {
   const home = [...stores.values()].map(store => store.snapshot.agent.homeSessionId).filter(Boolean);
-  return home.length ? rows.filter(row => !home.includes(row.id)) : rows;
+  return rows.filter(row => isSideChat(row) && !home.includes(row.id));
 }
 
 // --------------------------------------------------------------------------------- avatar
@@ -232,6 +241,7 @@ function AgentFields({draft, setDraft, error, centered = false}) {
 const lookOf = avatarUrl => !avatarUrl ? DEFAULT_LOOK.id : looks().find(look => look.image === avatarUrl)?.id ?? "custom";
 
 const draftFrom = (agent, avatarUrl) => ({name: agent.name, look: lookOf(avatarUrl), avatar: avatarUrl, error: null});
+const draftChanged = (draft, original) => draft.name !== original.name || draft.avatar !== original.avatar;
 
 async function saveDraft(agent, draft, original) {
   const name = draft.name.trim() || DEFAULT.name;
@@ -246,14 +256,18 @@ async function saveDraft(agent, draft, original) {
 const PREAMBLE = /^(?:\s*#[^\n]*\n|\s*<!--[\s\S]*?-->[^\S\n]*\n?)*\s*/;
 const DEFAULT_PREAMBLE = "# Agent Rules\n\n";
 
-/** AGENTS.md, the instructions the agent reads before every conversation; read while enabled. */
+/** AGENTS.md, the instructions the agent reads before every conversation; read while enabled.
+ * Until a read succeeds the text is null, so nothing can be edited or saved over the file. */
 function useInstructions(accountId, enabled = true) {
   const [text, setText] = useState(null);
   const [saved, setSaved] = useState(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const preamble = useRef(DEFAULT_PREAMBLE);
   useEffect(() => {
     if (!enabled) return;
     let live = true;
+    setFailed(false);
     trpc.settings.readContextFile.query({accountId, fileName: "AGENTS.md"}).then(({content}) => {
       if (!live) return;
       const head = PREAMBLE.exec(content)?.[0] ?? "";
@@ -261,21 +275,27 @@ function useInstructions(accountId, enabled = true) {
       const body = content.slice(head.length).trimEnd();
       setText(body);
       setSaved(body);
-    }, () => live && (setText(""), setSaved("")));
+    }, () => live && (setText(null), setSaved(null), setFailed(true)));
     return () => { live = false; };
-  }, [accountId, enabled]);
+  }, [accountId, enabled, attempt]);
   const save = async () => {
     if (text === null || text === saved) return;
     const body = text.trim();
     await trpc.settings.writeContextFile.mutate({accountId, fileName: "AGENTS.md", content: `${preamble.current}${body}${body ? "\n" : ""}`});
     setSaved(text);
   };
-  return {text, setText, saved, dirty: text !== null && text !== saved, save, discard: () => setText(saved)};
+  return {text, setText, saved, failed, retry: () => setAttempt(count => count + 1),
+    dirty: text !== null && text !== saved, save, discard: () => setText(saved)};
 }
 
-const InstructionsBox = ({instructions, name}) => j.jsx(Textarea, {value: instructions.text ?? "", disabled: instructions.text === null, rows: 4,
-  className: "text-sm", placeholder: `Anything ${name} should always keep in mind. "Show prices in USD." "I prefer primary sources."`,
-  onChange: event => instructions.setText(event.target.value)});
+const InstructionsBox = ({instructions, name}) => instructions.failed
+  ? j.jsxs("div", {className: "flex items-center justify-between gap-2", role: "alert", children: [
+    j.jsx("p", {className: "text-muted-foreground text-sm", children: "Couldn't load instructions."}),
+    j.jsx(Button, {variant: "outline", size: "sm", onClick: instructions.retry, children: "Retry"}),
+  ]})
+  : j.jsx(Textarea, {value: instructions.text ?? "", disabled: instructions.text === null, rows: 4,
+    className: "text-sm", placeholder: `Anything ${name} should always keep in mind. "Show prices in USD." "I prefer primary sources."`,
+    onChange: event => instructions.setText(event.target.value)});
 
 /** Where initiative lives: routines, not a personality dial. */
 const RoutinesHint = ({accountId, name}) => j.jsxs("p", {className: "text-muted-foreground text-xs", children: [
@@ -290,7 +310,9 @@ export function AuxAgentSheet({open, onOpenChange, setup = false}) {
   const [draft, setDraft] = useState(() => draftFrom(agent.agent, agent.avatarUrl));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  useEffect(() => { if (open) { setDraft(draftFrom(agent.agent, agent.avatarUrl)); setError(null); } }, [open]);
+  const [confirming, setConfirming] = useState(false);
+  useEffect(() => { if (open) { setDraft(draftFrom(agent.agent, agent.avatarUrl)); setError(null); setConfirming(false); } }, [open]);
+  const dirty = draftChanged(draft, draftFrom(agent.agent, agent.avatarUrl)) || instructions.dirty;
   const finish = async save => {
     if (busy) return;
     setBusy(true);
@@ -302,9 +324,18 @@ export function AuxAgentSheet({open, onOpenChange, setup = false}) {
       onOpenChange(false);
     } catch (problem) { setError(problem?.message ?? "Could not save."); } finally { setBusy(false); }
   };
+  // Escape never counts as Skip: in Meet it only closes, and the sheet is offered again.
+  // In Customize it asks before throwing edits away.
+  const escape = () => {
+    if (busy) return;
+    if (setup) onOpenChange(false);
+    else if (confirming) setConfirming(false);
+    else if (dirty) setConfirming(true);
+    else finish(false);
+  };
   useEffect(() => {
     if (!open) return;
-    const onKey = event => event.key === "Escape" && finish(false);
+    const onKey = event => event.key === "Escape" && escape();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
@@ -331,7 +362,11 @@ export function AuxAgentSheet({open, onOpenChange, setup = false}) {
       ]}),
       j.jsx(RoutinesHint, {accountId: agent.accountId, name}),
     ]})}),
-    j.jsxs("div", {className: "flex shrink-0 justify-end gap-2 border-t px-5 py-3", children: [
+    j.jsxs("div", {className: "flex shrink-0 items-center justify-end gap-2 border-t px-5 py-3", children: confirming ? [
+      j.jsx("p", {className: "text-muted-foreground min-w-0 flex-1 text-sm", role: "alert", children: "Discard your changes?"}),
+      j.jsx(Button, {variant: "ghost", onClick: () => setConfirming(false), children: "Keep editing"}),
+      j.jsx(Button, {disabled: busy, onClick: () => finish(false), children: "Discard"}),
+    ] : [
       j.jsx(Button, {variant: "ghost", disabled: busy, onClick: () => finish(false), children: setup ? "Skip" : "Cancel"}),
       j.jsx(Button, {disabled: busy, onClick: () => finish(true), children: setup ? "Done" : "Save"}),
     ]}),
@@ -353,7 +388,7 @@ export function AuxAgentTitle({sessionId, menu, navigate}) {
       j.jsx(Tooltip, {content: `Customize ${agent.agent.name}`, children: j.jsx(Button, {variant: "ghost", size: "sm", className: "no-drag min-w-0 px-2",
         "aria-label": `Customize ${agent.agent.name}`, onClick: () => setOpen(true),
         children: j.jsx("span", {className: "truncate text-sm font-medium", children: agent.agent.name})})}),
-      sessionId && menu("Side chats"),
+      menu("Side chats"),
       j.jsx(AuxAgentSheet, {open, onOpenChange: setOpen}),
     ]});
   }
@@ -396,19 +431,61 @@ export function AuxAgentHomeRoute({sessionId, onSessionChange}) {
     if (agent.ready && !agent.agent.setupCompleted && mode !== "incognito") setSetupOpen(true);
   }, [agent.ready, agent.agent.setupCompleted, mode]);
 
+  useEffect(() => {
+    if (mode === "incognito") return;
+    const goHome = () => { setSideChatDraft(false); onSessionChange(home ?? null); };
+    // The background worker relays the agent button's click to every panel; only this window's acts.
+    let windowId = null;
+    chrome.windows?.getCurrent?.().then(current => { windowId = current.id; }, () => {});
+    const relay = message => { if (message?.type === HOME_EVENT && message.windowId === windowId) goHome(); };
+    window.addEventListener(HOME_EVENT, goHome);
+    chrome.runtime?.onMessage?.addListener(relay);
+    return () => { window.removeEventListener(HOME_EVENT, goHome); chrome.runtime?.onMessage?.removeListener(relay); };
+  }, [home, mode, onSessionChange]);
+
+  // A question asked from the command bar (aux-palette-ask.mjs) goes to the home thread. With no
+  // home thread yet, it opens in the New Tab composer, as it did before the panel took it.
+  useEffect(() => {
+    if (!agent.ready || mode === "incognito" || !chrome.storage?.session) return;
+    let alive = true;
+    const take = async () => {
+      const [current, stored] = await Promise.all([chrome.windows.getCurrent(), chrome.storage.session.get(PENDING_ASK_KEY)]);
+      const ask = stored[PENDING_ASK_KEY];
+      if (!alive || !ask || ask.windowId !== current.id) return;
+      await chrome.storage.session.remove(PENDING_ASK_KEY);
+      if (Date.now() - ask.at > PENDING_ASK_MS || typeof ask.text !== "string" || !ask.text.trim()) return;
+      if (!home) {
+        const url = new URL(chrome.runtime.getURL("newtab.html"));
+        url.searchParams.set("mode", "ask"); url.searchParams.set("q", ask.text);
+        await chrome.tabs.create({windowId: current.id, url: url.href});
+        return;
+      }
+      setSideChatDraft(false); onSessionChange(home);
+      await trpc.sessions.queue.mutate({accountId: agent.accountId, sessionId: home, prompt: ask.text});
+    };
+    const changed = (changes, area) => { if (area === "session" && changes[PENDING_ASK_KEY]?.newValue) take().catch(() => {}); };
+    take().catch(() => {});
+    chrome.storage.onChanged.addListener(changed);
+    return () => { alive = false; chrome.storage.onChanged.removeListener(changed); };
+  }, [agent.ready, agent.accountId, home, mode, onSessionChange]);
+
   return j.jsx(AuxAgentSheet, {setup: true, open: setupOpen, onOpenChange: setSetupOpen});
 }
 
-/** An empty conversation, in place of the supplied faint logo: who you are talking to. */
+/** An empty conversation, in place of the supplied faint logo: who you are talking to, or,
+ * with no model to answer, the way to connect one. */
 export function AuxAgentEmptyState() {
   const agent = useAuxAgent();
+  const {availableModels, isLoading} = useAgentSettings();
   const name = agent.agent.name;
+  const unconnected = !isLoading && !availableModels.length;
   return j.jsxs("div", {className: "flex max-w-xs flex-col items-center gap-2.5 text-center", children: [
     j.jsx(AuxAgentAvatar, {size: 44}),
     j.jsx("div", {className: "font-display text-foreground text-lg font-medium", children: sideChatDraft ? "New side chat" : `Hi, I'm ${name}`}),
-    j.jsx("div", {className: "text-muted-foreground text-sm", children: sideChatDraft
-      ? `Starts fresh. ${name} still remembers what matters.`
+    j.jsx("div", {className: "text-muted-foreground text-sm", children: unconnected ? "Connect a model to start."
+      : sideChatDraft ? `Starts fresh. ${name} still remembers what matters.`
       : "Ask me anything, or tell me what to get done on the web. I'll remember what matters."}),
+    unconnected && j.jsx(Button, {variant: "outline", size: "sm", onClick: () => openPage(agent.accountId, "settings/model"), children: "Open Models"}),
   ]});
 }
 
@@ -424,7 +501,7 @@ export function AuxAgentSettings() {
   const loaded = useRef(false);
   useEffect(() => { if (agent.ready && !loaded.current) { loaded.current = true; setDraft(draftFrom(agent.agent, agent.avatarUrl)); } }, [agent.ready]);
   const original = draftFrom(agent.agent, agent.avatarUrl);
-  const dirty = ["name", "avatar"].some(key => draft[key] !== original[key]);
+  const dirty = draftChanged(draft, original);
   const run = async action => {
     setBusy(true);
     setError(null);

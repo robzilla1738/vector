@@ -1,5 +1,7 @@
-/** Child-process lifetime for provider CLIs. Every child leads its own process
- * group so Stop and Quit reach the CLI's own descendants (MCP bridges, shells). */
+/** Child-process lifetime for provider CLIs. Every child leads its own process group so Stop
+ * and Quit reach the CLI's own descendants (MCP bridges, shells), and a /bin/sh watchdog at the
+ * head of that group kills it when the daemon's end of fd 3 closes, so a crashed or killed
+ * daemon leaves no CLI behind. The watchdog passes TERM through to the CLI and exits with it. */
 import {spawn} from 'node:child_process';
 
 const live = new Set();
@@ -32,8 +34,11 @@ export function installExitCleanup() {
   process.once('exit', () => { for (const child of live) signalGroup(child, 'SIGKILL'); });
 }
 
+const WATCHDOG = 'trap : TERM INT HUP; exec 4<&0; "$@" <&4 3<&- 4<&- & cli=$!; (read _ <&3; kill -KILL 0) & watch=$!; '
+  + 'while :; do wait "$cli"; code=$?; kill -0 "$cli" 2>/dev/null || break; done; kill "$watch" 2>/dev/null; exit "$code"';
+
 export function launch(file, args, {cwd, env, stdin = 'ignore'} = {}) {
-  const child = spawn(file, args, {cwd, env, detached: true, stdio: [stdin, 'pipe', 'pipe']});
+  const child = spawn('/bin/sh', ['-c', WATCHDOG, 'aux-cli', file, ...args], {cwd, env, detached: true, stdio: [stdin, 'pipe', 'pipe', 'pipe']});
   live.add(child);
   child.once('exit', () => live.delete(child));
   child.once('error', () => live.delete(child));

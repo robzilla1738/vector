@@ -7,6 +7,11 @@ export const PROVIDER_STATES = Object.freeze(['not-installed', 'signed-out', 're
 
 const provider = spec => Object.freeze({hiddenUnlessInstalled: false, ...spec});
 
+const CLAUDE_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+const claudeModel = (id, name) => ({id, name, efforts: CLAUDE_EFFORTS});
+
+/** `images`: the driver attaches the latest message's images. `contextWindow`: the CLI's
+ * default window when its model list does not report one. Codex lists its models at detection. */
 export const PROVIDERS = Object.freeze([
   provider({
     id: 'codex', label: 'ChatGPT', product: 'Codex CLI', replaces: 'openai-codex',
@@ -14,7 +19,7 @@ export const PROVIDERS = Object.freeze([
     versionPattern: /^codex-cli\s+(\S+)/m,
     install: {url: 'https://developers.openai.com/codex/cli', command: 'brew install --cask codex'},
     login: 'codex login', logout: 'codex logout', driver: 'codex-app-server',
-    models: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini'],
+    images: true, contextWindow: 272000, models: [],
   }),
   provider({
     id: 'claude', label: 'Claude', product: 'Claude Code', replaces: 'claude-code',
@@ -22,7 +27,8 @@ export const PROVIDERS = Object.freeze([
     versionPattern: /^(\S+)\s+\(Claude Code\)/m,
     install: {url: 'https://docs.claude.com/en/docs/claude-code/setup', command: 'brew install --cask claude-code'},
     login: 'claude auth login', logout: 'claude auth logout', driver: 'claude-stream-json',
-    models: ['sonnet', 'opus', 'haiku'],
+    images: true, contextWindow: 200000,
+    models: [claudeModel('claude-sonnet-5', 'Claude Sonnet 5'), claudeModel('claude-opus-5-5', 'Claude Opus 5.5'), claudeModel('claude-haiku-5-5', 'Claude Haiku 5.5')],
   }),
   provider({
     id: 'cursor', label: 'Cursor', product: 'Cursor CLI', replaces: null,
@@ -31,7 +37,7 @@ export const PROVIDERS = Object.freeze([
     versionPattern: /^(\d{4}\.\d{1,2}\.\d{1,2}-[0-9a-f]+)\s*$/m,
     install: {url: 'https://cursor.com/cli', command: 'brew install --cask cursor-cli'},
     login: 'agent login', logout: 'agent logout', driver: 'cursor-stream-json',
-    models: ['auto'],
+    images: false, contextWindow: 200000, models: [{id: 'auto', name: 'Auto'}],
   }),
   provider({
     id: 'grok', label: 'Grok', product: 'Grok Build', replaces: 'xai-grok-oauth',
@@ -40,7 +46,7 @@ export const PROVIDERS = Object.freeze([
     versionPattern: /^grok\s+(\S+)/m,
     install: {url: 'https://x.ai/build', command: 'brew install --cask grok-build'},
     login: 'grok login', logout: 'grok logout', driver: 'grok-streaming-json',
-    models: [],
+    images: false, contextWindow: 256000, models: [],
   }),
   provider({
     id: 'opencode', label: 'OpenCode', product: 'OpenCode', replaces: null,
@@ -49,17 +55,26 @@ export const PROVIDERS = Object.freeze([
     versionPattern: /^opencode\s+v?(\S+)/m,
     install: {url: 'https://opencode.ai/docs', command: 'curl -fsSL https://opencode.ai/install | bash'},
     login: 'opencode auth login', logout: 'opencode auth logout', driver: 'opencode-json',
-    models: [],
+    images: true, contextWindow: 200000, models: [],
   }),
   provider({
-    // GitHub's official Copilot CLI. Shown only when installed; its headless flags are
-    // not verified on this Mac (not installed), so it has no driver yet.
+    // GitHub's official Copilot CLI over the Agent Client Protocol. Copilot and Gemini are not
+    // installed on this Mac: their ACP flags come from the vendors' docs, not --help. Neither has
+    // a status command; a signed-out CLI answers the first turn with an authentication error.
     id: 'copilot', label: 'GitHub Copilot', product: 'GitHub Copilot CLI', replaces: 'github-copilot',
     commands: ['copilot'], versionArgs: ['--version'], statusArgs: null,
     versionPattern: /(\d+\.\d+\.\d+\S*)/,
     install: {url: 'https://gh.io/copilot-cli', command: 'npm install -g @github/copilot'},
-    login: 'copilot (then /login)', logout: null, driver: null, hiddenUnlessInstalled: true,
-    models: [],
+    login: 'copilot login', logout: 'copilot logout', driver: 'acp', acpArgs: ['--acp', '--stdio'], hiddenUnlessInstalled: true,
+    images: true, contextWindow: 200000, models: [],
+  }),
+  provider({
+    id: 'gemini', label: 'Gemini', product: 'Gemini CLI', replaces: null,
+    commands: ['gemini'], versionArgs: ['--version'], statusArgs: null,
+    versionPattern: /^(\d+\.\d+\.\d+\S*)\s*$/m,
+    install: {url: 'https://github.com/google-gemini/gemini-cli', command: 'npm install -g @google/gemini-cli'},
+    login: 'gemini', logout: null, driver: 'acp', acpArgs: ['--experimental-acp'], hiddenUnlessInstalled: true,
+    images: true, contextWindow: 1048576, models: [],
   }),
 ]);
 
@@ -70,6 +85,14 @@ export const API_KEY_ONLY = Object.freeze({
 });
 
 export const providerById = id => PROVIDERS.find(entry => entry.id === id);
+
+/** The models a provider offers, as {id, name?, efforts?, vision?, contextWindow?}: what detection
+ * found (Grok and Codex list their own), else the catalog's, else the CLI's default model. */
+export function modelSpecs(entry, detection) {
+  const listed = detection?.models?.length ? detection.models : entry.models;
+  const specs = listed.map(model => typeof model === 'string' ? {id: model} : model);
+  return specs.length ? specs : [{id: 'default'}];
+}
 
 const EMAIL = /([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*(@[A-Za-z0-9.-]+\.[A-Za-z]+)/g;
 export const maskEmail = text => typeof text === 'string' ? text.replace(EMAIL, '$1…$2') : text;
@@ -124,7 +147,8 @@ export function parseAuthStatus(id, result) {
       break;
     }
     case 'copilot':
-      return {state: 'ready', account: null, detail: 'Sign-in state is shown in the Copilot CLI.'};
+    case 'gemini':
+      return {state: 'ready', account: null};
   }
   return {state: 'error', detail: firstLine(out) || `The status check exited with ${result.exitCode}.`};
 }
@@ -143,9 +167,8 @@ export function settingsRow(entry, detection) {
       return {...base, hidden: false, message: `${entry.product} is installed but not signed in.`,
         actions: [{kind: 'copy', label: 'Copy sign-in command', command: entry.login}, {kind: 'terminal', label: 'Open Terminal', command: entry.login}, {kind: 'refresh', label: 'Check again'}]};
     case 'ready':
-      return {...base, hidden: false, account: detection.account ?? null, models: detection.models?.length ? detection.models : entry.models,
-        runnable: !!entry.driver,
-        message: entry.driver ? `Signed in with ${entry.product}.` : `${entry.product} is installed. Aux support is not verified yet.`,
+      return {...base, hidden: false, account: detection.account ?? null, models: modelSpecs(entry, detection).map(model => model.id),
+        message: entry.statusArgs ? `Signed in with ${entry.product}.` : `${entry.product} is ready. If a turn says it is not signed in, run ${entry.login} in Terminal.`,
         actions: entry.logout ? [{kind: 'explain', label: 'Disconnect', text: `Sign out in ${entry.product}: run ${entry.logout}.`, command: entry.logout}] : []};
     default:
       return {...base, hidden: entry.hiddenUnlessInstalled && !detection.path, message: detection.detail ?? 'Aux could not check this provider.',

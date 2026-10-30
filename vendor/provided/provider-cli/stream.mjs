@@ -197,9 +197,10 @@ export function codexParser() {
         case 'item/started':
         case 'item/completed': {
           const item = object(params.item) ?? {};
-          if (!['mcpToolCall', 'dynamicToolCall', 'commandExecution', 'webSearch'].includes(item.type)) return [];
+          if (!['mcpToolCall', 'dynamicToolCall', 'commandExecution', 'fileChange', 'webSearch'].includes(item.type)) return [];
           const name = item.type === 'mcpToolCall' ? `${item.server}.${item.tool}` : item.tool ?? item.type;
-          if (message.method === 'item/started') return [{type: 'tool', phase: 'start', id: item.id, name, input: item.arguments ?? item.command ?? item.query}];
+          const input = item.arguments ?? item.command ?? item.query ?? item.changes?.map(change => change.path);
+          if (message.method === 'item/started') return [{type: 'tool', phase: 'start', id: item.id, name, input}];
           return [{type: 'tool', phase: 'end', id: item.id, name, output: item.result ?? item.aggregatedOutput ?? item.error, isError: item.status === 'failed' || !!item.error}];
         }
         case 'error':
@@ -216,7 +217,42 @@ export function codexParser() {
   });
 }
 
+/** Agent Client Protocol `session/update` notifications. The driver feeds the session/prompt
+ * result in as `aux/prompt-result`; its stopReason ends the turn. */
+export function acpParser() {
+  const open = new Set();
+  const end = (update, status) => {
+    open.delete(update.toolCallId);
+    return {type: 'tool', phase: 'end', id: update.toolCallId, name: update.title, output: update.rawOutput ?? contentText((update.content ?? []).map(part => part?.content)),
+      isError: status === 'failed'};
+  };
+  return terminalGuard({
+    push(message) {
+      if (message.method === 'aux/prompt-result') {
+        const reason = message.result?.stopReason;
+        if (reason === 'refusal') return [{type: 'error', code: 'refusal', message: 'The agent declined this request.'}];
+        return [{type: 'done', reason: reason === 'cancelled' ? 'cancelled' : 'end', ...(message.result?.usage ? {usage: message.result.usage} : {})}];
+      }
+      if (message.method !== 'session/update') return [];
+      const update = object(message.params?.update) ?? {};
+      const finished = update.status === 'completed' || update.status === 'failed';
+      switch (update.sessionUpdate) {
+        case 'agent_message_chunk': return update.content?.type === 'text' ? [{type: 'text', delta: text(update.content.text)}] : [];
+        case 'agent_thought_chunk': return update.content?.type === 'text' ? [{type: 'reasoning', delta: text(update.content.text)}] : [];
+        case 'tool_call': {
+          open.add(update.toolCallId);
+          const start = {type: 'tool', phase: 'start', id: update.toolCallId, name: update.title ?? update.kind ?? 'tool', input: update.rawInput};
+          return finished ? [start, end(update, update.status)] : [start];
+        }
+        case 'tool_call_update': return finished && open.has(update.toolCallId) ? [end(update, update.status)] : [];
+      }
+      return [];
+    },
+    finish: info => [exitError(info, 'The agent ended before the turn completed.')],
+  });
+}
+
 export const PARSERS = Object.freeze({
   'claude-stream-json': claudeParser, 'cursor-stream-json': cursorParser,
-  'grok-streaming-json': grokParser, 'opencode-json': opencodeParser, 'codex-app-server': codexParser,
+  'grok-streaming-json': grokParser, 'opencode-json': opencodeParser, 'codex-app-server': codexParser, acp: acpParser,
 });

@@ -79,18 +79,22 @@ test('frozen prompts from before a rename are rebuilt; foreign prompts never are
   assert.equal(agent.promptStale(3, {id: 's'}, ''), false);
 });
 
-test('the home thread rebuilds when its instructions change, then keeps its prompt', () => {
+test('the home thread rebuilds when its instructions or memory change, then keeps its prompt', () => {
   agent.setHome(4, 'home');
-  const built = agent.systemPrompt(PROMPT, 4);
-  assert.equal(agent.promptStale(4, {id: 'home'}, built), true, 'first build stamps the context');
-  assert.equal(agent.promptStale(4, {id: 'home'}, built), false);
+  const home = {id: 'home'}, built = agent.systemPrompt(PROMPT, 4);
+  assert.equal(agent.promptStale(4, home, built), true, 'no context recorded yet');
+  assert.equal(agent.promptStale(4, home, built), true, 'a rebuild that never stored a prompt is tried again');
+  agent.promptBuilt(4, home, built);
+  assert.equal(agent.promptStale(4, home, built), false);
   assert.equal(agent.promptStale(4, {id: 'side'}, built), false, 'side chats keep their frozen prompt');
   const task = roots.task(4);
-  rmSync(task, {recursive: true, force: true});
-  mkdirSync(task, {recursive: true});
-  writeFileSync(path.join(task, 'AGENTS.md'), 'Always show prices in USD.');
-  assert.equal(agent.promptStale(4, {id: 'home'}, built), true);
-  assert.equal(agent.promptStale(4, {id: 'home'}, built), false);
+  mkdirSync(path.join(task, 'memory'), {recursive: true});
+  for (const [file, text] of [['AGENTS.md', 'Always show prices in USD.'], ['memory/MEMORY.md', 'Lives in Birmingham.']]) {
+    writeFileSync(path.join(task, file), text);
+    assert.equal(agent.promptStale(4, home, built), true, file);
+    agent.promptBuilt(4, home, built);
+    assert.equal(agent.promptStale(4, home, built), false, file);
+  }
 });
 
 test('a rename leaves a note for the home thread with the new name', () => {
@@ -114,17 +118,22 @@ test('avatars are PNGs only, bounded, and versioned by content', () => {
   assert.equal(agent.read(5).avatarRevision, '');
 });
 
-test('the native feed drops the home thread from the lists and reports its state', () => {
+test('the native feed drops the home thread from the lists and reports the most urgent state', () => {
   agent.update(6, {name: 'Iris'});
   agent.setHome(6, 'h');
   const preview = row => ({id: row.id, status: row.status});
-  const chats = agent.chromeChats(6, {pinned: [{id: 'p', status: 'idle'}], recents: [{id: 'h', status: 'running'}, {id: 'r', status: 'idle'}]},
-    preview, id => ({id, status: 'awaiting-approval'}));
+  const lists = {pinned: [{id: 'p', status: 'idle'}], recents: [{id: 'h', status: 'running'}, {id: 'r', status: 'idle'}]};
+  const status = (home, ...active) => agent.chromeChats(6, lists, preview, id => ({id, status: home}), active.map((status, i) => ({id: `a${i}`, status}))).agent.status;
+  const chats = agent.chromeChats(6, lists, preview, id => ({id, status: 'finished-unread'}), []);
   assert.deepEqual(chats.pinned, [{id: 'p', status: 'idle'}]);
   assert.deepEqual(chats.recents, [{id: 'r', status: 'idle'}]);
-  assert.deepEqual(chats.agent, {name: 'Iris', homeSessionId: 'h', status: 'awaiting-approval', avatarRevision: ''});
-  const gone = agent.chromeChats(6, {pinned: [], recents: []}, preview, () => undefined);
+  assert.deepEqual(chats.agent, {name: 'Iris', homeSessionId: 'h', status: 'finished-unread', avatarRevision: ''});
+  assert.equal(status('idle', 'running', 'awaiting-answer'), 'awaiting-answer', 'a side chat or routine asking shows on the button');
+  assert.equal(status('awaiting-answer', 'awaiting-approval', 'running'), 'awaiting-approval');
+  assert.equal(status('error', 'running'), 'running');
+  const gone = agent.chromeChats(6, {pinned: [], recents: []}, preview, () => undefined, [{id: 's', status: 'running'}]);
   assert.equal(gone.agent.homeSessionId, null, 'an archived or deleted home is not reported');
+  assert.equal(gone.agent.status, 'running');
 });
 
 test('a damaged agent file falls back to defaults instead of failing', () => {
