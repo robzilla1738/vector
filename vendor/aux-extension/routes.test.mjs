@@ -1221,3 +1221,44 @@ test('the omnibox mode, scopes and Ask panel behave like the supplied ones', asy
         onSubmitReady: world.stub('spy:onReady'), onSubmitInFlightChange: world.stub('spy:onInFlight'), onPendingSubmitHandled: world.stub('spy:onHandled')})]});
 });
 
+// Channels: connections on every platform and status, their policies, pairing requests and paired
+// senders, remote control, and the new-connection dialog on each of its views.
+test('the Channels page and its dialogs render like the supplied ones', async () => {
+  const chunk = 'assets/channels-CJn5l9_T.js';
+  const connections = [{id: 'c1', platform: 'slack', displayName: 'Aux Slack', enabled: true, status: 'connected', botUserId: 'U1', projectId: 'p1', lastUsedAt: 5},
+    {id: 'c2', platform: 'telegram', displayName: 'Aux Bot', enabled: false, status: 'error', lastError: 'Token revoked', projectId: null, lastUsedAt: null},
+    {id: 'c3', platform: 'discord', displayName: 'Aux Discord', enabled: true, status: 'backing_off'}];
+  const policy = {dm: {access: 'pairing'}, group: {access: 'everyone', requireMention: true}, delivery: {whileRunning: 'follow_up', interruptCommands: ['stop'], debounceMs: 800}};
+  const pairing = [{requestId: 'q1', senderId: 'U9', displayName: 'Sam', avatarUrl: null, createdAt: 1, expiresAt: 4102444800000},
+    {requestId: 'q2', senderId: 'U8', displayName: null, expiresAt: 1}];
+  const senders = [{connectionId: 'c1', senderId: 'U2', displayName: 'Robert', avatarUrl: 'a.png', canApprovePairing: true, pairedAt: 3}, {connectionId: 'c1', senderId: 'U3',
+    displayName: null, canApprovePairing: false, pairedAt: null}];
+  const scene = (world, {list = connections, account = {mode: 'cloud', authStatus: 'active', subscriptionPlan: 'pro'}, remote = {status: 'connected'}, view = 'choice',
+    platform = 'slack', state} = {}) => ({state, context: {accountId: 7, platform, projects: [{id: 'p1', name: 'Aux'}], busyRef: {current: false}, setView: world.stub('spy:setView'),
+      onOpenChange: world.stub('spy:onOpenChange'), onSaved: world.stub('spy:onSaved'), view}, imports: {
+    './strip-markdown-DRcmtuJc.js#tr': queries({'connections.list': {data: list}, 'projects.list': {data: [{id: 'p1', name: 'Aux'}]}, 'accounts.get': {data: account},
+      'pairing.list': {data: pairing}, 'principals.list': {data: senders}}),
+    './strip-markdown-DRcmtuJc.js#nr': queries({'policies.get': {data: policy}, 'remoteControl.status': {data: remote}, isExperimentalEligible: {data: true}}),
+    './strip-markdown-DRcmtuJc.js#er': {isPending: false, mutate: world.stub('spy:mutate'), mutateAsync: world.stub('spy:mutateAsync')},
+    './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')},
+    './link-q1zvRKtc.js#r': () => ({userId: '7'}), './Match-OymXmaXz.js#o': world.stub('spy:navigate')}});
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 60, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world), world => scene(world, {list: [], account: {mode: 'local'}, remote: {status: 'disabled'}, view: 'manual-form', platform: 'discord'}),
+      world => scene(world, {platform: 'telegram', view: 'manual-form', account: {mode: 'cloud', authStatus: 'active', subscriptionPlan: 'free'}}), world => ({...scene(world), state: [true]}),
+      world => scene(world, {state: ['manual']})],
+    props: [{accountId: 7, connection: connections[0], connectionId: 'c1', displayName: 'Aux Slack', platform: 'slack', projects: [{id: 'p1', name: 'Aux'}], initialTab: 'pairing',
+      userId: '7', showUpgrade: true, fields: [{name: 'botToken', label: 'Bot Token', requiredOnUpdate: true}], mode: 'create', method: 'manual', title: 'Pairing', children: 'x',
+      avatarUrl: 'a.png', name: 'Robert', id: 'remote-1', label: 'Grok Bot', url: 'https://x', email: 'bot@x', host: 'x', toggleDisabled: false},
+      {accountId: 7, connection: connections[1], connectionId: 'c2', platform: 'telegram', projects: [], initialTab: 'credentials', mode: 'update', method: 'aux', name: 'Sam'},
+      {accountId: 7, connection: connections[2], platform: 'discord', projects: [], initialTab: 'options'}]});
+});
+
+test('the Channels platform fields and setup match the supplied ones', async () => {
+  const chunk = 'assets/channels-CJn5l9_T.js';
+  const {supplied, ours} = await evaluatePair({world: createWorld(), chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const json = value => JSON.stringify(value, (_, item) => (Object.prototype.toString.call(item) === '[object Map]' ? [...item] : typeof item === 'function' ? 'fn' : item));
+  for (const name of ['__kept_le', '__kept_E', '__pair_PLATFORM_SETUP', '__pair_NO_PROJECT', '__pair_CREDENTIALS_FORM_ID', '__pair_COVER', '__pair_REMOTE_MESSENGERS']) assert.equal(json(ours[name]), json(supplied[name]), name);
+  for (const platform of ['slack', 'telegram', 'discord']) assert.equal(ours.__pair_guideUrl(platform), supplied.__pair_guideUrl(platform));
+});
+
