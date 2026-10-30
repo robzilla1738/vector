@@ -14,7 +14,7 @@ const textOf = chunk => stagedText(candidate, chunk);
 
 // Scenes that set what the routes' imports return, so each branch renders: signed in or not, a
 // session open or not, sidebar mode open or closed, Settings embedded or not, a menu item active.
-const signedIn = {data: {accountId: 7, mode: 'cloud', authStatus: 'active', browserProfile: 'p'}};
+const signedIn = {data: {accountId: 7, mode: 'cloud', authStatus: 'active', browserProfile: 'p'}, refetch: async () => ({})};
 const routeScenes = [
   world => ({imports: {
     './utils-DCBm67_n.js#y': true, './sidebar-Cj9gldy1.js#s': {sidebarState: 'closed', setSidebarState: world.stub('setSidebarState')},
@@ -28,7 +28,7 @@ const routeScenes = [
   world => ({imports: {
     './utils-DCBm67_n.js#y': true, './sidebar-Cj9gldy1.js#s': {sidebarState: 'open', setSidebarState: world.stub('setSidebarState')},
     './newtab-CnOLQ0yu.js#o': {accountId: null, browserMode: 'incognito', setAccountId: world.stub('setAccountId')},
-    './strip-markdown-DRcmtuJc.js#nr': {data: {mode: 'local'}}, './strip-markdown-DRcmtuJc.js#tr': {data: {mode: 'local'}},
+    './strip-markdown-DRcmtuJc.js#nr': {data: {mode: 'local'}, refetch: async () => ({})}, './strip-markdown-DRcmtuJc.js#tr': {data: {mode: 'local'}},
     './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7, mode: 'incognito'}, './extension-page-url-BH3pfT7h.js#i': false,
     './Matches-B99cyGDb.js#n': () => () => false,
     './-components-4o0FSqQ9.js#r': {currentSessionId: 's1', onSessionChange: world.stub('onSessionChange')},
@@ -1920,4 +1920,45 @@ test('the assistant steps, turn fold, update banner and copy button render like 
   for (const name of ['__pair_STORAGE_KEY', '__pair_REFRESH_MS', '__pair_SHOW_FOR_MS', '__pair_CARD_MOTION', '__pair_DEFAULT_ACTION_PATH'])
     assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
   assert.deepEqual([...ours.__pair_VIDEO_EXTENSIONS], [...supplied.__pair_VIDEO_EXTENSIONS]);
+});
+
+// The onboarding splash hero: still (reduced motion) and animated, the New Tab intro and the chat
+// at several phases, and its parts with real task, screenshot and subagent data.
+const SPLASH = 'assets/splash-D666ivBP.js';
+test('the onboarding splash hero renders and schedules like the supplied one', async () => {
+  const task = {workingForSeconds: 226, title: 'Finding website design example', image: '/a.png', routine: 'Daily', tools: ['browser', 'search']};
+  const element = {getBoundingClientRect: () => ({left: 10, top: 20, width: 800, height: 600, bottom: 620, right: 810}), offsetWidth: 400, offsetHeight: 300, offsetLeft: 0,
+    parentElement: {getBoundingClientRect: () => ({bottom: 500})}, closest: () => element, querySelector: () => element};
+  const scene = (world, {reduced = false, state, inView = true} = {}) => ({state, imports: {'./strip-markdown-DRcmtuJc.js#Xt': reduced, 'HTMLElement': element,
+    '*useInView': inView}});
+  await assertParity({blocksByChunk: {[SPLASH]: ROUTES[SPLASH]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 900, defaults: false,
+    renamed: renamedBindings, scenes: [world => scene(world), world => scene(world, {reduced: true}), world => scene(world, {state: ['done']}), world => scene(world, {state: ['typing', 'cursor', 12]}),
+      world => scene(world, {state: ['tool-chase', 3, 5, 2, 1, 4000, 1000]}), world => scene(world, {state: ['subagents-header', 30, 20, 2]}), world => scene(world, {state: [1, true]})],
+    props: [world => ({paused: false, variant: 'intro', onDone: world.stub('spy:onDone'), onScreenshotChange: world.stub('spy:shot'), task, initialSeconds: 3725, className: 'probe',
+      image: '/b.png', icon: 'icon', label: 'Chase', chevron: true, title: 'Card Overview', active: true, children: 'child', text: 'First, I will check the statement', wordCount: 4,
+      isTyping: true, visibleCount: 2, elapsedMs: 61000, showStopIcon: true, showAmazonPrime: true, showChase: true, showStatement: true, showSubscriptionWindow: true, mode: 'ask',
+      addressBarMode: 'url', agentTabsCount: 3, selectedTabLabel: 'Netflix', item: {label: 'Gmail', icon: 'g'}, type: 'point', name: 'instagram', textRef: {current: element},
+      placeholderVisible: true, typedText: 'cancel all', tabHintVisible: true, layer: {frame: element, path: {start: {x: 0, y: 0}, control: {x: 5, y: 5}, end: {x: 10, y: 10}},
+        keyframes: [{x: 0, y: 0}, {x: 10, y: 10}]}, pointerType: 'cursor', pointerOpacity: 1, pointerMoving: true, pointerAtStart: false, moveMs: 935, fadeMs: 306}),
+      {paused: true, variant: 'return', task: {...task, routine: undefined, tools: undefined}, initialSeconds: 9, chevron: false, active: false, isTyping: false, wordCount: 0,
+        showStopIcon: false, showAmazonPrime: false, mode: 'search', type: 'default', pointerMoving: false, pointerAtStart: true}]});
+  const world = createWorld();
+  const {supplied, ours} = await evaluatePair({world, chunk: SPLASH, text: textOf(SPLASH), blocks: ROUTES[SPLASH], integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES,
+    renamed: renamedBindings});
+  const same = (name, ...args) => assert.equal(JSON.stringify(ours[name](...args)), JSON.stringify(supplied[name](...args)), name);
+  for (const seconds of [0, 59, 61, 3600, 3725]) same('__pair_durationLabel', seconds);
+  for (const n of [0, 0.5, 1]) same('__pair_easeOutCubic', n);
+  same('__pair_curveKeyframes', {x: 0, y: 100}, {x: 40, y: 20}, {x: 80, y: 0});
+  same('__pair_curveControl', {x: 0, y: 100}, {x: 80, y: 0});
+  for (const phase of ['user-message', 'aux', 'done', 'nope']) { same('__pair_phaseIndex', phase); same('__pair_reached', phase, 'tool-search'); }
+  same('__pair_firstWords', 'one two three four', 2);
+  for (const value of [600, 1200]) { same('__pair_introMs', value); same('__pair_chatMs', value); same('__pair_chatFastMs', value); }
+  for (const name of Object.keys(ours).filter(key => /^__pair_[A-Z0-9_]+$/.test(key))) assert.equal(JSON.stringify(ours[name]), JSON.stringify(supplied[name]), name);
+  same('__pair_frameScale', element); same('__pair_pointerPath', element, {x: 300, y: 40}); same('__pair_omniboxPointer', element, element); same('__pair_newTabPointer', element, element);
+});
+
+test('the tool step icons render like the supplied ones', async () => {
+  const chunk = 'assets/tool-definition-registry-Cc6FCFb2.js';
+  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 15, defaults: false,
+    renamed: renamedBindings, scenes: [{}], props: [{}, {size: 16, ariaHidden: false, className: 'size-4', 'aria-label': 'Tool'}]});
 });

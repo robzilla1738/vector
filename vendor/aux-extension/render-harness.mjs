@@ -253,6 +253,8 @@ export function createWorld() {
       CSS: stub('CSS'), crypto: stub('crypto'), location: stub('location'), history: stub('history'), localStorage: stub('localStorage'),
       sessionStorage: stub('sessionStorage'), fetch: stub('fetch'), chrome: stub('chrome'), self: undefined, global: undefined,
       HTMLElement: stub('HTMLElement'), Audio: stub('Audio'), FileReader: stub('FileReader'), Element: stub('Element'), Node: stub('Node'), CustomEvent: stub('CustomEvent'),
+      performance: {now: () => NOW}, IntersectionObserver: stub('IntersectionObserver'), customElements: stub('customElements'), CSSStyleSheet: stub('CSSStyleSheet'),
+      Worker: stub('Worker'), SVGElement: stub('SVGElement'), DOMParser: stub('DOMParser'),
       InputEvent: class InputEvent extends Event { constructor(type, init = {}) { super(type, init); this.data = init.data ?? null; this.inputType = init.inputType ?? ''; } },
     });
     context.globalThis = context;

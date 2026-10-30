@@ -368,6 +368,18 @@ export const ROUTES = Object.freeze({
     'm:-24,right:-12,transition:{duration:.1}}}', '3cd433acf30e361610d61ac4ec48c3a4c6791df8c772689d457367296fdc29c7', 4684)],
   'assets/copy-button-C-CFkoWv.js': [block('Copy button', 'copy-button.js', 'k=({size:t=24,ariaHidden:n=!0,...r})=>(0,e',
     '??(0,e.jsx)(j,{})},r?"copied":"copy")})})}', 'b97098a9e0b08dcbc2232061f607062e034ba325a63700cb3cf2d6d03e8a1d33', 1792)],
+  // The onboarding splash: its icons and the hero. The bundled motion inView hooks, the Aux wordmark
+  // (scripts/lib/provided-ui.mjs brands it), the email code step and the sign-in pane stay supplied.
+  'assets/splash-D666ivBP.js': [
+    block('Splash icons', 'splash-icons.js', 'ze=({size:s=24,ariaHidden:a=!0,...t})=>(0,', '11.4477 3 12 3Z",fill:"currentColor"})})',
+      '9ecbdb057cdc29c18d3c680074aeeffabf32bb4bf68e2f4f50581a23fbd9c987', 9644),
+    block('Splash hero', 'splash-hero.js', 'qe="/assets/background-BriNwY3v.webm",R1=y', '",children:(0,e.jsx)(g2,{})})})]})})})]})}',
+      '2aa3930d5449787cbca39fe3f13fc75ccbad705ddd707b95658ca98e6896ea55', 51642),
+  ],
+  // Tool definitions, by family: the step icons so far. The bundled syntax highlighter and diff
+  // renderer stay supplied; the embedded Aux mark belongs to scripts/lib/provided-ui.mjs.
+  'assets/tool-definition-registry-Cc6FCFb2.js': [block('Tool step icons', 'tool-icons.js', 'ro=({size:e=24,ariaHidden:t=!0,...n})=>(0,',
+    '5 9.43262 2.25Z",fill:"currentColor"})})', 'a9aad28e077a3f05212c83a6b4fe9cc7cdf191006234ecb8694d3af6cd3d48bc', 20894)],
 });
 
 /** Supplied name → Aux name for the module bindings a route renamed (the parity tests compare them
