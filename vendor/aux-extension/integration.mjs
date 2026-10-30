@@ -201,6 +201,14 @@ export const ROUTES = Object.freeze({
     'dren:(0,t.jsx)(kt,{className:"size-4"})})]})}', '215f89a711a4eb699b3e3b686037a11c2c4246e47a14d97b0741d2e55a877684', 54873)],
   'assets/sidebar-Cj9gldy1.js': [block('Chats sidebar', 'sidebar.js', 'var e=G(),fe=({size:t=24,ariaH', 'tart",nativeButton:!1,...s,children:t});',
     'c9fc0c814635a6b6707f45a01ab3ee98724a38d60383523857e4b220d3950abc', 9651)],
+  'assets/minipopup-LkDLFvnq.js': [block('Mini popup', 'minipopup.js', 'var e=ne(),Ge=({size:s=24,aria', 'emoveEventListener("keydown",n)},[])},Rs=us;',
+    '0318a41af8396de9c9886edff0522d7c7f2b79abdd17dd29e85b491638b9728b', 19043)],
+  'assets/tabsearch-3k_2hgil.js': [block('Command bar', 'tabsearch.js', 'var s=re(),ge=({size:e=24,aria', "ed?.error??''}`.trim());\n  return opened;\n}\n",
+    '571b55ff58af2522c40e936620306a5b224e588b640b1a5b117d13cbdb942d2c', 42075)],
+  'assets/appearance-Ceuw3-j6.js': [block('Appearance settings', 'appearance-settings.js', 'var e=se(),Le=({size:s=24,aria',
+    "lassName:'text-sm text-red-500'},error));\n}\n", '8ae7d91888ce3513b630c9b8232250400d0048ceb78f81afd8edf9bffda45d14', 35297)],
+  'assets/appearance-C03x8vQf.js': [block('Appearance route and Shortcuts page', 'appearance-route.js', 'var P=T(A(),1),e=_(),re=()=>{c',
+    'space-y-8",children:(0,e.jsx)(re,{})})})]})}', 'f38ed06eb5f422fbd5debc82ebc9441a97c5ee7b09f545890a841310e175d6af', 11883)],
 });
 
 /** Supplied name → Aux name for the module bindings a route renamed (the parity tests compare them
@@ -220,6 +228,10 @@ export const TOKEN_CHANGES = Object.freeze([
   ['settings-layout.js', 'hover:bg-neutral-100', 'hover:bg-muted'],
   // The channel chat's unread line was a fixed blue; the unread dots beside it already use the brand token.
   ['conversation.js', 'text-blue-500 select-none dark:text-blue-400', 'text-brand-content select-none'],
+  // The mini popup's session composer card used a fixed 16px corner; rounded-xl is the scale's 12px
+  // step (16.8px with the squircle, so it looks the same and now follows the scale).
+  ['minipopup.js', 'rounded-[16px]', 'rounded-xl'],
+  ['appearance-settings.js', 'text-sm text-red-500', 'text-destructive text-sm'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');

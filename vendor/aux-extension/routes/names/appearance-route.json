@@ -1,0 +1,8 @@
+{
+ "P": "React",
+ "e": "jsxRuntime",
+ "re": "KeyboardShortcuts",
+ "oe": "ShortcutRow",
+ "ne": "ShortcutCapture",
+ "ie": "FixedShortcut"
+}
