@@ -119915,7 +119915,7 @@ index c37fff7744c06bb91f0dc1908f2e7a6f2056cb42..b95145e68ff085c107781d77317dca55
    virtual void SetCustomDefaultTheme(
        scoped_refptr<CustomThemeSupplier> theme_supplier);
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
-index 82f397571fefaff0096247d0e98c28c20db709bd..fec206511cf0093bb73ad2df3166d40452c075b1 100644
+index 82f397571fefaff0096247d0e98c28c20db709bd..98beffee05653a17e04ef701bdfe051877abd9cf 100644
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
 @@ -39,6 +39,14 @@ generate_allowlist_from_histograms_file("webui_name_variants") {
@@ -120028,12 +120028,13 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..fec206511cf0093bb73ad2df3166d404
      ":browser_element_identifiers",
      ":browser_otr_state",
      ":browser_ui_prefs",
-@@ -1088,6 +1125,266 @@ static_library("ui") {
+@@ -1088,6 +1125,269 @@ static_library("ui") {
      "//ui/webui",
    ]
  
 +  if (enable_aux_browser && is_mac) {
 +    sources += [
++      "views/frame/aux_frame_metrics.mm",
 +      "../aux/cli/AuxCliManualProfileApproval.h",
 +      "../aux/cli/AuxCliManualProfileApproval.mm",
 +      "../aux/cli/AuxCliOpenCommand.h",
@@ -120215,6 +120216,8 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..fec206511cf0093bb73ad2df3166d404
 +      "views/frame/aux_favicon_contrast.cc",
 +      "views/frame/aux_favicon_contrast.h",
 +      "views/frame/aux_frame_metrics.h",
++      "views/frame/aux_space_bookmarks.cc",
++      "views/frame/aux_space_bookmarks.h",
 +      "views/frame/aux_sidebar_ink.h",
 +      "views/frame/aux_tab_row_drop_router.cc",
 +      "views/frame/aux_tab_row_drop_router.h",
@@ -120295,7 +120298,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..fec206511cf0093bb73ad2df3166d404
    allow_circular_includes_from = [
      # page_load_metrics's :impl includes headers from //chrome/browser/ui that
      # can't be split out yet.
-@@ -1510,6 +1807,7 @@ static_library("ui") {
+@@ -1510,6 +1810,7 @@ static_library("ui") {
      ]
    } else {
      # !is_android
@@ -120303,7 +120306,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..fec206511cf0093bb73ad2df3166d404
      sources += [
        # This file physically lives in //chrome/browser but is compiled here so
        # that //chrome/browser:browser has no remaining sources. It registers
-@@ -2548,6 +2846,7 @@ static_library("ui") {
+@@ -2548,6 +2849,7 @@ static_library("ui") {
      sources += [
        "views/frame/browser_frame_view_factory_mac.mm",
        "views/frame/browser_frame_view_mac.h",
@@ -120311,7 +120314,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..fec206511cf0093bb73ad2df3166d404
        "views/frame/browser_frame_view_mac.mm",
        "views/frame/browser_native_widget_mac.h",
        "views/frame/browser_native_widget_mac.mm",
-@@ -2592,11 +2891,17 @@ static_library("ui") {
+@@ -2592,11 +2894,17 @@ static_library("ui") {
        "//components/remote_cocoa/app_shim:features",
        "//components/remote_cocoa/browser",
      ]
@@ -120329,7 +120332,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..fec206511cf0093bb73ad2df3166d404
    }
  
    if (is_win) {
-@@ -2711,6 +3016,8 @@ static_library("ui") {
+@@ -2711,6 +3019,8 @@ static_library("ui") {
  
    if (toolkit_views) {
      sources += [
@@ -120338,7 +120341,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..fec206511cf0093bb73ad2df3166d404
        "views/browser_commands_views.cc",
        "views/browser_dialogs_views.cc",
        "views/frame/app_menu_button.cc",
-@@ -2748,6 +3055,37 @@ static_library("ui") {
+@@ -2748,6 +3058,37 @@ static_library("ui") {
        "views/frame/picture_in_picture_browser_frame_view.h",
        "views/frame/top_container_view.cc",
        "views/frame/top_container_view.h",
@@ -120376,7 +120379,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..fec206511cf0093bb73ad2df3166d404
        "views/frame/vertical_tab_strip_region_view.cc",
        "views/frame/vertical_tab_strip_region_view.h",
        "views/tab_search_bubble_host.cc",
-@@ -2762,6 +3100,15 @@ static_library("ui") {
+@@ -2762,6 +3103,15 @@ static_library("ui") {
  
      sources += get_target_outputs(":webui_name_variants")
  
@@ -120392,7 +120395,7 @@ index 82f397571fefaff0096247d0e98c28c20db709bd..fec206511cf0093bb73ad2df3166d404
      public_deps += [ "//chrome/browser/ui/views/tabs/common:impl" ]
  
      deps += [
-@@ -4685,3 +5032,15 @@ if (is_mac) {
+@@ -4685,3 +5035,15 @@ if (is_mac) {
      ]
    }
  }
@@ -128060,7 +128063,7 @@ index 3396b27000c3120dbe0c332293c16c0964f63d78..3fcc9ab5cbf1d74866308ad3d2769a3a
  
    # This is a separate component to avoid possible circular deps.
 diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/tabs/pinned_tab_service.cc
-index 49cc9101aa59daeb3127d3be63456882e193140e..e7d780b19b8c7c2458e3a207b62ac84c46d5b4a9 100644
+index 49cc9101aa59daeb3127d3be63456882e193140e..f9e46f1757e83852ca801057c90d6d169bac2f62 100644
 --- a/chrome/browser/ui/tabs/pinned_tab_service.cc
 +++ b/chrome/browser/ui/tabs/pinned_tab_service.cc
 @@ -1,9 +1,14 @@
@@ -128182,7 +128185,7 @@ index 49cc9101aa59daeb3127d3be63456882e193140e..e7d780b19b8c7c2458e3a207b62ac84c
    // This happens when user closes each tab manually via the close button. In
    // this case WillCloseAllTabs() with closing_all() is not called. This causes
    // pinned tabs to reopen on the next startup. So we should call
-@@ -77,32 +135,405 @@ void PinnedTabService::OnBrowserClosed(BrowserWindowInterface* browser) {
+@@ -77,32 +135,407 @@ void PinnedTabService::OnBrowserClosed(BrowserWindowInterface* browser) {
    if (!TabStripModelObserver::IsObservingAny(this)) {
      WritePinnedTabsIfNecessary();
    }
@@ -128282,7 +128285,7 @@ index 49cc9101aa59daeb3127d3be63456882e193140e..e7d780b19b8c7c2458e3a207b62ac84c
 +  if (organization && !id.empty()) {
 +    auto found = organization->snapshot().entries.find(id);
 +    if (found != organization->snapshot().entries.end() &&
-+        aux::organization::IsGlobalPin(found->second) == pinned) {
++        aux::organization::IsPin(found->second) == pinned) {
 +      UpdatePinnedEntrySessionData(tab, GURL(found->second.launch_url));
 +      organization_requests_.erase(handle);
 +      return;
@@ -128327,8 +128330,10 @@ index 49cc9101aa59daeb3127d3be63456882e193140e..e7d780b19b8c7c2458e3a207b62ac84c
 +  }, weak_factory_.GetWeakPtr(), handle, generation, pinned);
 +  if (!organization) { std::move(done).Run(false, {}); return; }
 +  if (pinned) {
-+    aux::CommitOrganizationPin(*profile_, contents->GetVisibleURL(), contents->GetTitle(),
-+        std::numeric_limits<size_t>::max(), id, std::move(done), true);
++    auto* window = aux::AuxOrganizationWindowController::FromBrowser(tab->GetBrowserWindowInterface());
++    if (!window) { std::move(done).Run(false, {}); return; }
++    aux::CommitOrganizationPin(*profile_, window->ActiveSpaceId(), contents->GetVisibleURL(),
++        contents->GetTitle(), std::numeric_limits<size_t>::max(), id, std::move(done), true);
 +  } else if (!id.empty()) {
 +    auto* window = aux::AuxOrganizationWindowController::FromBrowser(tab->GetBrowserWindowInterface());
 +    if (!window) { std::move(done).Run(false, {}); return; }
@@ -128392,7 +128397,7 @@ index 49cc9101aa59daeb3127d3be63456882e193140e..e7d780b19b8c7c2458e3a207b62ac84c
 +  reconciliation_pending_ = false;
 +  if (!profile_switch_pauses_.empty())
 +    return;
-+  const auto projected = aux::ReadOrganizationPinnedEntries(*profile_, true);
++  const auto projected = aux::ReadOrganizationPinnedEntries(*profile_, {}, true);
 +  const auto entries = projected ? *projected : aux::ReadPinnedTabEntries(*profile_->GetPrefs());
 +  ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
 +      [this, &entries](BrowserWindowInterface* browser) {
@@ -128428,7 +128433,7 @@ index 49cc9101aa59daeb3127d3be63456882e193140e..e7d780b19b8c7c2458e3a207b62ac84c
 +void PinnedTabService::ReconcilePinnedEntries(TabStripModel* model) {
 +  if (!model || !profile_switch_pauses_.empty())
 +    return;
-+  const auto projected = aux::ReadOrganizationPinnedEntries(*profile_, true);
++  const auto projected = aux::ReadOrganizationPinnedEntries(*profile_, {}, true);
 +  const auto saved = projected ? *projected : aux::ReadPinnedTabEntries(*profile_->GetPrefs());
 +  if (projected) {
 +    std::set<std::string> used;
@@ -138572,7 +138577,7 @@ index 03f7acd0bf3484a45beb221c16e206ae0d0d6643..e004d8c915a59f6c895de9a922025e49
    UpdateBackgroundColor();
  }
 diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
-index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..61422a0ff3cdfe6bb67063866ac89331b76e5861 100644
+index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..8bbdf2fa5cc23d05d9dbb43cb714b91a09793dc5 100644
 --- a/chrome/browser/ui/views/frame/browser_view.cc
 +++ b/chrome/browser/ui/views/frame/browser_view.cc
 @@ -3,6 +3,30 @@
@@ -139118,20 +139123,29 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..61422a0ff3cdfe6bb67063866ac89331
  }
  
  void BrowserView::RemovedFromWidget() {
-@@ -5189,6 +5444,12 @@ void BrowserView::OnThemeChanged() {
+@@ -5189,6 +5444,21 @@ void BrowserView::OnThemeChanged() {
    }
  
    FrameColorsChanged();
 +#if BUILDFLAG(ENABLE_AUX_BROWSER)
 +  // Whether the window material shows depends on the Space theme in effect.
 +  InvalidateLayout();
++  // Sidebar views keep theme-derived fills in cached layers, and a theme change
++  // alone doesn't repaint a view, so every one of them repaints here.
++  if (vertical_tab_strip_region_view_) {
++    const auto repaint = [](const auto& self, views::View* view) -> void {
++      view->SchedulePaint();
++      for (views::View* child : view->children()) self(self, child);
++    };
++    repaint(repaint, vertical_tab_strip_region_view_);
++  }
 +  // Aux's own pages in this window follow the same theme.
-+  aux::RefreshAuxPageTints(GetProfile());
++  aux::RefreshAuxPageTints(*browser_);
 +#endif
  }
  
  bool BrowserView::GetDropFormats(
-@@ -6025,6 +6286,7 @@ void BrowserView::OnWillChangeFocus(View* focused_before, View* focused_now) {
+@@ -6025,6 +6295,7 @@ void BrowserView::OnWillChangeFocus(View* focused_before, View* focused_now) {
  }
  void BrowserView::OnDidChangeFocus(View* focused_before, View* focused_now) {
    UpdateAccessibleNameForRootView();
@@ -139139,7 +139153,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..61422a0ff3cdfe6bb67063866ac89331
  }
  
  WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() {
-@@ -6036,6 +6298,7 @@ const WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() const {
+@@ -6036,6 +6307,7 @@ const WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() const {
  }
  
  void BrowserView::PaintAsActiveChanged() {
@@ -139147,7 +139161,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..61422a0ff3cdfe6bb67063866ac89331
    // Do not propagate Browser active state changes if the Browser has already
    // been scheduled for destruction.
    if (browser_->IsDeleteScheduled()) {
-@@ -6109,6 +6372,227 @@ void BrowserView::UpdateAccessibleURLForRootView(const GURL& url) {
+@@ -6109,6 +6381,236 @@ void BrowserView::UpdateAccessibleURLForRootView(const GURL& url) {
    }
  }
  
@@ -139224,6 +139238,13 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..61422a0ff3cdfe6bb67063866ac89331
 +        *toolbar_, *top_container_, *aux_navigation_sidebar_host_);
 +  }
 +  const bool was_hosted = IsAuxSidebarNavigationHosted();
++  // Nothing placement reads moved since the last pass.
++  auto last_inputs = std::make_tuple(inputs, was_hosted,
++      vertical_tab_strip_region_view_->GetContentsBounds().width(),
++      aux_navigation_refused_width_);
++  if (last_inputs == aux_frame_last_inputs_)
++    return;
++  aux_frame_last_inputs_ = std::move(last_inputs);
 +  const auto current_host = was_hosted ? aux::NavigationHost::kSidebar
 +                                     : aux::NavigationHost::kTop;
 +  const auto desired = aux::ResolveFramePresentation(inputs, current_host);
@@ -139251,8 +139272,10 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..61422a0ff3cdfe6bb67063866ac89331
 +  const auto result = aux_navigation_placement_->Update(inputs, sidebar_width);
 +  if (!alive)
 +    return;
-+  if (result == aux::AuxNavigationPlacement::Result::kUnavailable)
++  if (result == aux::AuxNavigationPlacement::Result::kUnavailable) {
++    aux_frame_last_inputs_.reset();
 +    return;
++  }
 +  const bool is_hosted = IsAuxSidebarNavigationHosted();
 +  if (!is_hosted)
 +    vertical_tab_strip_region_view_->SetAuxNavigationPlacementHold(false);
@@ -139375,7 +139398,7 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..61422a0ff3cdfe6bb67063866ac89331
  void BrowserView::UpdateFullscreenAllowedFromPolicy(
      bool allowed_without_policy) {
    auto* fullscreen_pref_path = prefs::kFullscreenAllowed;
-@@ -6121,6 +6605,8 @@ void BrowserView::UpdateFullscreenAllowedFromPolicy(
+@@ -6121,6 +6623,8 @@ void BrowserView::UpdateFullscreenAllowedFromPolicy(
  
  void BrowserView::OnFirstPresentation(
      const viz::FrameTimingDetails& frame_timing_details) {
@@ -139385,10 +139408,26 @@ index 63c3090b4c75b90ea4ddaf02e61c8ff800636194..61422a0ff3cdfe6bb67063866ac89331
      manager->OnBrowserWindowFirstPresentation(
          frame_timing_details.presentation_feedback.timestamp);
 diff --git a/chrome/browser/ui/views/frame/browser_view.h b/chrome/browser/ui/views/frame/browser_view.h
-index d786fede5da896d28046083eeca53e429d9df975..0ad66b068d5263010cb6e1510f04db8916174fff 100644
+index d786fede5da896d28046083eeca53e429d9df975..e1aa953edbc8c331f5710438b3ea06ca0c335534 100644
 --- a/chrome/browser/ui/views/frame/browser_view.h
 +++ b/chrome/browser/ui/views/frame/browser_view.h
-@@ -40,6 +40,7 @@
+@@ -9,6 +9,7 @@
+ #include <memory>
+ #include <optional>
+ #include <string>
++#include <tuple>
+ #include <vector>
+ 
+ #include "base/callback_list.h"
+@@ -26,6 +27,7 @@
+ #include "chrome/browser/ui/immersive/immersive_mode_controller.h"
+ #include "chrome/browser/ui/tabs/organizer/organizer_panel_controller.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
++#include "chrome/browser/ui/views/frame/aux_frame_presentation_state.h"
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+ #include "chrome/browser/ui/translate/partial_translate_bubble_model.h"
+ #include "chrome/browser/ui/unload_controller.h"
+@@ -40,6 +42,7 @@
  #include "chrome/browser/ui/views/intent_picker_bubble_view.h"
  #include "chrome/browser/ui/views/tabs/tab.h"
  #include "chrome/browser/ui/webui/tab_search/tab_search.mojom.h"
@@ -139396,7 +139435,7 @@ index d786fede5da896d28046083eeca53e429d9df975..0ad66b068d5263010cb6e1510f04db89
  #include "chrome/common/buildflags.h"
  #include "components/enterprise/buildflags/buildflags.h"
  #include "components/infobars/core/infobar_container.h"
-@@ -58,6 +59,11 @@
+@@ -58,6 +61,11 @@
  #include "ui/base/mojom/window_show_state.mojom-forward.h"
  #include "ui/base/pointer/touch_ui_controller.h"
  #include "ui/gfx/native_ui_types.h"
@@ -139408,7 +139447,7 @@ index d786fede5da896d28046083eeca53e429d9df975..0ad66b068d5263010cb6e1510f04db89
  #include "ui/views/controls/button/button.h"
  #include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
  #include "ui/views/interaction/view_subregion_anchor.h"
-@@ -75,6 +81,7 @@
+@@ -75,6 +83,7 @@
  class AccessibilityFocusHighlight;
  class BookmarkBarController;
  class BookmarkBarView;
@@ -139416,7 +139455,7 @@ index d786fede5da896d28046083eeca53e429d9df975..0ad66b068d5263010cb6e1510f04db89
  class BrowserWindowInterface;
  class BrowserViewLayout;
  class ContentsContainerView;
-@@ -94,6 +101,7 @@ class TabStrip;
+@@ -94,6 +103,7 @@ class TabStrip;
  class TabStripRegionView;
  class ToolbarButtonProvider;
  class ToolbarView;
@@ -139424,7 +139463,7 @@ index d786fede5da896d28046083eeca53e429d9df975..0ad66b068d5263010cb6e1510f04db89
  class TopContainerView;
  class TopControlsSlideController;
  class TopControlsSlideControllerTest;
-@@ -186,6 +194,19 @@ class BrowserView : public BrowserWindow,
+@@ -186,6 +196,19 @@ class BrowserView : public BrowserWindow,
  
    Profile* GetProfile() const;
  
@@ -139444,7 +139483,7 @@ index d786fede5da896d28046083eeca53e429d9df975..0ad66b068d5263010cb6e1510f04db89
    const TopControlsSlideController* top_controls_slide_controller() const {
      return top_controls_slide_controller_.get();
    }
-@@ -269,6 +290,12 @@ class BrowserView : public BrowserWindow,
+@@ -269,6 +292,12 @@ class BrowserView : public BrowserWindow,
    // Returns either the Horizontal or Vertical TabStrip.
    TabStripRegionView* tab_strip_view() const;
  
@@ -139457,7 +139496,7 @@ index d786fede5da896d28046083eeca53e429d9df975..0ad66b068d5263010cb6e1510f04db89
    // Test only function. When the VerticalTabs feature is enabled,
    // `vertical_tab_strip_container_` will have a value for normal tabbed
    // browsers even if it is not the active TabStrip. Prefer to use
-@@ -457,6 +484,13 @@ class BrowserView : public BrowserWindow,
+@@ -457,6 +486,13 @@ class BrowserView : public BrowserWindow,
  
    // Returns whether any of the features enabling draggable regions is enabled.
    bool AreDraggableRegionsEnabled() const;
@@ -139471,7 +139510,7 @@ index d786fede5da896d28046083eeca53e429d9df975..0ad66b068d5263010cb6e1510f04db89
  
    // Returns true when the window controls overlay should be displayed instead
    // of a full titlebar. This is only supported for desktop web apps.
-@@ -705,6 +739,7 @@ class BrowserView : public BrowserWindow,
+@@ -705,6 +741,7 @@ class BrowserView : public BrowserWindow,
  
    // content::WebContentsObserver:
    void TitleWasSet(content::NavigationEntry* entry) override;
@@ -139479,7 +139518,7 @@ index d786fede5da896d28046083eeca53e429d9df975..0ad66b068d5263010cb6e1510f04db89
    void DidFinishNavigation(
        content::NavigationHandle* navigation_handle) override;
  
-@@ -1386,6 +1421,25 @@ class BrowserView : public BrowserWindow,
+@@ -1386,6 +1423,26 @@ class BrowserView : public BrowserWindow,
    base::CallbackListSubscription paint_as_active_subscription_;
  
    PrefChangeRegistrar registrar_;
@@ -139496,6 +139535,7 @@ index d786fede5da896d28046083eeca53e429d9df975..0ad66b068d5263010cb6e1510f04db89
 +  std::unique_ptr<aux::AuxNavigationPlacement> aux_navigation_placement_;
 +  raw_ptr<views::View> aux_navigation_sidebar_host_ = nullptr;
 +  bool aux_frame_update_pending_ = false;
++  std::optional<std::tuple<aux::FramePresentationInputs, bool, int, int>> aux_frame_last_inputs_;
 +  bool aux_frame_tearing_down_ = false;
 +  bool aux_minimal_ui_enabled_ = false;
 +  int aux_navigation_refused_width_ = -1;
@@ -139505,7 +139545,7 @@ index d786fede5da896d28046083eeca53e429d9df975..0ad66b068d5263010cb6e1510f04db89
  
    base::CallbackListSubscription vertical_tab_subscription_;
  
-@@ -1405,6 +1459,14 @@ class BrowserView : public BrowserWindow,
+@@ -1405,6 +1462,14 @@ class BrowserView : public BrowserWindow,
    base::EnumSet<TabStripAndWebAppViewsReparentedState>
        tab_strip_web_apps_reparented_state_;
  
@@ -140631,7 +140671,7 @@ index fdbb4cf741eb3de803fdf4b053813d8f1ad2d16e..a77e9da5095e95eb74e2671d1fe6b916
      window->OnTopContainerViewBoundsChanged(bounds);
    }
 diff --git a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60ba1050e85 100644
+index 29dfbde914c55ad1453a1c70998c9299b49c1132..33153b8869c9c1c4bf73c406ec853f5d53954307 100644
 --- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 @@ -3,6 +3,7 @@
@@ -141004,25 +141044,27 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
          vertical_tab_strip_animation.bottom_corner > 0.0;
      if (bottom_corner_visible) {
        auto preferred =
-@@ -1139,6 +1356,28 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1139,6 +1356,30 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
  
      views().multi_contents_view->SetSplitViewInsets(contents_insets);
    }
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 +  // Aux shows the page as one card with the same inset on every side: single
-+  // page or split, toolbar on top or in the sidebar. Full screen and minimal
-+  // mode stay flush.
++  // page or split, toolbar on top or in the sidebar. Full screen stays flush,
++  // as does minimal mode beside a docked sidebar; a collapsed sidebar leaves
++  // the page to its gutter in every other mode, the window controls gone.
 +  if (views().multi_contents_view) {
++    const bool docked_sidebar =
++        GetVerticalTabStripCollapsedState() ==
++        VerticalTabStripCollapsedState::kExpanded;
 +    const bool aux_card =
 +        layout_data_->tab_strip_type == TabStripType::kVertical &&
-+        !is_fullscreen(layout_data_->window_state) && !AuxMinimalUi(views());
++        !is_fullscreen(layout_data_->window_state) &&
++        (!AuxMinimalUi(views()) || !docked_sidebar);
 +    if (aux_card) {
 +      // Beside the docked sidebar the card needs no leading inset: the
 +      // sidebar's own 8 DIP edge already separates its rows from the card, so
 +      // the space reads the same on both sides of the sidebar.
-+      const bool docked_sidebar =
-+          GetVerticalTabStripCollapsedState() ==
-+          VerticalTabStripCollapsedState::kExpanded;
 +      views().multi_contents_view->SetSplitViewInsets(gfx::Insets::TLBR(
 +          kAuxCardInset, docked_sidebar ? 0 : kAuxCardInset, kAuxCardInset,
 +          kAuxCardInset));
@@ -141033,7 +141075,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
  
    // Update the multi-contents view about if we will be animating content
    // bounds. This is to make optimizations during animations e.g. avoid
-@@ -1214,8 +1453,9 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1214,8 +1455,9 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
      }
    }
  
@@ -141045,7 +141087,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
      gfx::RoundedCornersF content_corners;
      if (layout_data_->tab_strip_type == TabStripType::kVertical &&
          !is_fullscreen(layout_data_->window_state)) {
-@@ -1230,6 +1470,40 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1230,6 +1472,40 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
          content_corners.set_lower_left(radius);
        }
      }
@@ -141086,7 +141128,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
      views().multi_contents_view->SetBackgroundRadii(content_corners);
    }
  
-@@ -1254,6 +1528,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1254,6 +1530,12 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
        // leading caption buttons).
        toolbar_height = toolbar_bounds->bottom() - tabstrip_bounds->y();
  
@@ -141099,7 +141141,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
        caption_button_width =
            base::ClampCeil(browser_params.leading_exclusion.content.width()) -
            tabstrip_bounds->x();
-@@ -1339,6 +1619,26 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
+@@ -1339,6 +1621,26 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
      bool needs_exclusion) const {
    const int original_top = params.visual_client_area.y();
  
@@ -141126,7 +141168,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
    if (IsParentedTo(views().horizontal_tab_strip_region_view,
                     views().top_container)) {
      gfx::Rect tabstrip_bounds;
-@@ -1399,6 +1699,19 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
+@@ -1399,6 +1701,19 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
                      layout_data_->separator_info.top_container_separator);
    }
  
@@ -141146,7 +141188,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
    return gfx::Rect(params.visual_client_area.x(), original_top,
                     params.visual_client_area.width(),
                     params.visual_client_area.y() - original_top);
-@@ -1423,6 +1736,17 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1423,6 +1738,17 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    } else {
      background->SetPrimaryColor(CustomCornersBackground::ToolbarTheme());
    }
@@ -141164,7 +141206,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
  
    // By default, this is just a flat background.
    CustomCornersBackground::Corners corners;
-@@ -1430,14 +1754,19 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1430,14 +1756,19 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    // Rounded corners are drawn in vertical tab strip mode when not maximized or
    // fullscreen.
    if (layout_data_->tab_strip_type == TabStripType::kVertical &&
@@ -141186,7 +141228,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
        corners[CornerOrientation::kTopLeading] =
            background->GetWindowCorner(/*upper=*/true);
      }
-@@ -1484,6 +1813,11 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
+@@ -1484,6 +1815,11 @@ void BrowserViewTabbedLayoutImpl::DoPreLayoutComputations(
  
  void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      const BrowserLayoutParams& params) {
@@ -141198,7 +141240,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
    // Want to cut the vertical tabstrip and its decorations out of the top
    // container in transparency mode.
    CustomCornersBackground::Cutouts top_container_cutout_views;
-@@ -1496,6 +1830,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1496,6 +1832,12 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
                                                    1.0f);
    if (layout_data_->tab_strip_type == TabStripType::kVertical) {
      side_panel_start = views().vertical_tab_strip_region_view->bounds().right();
@@ -141211,7 +141253,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
  
      // Vertical tabstrip goes all the way to the top of the window if it is not
      // collapsed or there are no caption buttons on the leading edge.
-@@ -1508,10 +1848,26 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1508,10 +1850,26 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
      CHECK(vertical_tabs_background)
          << "Expected vertical tab strip to have a CustomCornersBackground.";
  
@@ -141240,7 +141282,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
        // Use a curve that goes very close to 1 very quickly, but still has a
        // visible fade. This isn't perfect, but hopefully with glass
        // expand-on-hover it will improve.
-@@ -1530,7 +1886,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1530,7 +1888,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
  
      // Ensure that corners of the window remain rounded.
      CustomCornersBackground::Corners vertical_tabs_corners;
@@ -141249,7 +141291,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
        if (animation.top_offset == 0) {
          vertical_tabs_corners[CornerOrientation::kTopLeading] =
              vertical_tabs_background->GetWindowCorner(/*upper=*/true);
-@@ -1566,6 +1922,23 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1566,6 +1924,23 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
            vertical_tabs_bottom_corner_size;
      }
  
@@ -141273,7 +141315,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
      vertical_tabs_background->SetCorners(vertical_tabs_corners);
  
      // When the organizer panel is animating open or closed and does not appear
-@@ -1619,8 +1992,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1619,8 +1994,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
                                            vertical_tabs_bottom_corner_amount) *
              frame_color.opacity,
      };
@@ -141286,7 +141328,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
      // Top edge is drawn when the tabstrip is not flush with the edge of the
      // screen, or with a visual element that provides a natural border.
      if (animation.expand_on_hover_width > 0.0 || animation.top_corner < 0.0 ||
-@@ -1707,6 +2082,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1707,6 +2084,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        break;
      }
      case TabStripType::kVertical: {
@@ -141302,7 +141344,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
        // Curve trailing corner when it becomes the top trailing corner of the
        // browser.
        if (layout_data_->window_state == WindowState::kNormal &&
-@@ -1722,7 +2106,30 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1722,7 +2108,30 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        // happen.
        break;
    }
@@ -141333,7 +141375,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
  
    auto* const top_container_background =
        views().top_container->background()->AsA<CustomCornersBackground>();
-@@ -1733,9 +2140,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1733,9 +2142,10 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
    // is active for the current window.
    if (features::IsGlassFrameEnabled()) {
      if (!is_fullscreen(layout_data_->window_state)) {
@@ -141346,7 +141388,7 @@ index 29dfbde914c55ad1453a1c70998c9299b49c1132..96615e872a2d999d4a3fec54c6b4b60b
          top_container_cutout_views.push_back(
              CustomCornersBackground::InverseOf(*toolbar_background));
        }
-@@ -1842,8 +2250,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1842,8 +2252,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
  
      // Need to ensure the bottom of the window is properly rounded for normal
      // windows.
@@ -141522,18 +141564,23 @@ index 460c40a7c5033c97ace6c442d347d7ebab13a82f..7798c40c98c1a8587a5f37fb2a6a9067
  
    raw_ptr<views::FlexLayout> flex_layout_manager_;
 diff --git a/chrome/browser/ui/views/frame/multi_contents_view.cc b/chrome/browser/ui/views/frame/multi_contents_view.cc
-index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f9915807b3cc87b 100644
+index 76475b569327f1ffef76923c4114f1445885286c..c61448feb3fcaeb5c9cfeeb90eb610616a12acc5 100644
 --- a/chrome/browser/ui/views/frame/multi_contents_view.cc
 +++ b/chrome/browser/ui/views/frame/multi_contents_view.cc
-@@ -6,6 +6,7 @@
+@@ -4,8 +4,12 @@
  
+ #include "chrome/browser/ui/views/frame/multi_contents_view.h"
+ 
++#include "chrome/app/vector_icons/vector_icons.h"
++#include "components/vector_icons/vector_icons.h"
++
  #include <algorithm>
  #include <cstdlib>
 +#include <string>
  
  #include "base/check_deref.h"
  #include "base/notreached.h"
-@@ -19,6 +20,7 @@
+@@ -19,6 +23,7 @@
  #include "chrome/browser/ui/tabs/tab_strip_model.h"
  #include "chrome/browser/ui/view_ids.h"
  #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -141541,7 +141588,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
  #include "chrome/browser/ui/views/frame/contents_container_view.h"
  #include "chrome/browser/ui/views/frame/contents_separator.h"
  #include "chrome/browser/ui/views/frame/contents_web_view.h"
-@@ -34,6 +36,11 @@
+@@ -34,6 +39,11 @@
  #include "chrome/browser/ui/views/frame/themed_background.h"
  #include "chrome/browser/ui/views/new_tab_footer/footer_web_view.h"
  #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
@@ -141553,7 +141600,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
  #include "chrome/common/pref_names.h"
  #include "chrome/common/webui_url_constants.h"
  #include "components/prefs/pref_service.h"
-@@ -41,6 +48,7 @@
+@@ -41,6 +51,7 @@
  #include "components/tabs/public/tab_interface.h"
  #include "content/public/browser/web_contents.h"
  #include "content/public/common/url_constants.h"
@@ -141561,7 +141608,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
  #include "ui/base/metadata/metadata_impl_macros.h"
  #include "ui/base/ozone_buildflags.h"
  #include "ui/compositor/layer.h"
-@@ -56,6 +64,28 @@ namespace {
+@@ -56,6 +67,28 @@ namespace {
  constexpr int kSnapDistance = 15;
  }
  
@@ -141590,7 +141637,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
  void MultiContentsView::ContentsSeparators::Reset() {
    top_separator = nullptr;
    leading_separator = nullptr;
-@@ -90,6 +120,8 @@ MultiContentsView::MultiContentsView(
+@@ -90,6 +123,8 @@ MultiContentsView::MultiContentsView(
    contents_container_views_.push_back(
        AddChildView(std::make_unique<ContentsContainerView>(browser_view_)));
    contents_container_views_[1]->SetVisible(false);
@@ -141599,7 +141646,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
  
    drop_target_view_ =
        AddChildView(std::make_unique<MultiContentsDropTargetView>());
-@@ -135,17 +167,54 @@ MultiContentsView::MultiContentsView(
+@@ -135,17 +170,55 @@ MultiContentsView::MultiContentsView(
    lens_overlay_view->SetLayoutManager(std::make_unique<views::FillLayout>());
    lens_overlay_view_ = AddChildView(std::move(lens_overlay_view));
  
@@ -141622,7 +141669,8 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
 +    auto* button = narrow_pane_controls_->AddChildView(
 +        std::make_unique<NarrowPaneButton>(base::BindRepeating(
 +            &MultiContentsView::CycleNarrowPane, base::Unretained(this), direction)));
-+    button->SetControlLabel(direction < 0 ? u"‹" : u"›");
++    button->SetVectorIcon(direction < 0 ? kKeyboardArrowLeftIcon
++                                        : vector_icons::kKeyboardArrowRightFlippableIcon);
 +    button->SetAccessibleName(direction < 0 ? l10n_util::GetStringUTF16(IDS_AUX_SPLIT_PREVIOUS) : l10n_util::GetStringUTF16(IDS_AUX_SPLIT_NEXT));
 +    button->SetTooltipText(direction < 0 ? l10n_util::GetStringUTF16(IDS_AUX_SPLIT_PREVIOUS) : l10n_util::GetStringUTF16(IDS_AUX_SPLIT_NEXT));
 +  }
@@ -141630,12 +141678,12 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
 +  for (const auto& container : contents_container_views_) {
 +    ObserveContainerFocus(container);
 +  }
-+
+ 
+-    auto* contents_view = contents_container_view->contents_view();
 +  is_drag_drop_pref_enabled_ =
 +      browser_view_->GetProfile()->GetPrefs()->GetBoolean(
 +          prefs::kSplitViewDragAndDropEnabled);
- 
--    auto* contents_view = contents_container_view->contents_view();
++
 +  pref_change_registrar_.Init(browser_view_->GetProfile()->GetPrefs());
 +  pref_change_registrar_.Add(
 +      prefs::kSplitViewDragAndDropEnabled,
@@ -141658,7 +141706,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
        view_map[footer->GetClassName()] = footer;
        contents_focused_subscriptions_.push_back(
            footer->AddWebContentsFocusedCallback(base::BindRepeating(
-@@ -153,7 +222,7 @@ MultiContentsView::MultiContentsView(
+@@ -153,7 +226,7 @@ MultiContentsView::MultiContentsView(
      }
  
      if (auto* actor_overlay =
@@ -141667,7 +141715,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
        view_map[actor_overlay->GetClassName()] = actor_overlay;
        contents_focused_subscriptions_.push_back(
            actor_overlay->AddWebContentsFocusedCallback(
-@@ -162,24 +231,13 @@ MultiContentsView::MultiContentsView(
+@@ -162,24 +235,13 @@ MultiContentsView::MultiContentsView(
      }
  
      if (auto* read_anything_overlay =
@@ -141694,7 +141742,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
  }
  
  MultiContentsView::~MultiContentsView() {
-@@ -192,6 +250,7 @@ MultiContentsView::~MultiContentsView() {
+@@ -192,6 +254,7 @@ MultiContentsView::~MultiContentsView() {
    }
    drop_target_view_ = nullptr;
    lens_overlay_view_ = nullptr;
@@ -141702,7 +141750,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
    resize_area_ = nullptr;
    contents_separators_.Reset();
    background_view_ = nullptr;
-@@ -227,7 +286,8 @@ void MultiContentsView::SetBackgroundRadii(const gfx::RoundedCornersF& radii) {
+@@ -227,7 +290,8 @@ void MultiContentsView::SetBackgroundRadii(const gfx::RoundedCornersF& radii) {
  
    background_view_->SetRoundedCorners(radii);
  
@@ -141712,7 +141760,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
      GetActiveContentsContainerView()->SetRoundedCorners(radii);
      GetInactiveContentsContainerView()->SetRoundedCorners(
          gfx::RoundedCornersF());
-@@ -256,19 +316,20 @@ MultiContentsView::GetFocusableViewsMapFor(
+@@ -256,19 +320,20 @@ MultiContentsView::GetFocusableViewsMapFor(
  }
  
  bool MultiContentsView::IsInSplitView() const {
@@ -141736,7 +141784,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
      UpdateContentsBorderAndOverlay();
    }
  
-@@ -281,18 +342,82 @@ void MultiContentsView::SetWebContentsAtIndex(
+@@ -281,18 +346,82 @@ void MultiContentsView::SetWebContentsAtIndex(
  
  void MultiContentsView::ShowSplitView(
      split_tabs::SplitTabVisualData visual_data) {
@@ -141774,7 +141822,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
 +    auto* container = contents_container_views_[i].get();
 +    if (i >= pane_count_) container->contents_view()->SetWebContents(nullptr);
 +    container->SetVisible(i < pane_count_);
-+  }
+   }
 +  if (static_cast<size_t>(active_index_) >= pane_count_) active_index_ = 0;
 +  resize_area_->SetVisible(!visual_data_.pane_tree());
 +  resize_area_->SetLayout(visual_data_.split_layout());
@@ -141806,7 +141854,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
 +    auto* handle = branch_resize_areas_.back().get();
 +    branch_resize_areas_.pop_back();
 +    RemoveChildViewT(handle);
-   }
++  }
 +  if (!visual_data_.pane_tree()) return;
 +  for (const auto& node : visual_data_.pane_tree()->nodes()) {
 +    if (node.slot) continue;
@@ -141830,7 +141878,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
  }
  
  void MultiContentsView::CloseSplitView() {
-@@ -301,10 +426,19 @@ void MultiContentsView::CloseSplitView() {
+@@ -301,10 +430,19 @@ void MultiContentsView::CloseSplitView() {
    }
  
    if (active_index_ != 0) {
@@ -141853,7 +141901,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
    resize_area_->SetVisible(false);
    UpdateContentsBorderAndOverlay();
  
-@@ -333,15 +467,50 @@ void MultiContentsView::SwapContentsInSplitView() {
+@@ -333,15 +471,50 @@ void MultiContentsView::SwapContentsInSplitView() {
  void MultiContentsView::SetActiveIndex(int index) {
    // Index should never be less than 0 or equal to or greater than the total
    // number of contents views.
@@ -141907,7 +141955,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
  void MultiContentsView::UpdateSplitVisualData(
      const split_tabs::SplitTabVisualData& visual_data) {
    if (visual_data_ == visual_data) {
-@@ -350,6 +519,7 @@ void MultiContentsView::UpdateSplitVisualData(
+@@ -350,6 +523,7 @@ void MultiContentsView::UpdateSplitVisualData(
  
    visual_data_ = visual_data;
    resize_area_->SetLayout(visual_data.split_layout());
@@ -141915,7 +141963,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
    InvalidateLayout();
  }
  
-@@ -374,6 +544,12 @@ void MultiContentsView::OnSwap() {
+@@ -374,6 +548,12 @@ void MultiContentsView::OnSwap() {
    delegate_->ReverseWebContents();
  }
  
@@ -141928,7 +141976,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
  void MultiContentsView::SetTargetContentBounds(
      std::optional<TargetContentBounds> target_content_bounds) {
    if (target_content_bounds_ == target_content_bounds) {
-@@ -393,7 +569,10 @@ void MultiContentsView::SetIsAnimatingContent(bool is_animating) {
+@@ -393,7 +573,10 @@ void MultiContentsView::SetIsAnimatingContent(bool is_animating) {
  
  std::vector<views::View*> MultiContentsView::GetAccessiblePanes() {
    std::vector<views::View*> accessible_panes;
@@ -141939,7 +141987,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
      auto contents_accessible_panes =
          contents_container_view->GetAccessiblePanes();
      accessible_panes.insert(accessible_panes.end(),
-@@ -423,6 +602,42 @@ void MultiContentsView::OnResize(int resize_amount, bool done_resizing) {
+@@ -423,6 +606,42 @@ void MultiContentsView::OnResize(int resize_amount, bool done_resizing) {
    }
  }
  
@@ -141982,7 +142030,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
  double MultiContentsView::CalculateRatioWithSnapPoints(
      double start_size,
      double total_size) const {
-@@ -448,7 +663,7 @@ void MultiContentsView::OnWebContentsFocused(views::WebView* web_view) {
+@@ -448,7 +667,7 @@ void MultiContentsView::OnWebContentsFocused(views::WebView* web_view) {
    if (IsInSplitView()) {
      // Check whether the widget is visible as otherwise during browser hide,
      // inactive web contents gets focus. See crbug.com/419335827
@@ -141991,7 +142039,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
          GetWidget()->IsVisible()) {
        delegate_->WebContentsFocused(web_view->web_contents());
      }
-@@ -460,10 +675,10 @@ void MultiContentsView::OnActorOverlayFocused(views::WebView* web_view) {
+@@ -460,10 +679,10 @@ void MultiContentsView::OnActorOverlayFocused(views::WebView* web_view) {
      for (auto& contents_container_view : contents_container_views_) {
        if (contents_container_view->actor_overlay_web_view() &&
            contents_container_view->actor_overlay_web_view() == web_view &&
@@ -142004,7 +142052,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
        }
      }
    }
-@@ -474,10 +689,10 @@ void MultiContentsView::OnNtpFooterFocused(views::WebView* web_view) {
+@@ -474,10 +693,10 @@ void MultiContentsView::OnNtpFooterFocused(views::WebView* web_view) {
      for (auto& contents_container_view : contents_container_views_) {
        if (contents_container_view->new_tab_footer_view() &&
            contents_container_view->new_tab_footer_view() == web_view &&
@@ -142017,7 +142065,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
        }
      }
    }
-@@ -487,7 +702,7 @@ void MultiContentsView::OnReadAnythingOverlayFocused(
+@@ -487,7 +706,7 @@ void MultiContentsView::OnReadAnythingOverlayFocused(
      ContentsContainerView* container,
      views::WebView* web_view) {
    if (IsInSplitView() && GetWidget()->IsVisible()) {
@@ -142026,7 +142074,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
        delegate_->WebContentsFocused(container->contents_view()->web_contents());
      }
    }
-@@ -506,8 +721,9 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -506,8 +725,9 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
  
    gfx::Rect available_space = gfx::Rect(width, height);
  
@@ -142037,7 +142085,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
    layouts.child_layouts.emplace_back(background_view_.get(), show_background,
                                       available_space);
  
-@@ -519,9 +735,63 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -519,9 +739,63 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
    available_space =
        CalculateSeparatorLayouts(available_space, layouts.child_layouts);
  
@@ -142102,7 +142150,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
    ViewSizes sizes = GetViewSizes(available_space);
  
    gfx::Rect start_rect, resize_rect, end_rect;
-@@ -544,6 +814,10 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -544,6 +818,10 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
    layouts.child_layouts.emplace_back(contents_container_views_[0].get(),
                                       contents_container_views_[0]->GetVisible(),
                                       start_rect);
@@ -142113,7 +142161,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
    layouts.child_layouts.emplace_back(resize_area_.get(),
                                       resize_area_->GetVisible(), resize_rect);
    layouts.child_layouts.emplace_back(contents_container_views_[1].get(),
-@@ -558,6 +832,14 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
+@@ -558,6 +836,14 @@ views::ProposedLayout MultiContentsView::CalculateProposedLayout(
  }
  
  void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
@@ -142128,7 +142176,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
    if (!target_content_bounds_) {
      for (auto& contents : contents_container_views_) {
        contents->SetTargetContentBounds(std::nullopt);
-@@ -579,14 +861,29 @@ void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
+@@ -579,14 +865,29 @@ void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
    views::ProposedLayout target_layout;
    {
      // Need to temporarily override the split view insets.
@@ -142160,7 +142208,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
    const auto& default_clip = target_content_bounds_->clipped_area;
  
    // Due to the way web contents resize, and the fact that both split views will
-@@ -798,10 +1095,17 @@ void MultiContentsView::UpdateContentsBorderAndOverlay() {
+@@ -798,10 +1099,17 @@ void MultiContentsView::UpdateContentsBorderAndOverlay() {
    for (auto& contents_container_view : contents_container_views_) {
      const bool is_active =
          contents_container_view->contents_view() == GetActiveContentsView();
@@ -142181,7 +142229,7 @@ index 76475b569327f1ffef76923c4114f1445885286c..c8101c645a1081ce6d1862c01f991580
      contents_container_view->UpdateBorderAndOverlay(
          is_in_split, is_active, is_active && active_contents_view_highlighted_);
    }
-@@ -851,6 +1155,15 @@ void MultiContentsView::SetShouldShowTopSeparator(bool should_show) {
+@@ -851,6 +1159,15 @@ void MultiContentsView::SetShouldShowTopSeparator(bool should_show) {
    InvalidateLayout(/*avoid_propagate_during_layout=*/true);
  }
  
@@ -142406,21 +142454,24 @@ index e182430481fed7ac4c17b0fd11b57c3d511a80b9..fcc198b15c7110544be73f960a116b54
    // Creates a new tab for the first valid URL in `urls` and creates a split
    // with it and the active tab. If all URLs are blocked, then it will open
 diff --git a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
-index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..32851c7613658829840c88ae7e032b7da7386e50 100644
+index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..bb72234cecd1e0b21e5cf9b33bb189b85c6b42c8 100644
 --- a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
 +++ b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
-@@ -4,6 +4,10 @@
+@@ -4,6 +4,13 @@
  
  #include "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h"
  
 +#include "chrome/browser/buildflags.h"
++#include "components/tabs/public/split_tab_data.h"
 +#include "ui/display/screen.h"
++#include "ui/gfx/animation/animation.h"
++#include "ui/views/animation/animation_builder.h"
 +#include "ui/views/event_monitor.h"
 +
  #include <optional>
  
  #include "base/functional/bind.h"
-@@ -13,6 +17,9 @@
+@@ -13,12 +20,16 @@
  #include "chrome/app/vector_icons/vector_icons.h"
  #include "chrome/browser/favicon/favicon_utils.h"
  #include "chrome/browser/search/search.h"
@@ -142430,7 +142481,14 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..32851c7613658829840c88ae7e032b7d
  #include "chrome/browser/ui/tab_ui_helper.h"
  #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
  #include "chrome/browser/ui/tabs/alert/tab_alert_icon.h"
-@@ -50,7 +57,9 @@
+ #include "chrome/browser/ui/tabs/public/tab_features.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/aux_frame_metrics.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/frame/contents_container_outline.h"
+ #include "chrome/browser/ui/views/frame/contents_web_view.h"
+@@ -50,7 +61,9 @@
  #include "url/url_constants.h"
  
  namespace {
@@ -142440,7 +142498,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..32851c7613658829840c88ae7e032b7d
  constexpr int kMiniToolbarDomainMaxWidth = 140;
  
  tabs::TabInterface* GetTabInterface(content::WebContents* web_contents) {
-@@ -141,19 +150,30 @@ MultiContentsViewMiniToolbar::~MultiContentsViewMiniToolbar() = default;
+@@ -141,19 +154,30 @@ MultiContentsViewMiniToolbar::~MultiContentsViewMiniToolbar() = default;
  
  void MultiContentsViewMiniToolbar::UpdateState(bool is_active,
                                                 bool is_highlighted) {
@@ -142475,7 +142533,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..32851c7613658829840c88ae7e032b7d
        contents_container_outline_thickness,
        contents_container_outline_thickness);
  
-@@ -166,8 +186,46 @@ void MultiContentsViewMiniToolbar::UpdateState(bool is_active,
+@@ -166,8 +190,105 @@ void MultiContentsViewMiniToolbar::UpdateState(bool is_active,
    favicon_->SetVisible(!is_active);
    domain_label_->SetVisible(!is_active);
    alert_state_indicator_->SetVisible(!is_active);
@@ -142496,8 +142554,8 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..32851c7613658829840c88ae7e032b7d
 +
 +void MultiContentsViewMiniToolbar::OnEvent(const ui::Event& event) {
 +  UpdateAuxReveal();
- }
- 
++}
++
 +void MultiContentsViewMiniToolbar::UpdateAuxReveal() {
 +  auto* pane = parent();
 +  bool reveal = false;
@@ -142507,22 +142565,81 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..32851c7613658829840c88ae7e032b7d
 +    reveal = pane->GetLocalBounds().Contains(point) &&
 +             point.y() < kAuxRevealHeight;
 +  }
-+  if (GetVisible() == reveal)
++  if (aux_revealed_ == reveal)
 +    return;
-+  SetVisible(reveal);
-+  pane->InvalidateLayout();
++  aux_revealed_ = reveal;
++  if (reveal)
++    SetVisible(true);
++  if (pane)
++    pane->InvalidateLayout();
++  if (!gfx::Animation::ShouldRenderRichAnimation() ||
++      gfx::Animation::PrefersReducedMotion()) {
++    layer()->SetOpacity(1.f);
++    SetVisible(reveal);
++    return;
++  }
++  views::AnimationBuilder()
++      .SetPreemptionStrategy(ui::LayerAnimator::IMMEDIATELY_ANIMATE_TO_NEW_TARGET)
++      .OnEnded(base::BindOnce(
++          [](MultiContentsViewMiniToolbar* toolbar) {
++            if (!toolbar->aux_revealed_) toolbar->SetVisible(false);
++          },
++          base::Unretained(this)))
++      .Once()
++      .SetDuration(base::Milliseconds(120))
++      .SetOpacity(this, reveal ? 1.f : 0.f);
+ }
+ 
++bool MultiContentsViewMiniToolbar::OnMousePressed(const ui::MouseEvent& event) {
++  if (!aux_in_split_ || !event.IsOnlyLeftMouseButton())
++    return false;
++  aux_press_ = event.location();
++  aux_pane_drag_ = false;
++  return true;
++}
++
++bool MultiContentsViewMiniToolbar::OnMouseDragged(const ui::MouseEvent& event) {
++  aux_pane_drag_ |= (event.location() - aux_press_).LengthSquared() >=
++      aux::frame_metrics::kDragThreshold * aux::frame_metrics::kDragThreshold;
++  return true;
++}
++
++void MultiContentsViewMiniToolbar::OnMouseReleased(const ui::MouseEvent& event) {
++  // Dropped over the other pane of a two-pane split, the panes change places.
++  auto* pane = parent();
++  auto* tab = GetTabInterface(web_contents_);
++  if (!std::exchange(aux_pane_drag_, false) || !pane || !pane->parent() || !tab || !tab->IsSplit())
++    return;
++  gfx::Point point = event.location();
++  views::View::ConvertPointToTarget(this, pane, &point);
++  auto* model = tab->GetBrowserWindowInterface()->GetTabStripModel();
++  const auto split = *tab->GetSplit();
++  gfx::Point in_panes = point;
++  views::View::ConvertPointToTarget(pane, pane->parent(), &in_panes);
++  if (!pane->GetLocalBounds().Contains(point) &&
++      pane->parent()->GetLocalBounds().Contains(in_panes) &&
++      model->GetSplitData(split)->ListTabs().size() == 2) {
++    model->ReverseTabsInSplit(split);
++  }
 +}
 +#else
 +void MultiContentsViewMiniToolbar::AddedToWidget() {}
 +void MultiContentsViewMiniToolbar::RemovedFromWidget() {}
 +void MultiContentsViewMiniToolbar::OnEvent(const ui::Event& event) {}
 +void MultiContentsViewMiniToolbar::UpdateAuxReveal() {}
++bool MultiContentsViewMiniToolbar::OnMousePressed(const ui::MouseEvent& event) {
++  return false;
++}
++bool MultiContentsViewMiniToolbar::OnMouseDragged(const ui::MouseEvent& event) {
++  return false;
++}
++void MultiContentsViewMiniToolbar::OnMouseReleased(const ui::MouseEvent& event) {}
 +#endif
 +
  void MultiContentsViewMiniToolbar::UpdateContents() {
    auto* const interface = GetTabInterface(web_contents_);
    if (!interface) {
-@@ -181,7 +239,8 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
+@@ -181,7 +302,8 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
      domain_url = tab_ui_helper->GetLastCommittedURL();
    }
  
@@ -142532,7 +142649,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..32851c7613658829840c88ae7e032b7d
    std::u16string domain;
    if (IsNTP(domain_url)) {
      domain = u"";
-@@ -208,7 +267,11 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
+@@ -208,7 +330,11 @@ void MultiContentsViewMiniToolbar::UpdateContents() {
                                            !domain_url.SchemeIsFileSystem()
                                        ? gfx::ELIDE_HEAD
                                        : gfx::ELIDE_TAIL);
@@ -142545,7 +142662,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..32851c7613658829840c88ae7e032b7d
  
    UpdateFavicon(tab_ui_helper);
  }
-@@ -221,6 +284,8 @@ void MultiContentsViewMiniToolbar::UpdateWebContents(views::WebView* web_view) {
+@@ -221,6 +347,8 @@ void MultiContentsViewMiniToolbar::UpdateWebContents(views::WebView* web_view) {
  }
  
  void MultiContentsViewMiniToolbar::ClearWebContents(views::WebView*) {
@@ -142554,7 +142671,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..32851c7613658829840c88ae7e032b7d
    tab_alert_status_subscription_.reset();
    OnAlertStatusIndicatorChanged(std::nullopt);
    web_contents_ = nullptr;
-@@ -247,6 +312,17 @@ void MultiContentsViewMiniToolbar::OnThemeChanged() {
+@@ -247,6 +375,17 @@ void MultiContentsViewMiniToolbar::OnThemeChanged() {
  }
  
  void MultiContentsViewMiniToolbar::RegisterTabSubscriptions() {
@@ -142573,7 +142690,7 @@ index 3d3d583887d6be2eca64ad91fef3e5b7d979b353..32851c7613658829840c88ae7e032b7d
      auto* tab_alert_controller = tabs::TabAlertController::From(interface);
      OnAlertStatusIndicatorChanged(tab_alert_controller->GetAlertToShow());
 diff --git a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h
-index de2fb5ff5f7f6fc249f729731fe9e2dd7038c2ae..ad54a2a9c17a92ef94fef202bbcb2f3c749637c4 100644
+index de2fb5ff5f7f6fc249f729731fe9e2dd7038c2ae..c3e7d632447beb4e265d9576075fef7d3d2118a9 100644
 --- a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h
 +++ b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h
 @@ -9,7 +9,9 @@
@@ -142604,19 +142721,20 @@ index de2fb5ff5f7f6fc249f729731fe9e2dd7038c2ae..ad54a2a9c17a92ef94fef202bbcb2f3c
    METADATA_HEADER(MultiContentsViewMiniToolbar, views::View)
  
   public:
-@@ -43,6 +47,11 @@ class MultiContentsViewMiniToolbar : public views::View {
+@@ -43,6 +47,12 @@ class MultiContentsViewMiniToolbar : public views::View {
  
    void UpdateState(bool is_active, bool is_highlighted);
  
 +  // Aux split panes are plain cards; this control floats at the top of its
 +  // pane only while the pointer is near it, as in Arc.
 +  static constexpr int kAuxPillTop = 8;
-+  static constexpr int kAuxRevealHeight = 56;
++  // Only the pill's own band, so it never sits over a site's controls unasked.
++  static constexpr int kAuxRevealHeight = 36;
 +
    // Trigger an update of the tab data used to populate the mini toolbar.
    void UpdateContents();
  
-@@ -53,6 +62,13 @@ class MultiContentsViewMiniToolbar : public views::View {
+@@ -53,6 +63,16 @@ class MultiContentsViewMiniToolbar : public views::View {
    // View:
    void OnPaint(gfx::Canvas* canvas) override;
    void OnThemeChanged() override;
@@ -142626,11 +142744,14 @@ index de2fb5ff5f7f6fc249f729731fe9e2dd7038c2ae..ad54a2a9c17a92ef94fef202bbcb2f3c
 +  // ui::EventObserver:
 +  using views::View::OnEvent;
 +  void OnEvent(const ui::Event& event) override;
++  bool OnMousePressed(const ui::MouseEvent& event) override;
++  bool OnMouseDragged(const ui::MouseEvent& event) override;
++  void OnMouseReleased(const ui::MouseEvent& event) override;
 +  void UpdateAuxReveal();
  
    void UpdateWebContents(views::WebView* web_view);
    void ClearWebContents(views::WebView*);
-@@ -75,6 +91,11 @@ class MultiContentsViewMiniToolbar : public views::View {
+@@ -75,6 +95,14 @@ class MultiContentsViewMiniToolbar : public views::View {
    base::CallbackListSubscription web_contents_detached_subscription_;
    std::optional<base::CallbackListSubscription> tab_alert_status_subscription_;
    std::optional<base::CallbackListSubscription> tab_ui_updated_subscription_;
@@ -142639,6 +142760,9 @@ index de2fb5ff5f7f6fc249f729731fe9e2dd7038c2ae..ad54a2a9c17a92ef94fef202bbcb2f3c
 +  PrefChangeRegistrar full_url_preferences_;
 +  std::unique_ptr<views::EventMonitor> aux_pointer_monitor_;
 +  bool aux_in_split_ = false;
++  bool aux_revealed_ = false;
++  bool aux_pane_drag_ = false;
++  gfx::Point aux_press_;
  };
  
  #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_MULTI_CONTENTS_VIEW_MINI_TOOLBAR_H_
@@ -142958,10 +143082,10 @@ index 66b5ec2944471b2cd6058f2b0e02099ac29c83d4..99301f4a705f0b244828de8921d4a67c
    explicit ThemedBackground(BrowserView* browser_view,
                              ThemeChoice theme_choice = kToolbarTheme);
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc95bed574 100644
+index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..555a9d171c07965ea43c68722e171618ca624cfb 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-@@ -3,12 +3,44 @@
+@@ -3,18 +3,51 @@
  // found in the LICENSE file.
  
  #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
@@ -143006,7 +143130,14 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  #include "base/i18n/number_formatting.h"
  #include "base/i18n/rtl.h"
  #include "base/metrics/histogram_functions.h"
-@@ -35,6 +67,7 @@
+ #include "base/metrics/user_metrics.h"
+ #include "base/metrics/user_metrics_action.h"
+ #include "base/time/time.h"
++#include "ui/gfx/animation/animation.h"
+ #include "chrome/browser/ui/actions/chrome_action_id.h"
+ #include "chrome/browser/ui/animation/browser_animation_controller.h"
+ #include "chrome/browser/ui/animation/browser_animation_types.h"
+@@ -35,6 +68,7 @@
  #include "chrome/browser/ui/views/animations/tab_strip_animations.h"
  #include "chrome/browser/ui/views/frame/base_tab_strip_region_view.h"
  #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -143014,7 +143145,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  #include "chrome/browser/ui/views/frame/custom_corners_background.h"
  #include "chrome/browser/ui/views/frame/safe_invoke/safe_invoke.h"
  #include "chrome/browser/ui/views/frame/shadow_frame_view.h"
-@@ -60,6 +93,7 @@
+@@ -60,6 +94,7 @@
  #include "ui/base/interaction/element_tracker.h"
  #include "ui/base/l10n/l10n_util.h"
  #include "ui/base/metadata/metadata_impl_macros.h"
@@ -143022,7 +143153,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  #include "ui/compositor/layer.h"
  #include "ui/display/screen.h"
  #include "ui/events/event.h"
-@@ -68,17 +102,32 @@
+@@ -68,17 +103,36 @@
  #include "ui/views/controls/button/label_button.h"
  #include "ui/views/controls/focus_ring.h"
  #include "ui/views/controls/resize_area.h"
@@ -143040,6 +143171,10 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  #include "ui/views/view_utils.h"
  
  namespace {
++// Between the window controls or the toggle and the navigation buttons.
++constexpr int kAuxNavigationRowGap = 4;
++// The sidebar's own reveal.
++constexpr auto kAuxWindowControlsFade = base::Milliseconds(240);
 +// The animated clip caches this wrapper's natural size. Forward the actual
 +// grid/tree size and visibility notifications across this intermediate View;
 +// layout invalidation alone does not clear that clip's preferred-size cache.
@@ -143055,7 +143190,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  constexpr int kResizeAreaWidth = 5;
  constexpr int kCollapsedResizeAreaWidth = 2;
  constexpr int kKeyboardResizeWidth = 50;
-@@ -97,6 +146,39 @@ constexpr ShadowFrameView::ShadowAlpha kExpandOnHoverShadowAlpha(
+@@ -97,6 +151,44 @@ constexpr ShadowFrameView::ShadowAlpha kExpandOnHoverShadowAlpha(
  DEFINE_CLASS_CUSTOM_ELEMENT_EVENT_TYPE(VerticalTabStripRegionView,
                                         kAnimationCompletedEvent);
  
@@ -143076,6 +143211,11 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
 +  void OnPaintBackground(gfx::Canvas* canvas) override {
 +    ThemedBackground::PaintAuxWindowSurface(canvas, this, &browser_view_.get());
 +  }
++  // The layer caches the surface; a new theme has to repaint it.
++  void OnThemeChanged() override {
++    views::View::OnThemeChanged();
++    SchedulePaint();
++  }
 +  void Layout(PassKey) override {
 +    if (children().empty())
 +      return;
@@ -143095,7 +143235,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  VerticalTabStripRegionView::VerticalTabStripRegionView(
      tabs::VerticalTabStripStateController* state_controller,
      actions::ActionItem* root_action_item,
-@@ -141,6 +223,73 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -141,6 +233,73 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
    top_button_separator_->SetProperty(
        views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
  
@@ -143107,7 +143247,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
 +    auto contents = std::make_unique<AuxPinsContentView>();
 +    contents->SetLayoutManager(std::make_unique<views::BoxLayout>(views::BoxLayout::Orientation::kVertical));
 +    contents->AddChildView(std::move(saved_grid));
-+    contents->AddChildView(std::make_unique<aux::AuxOrganizationTreeView>(
++    aux_pinned_folders_tree_ = contents->AddChildView(std::make_unique<aux::AuxOrganizationTreeView>(
 +        *browser_view->browser(), *organization_window,
 +        aux::AuxOrganizationTreeView::Scope::kPinnedFolders));
 +    aux_pins_host_ = AddChildView(std::make_unique<aux::AuxPinsSection>(
@@ -143169,7 +143309,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    bottom_button_container_ =
        AddChildView(std::make_unique<VerticalTabStripBottomContainer>(
            state_controller_, root_action_item, browser_view->browser(),
-@@ -177,12 +326,13 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -177,12 +336,13 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
            base::Unretained(this)));
  
    SetProperty(views::kElementIdentifierKey, kTabStripRegionElementId);
@@ -143184,7 +143324,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
        /*corner_color=*/CustomCornersBackground::ToolbarTheme()));
  
    shadow_frame_ = AddChildView(std::make_unique<ShadowFrameView>(
-@@ -194,11 +344,32 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -194,11 +354,32 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
          std::make_unique<VerticalTabStripFocusSwipeController>(this);
    }
  
@@ -143217,7 +143357,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    for (const auto& lock : hover_locks_) {
      lock->ClearRegionViewOnDestruction();
    }
-@@ -208,7 +379,17 @@ VerticalTabStripRegionView::~VerticalTabStripRegionView() {
+@@ -208,7 +389,17 @@ VerticalTabStripRegionView::~VerticalTabStripRegionView() {
    state_controller_->SetDelegate(nullptr);
  }
  
@@ -143235,7 +143375,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    return BrowserAnimationController::From(browser_view()->browser())
        ->IsAnimating(TabStripAnimations::kVerticalTabStrip);
  }
-@@ -216,6 +397,26 @@ bool VerticalTabStripRegionView::IsAnimatingSize() const {
+@@ -216,6 +407,26 @@ bool VerticalTabStripRegionView::IsAnimatingSize() const {
  void VerticalTabStripRegionView::OnAnimationProgressed(
      const BrowserAnimationController* controller,
      BrowserAnimationUpdate status) {
@@ -143262,7 +143402,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    switch (status) {
      case BrowserAnimationUpdate::kStarted: {
        const auto motion =
-@@ -281,6 +482,19 @@ bool VerticalTabStripRegionView::IsPositionInWindowCaption(
+@@ -281,6 +492,19 @@ bool VerticalTabStripRegionView::IsPositionInWindowCaption(
      return false;
    }
  
@@ -143282,7 +143422,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    if (IsHitInView(top_button_container_, point)) {
      gfx::Point point_in_child = point;
      views::View::ConvertPointToTarget(this, top_button_container_,
-@@ -295,23 +509,153 @@ bool VerticalTabStripRegionView::IsPositionInWindowCaption(
+@@ -295,23 +519,159 @@ bool VerticalTabStripRegionView::IsPositionInWindowCaption(
      return bottom_button_container_->IsPositionInWindowCaption(point_in_child);
    }
  
@@ -143374,11 +143514,18 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
 +  const auto spacer = aux_sidebar_->GetAddressSpacerBounds();
 +  const bool shown = spacer.has_value() && !aux_address_row_->children().empty();
 +  aux_address_row_->SetVisible(shown);
-+  if (!shown)
-+    return;
-+  // In the list above Tabs; scrolled away, it stays at the list's top.
-+  const int y = std::max(aux_sidebar_->y(), spacer->y());
-+  aux_address_row_->SetBounds(0, y, width(), spacer->height());
++  int status_y = aux_sidebar_->y();
++  if (shown) {
++    // In the list above Tabs; scrolled away, it stays at the list's top.
++    const int y = std::max(aux_sidebar_->y(), spacer->y());
++    aux_address_row_->SetBounds(0, y, width(), spacer->height());
++    status_y = y + spacer->height();
++  }
++  if (auto* status = aux_sidebar_->status_line()) {
++    const int line_width = std::max(0, width() - 2 * aux::frame_metrics::kGutter);
++    status->SetBounds(aux::frame_metrics::kGutter, status_y, line_width,
++                      status->GetHeightForWidth(line_width));
++  }
 +}
 +
 +void VerticalTabStripRegionView::LayoutAuxNavigationRow(ToolbarView* toolbar) {
@@ -143390,7 +143537,6 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
 +  }
 +  // Arc header: traffic lights, sidebar toggle, then back/forward/reload in
 +  // one row.
-+  constexpr int kToggleGap = 4;
 +  const auto* margins = top_button_container_->GetProperty(views::kMarginsKey);
 +  const int left = margins ? margins->left() : 0;
 +  const int right = margins ? margins->right() : 0;
@@ -143400,7 +143546,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
 +  auto* host = toolbar->parent();
 +  aux_navigation_row_host_ = host;
 +  const int split = top_button_container_->x() +
-+      top_button_container_->GetAuxNavigationRowLeadingWidth() + kToggleGap;
++      top_button_container_->GetAuxNavigationRowLeadingWidth() + kAuxNavigationRowGap;
 +  toolbar->SetAuxSidebarNavigationLeadingInset(split - host->x() - toolbar->x());
 +  aux_navigation_row_split_ = split;
 +  const int button_row =
@@ -143447,7 +143593,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  void VerticalTabStripRegionView::SetToolbarHeightForLayout(int toolbar_height) {
    top_button_container_->SetToolbarHeightForLayout(toolbar_height);
  }
-@@ -353,6 +697,11 @@ bool VerticalTabStripRegionView::WillWrapDueToOverflow(
+@@ -353,6 +713,11 @@ bool VerticalTabStripRegionView::WillWrapDueToOverflow(
  
  void VerticalTabStripRegionView::AddedToWidget() {
    BaseTabStripRegionView::AddedToWidget();
@@ -143459,7 +143605,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    paint_as_active_subscription_ =
        GetWidget()->RegisterPaintAsActiveChangedCallback(base::BindRepeating(
            [](VerticalTabStripRegionView* view) {
-@@ -366,6 +715,12 @@ void VerticalTabStripRegionView::AddedToWidget() {
+@@ -366,6 +731,12 @@ void VerticalTabStripRegionView::AddedToWidget() {
  }
  
  void VerticalTabStripRegionView::RemovedFromWidget() {
@@ -143472,7 +143618,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    if (GetFocusManager()) {
      GetFocusManager()->RemoveFocusChangeListener(&focus_listener_);
    }
-@@ -373,7 +728,29 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
+@@ -373,7 +744,43 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
  }
  
  void VerticalTabStripRegionView::Layout(PassKey) {
@@ -143487,22 +143633,36 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
 +  const bool preview_row =
 +      navigation && !merged && state_controller_->IsCollapsed();
 +  SetAuxNavigationRowMerged(merged || preview_row);
-+  if (preview_row)
-+    SetAuxNavigationRowTopMargin(0);
++#if BUILDFLAG(IS_MAC)
++  // The window controls ride along on that row, as they do docked. The
++  // overlay sits a gutter inside the window; full screen keeps them in AppKit's bar.
++  const gfx::Rect window_controls = preview_row && !GetWidget()->IsFullscreen()
++      ? aux::frame_metrics::WindowControlsBounds(*GetWidget()) : gfx::Rect();
++#else
++  const gfx::Rect window_controls;
++#endif
++  if (preview_row) {
++    SetAuxNavigationRowTopMargin(window_controls.IsEmpty() ? 0 : std::max(0,
++        window_controls.CenterPoint().y() - aux::frame_metrics::kGutter -
++            navigation->parent()->GetPreferredSize().height() / 2));
++  }
    LayoutSuperclass<views::AccessiblePaneView>(this);
 +  if (preview_row) {
 +    top_button_container_->SetBoundsRect(gfx::Rect());
 +    aux_navigation_row_split_ = 0;
-+    navigation->SetAuxSidebarNavigationLeadingInset(0);
++    navigation->SetAuxSidebarNavigationLeadingInset(window_controls.IsEmpty() ? 0
++        : window_controls.right() - aux::frame_metrics::kGutter + kAuxNavigationRowGap -
++              navigation->parent()->x() - navigation->x());
 +  } else {
 +    LayoutAuxNavigationRow(merged ? navigation : nullptr);
 +  }
 +
 +  LayoutAuxAddressRow();
++  UpdateAuxWindowControls();
  
    // Manually position the resize area as it overlaps views handled by the flex
    // layout.
-@@ -381,6 +758,10 @@ void VerticalTabStripRegionView::Layout(PassKey) {
+@@ -381,6 +788,10 @@ void VerticalTabStripRegionView::Layout(PassKey) {
                                          0, resize_area_width_,
                                          bounds().height()));
    shadow_frame_->SetBoundsRect(GetLocalBounds());
@@ -143513,7 +143673,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  
    // Ensure that we update the drop arrow position so that it does not render in
    // the collapsed state when expand on hover is active.
-@@ -401,14 +782,36 @@ views::View* VerticalTabStripRegionView::GetDefaultFocusableChild() {
+@@ -401,14 +812,36 @@ views::View* VerticalTabStripRegionView::GetDefaultFocusableChild() {
  gfx::Size VerticalTabStripRegionView::GetMinimumSize() const {
    auto min_size = BaseTabStripRegionView::GetMinimumSize();
    min_size.set_width((state_controller_->IsCollapsed() || IsAnimatingSize())
@@ -143552,7 +143712,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    const auto* controller =
        BrowserAnimationController::From(browser_view()->browser());
    const auto motion =
-@@ -510,7 +913,18 @@ void VerticalTabStripRegionView::HandleDragUpdate(
+@@ -510,7 +943,18 @@ void VerticalTabStripRegionView::HandleDragUpdate(
    }
  }
  
@@ -143571,7 +143731,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    SetLinkDropArrow(std::nullopt);
    link_drag_lock_.reset();
    UpdateExpandOnHoverState(false);
-@@ -604,7 +1018,8 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
+@@ -604,7 +1048,8 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
    new_state.uncollapsed_width = target_collapse_state_.uncollapsed_width;
    if (!new_state.collapsed) {
      new_state.uncollapsed_width =
@@ -143581,7 +143741,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
      if (std::abs(new_state.uncollapsed_width -
                   tabs::kVerticalTabStripDefaultUncollapsedWidth) <
          kSnapDistance) {
-@@ -637,6 +1052,9 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
+@@ -637,6 +1082,9 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
    }
  
    target_collapse_state_ = new_state;
@@ -143591,7 +143751,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  
    if (previously_collapsed != target_collapse_state_.collapsed) {
      state_controller_->RequestCollapse(target_collapse_state_.collapsed);
-@@ -653,6 +1071,8 @@ void VerticalTabStripRegionView::SetCollapsedStateUpdatedCallback(
+@@ -653,6 +1101,8 @@ void VerticalTabStripRegionView::SetCollapsedStateUpdatedCallback(
  }
  
  bool VerticalTabStripRegionView::IsCollapsing() {
@@ -143600,7 +143760,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    return BrowserAnimationController::From(browser_view()->browser())
               ->GetCurrentMotion(TabStripAnimations::kVerticalTabStrip) ==
           TabStripAnimations::kCollapse;
-@@ -674,6 +1094,11 @@ void VerticalTabStripRegionView::RequestCollapse(bool collapse) {
+@@ -674,6 +1124,11 @@ void VerticalTabStripRegionView::RequestCollapse(bool collapse) {
    if (!tab_strip_view()) {
      return;
    }
@@ -143612,7 +143772,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    const auto motion =
        collapse ? TabStripAnimations::kCollapse : TabStripAnimations::kExpand;
    BrowserAnimationController::From(browser_view()->browser())
-@@ -709,17 +1134,177 @@ void VerticalTabStripRegionView::ClickEventHandler::OnMouseEvent(
+@@ -709,17 +1164,177 @@ void VerticalTabStripRegionView::ClickEventHandler::OnMouseEvent(
    }
  }
  
@@ -143800,7 +143960,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  
    // Pre-set the animation values to the appropriate state.
    auto* const animation_controller =
-@@ -740,14 +1325,20 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
+@@ -740,14 +1355,20 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
                &VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged,
                base::Unretained(this)));
  
@@ -143824,7 +143984,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    on_animation_update_subscription_.reset();
    expand_on_hover_enabled_changed_subscription_.reset();
    omnibox_tab_helper_observation_.Reset();
-@@ -758,6 +1349,10 @@ void VerticalTabStripRegionView::OnTabStripViewWillClear() {
+@@ -758,6 +1379,10 @@ void VerticalTabStripRegionView::OnTabStripViewWillClear() {
  
  void VerticalTabStripRegionView::OnCollapseStateChanged(
      tabs::VerticalTabStripCollapseState state) {
@@ -143835,7 +143995,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    // Apply padding immediately at the start of the animation by including
    // the collapsing state.
    bool collapsed = state != tabs::VerticalTabStripCollapseState::kExpanded;
-@@ -767,6 +1362,9 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
+@@ -767,6 +1392,9 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
                             resize_area_->is_resizing());
  
    resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
@@ -143845,7 +144005,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  
    if (tab_strip_view()) {
      tab_strip_view()->SetCollapsedState(collapsed);
-@@ -816,16 +1414,17 @@ bool VerticalTabStripRegionView::IsCollapseButtonHovered() const {
+@@ -816,16 +1444,17 @@ bool VerticalTabStripRegionView::IsCollapseButtonHovered() const {
  }
  
  gfx::Rect VerticalTabStripRegionView::GetTabStripDraggableBounds() const {
@@ -143873,7 +144033,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  }
  
  void VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged(bool enabled) {
-@@ -834,6 +1433,32 @@ void VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged(bool enabled) {
+@@ -834,6 +1463,32 @@ void VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged(bool enabled) {
    UpdateExpandOnHoverState();
  }
  
@@ -143906,7 +144066,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
  void VerticalTabStripRegionView::UpdateExpandOnHoverState(
      std::optional<bool> hovered) {
    // If not collapsed, then we shouldn't be in or entering the expand on hover
-@@ -842,6 +1467,8 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -842,6 +1497,8 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
        !state_controller_->IsCollapsed()) {
      ResetExpandOnHoverTimers();
      is_expanded_on_hover_ = false;
@@ -143915,7 +144075,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
      return;
    }
  
-@@ -851,6 +1478,10 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -851,6 +1508,10 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
  
    // If the force collapse lock is held, collapse the tab strip.
    if (force_collapse_lock_count_ > 0) {
@@ -143926,7 +144086,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
      if (is_expanded_on_hover_) {
        AnimateExpandOnHover(/*expand=*/false);
      }
-@@ -864,7 +1495,7 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -864,7 +1525,7 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
    }
  
    // If the keep expanded lock is held, expand the tab strip.
@@ -143935,7 +144095,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
      if (!is_expanded_on_hover_) {
        AnimateExpandOnHover(/*expand=*/true);
      }
-@@ -882,13 +1513,35 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -882,13 +1543,35 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
      return;
    }
  
@@ -143975,7 +144135,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
      if (is_expanded_on_hover_ && keep_current_state_lock_count_ == 0) {
        AnimateExpandOnHover(/*expand=*/false);
      } else {
-@@ -907,6 +1560,13 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -907,6 +1590,13 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
          hover_card_controller()->GetHoverCardHideLock();
    }
  
@@ -143989,7 +144149,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    if (tabs::kVerticalTabsExpandOnHoverUseVelocityHeuristic.Get()) {
      CalculateMouseVelocityForExpandOnHover();
    } else if (expand_on_hover_timer_.IsRunning()) {
-@@ -1024,7 +1684,41 @@ void VerticalTabStripRegionView::ResetExpandOnHoverTimers() {
+@@ -1024,7 +1714,41 @@ void VerticalTabStripRegionView::ResetExpandOnHoverTimers() {
    }
  }
  
@@ -144031,7 +144191,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
    is_expanded_on_hover_ = expand;
    ResetExpandOnHoverTimers();
  
-@@ -1105,8 +1799,12 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
+@@ -1105,8 +1829,12 @@ void VerticalTabStripRegionView::UnregisterExpandOnHoverLock(
  void VerticalTabStripRegionView::OnOmniboxPopupVisibilityChanged(bool is_open) {
    if (is_open) {
      if (!omnibox_open_lock_) {
@@ -144046,7 +144206,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
        UpdateExpandOnHoverState();
      }
    } else {
-@@ -1128,5 +1826,328 @@ void VerticalTabStripRegionView::OnActiveTabChanged(
+@@ -1128,5 +1856,349 @@ void VerticalTabStripRegionView::OnActiveTabChanged(
    }
  }
  
@@ -144065,6 +144225,9 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
 +bool VerticalTabStripRegionView::RetainedPointerInside() const {
 +  return aux_profile_preview_retention_ &&
 +         aux_profile_preview_retention_->RetainedPointerInside();
++}
++gfx::NativeWindow VerticalTabStripRegionView::RetentionWindow() const {
++  return GetWidget()->GetNativeWindow();
 +}
 +bool VerticalTabStripRegionView::KeepExpandedLocked() const {
 +  if (force_collapse_lock_count_ > 0)
@@ -144104,6 +144267,23 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
 +  SetAuxProfilePreviewPinnedWidth();
 +  ApplyAuxProfileHoverExpansion(expanded);
 +  ApplyRetainedLayout();
++}
++void VerticalTabStripRegionView::UpdateAuxWindowControls() {
++#if BUILDFLAG(IS_MAC)
++  auto* widget = GetWidget();
++  const auto* admission = aux_profile_preview_admission_.get();
++  if (!widget || !admission)
++    return;
++  // As in Arc: a collapsed sidebar takes the window controls with it, and they
++  // come back on its row when it slides out. A toolbar on top keeps them.
++  const bool hidden = state_controller_->IsCollapsed() && !admission->hover_expanded() &&
++                      !widget->IsFullscreen() && browser_view()->IsAuxSidebarNavigationHosted();
++  if (std::exchange(aux_window_controls_hidden_, hidden) == hidden)
++    return;
++  aux::frame_metrics::SetWindowControlsHidden(*widget, hidden,
++      gfx::Animation::ShouldRenderRichAnimation() && !gfx::Animation::PrefersReducedMotion()
++          ? kAuxWindowControlsFade : base::TimeDelta());
++#endif
 +}
 +void VerticalTabStripRegionView::HoldAuxProfileHeaderGeometry() {
 +  if (!aux_profile_header_ || aux_profile_header_holding_)
@@ -144217,6 +144397,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
 +    tab_strip_view()->SetCollapsedState(narrow && !animating);
 +  InvalidateLayout();
 +  browser_view()->InvalidateLayout();
++  UpdateAuxWindowControls();
 +}
 +
 +void VerticalTabStripRegionView::ShowAuxSpaceCreation() {
@@ -144376,7 +144557,7 @@ index b7cdb8f55758ada28f37ffe6b78cfe1725fbc291..5be8d4c61edc07ee9d105e3a68bf2dfc
 +  return bookmark_target;
 +}
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff44272f18c 100644
+index 76f8e997d61b2d606024eb72e6bcaf538265d290..0a7dc91cc71030945916e91ac52fec671e3261d9 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 @@ -5,11 +5,22 @@
@@ -144402,7 +144583,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
  #include "base/time/time.h"
  #include "base/timer/timer.h"
  #include "chrome/browser/ui/animation/browser_animation_types.h"
-@@ -30,8 +41,26 @@
+@@ -30,8 +41,27 @@
  #include "ui/views/accessible_pane_view.h"
  #include "ui/views/controls/resize_area_delegate.h"
  #include "ui/views/focus/focus_manager.h"
@@ -144412,6 +144593,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
 +class Browser;
 +class ToolbarView;
 +namespace aux {
++class AuxOrganizationTreeView;
 +class AuxSidebarBody;
 +class AuxSpaceCreateView;
 +class ProfilePreviewRegionOwner;
@@ -144430,7 +144612,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
  class VerticalTabStripTopContainer;
  class VerticalTabStripBottomContainer;
  class VerticalTabStripFocusSwipeController;
-@@ -54,7 +83,10 @@ class VerticalTabStripRegionView final
+@@ -54,7 +84,10 @@ class VerticalTabStripRegionView final
      : public BaseTabStripRegionView,
        public views::ResizeAreaDelegate,
        public OmniboxTabHelper::Observer,
@@ -144442,7 +144624,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
    METADATA_HEADER(VerticalTabStripRegionView, BaseTabStripRegionView)
  
   public:
-@@ -71,6 +103,9 @@ class VerticalTabStripRegionView final
+@@ -71,6 +104,9 @@ class VerticalTabStripRegionView final
    static constexpr int kCollapseSnapWidth =
        (kUncollapsedMinWidth + kCollapsedWidth) / 2;
  
@@ -144452,7 +144634,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
    explicit VerticalTabStripRegionView(
        tabs::VerticalTabStripStateController* state_controller,
        actions::ActionItem* root_action_item,
-@@ -80,6 +115,70 @@ class VerticalTabStripRegionView final
+@@ -80,6 +116,73 @@ class VerticalTabStripRegionView final
        delete;
    ~VerticalTabStripRegionView() override;
  
@@ -144475,6 +144657,9 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
 +  // 0 while the field is in the toolbar.
 +  int GetAuxAddressFieldHeight() const;
 +  void LayoutAuxAddressRow();
++  aux::AuxOrganizationTreeView* aux_pinned_folders_tree() const {
++    return aux_pinned_folders_tree_;
++  }
 +  void SetAuxNavigationPlacementHold(bool held);
 +  // Terminal detach/profile pause revokes ownership without starting layout.
 +  void ClearAuxNavigationPlacementHoldWithoutLayout();
@@ -144523,7 +144708,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
    VerticalTabStripTopContainer* GetTopContainer() {
      return top_button_container_;
    }
-@@ -105,6 +204,7 @@ class VerticalTabStripRegionView final
+@@ -105,6 +208,7 @@ class VerticalTabStripRegionView final
    void AddedToWidget() override;
    void RemovedFromWidget() override;
    void Layout(PassKey) override;
@@ -144531,7 +144716,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
    views::View* GetDefaultFocusableChild() override;
    gfx::Size GetMinimumSize() const override;
    gfx::Size CalculatePreferredSize(
-@@ -154,6 +254,14 @@ class VerticalTabStripRegionView final
+@@ -154,6 +258,14 @@ class VerticalTabStripRegionView final
    }
  
   private:
@@ -144546,7 +144731,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
    // Since VerticalTabStripRegionView inherits from AccessiblePaneView, which is
    // a FocusChangeListener, we need to have a separate focus listener to avoid
    // conflicts with the base class implementation which conditionally listens
-@@ -223,7 +331,7 @@ class VerticalTabStripRegionView final
+@@ -223,7 +335,7 @@ class VerticalTabStripRegionView final
    void RestartExpandOnHoverTimer(const base::TimeDelta& delay);
    void OnMouseVelocityHeuristicInterval();
    void CalculateMouseVelocityForExpandOnHover();
@@ -144555,7 +144740,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
    void AnimateExpandOnHover(bool expand);
  
    void RegisterExpandOnHoverLock(VerticalTabStripExpandOnHoverLock* lock);
-@@ -238,8 +346,51 @@ class VerticalTabStripRegionView final
+@@ -238,8 +350,55 @@ class VerticalTabStripRegionView final
  
    void OnActiveTabChanged(const tabs::TabInterface* active_tab) override;
  
@@ -144565,6 +144750,8 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
 +  bool SharedHoverTimerIsRunning() const override;
 +  void StartSharedHoverTimer(base::TimeDelta, base::OnceClosure) override;
 +  bool RetainedPointerInside() const override;
++  gfx::NativeWindow RetentionWindow() const override;
++  void UpdateAuxWindowControls();
 +  bool KeepExpandedLocked() const override;
 +  void UpdateExpandOnHover(std::optional<bool>) override;
 +  void RetentionAcquired() override;
@@ -144592,6 +144779,8 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
 +  std::optional<uint64_t> pinned_profile_switch_generation_;
 +  raw_ptr<aux::AuxSidebarBody> aux_sidebar_ = nullptr;
 +  raw_ptr<views::View> aux_address_row_ = nullptr;
++  bool aux_window_controls_hidden_ = false;
++  raw_ptr<aux::AuxOrganizationTreeView> aux_pinned_folders_tree_ = nullptr;
 +  base::CallbackListSubscription aux_address_scrolled_;
 +  raw_ptr<aux::AuxSpaceCreateView> aux_space_create_ = nullptr;
 +  // Original source839 starts clear; actual native drag producer owns changes.
@@ -144607,7 +144796,7 @@ index 76f8e997d61b2d606024eb72e6bcaf538265d290..28911f60925c257ab8c65b49c833cff4
    raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
    raw_ptr<views::View> gemini_button_ = nullptr;
    raw_ptr<views::ResizeArea> resize_area_ = nullptr;
-@@ -305,6 +456,16 @@ class VerticalTabStripRegionView final
+@@ -305,6 +464,16 @@ class VerticalTabStripRegionView final
    base::OneShotTimer mouse_exit_timer_;
  
    base::CallbackListSubscription paint_as_active_subscription_;
@@ -145053,7 +145242,7 @@ index 0a5e9cce40424b65d14d006a59c8d22b7f130e46..f8e4037832510b7d9a4cec65d321c95c
      controller_observation_.Observe(controller);
    }
 diff --git a/chrome/browser/ui/views/location_bar/location_bar_view.cc b/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9fe1b24446 100644
+index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..0b8f7a0d6f60e99ca62373eea8ebf84750779f06 100644
 --- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
 @@ -10,6 +10,7 @@
@@ -145081,7 +145270,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  #include "chrome/browser/ui/color/chrome_color_id.h"
  #include "chrome/browser/ui/content_settings/content_setting_bubble_model.h"
  #include "chrome/browser/ui/layout_constants.h"
-@@ -80,6 +84,7 @@
+@@ -80,12 +84,14 @@
  #include "chrome/browser/ui/views/omnibox/omnibox_popup_webui_content.h"
  #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
  #include "chrome/browser/ui/views/page_action/page_action_container_view.h"
@@ -145089,7 +145278,14 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  #include "chrome/browser/ui/views/page_action/page_action_view_params.h"
  #include "chrome/browser/ui/views/page_info/page_info_bubble_specification.h"
  #include "chrome/browser/ui/views/page_info/page_info_bubble_view.h"
-@@ -107,6 +112,7 @@
+ #include "chrome/browser/ui/views/permissions/chip/permission_chip_view.h"
+ #include "chrome/browser/ui/views/permissions/chip/permission_dashboard_view.h"
+ #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions_container.h"
++#include "chrome/browser/ui/views/frame/aux_sidebar_ink.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+ #include "chrome/browser/ui/views/user_education/browser_help_bubble.h"
+ #include "chrome/browser/ui/web_applications/app_browser_controller.h"
+@@ -107,6 +113,7 @@
  #include "components/omnibox/browser/omnibox_prefs.h"
  #include "components/omnibox/browser/page_classification_functions.h"
  #include "components/omnibox/browser/vector_icons.h"
@@ -145097,7 +145293,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  #include "components/omnibox/common/input_state.h"
  #include "components/omnibox/common/omnibox_feature_configs.h"
  #include "components/omnibox/common/omnibox_features.h"
-@@ -143,15 +149,21 @@
+@@ -143,15 +150,21 @@
  #include "ui/gfx/geometry/skia_conversions.h"
  #include "ui/gfx/image/image.h"
  #include "ui/gfx/paint_vector_icon.h"
@@ -145119,7 +145315,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  #include "ui/views/controls/focus_ring.h"
  #include "ui/views/controls/highlight_path_generator.h"
  #include "ui/views/controls/label.h"
-@@ -172,6 +184,8 @@
+@@ -172,6 +185,8 @@
  
  namespace {
  
@@ -145128,7 +145324,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  int IncrementalMinimumWidth(const views::View* view) {
    return (view && view->GetVisible()) ? view->GetMinimumSize().width() : 0;
  }
-@@ -234,12 +248,15 @@ LocationBarView::LocationBarView(BrowserWindowInterface* browser,
+@@ -234,12 +249,15 @@ LocationBarView::LocationBarView(BrowserWindowInterface* browser,
            }
  
            // Show focus ring when the Omnibox is visibly focused and the popup
@@ -145147,7 +145343,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  
  #if BUILDFLAG(OS_LEVEL_GEOLOCATION_PERMISSION_SUPPORTED)
      if (features::IsOsLevelGeolocationPermissionSupportEnabled()) {
-@@ -269,6 +286,9 @@ LocationBarView::~LocationBarView() {
+@@ -269,6 +287,9 @@ LocationBarView::~LocationBarView() {
    // is destroyed before the omnibox controller (a member variable), since it
    // holds a raw_ptr to the omnibox controller.
    popup_state_changed_subscription_ = base::CallbackListSubscription();
@@ -145157,7 +145353,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
    omnibox_popup_view_.reset();
    RemoveChildViewT(omnibox_view_.ExtractAsDangling());
  }
-@@ -367,10 +387,14 @@ void LocationBarView::Init() {
+@@ -367,10 +388,14 @@ void LocationBarView::Init() {
  
      if (web_ui_popup_dropdown_only &&
          !base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopupDebug)) {
@@ -145173,7 +145369,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
      } else if (omnibox::IsWebUIOmniboxInBrowserViewEnabled()) {
        omnibox_popup_view_ =
            std::make_unique<OmniboxPopupViewBrowserView>(this, browser_);
-@@ -453,6 +477,30 @@ void LocationBarView::Init() {
+@@ -453,6 +478,30 @@ void LocationBarView::Init() {
        AddChildView(std::move(omnibox_additional_text_view));
    omnibox_additional_text_view_->SetEnabledColor(kColorOmniboxResultsUrl);
  
@@ -145204,7 +145400,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
    selected_keyword_view_ = AddChildView(std::make_unique<SelectedKeywordView>(
        this, profile_, omnibox_controller_.get(), font_list));
  
-@@ -524,8 +572,14 @@ int LocationBarView::GetBorderRadius() const {
+@@ -524,8 +573,14 @@ int LocationBarView::GetBorderRadius() const {
  
  // static
  int LocationBarView::ComputeBorderRadius(gfx::Size size) {
@@ -145219,7 +145415,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  }
  
  // static
-@@ -766,6 +820,63 @@ void LocationBarView::Layout(PassKey) {
+@@ -766,6 +821,63 @@ void LocationBarView::Layout(PassKey) {
      return;
    }
  
@@ -145283,7 +145479,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
    selected_keyword_view_->SetVisible(false);
  
    // TODO(manukh): Move constants to layout_constants.cc.
-@@ -853,6 +964,36 @@ void LocationBarView::Layout(PassKey) {
+@@ -853,6 +965,36 @@ void LocationBarView::Layout(PassKey) {
      }
    }
  
@@ -145320,7 +145516,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
    if (ShouldShowKeywordBubble()) {
      location_icon_view_->SetVisible(false);
      leading_decorations.AddDecoration(
-@@ -912,6 +1053,10 @@ void LocationBarView::Layout(PassKey) {
+@@ -912,6 +1054,10 @@ void LocationBarView::Layout(PassKey) {
                                  ? kTrailingEdgePaddingForAim
                                  : trailing_decorations_edge_padding);
    }
@@ -145331,7 +145527,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
    add_trailing_decoration(ai_mode_hint_label_, /*intra_item_padding=*/0,
                            /*edge_padding=*/trailing_decorations_edge_padding);
    for (ContentSettingImageView* view :
-@@ -943,7 +1088,9 @@ void LocationBarView::Layout(PassKey) {
+@@ -943,7 +1089,9 @@ void LocationBarView::Layout(PassKey) {
    trailing_decorations.LayoutPass2(&entry_width);
  
    // Compute widths needed for location bar.
@@ -145342,7 +145538,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  
    int available_width = entry_width - location_needed_width;
    // The bounds must be wide enough for all the decorations to fit, so if
-@@ -957,9 +1104,18 @@ void LocationBarView::Layout(PassKey) {
+@@ -957,9 +1105,18 @@ void LocationBarView::Layout(PassKey) {
    // |omnibox_view_| has an opaque background, so ensure it doesn't paint atop
    // the rounded ends.
    location_bounds.Intersect(GetLocalBoundsWithoutEndcaps());
@@ -145362,7 +145558,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
      // Short circuit the below logic when the additional views aren't visible.
      // This is necessary as resizing the omnibox can throw off it's scroll,
      // i.e., which chars are visible when its text overflows its width.
-@@ -1000,6 +1156,7 @@ void LocationBarView::Layout(PassKey) {
+@@ -1000,6 +1157,7 @@ void LocationBarView::Layout(PassKey) {
          reserve_label_width(ime_inline_autocomplete_view_);
      int omnibox_additional_text_width =
          reserve_label_width(omnibox_additional_text_view_);
@@ -145370,7 +145566,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  
      // A helper to position `view` to the right of the previous positioned
      // `view`.
-@@ -1017,7 +1174,19 @@ void LocationBarView::Layout(PassKey) {
+@@ -1017,7 +1175,19 @@ void LocationBarView::Layout(PassKey) {
      position_view(omnibox_view_, omnibox_width);
      position_view(ime_inline_autocomplete_view_, ime_inline_autocomplete_width);
      position_view(omnibox_additional_text_view_, omnibox_additional_text_width);
@@ -145390,7 +145586,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  
    LayoutSuperclass<View>(this);
  }
-@@ -1368,7 +1537,7 @@ int LocationBarView::GetMinimumTrailingWidth() const {
+@@ -1368,7 +1538,7 @@ int LocationBarView::GetMinimumTrailingWidth() const {
  }
  
  gfx::Rect LocationBarView::GetLocalBoundsWithoutEndcaps() const {
@@ -145399,14 +145595,14 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
    gfx::Rect bounds_without_endcaps(GetLocalBounds());
    bounds_without_endcaps.Inset(gfx::Insets::VH(0, border_radius));
    return bounds_without_endcaps;
-@@ -1388,8 +1557,30 @@ void LocationBarView::RefreshBackground() {
+@@ -1388,8 +1558,30 @@ void LocationBarView::RefreshBackground() {
    SkColor hovered =
        color_provider->GetColor(kColorLocationBarBackgroundHovered);
  
 +  const bool aux_in_sidebar = IsAuxSidebarNavigation();
 +  if (aux_in_sidebar) {
 +    // A soft field over the sidebar material, as in Arc, not the dark omnibox.
-+    const SkColor ink = color_provider->GetColor(kColorOmniboxText);
++    const SkColor ink = aux::SidebarInk(*this, color_provider->GetColor(kColorOmniboxText));
 +    normal = SkColorSetA(ink, 0x14);
 +    hovered = SkColorSetA(ink, 0x1f);
 +  }
@@ -145426,12 +145622,12 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
 +    // Focused, the sidebar field brightens a little; it never turns into the
 +    // popup's dark surface.
 +    background_color_ = SkColorSetA(
-+        color_provider->GetColor(kColorOmniboxText), 0x29);
++        aux::SidebarInk(*this, color_provider->GetColor(kColorOmniboxText)), 0x29);
 +  } else if (is_caret_visible) {
      // Match the background color to the popup if the Omnibox is visibly
      // focused.
      background_color_ =
-@@ -1428,7 +1619,10 @@ void LocationBarView::RefreshBackground() {
+@@ -1428,7 +1620,10 @@ void LocationBarView::RefreshBackground() {
  
    // Keep the views::Textfield in sync. It needs an opaque background to
    // correctly enable subpixel AA.
@@ -145443,7 +145639,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  
    // The divider between indicators and request chips should have the same color
    // as the omnibox.
-@@ -1620,6 +1814,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
+@@ -1620,6 +1815,12 @@ void LocationBarView::SaveStateToContents(WebContents* contents) {
    } else {
      omnibox_view_->SaveStateToTab(contents);
    }
@@ -145456,7 +145652,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  }
  
  LocationBarTesting* LocationBarView::GetLocationBarForTesting() {
-@@ -2003,6 +2203,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
+@@ -2003,6 +2204,11 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
  }
  
  void LocationBarView::OnChanged() {
@@ -145468,7 +145664,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
    TRACE_EVENT("omnibox", "LocationBarView::OnChanged");
    // Ensure that background colors get updated on tab-switch.
    RefreshBackground();
-@@ -2033,6 +2238,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
+@@ -2033,6 +2239,12 @@ const LocationBarModel* LocationBarView::GetLocationBarModel() const {
  }
  
  void LocationBarView::OnOmniboxFocused() {
@@ -145481,7 +145677,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
    if (views::FocusRing::Get(this)) {
      views::FocusRing::Get(this)->Refresh();
    }
-@@ -2092,6 +2303,7 @@ void LocationBarView::OnTouchUiChanged() {
+@@ -2092,6 +2304,7 @@ void LocationBarView::OnTouchUiChanged() {
    omnibox_view_->SetFontList(font_list);
    ime_inline_autocomplete_view_->SetFontList(font_list);
    omnibox_additional_text_view_->SetFontList(font_list);
@@ -145489,7 +145685,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
    selected_keyword_view_->SetFontList(font_list);
    for (ContentSettingImageView* view : content_setting_views_) {
      view->SetFontList(font_list);
-@@ -2255,6 +2467,10 @@ SkColor LocationBarView::GetSecurityChipColor(
+@@ -2255,6 +2468,10 @@ SkColor LocationBarView::GetSecurityChipColor(
    return GetColorProvider()->GetColor(id);
  }
  
@@ -145500,7 +145696,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
  bool LocationBarView::ShowPageInfoDialog() {
    WebContents* contents = GetWebContents();
    if (!contents) {
-@@ -2304,6 +2520,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
+@@ -2304,6 +2521,42 @@ ui::ImageModel LocationBarView::GetLocationIcon(
      return GetOmniboxController()->edit_model()->GetAddContextIcon(dip_size);
    }
  
@@ -145543,7 +145739,7 @@ index 9251f8590b1ad0ee0db49d3e013d946162ca02a8..563c7a5f6c27fc87bf56facb1d6eec9f
    return omnibox_view_
               ? omnibox_view_->GetIcon(
                     dip_size, location_icon_view_->GetForegroundColor(),
-@@ -2421,3 +2673,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
+@@ -2421,3 +2674,198 @@ ADD_READONLY_PROPERTY_METADATA(int, MinimumTrailingWidth)
  ADD_READONLY_PROPERTY_METADATA(gfx::Rect, LocalBoundsWithoutEndcaps)
  ADD_READONLY_PROPERTY_METADATA(bool, PopupMode)
  END_METADATA
@@ -149117,7 +149313,7 @@ index 343391ba3c80dd4091abebccc3ec567f10a89862..e7a3e1f4975442887eab9806468409e0
  
    ui::ScopedUnownedUserData<ReadingListSidePanelCoordinator>
 diff --git a/chrome/browser/ui/views/side_panel/side_panel.cc b/chrome/browser/ui/views/side_panel/side_panel.cc
-index ab8999f84de6992bbf403b92ef5c3a5ad0386390..2857ff2cd6bcd617de50d2bf39fc9b34fe05aeaa 100644
+index ab8999f84de6992bbf403b92ef5c3a5ad0386390..aa21f510dcdba5b56a881a8d89d7ae9588796ca8 100644
 --- a/chrome/browser/ui/views/side_panel/side_panel.cc
 +++ b/chrome/browser/ui/views/side_panel/side_panel.cc
 @@ -4,6 +4,11 @@
@@ -149198,8 +149394,15 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..2857ff2cd6bcd617de50d2bf39fc9b34
    }
  
   private:
-@@ -168,6 +202,17 @@ class ContentParentView : public views::View, public views::ViewObserver {
+@@ -166,8 +200,24 @@ class ContentParentView : public views::View, public views::ViewObserver {
+                             base::Unretained(this))));
+   }
  
++  void OnThemeChanged() override {
++    views::View::OnThemeChanged();
++    SchedulePaint();
++  }
++
    void OnChildViewAdded(views::View* observed_view,
                          views::View* child) override {
 +#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
@@ -149216,7 +149419,7 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..2857ff2cd6bcd617de50d2bf39fc9b34
      // Setting rounded corners on a WebView's holder requires the
      // NativeViewHost's native_wrapper_ to be set. For a WebView, this is set in
      // View::ViewHierarchyChanged, specifically after
-@@ -224,6 +269,14 @@ class ContentParentView : public views::View, public views::ViewObserver {
+@@ -224,6 +274,14 @@ class ContentParentView : public views::View, public views::ViewObserver {
    }
  
    gfx::RoundedCornersF GetRoundedCorners() {
@@ -149231,7 +149434,7 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..2857ff2cd6bcd617de50d2bf39fc9b34
      ChromeDistanceMetric corner_radius =
          ChromeDistanceMetric::DISTANCE_SIDE_PANEL_CONTENT_RADIUS;
      return GetLayoutProvider()
-@@ -377,8 +430,17 @@ void SidePanel::UpdateWidthOnEntryChanged() {
+@@ -377,8 +435,17 @@ void SidePanel::UpdateWidthOnEntryChanged() {
    if (std::optional<int> width_from_pref = dict.FindInt(panel_id)) {
      SetPanelWidth(width_from_pref.value());
    } else {
@@ -149251,7 +149454,7 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..2857ff2cd6bcd617de50d2bf39fc9b34
    }
  }
  
-@@ -388,9 +450,20 @@ bool SidePanel::IsRightAligned() const {
+@@ -388,9 +455,20 @@ bool SidePanel::IsRightAligned() const {
  
  gfx::Size SidePanel::GetMinimumSize() const {
    const int min_height = 0;
@@ -149275,7 +149478,7 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..2857ff2cd6bcd617de50d2bf39fc9b34
  }
  
  bool SidePanel::IsClosing() {
-@@ -442,8 +515,8 @@ gfx::Size SidePanel::GetContentSizeUpperBound() const {
+@@ -442,8 +520,8 @@ gfx::Size SidePanel::GetContentSizeUpperBound() const {
    const int side_panel_height =
        height() > 0 ? height() : browser_view_->height();
  
@@ -149286,7 +149489,7 @@ index ab8999f84de6992bbf403b92ef5c3a5ad0386390..2857ff2cd6bcd617de50d2bf39fc9b34
  }
  
  void SidePanel::OnBoundsChanged(const gfx::Rect& previous_bounds) {
-@@ -548,7 +621,7 @@ void SidePanel::RecordMetricsIfResized() {
+@@ -548,7 +626,7 @@ void SidePanel::RecordMetricsIfResized() {
        return;
      }
  
@@ -165776,11 +165979,33 @@ index ff3325526079413df7ade832bababd7ae3cbe0d1..1df64a3b68276b99dd8a6e2ce7740249
            </message>
          </else>
        </if>
+diff --git a/components/remote_cocoa/app_shim/BUILD.gn b/components/remote_cocoa/app_shim/BUILD.gn
+index 8e61a19d40c2f2bfa01f0d434685b2c0c7ae1504..e4a3e61a1c12afad1d1219db9609f55dff32047a 100644
+--- a/components/remote_cocoa/app_shim/BUILD.gn
++++ b/components/remote_cocoa/app_shim/BUILD.gn
+@@ -2,6 +2,7 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("//chrome/browser/buildflags.gni")
+ import("//mojo/public/tools/bindings/mojom.gni")
+ 
+ config("app_shim_warnings") {
+@@ -74,6 +75,9 @@ component("app_shim") {
+     "window_touch_bar_delegate.h",
+   ]
+   defines = [ "REMOTE_COCOA_APP_SHIM_IMPLEMENTATION" ]
++  if (enable_aux_browser) {
++    defines += [ "ENABLE_AUX_BROWSER" ]
++  }
+   deps = [
+     ":features",
+     "//base",
 diff --git a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.h b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.h
-index 48fec9db470511cd1214d4df3acda8484bc660c7..3e0e8316b91898a5a0b50149549b69053268241a 100644
+index 48fec9db470511cd1214d4df3acda8484bc660c7..260bdfc4a1ea94ddfd850ff21f2d95bc6b00f6b9 100644
 --- a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.h
 +++ b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.h
-@@ -12,6 +12,11 @@ REMOTE_COCOA_APP_SHIM_EXPORT
+@@ -12,6 +12,13 @@ REMOTE_COCOA_APP_SHIM_EXPORT
  // When set to `YES`, the traffic lights will always be shown. When set to `NO`,
  // the traffic lights follow the default AppKit behavior.
  - (void)setAlwaysShowTrafficLights:(BOOL)alwaysShow;
@@ -165788,25 +166013,30 @@ index 48fec9db470511cd1214d4df3acda8484bc660c7..3e0e8316b91898a5a0b50149549b6905
 +// and survive AppKit layout/reveal updates through the existing frame owner.
 +- (void)setCloseButtonOnly:(BOOL)closeOnly;
 +- (void)setTrafficLightsHidden:(BOOL)hidden;
++// Fades them, as the Aux sidebar that holds them slides in or out.
++- (void)setTrafficLightsHidden:(BOOL)hidden fadeDuration:(NSTimeInterval)duration;
 +
  // A controller that keeps a small portion (0.5px) of the fullscreen AppKit
  // NSWindow on screen.
  // This controller is used as a workaround for an AppKit bug
 diff --git a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
-index ae93fe9bd90c4d63983cf824cf2c23ef39b36eed..527115cfdb3610d8255a6dd41af941df9b949788 100644
+index ae93fe9bd90c4d63983cf824cf2c23ef39b36eed..cabcf0bdd2b555817945f8622bebee097c0b08e6 100644
 --- a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
 +++ b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
-@@ -38,6 +38,9 @@ WEAK_IMPORT_ATTRIBUTE
+@@ -38,6 +38,12 @@ WEAK_IMPORT_ATTRIBUTE
  @implementation BrowserWindowFrame {
    BOOL _inFullScreen;
    BOOL _alwaysShowTrafficLights;
 +  BOOL _closeButtonOnly;
 +  BOOL _trafficLightsHidden;
 +  BOOL _hasExplicitPopupTrafficLightState;
++  // Counts fades; only the latest settles the buttons.
++  NSUInteger _trafficLightsFade;
++  BOOL _trafficLightsFading;
  }
  
  // NSThemeFrame overrides.
-@@ -119,7 +122,33 @@ WEAK_IMPORT_ATTRIBUTE
+@@ -119,7 +125,68 @@ WEAK_IMPORT_ATTRIBUTE
    [self maybeShowTrafficLights];
  }
  
@@ -165826,9 +166056,44 @@ index ae93fe9bd90c4d63983cf824cf2c23ef39b36eed..527115cfdb3610d8255a6dd41af941df
 +  [self updateTrafficLightButtons];
 +}
 +
++- (void)setTrafficLightsHidden:(BOOL)hidden fadeDuration:(NSTimeInterval)duration {
++  if (_trafficLightsHidden == hidden)
++    return;
++  _hasExplicitPopupTrafficLightState = YES;
++  _trafficLightsHidden = hidden;
++  NSWindow* window = [self window];
++  NSMutableArray<NSButton*>* buttons = [NSMutableArray array];
++  for (NSWindowButton type :
++       {NSWindowCloseButton, NSWindowMiniaturizeButton, NSWindowZoomButton}) {
++    if (NSButton* button = [window standardWindowButton:type])
++      [buttons addObject:button];
++  }
++  if (!hidden) {
++    [self updateTrafficLightButtons];
++    for (NSButton* button in buttons)
++      [button setAlphaValue:0];
++  }
++  _trafficLightsFading = YES;
++  const NSUInteger fade = ++_trafficLightsFade;
++  [NSAnimationContext
++      runAnimationGroup:^(NSAnimationContext* context) {
++        context.duration = duration;
++        for (NSButton* button in buttons)
++          button.animator.alphaValue = hidden ? 0 : 1;
++      }
++      completionHandler:^{
++        if (fade != self->_trafficLightsFade)
++          return;
++        self->_trafficLightsFading = NO;
++        [self updateTrafficLightButtons];
++        // Shown again: back to AppKit's own handling, full screen included.
++        self->_hasExplicitPopupTrafficLightState = self->_trafficLightsHidden;
++      }];
++}
++
 +- (void)layout {
 +  [super layout];
-+  if (_hasExplicitPopupTrafficLightState)
++  if (_hasExplicitPopupTrafficLightState && !_trafficLightsFading)
 +    [self updateTrafficLightButtons];
 +}
 +
@@ -165840,7 +166105,7 @@ index ae93fe9bd90c4d63983cf824cf2c23ef39b36eed..527115cfdb3610d8255a6dd41af941df
    if (!_alwaysShowTrafficLights) {
      return;
    }
-@@ -131,8 +160,7 @@ WEAK_IMPORT_ATTRIBUTE
+@@ -131,8 +198,7 @@ WEAK_IMPORT_ATTRIBUTE
    };
    for (NSWindowButton type : kButtons) {
      NSButton* button = [window standardWindowButton:type];
@@ -165850,7 +166115,7 @@ index ae93fe9bd90c4d63983cf824cf2c23ef39b36eed..527115cfdb3610d8255a6dd41af941df
      [button setAlphaValue:1.0];
      // macOS 27 adds -[NSThemeWidget setRevealAmount:] to control the visibility
      // of the traffic lights.
-@@ -142,6 +170,39 @@ WEAK_IMPORT_ATTRIBUTE
+@@ -142,6 +208,39 @@ WEAK_IMPORT_ATTRIBUTE
    }
  }
  
@@ -165890,7 +166155,7 @@ index ae93fe9bd90c4d63983cf824cf2c23ef39b36eed..527115cfdb3610d8255a6dd41af941df
  @end
  
  @implementation BrowserNativeWidgetWindow
-@@ -220,4 +281,14 @@ WEAK_IMPORT_ATTRIBUTE
+@@ -220,4 +319,20 @@ WEAK_IMPORT_ATTRIBUTE
        setAlwaysShowTrafficLights:alwaysShow];
  }
  
@@ -165902,6 +166167,12 @@ index ae93fe9bd90c4d63983cf824cf2c23ef39b36eed..527115cfdb3610d8255a6dd41af941df
 +- (void)setTrafficLightsHidden:(BOOL)hidden {
 +  [base::apple::ObjCCastStrict<BrowserWindowFrame>(self.contentView.superview)
 +      setTrafficLightsHidden:hidden];
++}
++
++- (void)setTrafficLightsHidden:(BOOL)hidden fadeDuration:(NSTimeInterval)duration {
++  [base::apple::ObjCCastStrict<BrowserWindowFrame>(self.contentView.superview)
++      setTrafficLightsHidden:hidden
++                fadeDuration:duration];
 +}
 +
  @end
@@ -165966,7 +166237,7 @@ index 3029aa461ad69de7b570c5d4269f67da2b4979ea..ebdb8a70742125e06278043d24b6c561
  
    raw_ptr<NativeWidgetNSWindowBridge> parent_ =
 diff --git a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
-index 74e0a362059024d683e2db7b86d65947726cac14..44dd2c1f1afa4b91b4b473585a6c34e999a31ac4 100644
+index 74e0a362059024d683e2db7b86d65947726cac14..7f044355d2762f747c0d7684813528d0de2210d2 100644
 --- a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
 +++ b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
 @@ -8,6 +8,7 @@
@@ -166264,7 +166535,7 @@ index 74e0a362059024d683e2db7b86d65947726cac14..44dd2c1f1afa4b91b4b473585a6c34e9
    // Beware: This view was briefly removed (in favor of a bare CALayer) in
    // https://crrev.com/c/1236675. The ordering of unassociated layers relative
    // to NSView layers is undefined on macOS 10.12 and earlier, so the compositor
-@@ -835,15 +1088,29 @@ void NativeWidgetNSWindowBridge::CreateContentView(
+@@ -835,15 +1088,30 @@ void NativeWidgetNSWindowBridge::CreateContentView(
        std::make_unique<ui::DisplayCALayerTree>(background_layer);
    [compositor_view setLayer:background_layer];
    [compositor_view setWantsLayer:YES];
@@ -166286,16 +166557,17 @@ index 74e0a362059024d683e2db7b86d65947726cac14..44dd2c1f1afa4b91b4b473585a6c34e9
    }
  
    [window_ setContentView:bridged_view_];
-+  if (base::apple::BaseBundleID() == "dev.aux.browser" &&
-+      [window_ isKindOfClass:[BrowserNativeWidgetWindow class]]) {
++#if defined(ENABLE_AUX_BROWSER)
++  if ([window_ isKindOfClass:[BrowserNativeWidgetWindow class]]) {
 +    StartWindowEffectPreferencesObserver();
 +    ReplaceWindowBackgroundEffectView(
 +        (window_.styleMask & NSWindowStyleMaskFullScreen) != 0);
 +  }
++#endif
  }
  
  void NativeWidgetNSWindowBridge::CloseWindow() {
-@@ -1585,13 +1852,24 @@ void NativeWidgetNSWindowBridge::InitCompositorView(
+@@ -1585,13 +1853,24 @@ void NativeWidgetNSWindowBridge::InitCompositorView(
    // for the composited NonClientFrameView, which should be the case since the
    // native shape is what's most appropriate for displaying sheets on Mac.
    if (is_translucent_window_ && !IsWindowModalSheet()) {
@@ -166323,7 +166595,7 @@ index 74e0a362059024d683e2db7b86d65947726cac14..44dd2c1f1afa4b91b4b473585a6c34e9
  
      // Don't block waiting for the initial frame of completely transparent
      // windows. This allows us to avoid blocking on the UI thread e.g, while
-@@ -1718,6 +1996,16 @@ void NativeWidgetNSWindowBridge::FullscreenControllerTransitionComplete(
+@@ -1718,6 +1997,16 @@ void NativeWidgetNSWindowBridge::FullscreenControllerTransitionComplete(
    OrderChildren();
  
    host_->OnWindowFullscreenTransitionComplete(is_fullscreen);
@@ -186834,10 +187106,10 @@ index 593de2a260e2ad288e292ba845b75a6360654bf4..0133b029ce4f861d03b63a5ae0bd3fd7
    // tools/metrics/histograms/update_extension_histograms.py
    ENUM_BOUNDARY
 diff --git a/extensions/browser/extension_function_histogram_value.h b/extensions/browser/extension_function_histogram_value.h
-index 4f8efeb0d3dc9d682c5c5fa31c2a9a0f58746b47..b802889e6d266d3bc1029cd52504c8692b9d1cb1 100644
+index 4f8efeb0d3dc9d682c5c5fa31c2a9a0f58746b47..90ecc8cfd423fac1410827c0211ebff2e58b5966 100644
 --- a/extensions/browser/extension_function_histogram_value.h
 +++ b/extensions/browser/extension_function_histogram_value.h
-@@ -2051,6 +2051,168 @@ enum HistogramValue {
+@@ -2051,6 +2051,169 @@ enum HistogramValue {
    ENTERPRISE_WEBRTC_STARTCAPTURE = 1986,
    ENTERPRISE_WEBRTC_GETCAPTURESTATUS = 1987,
    ENTERPRISE_WEBRTC_STOPCAPTURE = 1988,
@@ -187003,6 +187275,7 @@ index 4f8efeb0d3dc9d682c5c5fa31c2a9a0f58746b47..b802889e6d266d3bc1029cd52504c869
 +  AUXADBLOCK_GETPAUSEDSITES = 2148,
 +  AUXBROWSERPREFERENCES_STARTDICTATION = 2149,
 +  AUXBROWSERPREFERENCES_STOPDICTATION = 2150,
++  AUXBROWSERPREFERENCES_SETSHORTCUTALWAYSFORAUX = 2151,
    // Last entry: Add new entries above, then run:
    // tools/metrics/histograms/update_extension_histograms.py
    ENUM_BOUNDARY
