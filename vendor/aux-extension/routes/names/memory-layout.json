@@ -1,0 +1,17 @@
+{
+ "c": "React",
+ "e": "jsxRuntime",
+ "h": "LIST_SIZE",
+ "se": "MemoryLayout",
+ "te": "MainPanel",
+ "re": "memoryRoute",
+ "ae": "FileList",
+ "ie": "LOADING_ROWS",
+ "ne": "LoadingRow",
+ "oe": "LoadingRows",
+ "le": "historyRoute",
+ "me": "HistoryList",
+ "ce": "OpenFolderButton",
+ "de": "OpenFolderItem",
+ "xe": "OpenMemoryFolder"
+}

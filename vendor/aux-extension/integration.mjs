@@ -253,6 +253,18 @@ export const ROUTES = Object.freeze({
     block('Channels: connection settings, remote messengers and the page', 'channels-connections.js', 'ut=({accountId:s,connection:t,projects:n',
       'an",{children:E[n].label})]},n)})})]})};', '3094f8351b365b10b91aacd9436c1717626511d47d77ead0309c10c0337d4688', 21781),
   ],
+  'assets/route-CJZWzPOz.js': [block('Memory: layout', 'memory-layout.js', 'var c=z(F(),1),e=k(),h={DEFAULT:"240px",',
+    '(q,{children:"Open memory folder"})]})};', 'bd74c3d7ff602cd3c14dc3f8e91929ebf38f0572ff9ba10647dad0f438ca3a40', 6257)],
+  'assets/files-DqqxHH6i.js': [block('Memory: file', 'memory-file.js', 'var x=N(k(),1),e=F(),Y=({accountId:r,fil',
+    'xt-sm",children:"No memory files yet"})}', '5f1cc8258c7b0c923771a1cdee50aa7c6ab2e623f979bc396427231394bcdfb9', 4404)],
+  'assets/histories-CpU8qS5w.js': [block('Memory: history', 'memory-history.js', 'var p=B(U()),e=Y(),Ie=({messages:s,sessi',
+    '!["DONE","NONE"].includes(k(s).trim()));', 'cf98ce336d27b693ffeb7bdbcd8cb6a4d6c1e56cdd6efaa4bcad087899ce6a2f', 9251)],
+  'assets/settings-DguZi_c6.js': [block('Memory: settings', 'memory-settings.js', 'var e=j();function z(){const{userId:u}=k',
+    'ldren:"90 days"})]})]})})]})]})})]})]})}', 'ba75e3dffb6ae3a73c240ed99f89699bfa362deac1263f53882e40aa6ff33755', 1731)],
+  'assets/import-DX5BoL4B.js': [block('Memory: import', 'memory-import.js', 'var t=e();function m(){return(0,t.jsx)("',
+    'ter text-sm",children:"Import memory"})}', '49852f9282ac7bb75a5b147483cc01f06946d0bced12bdd8b263bd2101e4524e', 175)],
+  'assets/context-awareness-BocPTg31.js': [block('Memory: Context Awareness', 'context-awareness.js', 'var x=Se(ke(),1);function L(s){return s.',
+    '!M,onClick:E,children:"Add"})]})]})]})};', '6fd6cfd4239350f4ae50cd0f4a819bfc945d71ed544a518dae5bd65ede768db5', 20543)],
   // The composer, one area per pass; the rest of the chunk stays supplied until its pass.
   'assets/session-composer-Dc0LRfZA.js': [
     block('Composer: icons, tool summaries, prompt history, the editor, the + menu, Send and dictation', 'composer-head.js',

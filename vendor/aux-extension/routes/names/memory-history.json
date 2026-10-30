@@ -1,0 +1,14 @@
+{
+ "p": "React",
+ "e": "jsxRuntime",
+ "Ie": "EntryMessages",
+ "Ce": "HistoryEntry",
+ "we": "EntryDetails",
+ "m": "DetailRow",
+ "Re": "EntryChanges",
+ "Ee": "ChangeRow",
+ "ke": "ChangeDiff",
+ "Se": "triggerLabel",
+ "Te": "INTERNAL_PROMPTS",
+ "$e": "isShownMessage"
+}

@@ -1262,3 +1262,62 @@ test('the Channels platform fields and setup match the supplied ones', async () 
   for (const platform of ['slack', 'telegram', 'discord']) assert.equal(ours.__pair_guideUrl(platform), supplied.__pair_guideUrl(platform));
 });
 
+// Memory: files, a file in preview and edit, history entries with their changes and session, the
+// settings, and Context Awareness with history, exclusions and its model.
+const memoryChunks = ['assets/route-CJZWzPOz.js', 'assets/files-DqqxHH6i.js', 'assets/histories-CpU8qS5w.js', 'assets/settings-DguZi_c6.js', 'assets/import-DX5BoL4B.js',
+  'assets/context-awareness-BocPTg31.js'];
+test('the Memory pages render like the supplied ones with files, history and Context Awareness', async () => {
+  const fileList = [{path: 'people/robert.md', name: 'robert.md', sizeBytes: 300000, absolutePath: '/m/people/robert.md', updatedAt: 5},
+    {path: 'projects/aux.md', name: 'aux.md', sizeBytes: 300, absolutePath: '/m/projects/aux.md', updatedAt: 4}];
+  // One answer for the file list in every shape its selects make: a list, and a lookup by path.
+  const filesAnswer = list => Object.assign([...list], {fileByPath: new Map(list.map(file => [file.path, file])), filePaths: list.map(file => file.path)});
+  const files = fileList;
+  const change = {path: 'people/robert.md', addedLines: 3, removedLines: 1, beforeContent: 'a', afterContent: 'b', beforeSha256: 'x', afterSha256: 'y'};
+  const entry = {id: 'h1', trigger: 'session_completed', elapsedMs: 65000, model: {provider: 'anthropic', modelId: 'opus'}, sessionId: 's1', createdAt: 5,
+    usage: {input: 1200, output: 300, cacheRead: 10, cacheWrite: 0, totalTokens: 1510, costUsd: 0.02}, changes: [change, {...change, path: 'b.md', addedLines: 0}]};
+  const history = [{id: 'w1', windowFrom: 1, windowTo: 2, summary: 'Wrote the **plan** in `docs`', applications: [{bundleId: 'com.apple.Safari', name: 'Safari'}], urlDomains: ['aux.example']}];
+  const scene = (world, {list = files, path = 'people/robert.md', entryId = 'h1', enabled = true, state} = {}) => ({state, imports: {
+    './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')},
+    './strip-markdown-DRcmtuJc.js#tr': queries({listFiles: {data: filesAnswer(list)}, readFile: {data: {content: '# Robert\nLikes fish'}}, getDirectory: {data: '/w/memory'},
+      'settings.getAll': {data: {memory: {enabled, generateFromChats: true, episodicRetentionDays: 30}, contextAwareness: {enabled, retentionDays: 14, excludedBundleIds: ['com.x']}}},
+      summaryModelDefault: {data: {provider: 'openai', modelId: 'gpt'}}}),
+    './strip-markdown-DRcmtuJc.js#nr': queries({getHistoryEntry: {data: entry}, historyStatus: {data: {firstEventAt: 1, permission: 'granted', paused: false}},
+      historyList: {data: history}, listApplications: {data: [{bundleId: 'com.apple.Safari', name: 'Safari'}]}, appIcons: {data: {}}}),
+    './strip-markdown-DRcmtuJc.js#$n': {data: {pages: [{items: [entry], nextCursor: null}]}, hasNextPage: false, isLoading: false, isError: false},
+    './strip-markdown-DRcmtuJc.js#er': {isPending: false, mutate: world.stub('spy:mutate'), mutateAsync: world.stub('spy:mutateAsync')},
+    '*.useParams': () => ({userId: '7'}), '*.useSearch': () => ({path, historyEntryId: entryId}),
+    './date-CxUVm-Dr.js#n.default': at => ({add: () => ({startOf: () => ({valueOf: () => 1, add: () => ({valueOf: () => 2})}), format: () => 'Mon'}),
+      diff: () => 3, format: pattern => `${at} as ${pattern}`, fromNow: () => 'today'})}});
+  const blocksByChunk = Object.fromEntries(memoryChunks.map(chunk => [chunk, ROUTES[chunk]]));
+  await assertParity({blocksByChunk, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 60, defaults: false, renamed: renamedBindings,
+    scenes: [world => scene(world), world => scene(world, {list: [], path: undefined, entryId: undefined, enabled: false}), world => scene(world, {state: ['edit']}),
+      world => ({...scene(world), state: [true]})],
+    props: [{accountId: 7, file: files[0], entry, change, canOpenInEditor: true, label: 'Trigger', value: 'Session', messages: [{role: 'user', content: 'Hi'}], sessionId: 's1',
+      mode: 'preview', item: history[0], appIcons: {}, text: 'Use `aux` now', retentionDays: 14, offset: 0, oldestOffset: -3, app: {bundleId: 'com.x', name: 'X'},
+      domain: 'aux.example', excludedBundleIds: ['com.x'], children: 'x'}, {accountId: 7, file: files[1], mode: 'edit', entry: {...entry, changes: []}, canOpenInEditor: false,
+      offset: -1, oldestOffset: -1, disabled: true}]});
+});
+
+test('the Memory helpers label, filter and key like the supplied ones', async () => {
+  const world = createWorld();
+  const pair = async chunk => evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
+    changes: TOKEN_CHANGES, renamed: renamedBindings});
+  const history = await pair('assets/histories-CpU8qS5w.js');
+  world.enter({imports: {'./strip-markdown-DRcmtuJc.js#zt': message => message.content}});
+  for (const trigger of ['session_completed', 'manual_extraction', 'manual_dreaming', 'memory_migration', 'manual_revert', 'other'])
+    assert.equal(history.ours.__pair_triggerLabel(trigger), history.supplied.__pair_triggerLabel(trigger), trigger);
+  const messages = [{role: 'user', content: 'You are now acting as the memory extraction subagent. Go.'}, {role: 'user', content: 'Hello'}, {role: 'assistant', content: ' DONE '}, {role: 'assistant', content: 'NONE'},
+    {role: 'assistant', content: 'Saved two memories'}, {role: 'tool', content: 'x'}];
+  for (const message of messages) assert.equal(history.ours.__pair_isShownMessage(message), history.supplied.__pair_isShownMessage(message), message.content);
+  assert.equal(JSON.stringify(history.ours.__pair_INTERNAL_PROMPTS), JSON.stringify(history.supplied.__pair_INTERNAL_PROMPTS));
+  const awareness = await pair('assets/context-awareness-BocPTg31.js');
+  for (const exclusion of [{scope: 'app', bundleId: 'com.x'}, {scope: 'url', urlDomain: 'aux.example'}])
+    assert.equal(awareness.ours.__pair_exclusionKey(exclusion), awareness.supplied.__pair_exclusionKey(exclusion));
+  for (const name of ['__pair_PAUSE_OPTIONS', '__pair_NEVER', '__pair_ILLUSTRATION']) assert.equal(JSON.stringify(awareness.ours[name]), JSON.stringify(awareness.supplied[name]), name);
+  world.enter({imports: {'./date-CxUVm-Dr.js#n.default': () => ({add: days => ({format: () => `day ${days}`, startOf: () => ({valueOf: () => days, add: () => ({valueOf: () => days + 1})})})})}});
+  for (const offset of [0, -1, -4]) {
+    assert.equal(awareness.ours.__pair_dayName(offset), awareness.supplied.__pair_dayName(offset), String(offset));
+    assert.equal(JSON.stringify(awareness.ours.__pair_dayRange(offset)), JSON.stringify(awareness.supplied.__pair_dayRange(offset)), String(offset));
+  }
+});
+
