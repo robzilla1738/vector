@@ -3,7 +3,7 @@
 // Each transform is count-checked and throws on any mismatch, so a drifted input stops the release.
 //
 //   node scripts/release/transforms.mjs <staged Aux.app>
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from '../lib/repo-root.mjs';
 import { RUNTIME_FILES, AGENT_PATH, CONNECT_DIALOG_PATH, integrateDaemon, integrateAgentList, integrateConnectDialog }
@@ -11,10 +11,10 @@ import { RUNTIME_FILES, AGENT_PATH, CONNECT_DIALOG_PATH, integrateDaemon, integr
 import { DAEMON_FILES as AGENT_DAEMON_FILES, EXTENSION_EDITS as AGENT_EXTENSION_EDITS, UI_FILE as AGENT_UI_FILE,
   integrateDaemon as integrateAgentDaemon, integrateExtensionChunk as integrateAgentChunk } from '../../vendor/provided/agent/integration.mjs';
 import { RUNTIME_FILES as AUX_DAEMON_FILES, integrateDaemon as integrateAuxDaemon } from '../../vendor/aux-daemon/integration.mjs';
-import { EDITS as POLISH_EDITS, integratePolish } from '../../vendor/provided/polish/integration.mjs';
+import { ASSET_FILES as POLISH_ASSETS, EDITS as POLISH_EDITS, integratePolish } from '../../vendor/provided/polish/integration.mjs';
 import { BUILTIN_SKILLS_DIR, SKILL_FILES, assertSameSkillFiles, replaceSkillFile } from '../../vendor/aux-skills/integration.mjs';
-import { COMPONENTS, GLOBALS_CSS, LICENSE as STYLES_LICENSE, NEWTAB_PAGE, REMOVED_FILES as STYLES_REMOVED, ROUTES, integrateComponents, integrateNewTab,
-  integrateRoutes, integrateStyles } from '../../vendor/aux-extension/integration.mjs';
+import { COMPONENTS, GLOBALS_CSS, LICENSE as STYLES_LICENSE, NEWTAB_PAGE, REMOVED_ASSETS, REMOVED_CHUNKS, REMOVED_FILES as STYLES_REMOVED, ROUTES, dropRemovedChunks, integrateComponents,
+  integrateNewTab, integrateRoutes, integrateStyles } from '../../vendor/aux-extension/integration.mjs';
 
 const app = process.argv[2];
 if (!app) throw new Error('usage: transforms.mjs <staged Aux.app>');
@@ -26,6 +26,7 @@ const ADDITIONS = [
   ...RUNTIME_FILES.map(file => ['provider CLI runtime', `vendor/provided/provider-cli/${file}`, `${daemon}/node-development/provider-cli/${file}`]),
   ...AGENT_DAEMON_FILES.map(file => ['agent runtime', `vendor/provided/agent/${file}`, `${daemon}/node-development/aux-agent/${file}`]),
   ['agent UI', `vendor/provided/agent/${AGENT_UI_FILE}`, `${agent}/assets/${AGENT_UI_FILE}`],
+  ...POLISH_ASSETS.map(file => ['polish asset', `vendor/provided/polish/${file}`, `${agent}/assets/${file}`]),
   ...AUX_DAEMON_FILES.map(file => ['Aux daemon routers', `vendor/aux-daemon/${file}`, `${daemon}/node-development/aux-daemon/${file}`]),
   ['Agent extension styles: Geist license', `vendor/aux-extension/${STYLES_LICENSE.source}`, `${agent}/${STYLES_LICENSE.target}`],
 ];
@@ -48,7 +49,8 @@ const TRANSFORMS = [
 ];
 
 // [label, staged file]. Supplied files Aux may not ship; a missing file stops the release.
-const REMOVALS = STYLES_REMOVED.map(file => ['Agent extension styles: the supplied display font', `${agent}/${file}`]);
+const REMOVALS = [...STYLES_REMOVED.map(file => ['Agent extension styles: the supplied display font', `${agent}/${file}`]),
+  ...[...REMOVED_CHUNKS, ...REMOVED_ASSETS].map(file => ['Agent extension: a chunk Aux does not ship', `${agent}/${file}`])];
 
 assertSameSkillFiles(path.join(app, daemon, BUILTIN_SKILLS_DIR));
 const applied = [];
@@ -66,6 +68,12 @@ for (const [label, relative, transform] of TRANSFORMS) {
   if (after === before) throw new Error(`${label} changed nothing in ${relative}`);
   writeFileSync(file, after);
   applied.push({ label, path: relative });
+}
+// Last of the edits: every chunk's imports and Vite deps tables are final by now.
+for (const name of readdirSync(path.join(app, agent, 'assets')).filter(file => file.endsWith('.js') && !REMOVED_CHUNKS.includes(`assets/${file}`))) {
+  const relative = `${agent}/assets/${name}`, file = path.join(app, relative);
+  const before = readFileSync(file, 'utf8'), after = dropRemovedChunks(before);
+  if (after !== before) { writeFileSync(file, after); applied.push({ label: 'Agent extension: removed chunks out of the deps', path: relative }); }
 }
 for (const [label, relative] of REMOVALS) {
   const file = path.join(app, relative);

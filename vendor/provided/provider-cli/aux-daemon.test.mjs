@@ -302,3 +302,50 @@ test('one CLI session per thread: resume with only the new messages, fresh when 
   await cli.stop();
   assert.equal(existsSync(requests[0].cwd), false, 'stop() removes kept folders');
 });
+
+test('an added local agent is a model, runs its exact argv and only stays if it answers ACP', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'aux-local-agents-'));
+  const program = path.join(dir, 'my-agent');
+  writeFileSync(program, '#!/bin/sh\n', {mode: 0o755});
+  let answering = false;
+  const runs = [];
+  const cli = createAuxProviderCli({detect: async () => ({directories: [dir], providers: []}), answers: async () => answering,
+    run: async function* (request) { runs.push(request); yield {type: 'done'}; }});
+  cli.start({runRoot: path.join(dir, 'runs'), localAgentsFile: path.join(dir, 'agents.json')});
+  assert.equal((await cli.status()).rows['local-agent-cli'].hidden, true, 'hidden until one is added');
+  // Nothing in the command is expanded, and a shell character outside quotes is refused.
+  for (const command of ['my-agent; rm -rf ~', 'my-agent $(whoami)', 'my-agent `id`', 'my-agent | cat', 'my-agent > out', 'my-agent ~/x'])
+    await assert.rejects(cli.checkLocalAgent(command), /without a shell/, command);
+  await assert.rejects(cli.checkLocalAgent('missing-agent --acp'), /can’t find missing-agent/);
+  await assert.rejects(cli.checkLocalAgent('../my-agent'), /full path/);
+  const checked = await cli.checkLocalAgent(`my-agent --acp --name 'two words; $HOME'`);
+  assert.deepEqual([checked.file, checked.args], [program, ['--acp', '--name', 'two words; $HOME']]);
+  assert.equal(checked.command, `${program} --acp --name 'two words; $HOME'`, 'shows the exact command');
+  await assert.rejects(cli.addLocalAgent({name: 'Mine', command: 'my-agent'}), /didn’t answer as an ACP agent/);
+  assert.deepEqual(cli.localAgents(), [], 'a command that fails the check is not kept');
+  answering = true;
+  const {id} = await cli.addLocalAgent({name: 'Mine', command: 'my-agent --acp'});
+  assert.deepEqual(cli.localAgents(), [{id, name: 'Mine', command: `${program} --acp`}]);
+  assert.equal((await cli.status()).rows['local-agent-cli'].hidden, false);
+  const {model} = await cli.resolveModel(id, 'local-agent-cli');
+  assert.equal(model.name, 'Mine');
+  const {types} = await piStream(cli, model, {messages: [{role: 'user', content: 'hi'}]});
+  assert.equal(types.at(-1), 'done');
+  assert.deepEqual([runs[0].file, runs[0].acpArgs], [program, ['--acp']]);
+  await cli.removeLocalAgent(id);
+  assert.deepEqual(cli.localAgents(), []);
+  assert.equal(await cli.resolveModel(id, 'local-agent-cli'), undefined);
+  rmSync(dir, {recursive: true, force: true});
+});
+
+test('quick calls use the CLI’s fast model, and stay put where it has none', async () => {
+  const cli = createAuxProviderCli({detect: async () => ({directories: [], providers: [
+    {id: 'claude', state: 'ready', path: '/bin/claude'}, {id: 'grok', state: 'ready', path: '/bin/grok', models: ['grok-4', 'grok-code-fast-1']},
+    {id: 'cursor', state: 'ready', path: '/bin/agent'}]})});
+  await cli.refresh();
+  assert.deepEqual(cli.quickModel({provider: 'claude-code', modelId: 'claude-opus-5-5', thinkingLevel: 'high'}), {provider: 'claude-code', modelId: 'claude-haiku-5-5', thinkingLevel: 'high'});
+  assert.equal(cli.quickModel({provider: 'grok-cli', modelId: 'grok-4'}).modelId, 'grok-code-fast-1');
+  assert.equal(cli.quickModel({provider: 'cursor-cli', modelId: 'auto'}).modelId, 'auto');
+  assert.deepEqual(cli.quickModel({provider: 'anthropic', modelId: 'x'}), {provider: 'anthropic', modelId: 'x'});
+  assert.equal(cli.quickModel(undefined), undefined);
+});

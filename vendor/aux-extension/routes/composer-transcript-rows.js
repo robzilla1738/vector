@@ -956,8 +956,6 @@ var LIST_SIZES = {defaultItemHeight: 88, footerHeight: 24},
       p = _e(),
       {capture} = ir(),
       x = Ce(),
-      [b, v] = (0, g.useState)(false),
-      [C, S] = (0, g.useState)(false),
       y = (0, g.useRef)(null),
       k = (0, g.useRef)(null),
       [M, w] = (0, g.useState)(false),
@@ -976,12 +974,6 @@ var LIST_SIZES = {defaultItemHeight: 88, footerHeight: 24},
             return D.items.some($ => $.type === 'error' && ur($.errorMessage)) ? D.runId : void 0;
         }
       }, [rows]),
-      {data} = Fe(x.billing.getSubscription.queryOptions({accountId, fresh: true}, {enabled: !!j || b || C})),
-      {currentPeriod, currentPlan, handleSelectPlan, isPending} = ql({
-        subscription: data?.subscription ?? null,
-        onOpenChange: v,
-      }),
-      ae = ve(x.billing.createAddOnCheckout.mutationOptions()),
       _ = currentSession.status === 'aborted',
       ce = currentSession.status === 'interrupted',
       le = _,
@@ -1045,53 +1037,16 @@ var LIST_SIZES = {defaultItemHeight: 88, footerHeight: 24},
             co({accountId, currentSessionId: currentSession.id, queryClient: p, trpc: x});
           }));
       }, [accountId, continueConversation, currentSession.id, currentSession.status, p, x]),
-      ye = (0, g.useCallback)(
-        L => {
-          br(`/u/${accountId}/settings/billing${L}`);
-        },
-        [accountId],
-      ),
-      Te = (0, g.useCallback)(() => {
-        if ((capture('settings.billing.upgrade', {place: 'chat'}), !isSidepanel)) {
-          v(true);
-          return;
-        }
-        ye('?change_plan=1');
-      }, [capture, isSidepanel, ye]),
-      Le = (0, g.useCallback)(() => {
-        if ((capture('settings.billing.add-credits', {place: 'chat'}), !isSidepanel)) {
-          S(true);
-          return;
-        }
-        ye('?add_credits=1');
-      }, [capture, isSidepanel, ye]),
-      De = (0, g.useCallback)(
-        async L => {
-          try {
-            const D = await Ql(accountId),
-              {url} = await ae.mutateAsync({accountId, cancelUrl: D, creditCents: L, successUrl: D});
-            window.location.assign(url);
-          } catch (D) {
-            (console.error(D), de.error('Could not open add-on credit checkout.'));
-          }
-        },
-        [accountId, ae],
-      ),
       Ne = (0, g.useMemo)(
         () => ({
           alwaysVisibleAssistantRunId: re,
-          canChangePlan: currentPlan !== 'max',
           hideAssistantActions: le,
           isReadonly,
-          onAddCreditsClick: Le,
-          onPaymentRequiredClick: Te,
           onRetryAssistant: fe,
-          paymentRequiredCreditRefreshAt: data?.credit.refresh_at,
-          paymentRequiredPlan: data ? currentPlan : void 0,
           pendingToolCallId: V,
           sessionId: I,
         }),
-        [re, data, currentPlan, Le, Te, fe, le, isReadonly, V, I],
+        [re, fe, le, isReadonly, V, I],
       ),
       H = (0, g.useMemo)(() => ({endRef, getAssistantRowState: E, getUserRowState: ue}), [endRef, E, ue]);
     return (
@@ -1104,16 +1059,6 @@ var LIST_SIZES = {defaultItemHeight: 88, footerHeight: 24},
         startedAt: streamingStartedAt,
         value: Ne,
         children: [
-          (0, a.jsx)(Wl, {
-            currentPeriod,
-            currentPlan,
-            isPending: !data || isPending,
-            open: b,
-            onOpenChange: v,
-            onPlanSelect: handleSelectPlan,
-          }),
-          data &&
-            (0, a.jsx)(Gl, {addOn: data.addOn, isPending: ae.isPending, open: C, onCheckout: De, onOpenChange: S}),
           (0, a.jsxs)('div', {
             className: 'relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col',
             'data-component': 'message-list',

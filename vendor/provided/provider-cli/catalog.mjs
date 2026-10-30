@@ -76,6 +76,15 @@ export const PROVIDERS = Object.freeze([
     login: 'gemini', logout: null, driver: 'acp', acpArgs: ['--experimental-acp'], hiddenUnlessInstalled: true,
     images: true, contextWindow: 1048576, models: [],
   }),
+  provider({
+    // Every command added with "Add a local agent…" is one of this provider's models, so the model
+    // menus and routing need nothing new. local-agents.mjs holds them; detection never runs them.
+    id: 'local', label: 'Local agents', product: 'Local agent', replaces: null,
+    commands: [], versionArgs: [], statusArgs: null, versionPattern: /(?!)/,
+    install: {url: 'https://agentclientprotocol.com', command: ''},
+    login: null, logout: null, driver: 'acp', acpArgs: [], hiddenUnlessInstalled: true,
+    images: true, contextWindow: 200000, models: [],
+  }),
 ]);
 
 /** Providers without an official CLI stay on API keys (owner decision 1). */
@@ -155,9 +164,15 @@ export function parseAuthStatus(id, result) {
 
 const firstLine = text => maskEmail(text.trim().split('\n')[0] ?? '').slice(0, 200);
 
+const FAST_MODEL = /(?:^|[-_/])(?:mini|spark|fast|flash|lite|haiku)(?:[-_/]|$)/i;
+/** The provider's quick model (for titles, file names and the like), when it lists one. */
+export const fastModel = (entry, detection) => modelSpecs(entry, detection).find(spec => FAST_MODEL.test(spec.id))?.id;
+
 /** Settings row model. The extension renders it with the supplied provider row components. */
 export function settingsRow(entry, detection) {
   const base = {id: entry.id, label: entry.label, product: entry.product, state: detection.state, version: detection.version ?? null};
+  if (entry.id === 'local') return {...base, hidden: detection.state !== 'ready', models: modelSpecs(entry, detection).map(model => model.id), actions: [],
+    message: 'Commands you added in Settings › Models. Aux runs each one directly, and its actions ask you first.'};
   switch (detection.state) {
     case 'not-installed':
       return {...base, hidden: entry.hiddenUnlessInstalled,

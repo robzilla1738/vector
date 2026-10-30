@@ -8,8 +8,18 @@
  * kbd w; button y; tooltip C/g/v; dist D toast; document-title J; pending-component L; icons k reset,
  * q arrow; appearance z the Appearance settings; chrome-link se. */
 var React = T(A(), 1),
-  jsxRuntime =
-    _() /** Keyboard shortcuts: one row per command (the Mini popup chord comes from its own API), shortcut profiles, and extension shortcuts. */,
+  jsxRuntime = _(),
+  /** The browser's message when another command owns the keys. */
+  CONFLICT = /already uses this shortcut/,
+  /** What a failed write says, naming the command or macOS instead of a command number. */
+  shortcutError = message => {
+    const owner = /^Command (\d+) conflicts with (a macOS|a browser menu) shortcut$/.exec(message);
+    return owner
+      ? `${owner[2] === 'a macOS' ? 'macOS' : 'A menu item'} already uses these keys. Choose other keys.`
+      : /^This shortcut is already used by a browser menu command/.test(message)
+        ? 'A menu item already uses these keys. Choose other keys.'
+        : message;
+  } /** Keyboard shortcuts: one row per command (the Mini popup chord comes from its own API), shortcut profiles, and extension shortcuts. */,
   KeyboardShortcuts = () => {
     const queryClient = M(),
       browserApi = typeof chrome > 'u' ? void 0 : chrome.auxBrowserPreferences,
@@ -21,26 +31,29 @@ var React = T(A(), 1),
         queries: [h, ee, {...j, enabled: !readOnly && miniPopupEditable}],
       }),
       update = K({
-        mutationFn: async ({commandId: request, shortcut}) => (await W(browserApi, request, shortcut), h.queryFn()),
+        mutationFn: async ({commandId: request, shortcut, replace}) => (
+          await W(browserApi, request, shortcut, replace), h.queryFn()
+        ),
         onSuccess: updated => {
           (queryClient.setQueryData(h.queryKey, updated), queryClient.invalidateQueries({queryKey: j.queryKey}));
         },
-        onError: error =>
+        onError: (error, request) =>
           D.error('Couldn’t update shortcut', {
-            description: (message => {
-              const name = id => {
-                  const command = Object.values(I).find(candidate => String(candidate.commandId) === id);
-                  return command ? `“${command.title}”` : 'Another command';
-                },
-                pair = /^Shortcut conflict between commands (\d+) and (\d+)$/.exec(message);
-              if (pair) return `${name(pair[1])} already uses these keys. Change it first, or choose other keys.`;
-              const owner = /^Command (\d+) conflicts with (a macOS|a browser menu) shortcut$/.exec(message);
-              return owner
-                ? `${owner[2] === 'a macOS' ? 'macOS' : 'A menu item'} already uses these keys. Choose other keys.`
-                : message;
-            })(error.message),
+            description: shortcutError(error.message),
+            action:
+              request.shortcut && !request.replace && CONFLICT.test(error.message)
+                ? {label: 'Replace', onClick: () => update.mutate({...request, replace: true})}
+                : void 0,
           }),
       }),
+      always = K({
+        mutationFn: async ({commandId: request, enabled}) => (
+          await browserApi.setShortcutAlwaysForAux(request, enabled), h.queryFn()
+        ),
+        onSuccess: updated => queryClient.setQueryData(h.queryKey, updated),
+        onError: error => D.error('Couldn’t update shortcut', {description: error.message}),
+      }),
+      canPin = typeof browserApi?.setShortcutAlwaysForAux == 'function',
       changeFor = commandId => shortcut => update.mutate({commandId, shortcut}),
       retry = () => {
         shortcuts.refetch();
@@ -60,7 +73,17 @@ var React = T(A(), 1),
         }
         return (0, jsxRuntime.jsx)(
           ShortcutRow,
-          {shortcut: shown, editable, disabled, onChange: changeFor(binding.commandId)},
+          {
+            shortcut: shown,
+            editable,
+            disabled,
+            onChange: changeFor(binding.commandId),
+            // The Mini popup is a system-wide hotkey: no page ever sees it.
+            onAlways:
+              canPin && binding.commandId !== I.miniPopup.commandId && typeof binding.alwaysForAux == 'boolean'
+                ? enabled => always.mutate({commandId: binding.commandId, enabled})
+                : void 0,
+          },
           binding.commandId,
         );
       },
@@ -100,8 +123,8 @@ var React = T(A(), 1),
         }),
       ],
     });
-  } /** A shortcut row: its command, the keys (captured or fixed) and reset to the default. */,
-  ShortcutRow = ({shortcut, editable, disabled, onChange}) => {
+  } /** A shortcut row: its command, the keys (captured or fixed), whether pages may use the keys first, and reset. */,
+  ShortcutRow = ({shortcut, editable, disabled, onChange, onAlways}) => {
     const command = Object.values(I).find(candidate => candidate.commandId === shortcut.commandId),
       title = command?.title ?? 'Shortcut',
       reset = () => onChange();
@@ -114,6 +137,28 @@ var React = T(A(), 1),
             editable
               ? (0, jsxRuntime.jsx)(ShortcutCapture, {title, shortcut, disabled, onChange})
               : (0, jsxRuntime.jsx)(FixedShortcut, {title, value: shortcut.shortcut, disabled}),
+            onAlways &&
+              (0, jsxRuntime.jsxs)(C, {
+                children: [
+                  (0, jsxRuntime.jsx)(g, {
+                    render: (0, jsxRuntime.jsx)(y, {
+                      variant: 'ghost',
+                      size: 'icon',
+                      className: shortcut.alwaysForAux ? 'text-foreground' : 'text-muted-foreground',
+                      'aria-label': `Always use ${title} for Aux`,
+                      'aria-pressed': shortcut.alwaysForAux,
+                      disabled: disabled || !shortcut.shortcut,
+                      onClick: () => onAlways(!shortcut.alwaysForAux),
+                    }),
+                    children: (0, jsxRuntime.jsx)(LockIcon, {locked: shortcut.alwaysForAux}),
+                  }),
+                  (0, jsxRuntime.jsx)(v, {
+                    children: shortcut.alwaysForAux
+                      ? 'Always used for Aux, even on pages that use these keys'
+                      : 'Always use for Aux, even on pages that use these keys',
+                  }),
+                ],
+              }),
             (0, jsxRuntime.jsxs)(C, {
               children: [
                 (0, jsxRuntime.jsx)(g, {
@@ -133,7 +178,22 @@ var React = T(A(), 1),
         }),
       ],
     });
-  } /** Records new keys while focused. */,
+  } /** Closed while Aux always keeps the keys, open while a page may use them first. */,
+  LockIcon = ({locked}) =>
+    (0, jsxRuntime.jsxs)('svg', {
+      viewBox: '0 0 16 16',
+      width: 14,
+      height: 14,
+      fill: 'none',
+      stroke: 'currentColor',
+      strokeWidth: 1.4,
+      strokeLinecap: 'round',
+      'aria-hidden': true,
+      children: [
+        (0, jsxRuntime.jsx)('rect', {x: 3.5, y: 7, width: 9, height: 6.5, rx: 1.5}),
+        (0, jsxRuntime.jsx)('path', {d: locked ? 'M5.5 7V5a2.5 2.5 0 0 1 5 0v2' : 'M5.5 7V5a2.5 2.5 0 0 1 4.9-.7'}),
+      ],
+    }) /** Records new keys while focused. */,
   ShortcutCapture = ({title, shortcut, disabled, onChange}) => {
     const {inputRef, isCapturing, placeholder, handleFocus, handleBlur, handleKeyDown} = te({
       isMacOS: Q(),
@@ -239,7 +299,7 @@ function createAuxShortcutProfileSession(api, onState, onError) {
       throw Error('Invalid shortcut state.');
     if (owner !== null && owner !== value.ownerGeneration) {
       state = null;
-      throw Error('Profile changed. Reopen shortcut settings.');
+      throw Error('Shortcuts changed. Reopen this page.');
     }
     if (live) {
       owner = value.ownerGeneration;

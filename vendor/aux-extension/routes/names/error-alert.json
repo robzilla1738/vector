@@ -5,6 +5,5 @@
  "_": "ErrorAlertCard",
  "m": "ActionButton",
  "O": "RetryButton",
- "R": "ReconnectButton",
- "T": "ReportButton"
+ "R": "ReconnectButton"
 }

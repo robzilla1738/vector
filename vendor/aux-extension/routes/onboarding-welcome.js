@@ -1,7 +1,8 @@
 /* Aux-owned source: the first onboarding steps (assets/glance-BfAlmExy.js, replacing the supplied
  * "No more integrations" glance, which goes with its hero). ae is the Welcome step at
  * /onboarding/glance (exported as component); auxMakeItYours is /onboarding/make-it-yours (exported as
- * yours, routed by vendor/provided/polish/integration.mjs). Neither needs the daemon.
+ * yours, routed by vendor/provided/polish/integration.mjs). Neither waits for the daemon: the agent's
+ * name and look (AuxAgentSetup) arrive inline when it's ready.
  * Chunk names used: C/G/I React and JSX runtime interop, O toast, y Link, A back arrow, L Button,
  * z/M/T/B/E the onboarding layout parts. */
 var jsxRuntime = I();
@@ -38,7 +39,7 @@ function auxMakeItYours() {
   const preferences = globalThis.chrome?.auxBrowserPreferences;
   return (0, jsxRuntime.jsx)(OnboardingPage, {
     title: 'Make it yours',
-    description: 'Pick the colors your Spaces start with. Imported Arc Spaces keep their colors and emoji.',
+    description: 'Name your agent and pick your colors. Imported Arc Spaces keep their colors and emoji.',
     footer: (0, jsxRuntime.jsxs)(jsxRuntime.Fragment, {
       children: [
         (0, jsxRuntime.jsxs)(L, {
@@ -52,18 +53,15 @@ function auxMakeItYours() {
       ],
     }),
     children: (0, jsxRuntime.jsxs)('div', {
-      className: 'space-y-3 px-5 py-6',
+      className: 'mx-auto w-full max-w-sm space-y-6 px-5 py-6',
       children: [
+        (0, jsxRuntime.jsx)(AuxAgentSetup, {}),
         (0, jsxRuntime.jsx)(L, {
           variant: 'outline',
           size: 'lg',
           disabled: typeof preferences?.openThemePicker !== 'function',
           onClick: () => preferences.openThemePicker().catch(() => O.error('Couldn’t open the theme picker.')),
           children: 'Choose a theme',
-        }),
-        (0, jsxRuntime.jsx)('p', {
-          className: 'text-muted-foreground text-sm',
-          children: 'Name your agent and change its look from the agent panel anytime.',
         }),
       ],
     }),

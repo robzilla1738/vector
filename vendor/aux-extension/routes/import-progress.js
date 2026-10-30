@@ -1,8 +1,8 @@
 /* Aux-owned source: onboarding › importing from a browser (assets/progress-CS-jrVXz.js, the module body): the
  * animated stack of icons, a status line that follows the import or cycles while it starts, and the
- * ways on: Next by itself, Try again, or retrying only site sign-ins when those were skipped. The stack
- * stays a fixed illustration, whatever the theme. auxPending, auxSkipped and auxRetrySignIns come
- * from the import retry in vendor/provided.
+ * ways on: Next by itself, Try again, or retrying only what was skipped (sign-ins, passwords). The stack
+ * stays a fixed illustration, whatever the theme. auxPending, auxSkipped and auxRetrySkipped are
+ * the import retry.
  * Names the rest of the chunk uses keep their chunk names: me the page (exported).
  * Chunk names used: N/S React, z JSX runtime, k cn, j useNavigate, B Spinner, _ arrow, v TextShimmer, A Button,
  * R source names, T the route, auxSetPending/C/E/w the pending import (set it, run it, clear it, read it),
@@ -77,8 +77,8 @@ function me() {
     retry = () => {
       (setError(null), setDismissed(false), setProgress(null), setAttempt(current => current + 1));
     },
-    auxRetrySignIns = () => {
-      (auxPending.current && auxSetPending({...auxPending.current, dataKinds: ['cookies']}), retry());
+    auxRetrySkipped = () => {
+      (auxPending.current && auxSetPending({...auxPending.current, dataKinds: progress.skippedDataKinds}), retry());
     };
   return (0, jsxRuntime.jsxs)(jsxRuntime.Fragment, {
     children: [
@@ -112,7 +112,7 @@ function me() {
                   (0, jsxRuntime.jsx)(A, {
                     variant: 'secondary',
                     size: 'lg',
-                    onClick: auxRetrySignIns,
+                    onClick: auxRetrySkipped,
                     children: 'Try again',
                   }),
                   (0, jsxRuntime.jsx)(g, {
@@ -310,7 +310,6 @@ var /** Runs the import for each attempt and moves on when it succeeds. */
     'Importing your bookmarks...',
     'Importing your passwords...',
     'Importing your cookies...',
-    'Importing your autofill data...',
   ],
   /** How each data kind reads. */
   DATA_KIND_LABELS = new Map([
@@ -318,10 +317,14 @@ var /** Runs the import for each attempt and moves on when it succeeds. */
     ['bookmarks', 'bookmarks'],
     ['passwords', 'passwords'],
     ['cookies', 'cookies'],
-    ['autofill', 'autofill data'],
-    ['paymentCards', 'payment cards'],
     ['spaces', 'Spaces and pins'],
+    ['searchEngine', 'default search engine'],
   ]),
+  /** What a partial import left behind, in plain words. */
+  skippedSummary = kinds =>
+    `Imported everything except ${[...new Set(kinds)]
+      .map(kind => (kind === 'cookies' ? 'site sign-ins' : (DATA_KIND_LABELS.get(kind) ?? kind)))
+      .join(' and ')}.`,
   /** The status line. */
   ImportStatus = ({error, progress}) =>
     error
@@ -336,7 +339,7 @@ var /** Runs the import for each attempt and moves on when it succeeds. */
                   children: [
                     (0, jsxRuntime.jsx)('span', {
                       className: 'block',
-                      children: 'Imported everything except site sign-ins.',
+                      children: skippedSummary(progress.skippedDataKinds),
                     }),
                     progress.skippedMessage &&
                       (0, jsxRuntime.jsx)('span', {

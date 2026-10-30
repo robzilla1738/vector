@@ -74,7 +74,7 @@ export const EXTENSION_EDITS = Object.freeze({
   'assets/-components-4o0FSqQ9.js': [
     edit('agent UI import',
       'import{t as de}from"./session-title-B4i3BSFD.js";',
-      `import{t as de}from"./session-title-B4i3BSFD.js";${ui(['AuxAgentTitle', 'AuxAgentHomeRoute', 'auxAgentStartSideChat', 'auxAgentSideChats'])}`),
+      `import{t as de}from"./session-title-B4i3BSFD.js";${ui(['AuxAgentTitle', 'AuxAgentHomeRoute', 'auxAgentStartSideChat', 'auxAgentChats', 'auxAgentChatsEmpty', 'auxAgentChatsQuery', 'AuxAgentChatFilters'])}`),
     edit('tab switches never leave the agent: no per-tab chats',
       'function fe(e){return e.mode==="new-session"?!0:e.isInitialObservation&&!e.hasCurrentSession}',
       'function fe(e){return!1}'),
@@ -87,12 +87,22 @@ export const EXTENSION_EDITS = Object.freeze({
     edit('labelled chat menu trigger',
       '(0,s.jsx)(de,{trigger:e.trigger,title:V(e.title)?null:e.title,className:"min-w-0 flex-1"})',
       'auxLabel?(0,s.jsx)("span",{className:"text-muted-foreground min-w-0 flex-1 truncate text-left text-sm",children:auxLabel}):(0,s.jsx)(de,{trigger:e.trigger,title:V(e.title)?null:e.title,className:"min-w-0 flex-1"})'),
-    edit('the chat menu lists side chats',
+    // Side chats by default; routine, channel and New Tab chats each have a filter (plan 8.21).
+    edit('the chat menu keeps its filter',
+      '[o,m]=(0,a.useState)(!1),{data:u,fetchNextPage:p,',
+      '[o,m]=(0,a.useState)(!1),[auxFilter,auxSetFilter]=(0,a.useState)("side"),{data:u,fetchNextPage:p,'),
+    edit('the filter reaches the list',
+      'i.sessions.listPreviewItems.infiniteQueryOptions({accountId:t,limit:j},{enabled:o,',
+      'i.sessions.listPreviewItems.infiniteQueryOptions({accountId:t,limit:j,...auxAgentChatsQuery(auxFilter)},{enabled:o,'),
+    edit('the chat menu lists the filter\'s chats',
       'r=(0,a.useMemo)(()=>u?.pages.flat()??[],[u?.pages])',
-      'r=(0,a.useMemo)(()=>auxAgentSideChats(u?.pages.flat()??[]),[u?.pages])'),
-    edit('empty side chat menu',
+      'r=(0,a.useMemo)(()=>auxAgentChats(u?.pages.flat()??[],auxFilter),[u?.pages,auxFilter])'),
+    edit('the chat menu opens with its filters',
+      'className:"bg-popover max-h-80 w-72 overflow-y-auto",children:[w&&',
+      'className:"bg-popover max-h-80 w-72 overflow-y-auto",children:[(0,s.jsx)(AuxAgentChatFilters,{value:auxFilter,onChange:auxSetFilter}),w&&'),
+    edit('an empty chat menu names its filter',
       'children:"No chats yet"',
-      'children:"No side chats yet"'),
+      'children:auxAgentChatsEmpty(auxFilter)'),
     edit('header title: the agent, or the way back to it',
       'children:[e,(0,s.jsx)(xe,{})]',
       'children:[e,(0,s.jsx)(AuxAgentTitle,{sessionId:Ce().currentSessionId,navigate:R().navigate,menu:auxLabel=>(0,s.jsx)(xe,{label:auxLabel})})]'),
@@ -162,6 +172,18 @@ export const EXTENSION_EDITS = Object.freeze({
       'segments:["Settings","Agents"]', 'segments:["Settings","Agent"]'),
     edit('the page is named for the one agent: heading',
       '"h1",{children:"Agents"}', '"h1",{children:"Agent"}'),
+  ],
+  // Settings › Models: the commands added with "Add a local agent…".
+  'assets/model-BrFuJM2w.js': [
+    edit('agent UI import',
+      'import{_ as R}from"./queries-ldd77hNk.js";',
+      `import{_ as R}from"./queries-ldd77hNk.js";${ui(['AuxLocalAgents'])}`),
+  ],
+  // Onboarding's Make it yours has the agent's name and look inline.
+  'assets/glance-BfAlmExy.js': [
+    edit('agent UI import',
+      'import{t as y}from"./link-q1zvRKtc.js";',
+      `import{t as y}from"./link-q1zvRKtc.js";${ui(['AuxAgentSetup'])}`),
   ],
   // Settings navigation and its search index: one agent, so "Agent".
   'assets/route-TQyeTEXE.js': [

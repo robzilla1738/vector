@@ -16,6 +16,7 @@ scripts/lib/provided-ui-boundary.test.mjs
 scripts/lib/provided-ui.test.mjs
 scripts/release/transforms.test.mjs
 vendor/aux-extension/components.test.mjs
+vendor/aux-extension/decisions.test.mjs
 vendor/aux-extension/integration.test.mjs
 vendor/aux-extension/routes.test.mjs
 vendor/provided/aux-asset-path-identity.test.mjs

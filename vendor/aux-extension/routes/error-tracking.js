@@ -1,8 +1,8 @@
 /* Aux-owned source: the error page and error reporting (assets/error-tracking-B1YG2RRM.js, from the copy icon
  * on; before it the chunk bundles the TanStack Router and Query contexts, supplied as they are). The error
  * page, the account a URL belongs to, capturing exceptions once each and never in incognito, and the
- * Reconnecting page, which refetches what failed three times, waiting longer each time, before
- * showing the error.
+ * page that says the agent is getting ready and refetches what failed, waiting longer each time,
+ * before saying it couldn't start, with Try again.
  * Names the rest of the chunk uses keep their chunk names; every name below that is not listed under
  * renamed names is exported: T copy icon, Q loading icon, F Spinner, O useClipboard, D the error page,
  * j account from a URL, ce a path for another account, ie this chunk's lazy exports, G install, m capture,
@@ -255,7 +255,7 @@ function J(props) {
         timer = 0;
       const retry = async () => {
         if ((await recovery.pending, !stopped)) {
-          if (recovery.attempts >= 3) {
+          if (recovery.attempts >= ATTEMPTS) {
             setGaveUp(true);
             return;
           }
@@ -297,18 +297,34 @@ function J(props) {
         }
       );
     }, [mayPass, failedQueries, props.error, resetBoundary, recovery, router]),
-    !mayPass || gaveUp
+    !mayPass
       ? (0, n.jsx)(R, {...props})
-      : (0, n.jsxs)('main', {
+      : gaveUp
+        ? (0, n.jsxs)('main', {
+            role: 'alert',
+            className: 'flex h-screen w-screen flex-col items-center justify-center gap-3 px-6 text-center',
+            children: [
+              (0, n.jsx)('p', {className: 'text-muted-foreground text-sm', children: 'Your agent couldn’t start.'}),
+              (0, n.jsx)(y, {variant: 'outline', onClick: tryAgain, children: 'Try again'}),
+            ],
+          })
+        : (0, n.jsxs)('main', {
           className: 'flex h-screen w-screen flex-col items-center justify-center gap-3 text-center',
           children: [
             (0, n.jsx)(F, {className: 'text-muted-foreground size-5'}),
-            (0, n.jsx)('p', {className: 'text-muted-foreground text-sm', children: 'Reconnecting to Aux…'}),
+            (0, n.jsx)('p', {className: 'text-muted-foreground text-sm', children: 'Getting your agent ready…'}),
           ],
         })
   );
 }
-var /** Reports what it catches and shows the fallback. */
+var /** Tries a failed daemon now where the browser can, and starts this page over. */
+  tryAgain = () => {
+    (chrome.auxBrowserPreferences?.retryDaemon?.(), window.location.reload());
+  },
+  /** How many times a page tries before saying the agent couldn't start: 5 s, 10 s, … 30 s, so
+   * about 105 s in all, longer than a slow first start. */
+  ATTEMPTS = 6,
+  /** Reports what it catches and shows the fallback. */
   X = class extends o.Component {
     state = {hasError: false};
     static getDerivedStateFromError() {

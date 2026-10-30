@@ -436,6 +436,7 @@ var /** The account card: local, paused or signed in. */
       [p, _] = (0, at.useState)('idle'),
       [y, g] = (0, at.useState)(null),
       [f, R] = (0, at.useState)(null),
+      [auxSearchEngine, auxSetSearchEngine] = (0, at.useState)(false),
       b = (0, at.useMemo)(
         () =>
           dataKinds ? c.targets.filter(k => dataKinds.every(N => k.source.supportedDataKinds.includes(N))) : c.targets,
@@ -456,13 +457,19 @@ var /** The account card: local, paused or signed in. */
     const P = () => {
         (_('idle'), g(null), R(null));
       },
+      auxOffersSearchEngine = w && !!x?.source.categories?.includes('searchEngine'),
+      /** A full import names its kinds, so a new default search engine only comes when ticked. */
+      auxKinds = () => [
+        ...(x.source.supportedDataKinds ?? []),
+        ...(auxOffersSearchEngine && auxSearchEngine ? ['searchEngine'] : []),
+      ],
       v = async () => {
         if (!x || (w && x.alreadyImported)) return;
         if (
           (_('preparing'),
           g(null),
           R(null),
-          (await c.importTarget(x, {dataKinds, navigateToProgress: false})) !== 'completed')
+          (await c.importTarget(x, {dataKinds: dataKinds ?? auxKinds(), navigateToProgress: false})) !== 'completed')
         ) {
           _('idle');
           return;
@@ -510,6 +517,21 @@ var /** The account card: local, paused or signed in. */
               children: [
                 (0, A.jsx)('p', {className: 'text-primary px-1 text-sm font-[450]', children: 'Detected browser'}),
                 (0, A.jsx)(ImportTargets, {disabled: T, lockImported: w, targets: b, value: d, onChange: u}),
+                auxOffersSearchEngine &&
+                  (0, A.jsxs)('label', {
+                    className: 'text-primary flex items-center justify-between gap-2 px-1 text-sm',
+                    children: [
+                      `Use ${x.source.name}’s default search engine`,
+                      (0, A.jsx)(Ds, {checked: auxSearchEngine, disabled: T, onCheckedChange: auxSetSearchEngine}),
+                    ],
+                  }),
+                w &&
+                  x &&
+                  !x.source.supportedDataKinds?.includes('passwords') &&
+                  (0, A.jsx)('p', {
+                    className: 'text-muted-foreground px-1 text-xs',
+                    children: `Passwords can’t come over from ${x.source.name}. They stay there and in your password manager.`,
+                  }),
               ],
             }),
         (0, A.jsx)(po, {
@@ -692,7 +714,12 @@ var /** The account card: local, paused or signed in. */
           ? progress?.skippedDataKinds?.length
             ? (0, A.jsxs)(A.Fragment, {
                 children: [
-                  (0, A.jsx)('span', {className: 'block', children: 'Imported everything except site sign-ins.'}),
+                  (0, A.jsx)('span', {
+                    className: 'block',
+                    children: `Imported everything except ${[...new Set(progress.skippedDataKinds)]
+                      .map(kind => (kind === 'cookies' ? 'site sign-ins' : (IMPORT_KINDS.get(kind) ?? kind)))
+                      .join(' and ')}.`,
+                  }),
                   progress.skippedMessage &&
                     (0, A.jsx)('span', {className: 'block', children: progress.skippedMessage}),
                 ],
@@ -713,9 +740,8 @@ var /** The account card: local, paused or signed in. */
     ['bookmarks', 'bookmarks'],
     ['passwords', 'passwords'],
     ['cookies', 'cookies'],
-    ['autofill', 'autofill data'],
-    ['paymentCards', 'payment cards'],
     ['spaces', 'Spaces and pins'],
+    ['searchEngine', 'default search engine'],
   ]),
   Pr = ['browserPreferences', 'languageSettings'],
   SUPPORTED_LANGUAGES_KEY = [
@@ -1014,6 +1040,7 @@ function Gg() {
                   (0, A.jsx)(AuxRoutingSetting, {}),
                   (0, A.jsx)(AuxCleanupSetting, {}),
                   (0, A.jsx)(Km, {}),
+                  (0, A.jsx)(AuxConfirmQuitSetting, {}),
                 ],
               }),
               (0, A.jsxs)(un, {children: [e && (0, A.jsx)(Zm, {}), (0, A.jsx)(jm, {})]}),

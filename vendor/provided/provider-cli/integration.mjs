@@ -5,11 +5,11 @@
 import {AGENT_PATH, applyBorrowedIdentityRemoval} from './borrowed-identity-removal.mjs';
 
 /** Files copied beside aux-native-entry.mjs, under provider-cli/. Tests and fixtures stay out. */
-export const RUNTIME_FILES = Object.freeze(['aux-daemon.mjs', 'index.mjs', 'catalog.mjs', 'detect.mjs', 'drivers.mjs', 'process.mjs', 'stream.mjs']);
+export const RUNTIME_FILES = Object.freeze(['aux-daemon.mjs', 'index.mjs', 'catalog.mjs', 'detect.mjs', 'drivers.mjs', 'local-agents.mjs', 'process.mjs', 'stream.mjs']);
 export const CONNECT_DIALOG_PATH = 'assets/connect-dialog-CacgpFap.js';
 
 const edit = (name, find, replace, count = 1) => Object.freeze({name, find, replace, count});
-const NEW_ROWS = ['cursor-cli', 'grok-cli', 'opencode-cli', 'copilot-cli', 'gemini-cli'];
+const NEW_ROWS = ['cursor-cli', 'grok-cli', 'opencode-cli', 'copilot-cli', 'gemini-cli', 'local-agent-cli'];
 
 export const DAEMON_EDITS = Object.freeze([
   // A second download waits its turn for a filename instead of failing (plan 8.23).
@@ -26,6 +26,14 @@ export const DAEMON_EDITS = Object.freeze([
   edit('the app picker leaves out Aux Canary',
     'new Set([`dev.aux.browser`,`dev.aux.browserCanary`])',
     'new Set([`dev.aux.browser`,`dev.aux.browser.canary`])'),
+  // Titles and file names use the quick model: the fast model set in Settings › Models, else the
+  // CLI's own fast model, so a title never costs a turn on the chat's model (plan 8.8, 8.23).
+  edit('titles use the quick model',
+    'defaultDeps={resolveModel:async(Cn,ei)=>models(Cn).resolve(titleModelOverride?.modelId??ei.model.modelId,titleModelOverride?.provider??ei.model.provider),',
+    'defaultDeps={resolveModel:async(Cn,ei)=>{let ti=titleModelOverride??settings(Cn).get(`modelCategories`)?.fast,ni=ti&&await models(Cn).resolve(ti.modelId,ti.provider);if(ni)return ni;let ri=auxProviderCli.quickModel(ei.model);return await models(Cn).resolve(ri.modelId,ri.provider)??models(Cn).resolve(ei.model.modelId,ei.model.provider)},'),
+  edit('file names and tab organizing use the quick model',
+    "selection:async()=>{guard.assertCurrent();return sourceSettings.get('modelCategories')?.fast??sourceSettings.get('defaultModel')}",
+    "selection:async()=>{guard.assertCurrent();return auxProviderCli.quickModel(sourceSettings.get('modelCategories')?.fast??sourceSettings.get('defaultModel'))}", 2),
   edit('load the provider CLI module beside the entry',
     'const __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);',
     'const auxProviderCli=(await import(new URL("./provider-cli/aux-daemon.mjs",import.meta.url))).createAuxProviderCli();\nconst __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);'),
@@ -55,7 +63,7 @@ export const DAEMON_EDITS = Object.freeze([
     'Ci=new Agent$1({streamFn:async(Cn,ni,ri)=>{if(auxProviderCli.owns(Cn.provider))return modelRuntime.streamSimple(Cn,ni,{...ri,auxProviderCli:{tools:()=>Ci.state.tools,context:()=>({systemPrompt:ti.systemPrompt,messages:Ci.state.messages,tools:Ci.state.tools}),prepareArguments:(Cn,ei)=>validateToolArguments(Cn,prepareToolCallArguments(Cn,ei)),beforeToolCall:(Cn,ei)=>Ci.beforeToolCall?.(Cn,ei),afterToolCall:(Cn,ei)=>Ci.afterToolCall?.(Cn,ei),execute:auxExecuteRegisteredBrowserTool,emit:Cn=>Ci.processEvents(Cn),folders:()=>[...new Set([...(ti.permission?.files?.readableRoots??[]),...(ti.permission?.files?.writableRoots??[])])]}});let ai=Cn.provider===`aux`?'),
   edit('provider CLI status procedures',
     'getSubscriptionUsage:accountProcedure.input(object({providerId:_enum([`aux`,`claude-code`,`kimi-code`,`openai-codex`,`xai-grok-oauth`])})).query(',
-    'providerCliStatus:accountProcedure.query(()=>auxProviderCli.status()),providerCliRefresh:accountProcedure.mutation(()=>auxProviderCli.status({refresh:!0})),providerCliOpenTerminal:accountProcedure.mutation(()=>auxProviderCli.openTerminal()),getSubscriptionUsage:accountProcedure.input(object({providerId:_enum([`aux`,`claude-code`,`kimi-code`,`openai-codex`,`xai-grok-oauth`])})).query('),
+    'providerCliStatus:accountProcedure.query(()=>auxProviderCli.status()),providerCliRefresh:accountProcedure.mutation(()=>auxProviderCli.status({refresh:!0})),providerCliOpenTerminal:accountProcedure.mutation(()=>auxProviderCli.openTerminal()),providerCliAgents:accountProcedure.query(()=>auxProviderCli.localAgents()),providerCliCheckAgent:accountProcedure.input(object({command:string$3().max(2048)})).mutation(({input:Cn})=>auxProviderCli.checkLocalAgent(Cn.command)),providerCliAddAgent:accountProcedure.input(object({name:string$3().max(64),command:string$3().max(2048)})).mutation(({input:Cn})=>auxProviderCli.addLocalAgent(Cn)),providerCliRemoveAgent:accountProcedure.input(object({id:string$3().min(1).max(64)})).mutation(({input:Cn})=>auxProviderCli.removeLocalAgent(Cn.id)),getSubscriptionUsage:accountProcedure.input(object({providerId:_enum([`aux`,`claude-code`,`kimi-code`,`openai-codex`,`xai-grok-oauth`])})).query('),
   edit('per-turn MCP endpoint: loopback, no browser origin, turn token',
     'daemonAuthMiddleware=()=>async(Cn,ei)=>{let ti=new URL(Cn.req.url).pathname,',
     'daemonAuthMiddleware=()=>async(Cn,ei)=>{if(auxProviderCli.isMcpPath(new URL(Cn.req.url).pathname))return!isConnectedFromLocalhost(Cn)||!isLoopbackHost(Cn.req.header(`host`))||Cn.req.header(`origin`)||Cn.req.header(`sec-fetch-site`)?Cn.json({error:{code:`FORBIDDEN`,message:`Local provider CLI connections only.`}},403):await auxProviderCli.handleMcp(Cn.req.raw);let ti=new URL(Cn.req.url).pathname,'),
@@ -67,7 +75,7 @@ export const DAEMON_EDITS = Object.freeze([
     'killCommands:killRunningCommands,stopProviderCli:()=>auxProviderCli.stop(),stopTelemetry:shutdownPostHog,'),
   edit('start: run folder, MCP origin, abrupt-exit cleanup',
     'async function main(){await auxProvisionBundledMemoryV2();',
-    'async function main(){auxProviderCli.start({runRoot:()=>path.join(AUX_HOME_PATH,`agent-cli`),mcpOrigin:`http://127.0.0.1:${PORT}`});await auxProvisionBundledMemoryV2();'),
+    'async function main(){auxProviderCli.start({runRoot:()=>path.join(AUX_HOME_PATH,`agent-cli`),mcpOrigin:`http://127.0.0.1:${PORT}`,localAgentsFile:path.join(AUX_HOME_PATH,`agent-shared`,`local-agents.json`)});await auxProvisionBundledMemoryV2();'),
   edit('web search runs in the local browser, not a cloud route',
     'execute:async(ei,{objective:ti,search_queries:ni,mode:ri},ii)=>{let{details:ai,result:oi}=buildWebSearchToolResult(await fetchAuxAPI(`/search`,{method:`POST`,signal:ii,timeout:1e4,body:{objective:ti,search_queries:ni,mode:ri||`basic`,max_chars_total:DEFAULT_MAX_CHARS_TOTAL,session_id:Cn.session.id,client_model:Cn.session.model.modelId}}));',
     'execute:async(ei,{objective:ti,search_queries:ni},ii)=>{if(!Cn.browser)throw Error(`Web search needs the Aux browser.`);let client=new GoogleSearchClient({fetch:(url,options)=>Cn.browser.fetch(url,{...options,signal:ii})}),seen=new Set,results=[];for(let found of await Promise.allSettled([ti,...ni].map(query=>client.search(query,{limit:6}))))for(let item of found.status===`fulfilled`?found.value:[])if(!seen.has(item.url)&&results.length<10)seen.add(item.url),results.push({url:item.url,title:item.title,publish_date:item.publishedAtText??null,excerpts:item.snippet?[item.snippet]:[]});if(!results.length)throw Error(`Web search found nothing for “${ti}”.`);let{details:ai,result:oi}=buildWebSearchToolResult({session_id:Cn.session.id,results});'),
@@ -100,7 +108,8 @@ export const AGENT_LIST_EDITS = Object.freeze([
       + '"grok-cli":{name:"Grok Build",type:"subscription",description:"Use your Grok plan through Grok Build",icon:"xai",oauthOnly:!0},'
       + '"opencode-cli":{name:"OpenCode CLI",type:"subscription",description:"Use the providers you signed in to in OpenCode",icon:"opencode",oauthOnly:!0},'
       + '"copilot-cli":{name:"GitHub Copilot CLI",type:"subscription",description:"Use your Copilot plan through the GitHub Copilot CLI",icon:"github-copilot",oauthOnly:!0},'
-      + '"gemini-cli":{name:"Gemini CLI",type:"subscription",description:"Use your Gemini plan through the Gemini CLI",icon:"unknown",oauthOnly:!0},'),
+      + '"gemini-cli":{name:"Gemini CLI",type:"subscription",description:"Use your Gemini plan through the Gemini CLI",icon:"unknown",oauthOnly:!0},'
+      + '"local-agent-cli":{name:"Local agents",type:"subscription",description:"Commands you added that speak the Agent Client Protocol",icon:"unknown",oauthOnly:!0},'),
 ]);
 
 /** One status dialog for every CLI row, built from the supplied dialog parts: P (dialog), I

@@ -8,7 +8,13 @@ const edit = (name, find, replace, count = 1) => Object.freeze({name, find, repl
 /** A single word with a dot, colon or slash (or localhost) opens; anything else searches. */
 const looksLikeUrl = "/^\\S+$/.test(text)&&/[.:/]|^localhost$/i.test(text)";
 
+/** Copied to dist/assets/ and imported by the chunks that use it. */
+export const ASSET_FILES = Object.freeze(['aux-quick-answer.js']);
+
 const COMMAND_BAR = [
+  edit('math and unit answers',
+    'import{t as se}from"./client-CkJ8L9YQ.js";',
+    'import{auxAnswerSections}from"./aux-quick-answer.js";import{t as se}from"./client-CkJ8L9YQ.js";'),
   edit('plain words search the web instead of claiming to open them',
     "subtitle:context.mode === 'navigate' ? 'Open in current tab' : 'Open in new tab',\n      actionLabel:'Open',text,",
     `subtitle:${looksLikeUrl}?(context.mode === 'navigate' ? 'Open in current tab' : 'Open in new tab'):'Search the web',\n      actionLabel:${looksLikeUrl}?'Open':'Search',text,`),
@@ -31,7 +37,27 @@ const COMMAND_BAR = [
 const SETTINGS = [
   edit('Link routing explains itself plainly',
     'Rules apply to new external links. Sign-in callbacks and links already navigating stay in their current profile. Higher priority wins, then the more specific path and host.',
-    'Open links from other apps in the profile and Space you choose. Sign-ins stay where they started. When two rules match, the higher priority wins.'),
+    'Open links from other apps in the Space you choose. Sign-ins stay where they started. When two rules match, the higher priority wins.'),
+  // Spaces replaced profiles: a rule's destination is one Space. The rule still stores the data
+  // group it belongs to, picked with the Space and never shown.
+  edit('Link routing row names Spaces',
+    'Choose a profile and Space for sites you open from other apps.',
+    'Choose a Space for sites you open from other apps.'),
+  edit('a rule picks one Space',
+    "h('label',{className:'grid gap-1 text-sm'},'Profile',select(rule.profileId,profileId=>update({profileId,spaceId:''}),profile?profiles:[...profiles,{id:rule.profileId,name:'Unavailable profile'}],'Profile')),\n        h('label',{className:'grid gap-1 text-sm'},'Space',select(rule.spaceId||'__current__',spaceId=>update({spaceId:spaceId==='__current__'?'':spaceId}),[{id:'__current__',name:'Current Space'},...(profile?.spaces??[]),...rule.spaceId&&!(profile?.spaces??[]).some(s=>s.id===rule.spaceId)?[{id:rule.spaceId,name:'Unavailable Space'}]:[]],'Space'))),",
+    "h('label',{className:'grid gap-1 text-sm'},'Space',select(`${rule.profileId}\\n${rule.spaceId}`,value=>{const[profileId,spaceId]=value.split('\\n');update({profileId,spaceId})},[{id:`${rule.profileId}\\n`,name:'Current Space'},...profiles.flatMap(p=>(p.spaces??[]).map(s=>({id:`${p.id}\\n${s.id}`,name:s.name}))),...rule.spaceId&&!(profile?.spaces??[]).some(s=>s.id===rule.spaceId)?[{id:`${rule.profileId}\\n${rule.spaceId}`,name:'Unavailable Space'}]:[]],'Space'))),"),
+  edit('the test result names the Space',
+    "const name=destination?.name??'the selected profile';\n      const space=destination?.spaces.find(s=>s.id===value.spaceId)?.name;",
+    "const space=destination?.spaces.find(s=>s.id===value.spaceId)?.name;"),
+  edit('the test result reads as a Space',
+    "`Opens in ${name}${space?' · '+space:''}${winner?' · '+winner.host+winner.path:''}${value.spaceStatus==='requires-profile-load'?' · Space checked when profile opens':''}`",
+    "`Opens in ${space??'the current Space'}${winner?' · '+winner.host+winner.path:''}${value.spaceStatus==='requires-profile-load'?' · Checked when that Space opens':''}`"),
+  edit('settings errors say Settings, not Profile',
+    "'Profile changed. Reopen settings before making changes.'",
+    "'Settings changed. Reopen this page before making changes.'"),
+  edit('cleanup covers Spaces',
+    "'Include current and future Spaces in this profile.'",
+    "'Include current and future Spaces.'"),
   edit('Tab cleanup explains itself plainly',
     'Cleanup is off by default. Pinned tabs stay available. Active work and protected tabs are kept.',
     'Archive tabs you haven’t opened for a while. Pinned tabs, playing media and unsaved work are never touched, and archived tabs stay one click away.'),
@@ -81,6 +107,22 @@ const SHORTCUTS = [...Object.entries(COMMAND_DESCRIPTIONS).map(([title, descript
   edit('Toggle sidebar reads differently from Minimal UI',
     'title:"Toggle Sidebar",description:"Show or hide the sidebar."',
     'title:"Toggle sidebar",description:"Show or hide the sidebar in this window."'),
+  // A conflict names the command that owns the keys, as the browser does, and the page can then
+  // pass `replace` to move them (the other command is left without keys).
+  edit('a write can replace the command that owns the keys',
+    'I=async(e,i,r)=>{const t=h(e)', 'I=async(e,i,r,replace=!1)=>{const t=h(e)'),
+  edit('a conflict names the owner',
+    'if(u&&a.some(n=>n.commandId!==i&&n.serializedShortcut===u))throw new Error("This shortcut is already in use. Choose a different shortcut.");',
+    'const owner=u&&!replace&&a.find(n=>n.commandId!==i&&n.serializedShortcut===u);if(owner)throw new Error(`“${Object.values(p).find(n=>n.commandId===owner.commandId)?.title??"Another command"}” already uses this shortcut.`);'),
+  edit('the browser is told to replace',
+    'e.setKeyboardShortcut(i,r)}', 'e.setKeyboardShortcut(i,r,replace)}'),
+  // Function keys work with or without a modifier; the parser takes F1 to F12.
+  edit('the recorder takes function keys',
+    'A=(e,i)=>{if(!i&&e.metaKey||!e.ctrlKey&&!e.altKey&&!e.metaKey)return null;let r=k[e.code];',
+    'A=(e,i)=>{const fn=/^F(?:[1-9]|1[0-2])$/.test(e.code);if(!i&&e.metaKey||!fn&&!e.ctrlKey&&!e.altKey&&!e.metaKey)return null;let r=fn?e.code:k[e.code];'),
+  edit('the recorder says function keys work',
+    'Use Ctrl, Alt, or Command with a letter, number, arrow, or navigation key.',
+    'Use a function key, or Ctrl, Alt, or Command with a letter, number, arrow, or navigation key.'),
 ];
 
 // Shortcuts get their own Settings page (Batch 7). The Appearance chunk keeps the shortcut
@@ -156,6 +198,23 @@ const MODELS = [
 ];
 
 const GENERAL_ROWS = [
+  // Chromium's own "Warn Before Quitting": holding ⌘Q quits, a tap doesn't.
+  edit('Ask before quitting is a Preferences row',
+    'function AuxRoutingSetting() {',
+    `function AuxConfirmQuitSetting() {
+  const h=at.createElement,api=globalThis.chrome?.auxBrowserPreferences;
+  const available=typeof api?.getConfirmToQuitEnabled==='function'&&typeof api.setConfirmToQuitEnabled==='function';
+  const [enabled,setEnabled]=at.useState(null);
+  at.useEffect(()=>{if(!available)return;let live=true;
+    api.getConfirmToQuitEnabled().then(value=>{if(live)setEnabled(!!value)},()=>{if(live)setEnabled(false)});
+    return()=>{live=false}},[available]);
+  if(!available)return null;
+  const change=value=>{const before=enabled;setEnabled(value);
+    api.setConfirmToQuitEnabled(value).catch(e=>{setEnabled(before);Dn.error(e?.message||'Could not update this setting.')})};
+  return h(Bt,null,h(qt,{title:'Ask before quitting',description:'Hold ⌘Q to quit, so a stray press doesn’t close Aux.'}),
+    h(pn,null,h(Ds,{'aria-label':'Ask before quitting',checked:!!enabled,disabled:enabled===null,onCheckedChange:change})));
+}
+function AuxRoutingSetting() {`),
   // The daemon reports the supplied build number, which isn't Aux's version.
   edit('the background service says how it is, not a borrowed version number',
     '?`${i}. Restart Aux to finish updating the background service.`:`${i}. Running normally.`',
@@ -198,7 +257,7 @@ const SETTINGS_SHELL = [
     ''),
   edit('search finds Link routing, Tab cleanup and the developer rows',
     '{title:"Import bookmarks"},{title:"Import from another browser"},{title:"Preferred languages"}]}',
-    '{title:"Import bookmarks"},{title:"Import from another browser"},{title:"Preferred languages"},{title:"Link routing"},{title:"Tab cleanup",searchTerms:["archive","inactive tabs"]},{title:"Developer mode"},{title:"Extensions"},{title:"Run setup again",searchTerms:["onboarding","setup","welcome"]}]}'),
+    '{title:"Import bookmarks"},{title:"Import from another browser"},{title:"Preferred languages"},{title:"Ask before quitting",searchTerms:["quit","cmd q","warn"]},{title:"Link routing"},{title:"Tab cleanup",searchTerms:["archive","inactive tabs"]},{title:"Developer mode"},{title:"Extensions"},{title:"Run setup again",searchTerms:["onboarding","setup","welcome"]}]}'),
   edit('search shows Lasso’s real description',
     '{title:"Enable on text selection",description:"Drag text click the blue dot."}',
     '{title:"Enable on text selection",description:"Select text, then click the blue dot."}'),
@@ -277,6 +336,13 @@ const PRIVACY_ROWS = [
     'i?.enabled&&(0,e.jsx)(js,{api:t,canUpdate:!!o.data?.length,description:o.isPending||l.isPending?"Loading…":vs(u),disabled:!y||x}),i?.enabled&&(0,e.jsx)(auxPausedSites,{api:t})]})},auxPausedSites=({api:t})=>{const r=j(N({queryKey:[...V,"pausedSites"],queryFn:()=>t.getPausedSites(),enabled:typeof t.getPausedSites==="function",retry:!1})),s=S(o=>t.resumeSite(o)),a=r.data??[];return a.length?(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(R,{className:"gap-1",children:(0,e.jsx)(C,{title:"Paused sites",description:"Ads and trackers aren’t blocked on these sites. Pause one from the command bar while you’re on it."})}),a.map(o=>(0,e.jsxs)(R,{className:"gap-1",children:[(0,e.jsx)(C,{title:o}),(0,e.jsx)(H,{children:(0,e.jsx)(F,{variant:"outline",disabled:s.isPending,onClick:()=>s.mutate(o),children:"Resume"})})]},o))]}):null},js='),
 ];
 
+// The feedback dialog is gone (owner, 2026-10-30): nothing imports its chunk.
+const NO_FEEDBACK_PANEL = [
+  edit('the panel imports no feedback dialog', 'import{t as Z}from"./session-feedback-dialog-BjDg0W8m.js";', ''),
+];
+const NO_FEEDBACK_TASK = [
+  edit('the task page imports no feedback dialog', 'import{t as Qt}from"./session-feedback-dialog-BjDg0W8m.js";', ''),
+];
 const TASKS = [
   edit('Loading… while more tasks load',
     'children:t?"Loading...":"Load more"', 'children:t?"Loading…":"Load more"'),
@@ -445,7 +511,27 @@ const NEW_TAB = [
   edit('a drop only counts in Ask', 't==="search"&&!E.some(q=>q.type.startsWith("image/"))', 't==="search"'),
   edit('the drop hint names no Lens', 't==="ask"?"Drop to attach":"Drag an image to search with Google Lens"', '"Drop to attach"'),
 ];
+// Every source the browser can import from has a name and an icon. Aux ships no other browser's
+// logo: sources without a supplied icon get a letter tile in their own color.
+// New Tab paints without the daemon. Until the account is known, the chips' place says the agent
+// is getting ready; after a minute it says so plainly, with Try again. A function declaration, so
+// the Aux-owned page body above it can render it; it asks for the browser's React by itself.
+const NEW_TAB_STATUS = [
+  edit('New Tab says how the agent is starting',
+    'export{Ge as NewTabIsland}',
+    `function AuxNewTabAgentStatus({onCheck}){const R=T(k(),1),{jsx,jsxs}=E(),[shown,setShown]=R.useState(!1),[failed,setFailed]=R.useState(!1),[attempt,setAttempt]=R.useState(0);R.useEffect(()=>{setFailed(!1);const show=setTimeout(()=>setShown(!0),1500),check=setInterval(()=>{onCheck()},2e3),stop=setTimeout(()=>{clearInterval(check);setFailed(!0)},6e4);return()=>{clearTimeout(show);clearInterval(check);clearTimeout(stop)}},[attempt]);if(!shown)return null;return jsxs("div",{role:failed?"alert":"status",className:"text-muted-foreground flex items-center justify-center gap-2 text-sm",children:[failed?"Your agent couldn’t start.":"Getting your agent ready…",failed&&jsx("button",{type:"button",className:"text-foreground underline underline-offset-2",onClick:()=>{chrome.auxBrowserPreferences?.retryDaemon?.(),onCheck(),setAttempt(c=>c+1)},children:"Try again"})]})}export{Ge as NewTabIsland,AuxNewTabAgentStatus}`),
+];
+const BROWSER_ICONS = [
+  edit('sources without a supplied icon get a letter tile',
+    'const e=m.get(A);return e?',
+    'const e=m.get(A)??auxBrowserTile(A);return e?'),
+  edit('the letter tile',
+    'a=b(),U=({value:A,className:t,...i})=>{',
+    `a=b(),auxBrowserTile=id=>{const color={vivaldi:"#ef3939",opera:"#ff1b2d",chromium:"#4587f3",zen:"#1f1f1f"}[id];return color?"data:image/svg+xml,"+encodeURIComponent(\`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="\${color}"/><text x="32" y="44" font-family="-apple-system,sans-serif" font-size="36" font-weight="600" fill="#fff" text-anchor="middle">\${id[0].toUpperCase()}</text></svg>\`):void 0},U=({value:A,className:t,...i})=>{`),
+];
 const ONBOARDING_ROUTES = [
+  edit('the import progress names every source',
+    '["helium","Helium"]]),Mr=', '["helium","Helium"],["vivaldi","Vivaldi"],["opera","Opera"],["chromium","Chromium"],["zen","Zen"]]),Mr='),
   edit('Make it yours has a route',
     'wr=n("/_public/onboarding/import-password/")({beforeLoad:()=>{throw c({to:"/onboarding/ai",replace:!0})},component:a(Pr,"component")})',
     'wr=n("/_public/onboarding/import-password/")({component:a(Pr,"component")}),auxYoursRoute=n("/_public/onboarding/make-it-yours/")({component:a(gr,"yours")})'),
@@ -462,6 +548,11 @@ const ONBOARDING_ROUTES = [
   edit('onboarding opens before the daemon is ready',
     'Qt=n("/_public/onboarding")({beforeLoad:async({context:e,location:t})=>{if(await te(),Ht(t.pathname)||Y)return;',
     'Qt=n("/_public/onboarding")({pendingMs:0,pendingComponent:auxAgentReady,beforeLoad:async({context:e,location:t})=>{if(/\\/onboarding\\/(?:glance|make-it-yours)\\/?$/.test(t.pathname))return;if(await te(),Ht(t.pathname)||Y)return;'),
+  // The guard's answer is where setup starts; someone already on a step stays there, or the first
+  // Next from Welcome would land back on Welcome.
+  edit('a person in setup stays on their step',
+    'const u=ae(o);if(u===void 0||!u)return;',
+    'const u=ae(o);if(u===void 0||!u||u==="/onboarding/glance")return;'),
   edit('Import waits inline', 'n("/_public/onboarding/import-browser/")({component:a(fr,"component"),', 'n("/_public/onboarding/import-browser/")({pendingMs:0,pendingComponent:auxAgentReady,component:a(fr,"component"),'),
   edit('Models waits inline', 'n("/_public/onboarding/ai/")({validateSearch:', 'n("/_public/onboarding/ai/")({pendingMs:0,pendingComponent:auxAgentReady,validateSearch:'),
   edit('the local record of finishing setup',
@@ -501,6 +592,8 @@ const auxDictationHook = 'auxDictation=insert=>{'
   + 'return{supported:typeof api?.startDictation=="function",status,stream:listening||null,error,start,'
   + 'cancel:()=>finish(!1),confirm:()=>finish(!0),warmMic:()=>{}}},';
 const COMPOSER = [
+  edit('the composer imports no plan or add-on dialogs',
+    'import{d as ql,l as Wl,t as Gl,u as Ql}from"./add-on-credits-dialog-Dn5FxOyZ.js";', ''),
   edit('the composer imports no Ultrabrowse parts',
     'import{c as Gr,d as wl,i as Sl,l as Ta,n as Pl,o as kl,s as Ml,t as jl,u as Il}from"./model-select-BvZsM1Kl.js"',
     'import{c as Gr,i as Sl,l as Ta,n as Pl,o as kl,s as Ml,t as jl}from"./model-select-BvZsM1Kl.js"'),
@@ -593,6 +686,10 @@ export const EDITS = Object.freeze({
   'assets/progress-CS-jrVXz.js': Object.freeze(ONBOARDING_PROGRESS),
   'assets/import-password-mvM-KsU6.js': Object.freeze(ONBOARDING_PASSWORD),
   'assets/ai-CzEX5E7S.js': Object.freeze(ONBOARDING_MODELS),
+  'assets/browser-icon-DvnonVC4.js': Object.freeze(BROWSER_ICONS),
+  'assets/island-C0ouZ54e.js': Object.freeze(NEW_TAB_STATUS),
+  'assets/sidepanel-CI-CbXmY.js': Object.freeze(NO_FEEDBACK_PANEL),
+  'assets/_sessionId-ClN_BWh5.js': Object.freeze(NO_FEEDBACK_TASK),
   'assets/route-CSKkWqf5.js': Object.freeze(ONBOARDING_STEPS),
   'assets/glance-BfAlmExy.js': Object.freeze(ONBOARDING_WELCOME),
   'assets/-types-Wy38XkNB.js': Object.freeze(ONBOARDING_GUARD),

@@ -1258,19 +1258,13 @@ var /** AssistantRun: a run’s text and steps, its errors and payment prompts, 
   Om = (0, g.memo)(({itemWindow, row, state}) => {
     const {
         alwaysVisibleAssistantRunId,
-        canChangePlan,
         hideAssistantActions,
         isReadonly,
-        onAddCreditsClick,
-        onPaymentRequiredClick,
         onRetryAssistant,
-        paymentRequiredCreditRefreshAt,
-        paymentRequiredPlan,
         pendingToolCallId,
         sessionId,
       } = Sn(),
       f = no(),
-      {broadcast} = Ls(),
       b = !isReadonly && !hideAssistantActions && !row.isHandoff,
       v = itemWindow.items,
       C = row.assistantMessages.at(-1);
@@ -1279,9 +1273,7 @@ var /** AssistantRun: a run’s text and steps, its errors and payment prompts, 
       y = `agent-run/${row.renderKey ?? row.runId}/`,
       k = f?.runId === row.runId ? f.steps.map(j => j.part.id) : [],
       M = C.stopReason === 'aborted',
-      w = C.provider === 'aux',
-      I = !isReadonly && (M || C.stopReason === 'error'),
-      R = () => broadcast(da, {sessionId});
+      I = !isReadonly && (M || C.stopReason === 'error');
     return (0, a.jsxs)(MessageFrame, {
       role: 'assistant',
       children: [
@@ -1304,18 +1296,12 @@ var /** AssistantRun: a run’s text and steps, its errors and payment prompts, 
               ? (0, a.jsx)(
                   Wc,
                   {
-                    actions: {
-                      addCredits: w ? onAddCreditsClick : void 0,
-                      report: R,
-                      retry: I ? onRetryAssistant : void 0,
-                      upgrade: w && canChangePlan ? onPaymentRequiredClick : void 0,
-                    },
+                    actions: {retry: I ? onRetryAssistant : void 0},
                     classified: Zo({
                       aborted: M,
                       errorMessage: j.errorMessage,
                       provider: C.provider,
                       diagnostics: C.diagnostics,
-                      billing: {plan: paymentRequiredPlan, creditRefreshAt: paymentRequiredCreditRefreshAt},
                     }),
                     children: (0, a.jsx)(Qc, {}),
                   },

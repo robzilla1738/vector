@@ -5,16 +5,17 @@
  * and a turn runs the CLI with the user's own login, its own actions asked through Aux's approvals. */
 import {execFile} from 'node:child_process';
 import {createHash, randomBytes, randomUUID, timingSafeEqual} from 'node:crypto';
-import {modelSpecs, providerById, settingsRow} from './catalog.mjs';
-import {detectAll, childEnvironment} from './detect.mjs';
-import {runTurn, prepareRunDirectory, removeRunDirectory, claudePermissionRequest, claudePermissionAnswer, PERMISSION_TOOL} from './drivers.mjs';
+import {fastModel, modelSpecs, providerById, settingsRow} from './catalog.mjs';
+import {detectAll, childEnvironment, resolveCommand} from './detect.mjs';
+import {acpAnswers, runTurn, prepareRunDirectory, removeRunDirectory, claudePermissionRequest, claudePermissionAnswer, PERMISSION_TOOL} from './drivers.mjs';
+import {createLocalAgents, parseCommand, resolveProgram, showCommand} from './local-agents.mjs';
 import {terminateAll, installExitCleanup} from './process.mjs';
 
 /** pi-ai `api` id of every CLI-backed model; the wrapped model runtime routes it here. */
 export const API = 'aux-provider-cli';
 /** Daemon provider id → CLI id. Codex and Claude Code take over the supplied subscription rows. */
 export const DAEMON_PROVIDERS = Object.freeze({'openai-codex': 'codex', 'claude-code': 'claude', 'cursor-cli': 'cursor',
-  'grok-cli': 'grok', 'opencode-cli': 'opencode', 'copilot-cli': 'copilot', 'gemini-cli': 'gemini'});
+  'grok-cli': 'grok', 'opencode-cli': 'opencode', 'copilot-cli': 'copilot', 'gemini-cli': 'gemini', 'local-agent-cli': 'local'});
 /** The Agent's browser tools a CLI turn may call over MCP. Shell and file tools stay off. */
 export const MCP_TOOLS = Object.freeze(['repl', 'webfetch', 'websearch', 'get_time']);
 export const MCP_PATH = /^\/mcp\/v1\/([A-Za-z0-9_-]{1,80})\/?$/;
@@ -93,7 +94,7 @@ function applyUsage(output, usage) {
 }
 
 // "Authentication error" is what the panel's error card files under sign-in problems.
-const notReady = (entry, found) => found?.state === 'signed-out'
+const notReady = (entry, found) => entry.id === 'local' ? 'Add a local agent in Settings › Models.' : found?.state === 'signed-out'
   ? `Authentication error: ${entry.product} is not signed in. Run ${entry.login} in Terminal, then check again in Settings › Models.`
   : !found || found.state === 'not-installed' ? `Install ${entry.product} to use your ${entry.label} plan in Aux.`
   : found.detail ?? `${entry.product} is not ready.`;
@@ -114,14 +115,20 @@ const toolName = name => String(name ?? 'tool').replace(/^(?:mcp__aux__|aux[._-]
 const outputText = value => typeof value === 'string' ? value : Array.isArray(value?.content) ? textOf(value.content) : JSON.stringify(value ?? '');
 
 /** One daemon instance. Options exist for tests: detection, turn runner, environment and clock. */
-export function createAuxProviderCli({detect = detectAll, run = runTurn, env = () => process.env, now = Date.now, cacheMs = CACHE_MS, passiveMs = PASSIVE_MS, log = console} = {}) {
-  let snapshot = null, pending = null, config = {};
+export function createAuxProviderCli({detect = detectAll, run = runTurn, env = () => process.env, now = Date.now, cacheMs = CACHE_MS, passiveMs = PASSIVE_MS, log = console, answers = acpAnswers} = {}) {
+  let snapshot = null, pending = null, config = {}, local = null;
   const listeners = new Map(), turns = new Map(), sessions = new Map();
   const detection = id => snapshot?.providers.find(found => found.id === DAEMON_PROVIDERS[id]);
   const runnable = id => detection(id)?.state === 'ready';
   const settled = () => !snapshot || snapshot.providers.every(found => found.state === 'ready' || found.state === 'not-installed');
   const fresh = (maxAge = cacheMs) => !!snapshot && now() - snapshot.checkedAt < maxAge;
   const key = () => JSON.stringify(snapshot?.providers.map(found => [found.id, found.state, found.version ?? null, found.models ?? null]) ?? null);
+
+  /** The added commands, as the local provider's models. A command is never run to detect it. */
+  function localDetection() {
+    const agents = local?.list() ?? [];
+    return {id: 'local', state: agents.length ? 'ready' : 'not-installed', path: null, models: agents.map(({id, name}) => ({id, name}))};
+  }
 
   /** Detect every CLI at most once per cache period; concurrent callers share one run. */
   function refresh({force = false, maxAge = cacheMs} = {}) {
@@ -132,7 +139,8 @@ export function createAuxProviderCli({detect = detectAll, run = runTurn, env = (
       const reuse = snapshot?.directories.length && now() - snapshot.pathCheckedAt < passiveMs;
       try {
         const result = await detect({env: env(), previous: snapshot?.providers, ...(reuse ? {searchDirectories: snapshot.directories} : {})});
-        snapshot = {checkedAt: now(), pathCheckedAt: reuse ? snapshot.pathCheckedAt : now(), directories: result.directories, providers: result.providers};
+        snapshot = {checkedAt: now(), pathCheckedAt: reuse ? snapshot.pathCheckedAt : now(), directories: result.directories,
+          providers: [...result.providers.filter(found => found.id !== 'local'), localDetection()]};
       } catch (error) {
         log.warn?.('[provider-cli] detection failed', message(error));
         snapshot = {checkedAt: now(), pathCheckedAt: snapshot?.pathCheckedAt ?? 0, directories: snapshot?.directories ?? [], providers: snapshot?.providers ?? []};
@@ -177,6 +185,14 @@ export function createAuxProviderCli({detect = detectAll, run = runTurn, env = (
       }
     }
     return {...value, availableModels: decorateModels(value.availableModels), connectedProviders, visibleModelIdsByProvider};
+  }
+
+  /** The quick model for titles and file names: the provider's own, on a CLI. A selection on
+   * another provider stays as it is. */
+  function quickModel(selection) {
+    if (!selection || !owns(selection.provider)) return selection;
+    const modelId = fastModel(entryFor(selection.provider), detection(selection.provider));
+    return modelId ? {...selection, modelId} : selection;
   }
 
   async function resolveModel(modelId, provider) {
@@ -313,12 +329,14 @@ export function createAuxProviderCli({detect = detectAll, run = runTurn, env = (
         await refresh({maxAge: passiveMs});
         const found = detection(model.provider);
         if (!runnable(model.provider)) { terminal = failure(notReady(entry, found)); return; }
+        const added = entry.id === 'local' ? local?.find(model.id) : undefined;
+        if (entry.id === 'local' && !added) { terminal = failure('That local agent was removed. Choose another model.'); return; }
         // Chat turns keep one CLI session per thread; quick calls (titles, names) run fresh.
         session = scope && options.sessionId ? sessionFor(model.provider, options.sessionId) : undefined;
         turn = openTurn(scope, session, entry.driver);
         const messages = conversation(context);
         const spec = specs(model.provider).find(candidate => candidate.id === model.id) ?? {id: model.id};
-        const request = {provider: entry.id, file: found.path, cwd: turn.cwd, env: childEnvironment(env(), snapshot.directories),
+        const request = {provider: entry.id, file: added?.file ?? found.path, acpArgs: added?.args, cwd: turn.cwd, env: childEnvironment(env(), snapshot.directories),
           systemPrompt: systemPromptOf(context), model: model.id === 'default' ? undefined : model.id,
           effort: efforts(spec).includes(options.reasoning) ? options.reasoning : undefined, keep: !!session,
           mcp: turn.mcp, signal: options.signal, clientVersion: config.version, approve: turn.approve, paused: turn.paused,
@@ -446,8 +464,39 @@ export function createAuxProviderCli({detect = detectAll, run = runTurn, env = (
     return json(Array.isArray(parsed) ? replies : replies[0]);
   }
 
+  /** A command as the exact program and arguments Aux would run; nothing is started. */
+  async function checkLocalAgent(command) {
+    await refresh({maxAge: passiveMs});
+    const [program, ...args] = parseCommand(command);
+    const file = resolveProgram(program, snapshot.directories, resolveCommand);
+    return {file, args, command: showCommand([file, ...args])};
+  }
+  /** After the person confirmed the command: it has to answer as an ACP agent to be kept. */
+  async function addLocalAgent({name, command}) {
+    if (!local) throw Error('Provider CLIs are not started.');
+    const {file, args} = await checkLocalAgent(command);
+    const root = typeof config.runRoot === 'function' ? config.runRoot() : config.runRoot;
+    const cwd = prepareRunDirectory(root, `probe-${randomUUID().replaceAll('-', '')}`);
+    try {
+      if (!await answers(file, args, {env: childEnvironment(env(), snapshot.directories), cwd}))
+        throw Error('That command didn’t answer as an ACP agent. Check its flags: most agents need one such as --acp.');
+    } finally {
+      removeRunDirectory(cwd);
+    }
+    const id = local.add({name: String(name).trim().slice(0, 64) || showCommand([file]), file, args});
+    await refresh({force: true});
+    return {id, agents: localAgents()};
+  }
+  const localAgents = () => (local?.list() ?? []).map(({id, name, file, args}) => ({id, name, command: showCommand([file, ...args])}));
+
   return Object.freeze({
-    owns, providerIds: () => Object.keys(DAEMON_PROVIDERS),
+    owns, providerIds: () => Object.keys(DAEMON_PROVIDERS), quickModel,
+    localAgents, checkLocalAgent, addLocalAgent,
+    async removeLocalAgent(id) {
+      local?.remove(id);
+      await refresh({force: true});
+      return {agents: localAgents()};
+    },
     /** Opens Terminal for a login command the person copied; Aux never runs it for them. */
     openTerminal: () => new Promise(resolve => execFile('/usr/bin/open', ['-a', 'Terminal'], error => resolve({opened: !error}))),
     refresh, status: async ({refresh: force = false} = {}) => {
@@ -459,8 +508,9 @@ export function createAuxProviderCli({detect = detectAll, run = runTurn, env = (
     isMcpPath: pathname => typeof pathname === 'string' && pathname.startsWith('/mcp/v1/'), handleMcp,
     /** Daemon start: where turns run, the MCP origin, the abrupt-exit cleanup, and the first
      * detection, so Settings and the first send do not wait for it. */
-    start({runRoot, mcpOrigin, version} = {}) {
+    start({runRoot, mcpOrigin, version, localAgentsFile} = {}) {
       config = {runRoot, mcpOrigin, version};
+      if (localAgentsFile) local = createLocalAgents(localAgentsFile);
       installExitCleanup();
       refresh().catch(() => {});
     },

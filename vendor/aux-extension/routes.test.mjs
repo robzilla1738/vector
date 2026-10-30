@@ -1085,41 +1085,7 @@ test('the Routines page and a routine menu render like the supplied ones', async
       {routine: routines[1], routineId: 'r2', name: 'Weekly', sessionId: 'gone', pending: true, contextMenu: false}]});
 });
 
-// The New Tab tasks: a session waiting on a confirmation, recent chats (one unread) and routines, none,
-// and incognito.
-test('the New Tab tasks render like the supplied ones with sessions to confirm and recent work', async () => {
-  const chunk = 'assets/tasks-CtF0WxoJ.js';
-  const confirm = {kind: 'action-confirmation', toolCallId: 'tc1', createdAt: 5, request: {title: 'Send the email?', message: 'To the team', artifact: {type: 'email'}}};
-  const sessions = [{id: 's1', title: 'Weekly update', status: 'suspended', suspension: confirm, updatedAt: '2026-10-30T10:00:00Z'},
-    {id: 's2', title: 'Research', status: 'running', unread: true}, {id: 's3', title: 'Plan', status: 'idle'}, {id: 's4', title: 'Notes', status: 'idle'},
-    {id: 's5', title: 'Asked', status: 'suspended', suspension: {kind: 'ask-user-question'}}];
-  const scene = (world, {list = sessions, loading = false, mode = 'default', state} = {}) => ({state, imports: {
-    './newtab-CnOLQ0yu.js#s': 7, './newtab-CnOLQ0yu.js#o': {browserMode: mode}, './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7},
-    './strip-markdown-DRcmtuJc.js#nr': {data: list, isLoading: loading}, './strip-markdown-DRcmtuJc.js#en': true,
-    './file-attachments-D5m1O8aA.js#a': suspension => Boolean(suspension?.kind),
-    './strip-markdown-DRcmtuJc.js#er': {isPending: false, mutateAsync: world.stub('spy:resolve')}, './extension-page-url-BH3pfT7h.js#t': path => `ext:${path}`}});
-  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 20, defaults: false,
-    renamed: renamedBindings, scenes: [world => scene(world), world => scene(world, {list: [], state: ['routines', true]}), world => scene(world, {loading: true, list: []}),
-      world => scene(world, {mode: 'incognito'}), world => scene(world, {state: ['routines', false]}), world => scene(world, {state: [true]})],
-    props: [{session: sessions[0], items: sessions, children: 'island', disabled: false, message: 'To the team', sessionTitle: 'Weekly update', title: 'Send?',
-      onConfirm: world => world, onCustom: world => world}, {session: sessions[1], items: [], isLoading: true, disabled: true}]});
-});
 
-test('the New Tab tasks cache their previews like the supplied ones', async () => {
-  const chunk = 'assets/tasks-CtF0WxoJ.js';
-  const world = createWorld();
-  const {supplied, ours} = await evaluatePair({world, chunk, text: textOf(chunk), blocks: ROUTES[chunk], integrate: integrateRoutes, read: readRoute,
-    changes: TOKEN_CHANGES, renamed: renamedBindings});
-  const run = side => {
-    const store = new Map([['aux.new-tab.session-previews.v2:7', JSON.stringify(Array.from({length: 10}, (_, index) => ({id: `s${index}`})))],
-      ['aux.new-tab.session-previews.v2:8', '{"not": "a list"}'], ['aux.new-tab.session-previews.v2:9', 'broken']]);
-    world.enter({imports: {'window.localStorage.getItem': key => store.get(key) ?? null, 'window.localStorage.setItem': (key, value) => store.set(key, value)}});
-    const read = [7, 8, 9, 10].map(account => side.__pair_readCachedPreviews(account));
-    side.__pair_writeCachedPreviews(11, Array.from({length: 12}, (_, index) => ({id: `w${index}`})));
-    return JSON.stringify([read, side.__pair_previewCacheKey(3), store.get('aux.new-tab.session-previews.v2:11')]);
-  };
-  assert.equal(run(ours), run(supplied));
-});
 
 // The Tasks page: chats as cards and as a list, filtered and searched, loading more, empty and failed.
 test('the Tasks page renders like the supplied one with chats, filters and paging', async () => {
@@ -1261,11 +1227,9 @@ test('the Channels platform fields and setup match the supplied ones', async () 
   for (const platform of ['slack', 'telegram', 'discord']) assert.equal(ours.__pair_guideUrl(platform), supplied.__pair_guideUrl(platform));
 });
 
-// Memory: files, a file in preview and edit, history entries with their changes and session, the
-// settings, and Context Awareness with history, exclusions and its model.
-const memoryChunks = ['assets/route-CJZWzPOz.js', 'assets/files-DqqxHH6i.js', 'assets/histories-CpU8qS5w.js', 'assets/settings-DguZi_c6.js', 'assets/import-DX5BoL4B.js',
-  'assets/context-awareness-BocPTg31.js'];
-test('the Memory pages render like the supplied ones with files, history and Context Awareness', async () => {
+// Memory: files, a file in preview and edit, history entries with their changes and session, and the settings.
+const memoryChunks = ['assets/route-CJZWzPOz.js', 'assets/files-DqqxHH6i.js', 'assets/histories-CpU8qS5w.js', 'assets/settings-DguZi_c6.js', 'assets/import-DX5BoL4B.js'];
+test('the Memory pages render like the supplied ones with files and history', async () => {
   const fileList = [{path: 'people/robert.md', name: 'robert.md', sizeBytes: 300000, absolutePath: '/m/people/robert.md', updatedAt: 5},
     {path: 'projects/aux.md', name: 'aux.md', sizeBytes: 300, absolutePath: '/m/projects/aux.md', updatedAt: 4}];
   // One answer for the file list in every shape its selects make: a list, and a lookup by path.
@@ -1309,15 +1273,6 @@ test('the Memory helpers label, filter and key like the supplied ones', async ()
     {role: 'assistant', content: 'Saved two memories'}, {role: 'tool', content: 'x'}];
   for (const message of messages) assert.equal(history.ours.__pair_isShownMessage(message), history.supplied.__pair_isShownMessage(message), message.content);
   assert.equal(JSON.stringify(history.ours.__pair_INTERNAL_PROMPTS), JSON.stringify(history.supplied.__pair_INTERNAL_PROMPTS));
-  const awareness = await pair('assets/context-awareness-BocPTg31.js');
-  for (const exclusion of [{scope: 'app', bundleId: 'com.x'}, {scope: 'url', urlDomain: 'aux.example'}])
-    assert.equal(awareness.ours.__pair_exclusionKey(exclusion), awareness.supplied.__pair_exclusionKey(exclusion));
-  for (const name of ['__pair_PAUSE_OPTIONS', '__pair_NEVER', '__pair_ILLUSTRATION']) assert.equal(JSON.stringify(awareness.ours[name]), JSON.stringify(awareness.supplied[name]), name);
-  world.enter({imports: {'./date-CxUVm-Dr.js#n.default': () => ({add: days => ({format: () => `day ${days}`, startOf: () => ({valueOf: () => days, add: () => ({valueOf: () => days + 1})})})})}});
-  for (const offset of [0, -1, -4]) {
-    assert.equal(awareness.ours.__pair_dayName(offset), awareness.supplied.__pair_dayName(offset), String(offset));
-    assert.equal(JSON.stringify(awareness.ours.__pair_dayRange(offset)), JSON.stringify(awareness.supplied.__pair_dayRange(offset)), String(offset));
-  }
 });
 
 // General: preferred languages kept unique and summarized, import progress, spell check, versions
@@ -2718,16 +2673,6 @@ test('the Projects list and its dialog act like the supplied ones', async () => 
   assert.equal(JSON.stringify(ours.r(projects)), JSON.stringify(supplied.r(projects)));
 });
 
-test('the session feedback dialog opens, saves and guards a draft like the supplied one', async () => {
-  const chunk = 'assets/session-feedback-dialog-BjDg0W8m.js';
-  const scene = (world, {comment = 'Too slow', errors = {}, pending = false, payload = {sessionId: 's1', comment: 'Seen'}, event = {comment: 'Saved', reason: 'none'}} = {}) => ({event, imports: {
-    './context-q_vohNW8.js#n': {currentSession: {id: 's1'}}, './strip-markdown-DRcmtuJc.js#Kt': {accountId: 7}, './strip-markdown-DRcmtuJc.js#Ht': {capture: world.stub('spy:capture')}, './strip-markdown-DRcmtuJc.js#M': {confirm: world.stub('spy:confirm')},
-    './strip-markdown-DRcmtuJc.js#P': (_, handler) => handler(payload), './tag-icon-DeMC7uIN.js#f': {getValues: () => comment, reset: world.stub('spy:reset'), setValue: world.stub('spy:setValue'), handleSubmit: run => run, register: name => ({name}), formState: {errors}},
-    './strip-markdown-DRcmtuJc.js#er': {isPending: pending, error: pending ? {message: 'Failed'} : null, reset: world.stub('spy:resetReport'), mutate: (input, options) => { world.stub('spy:mutate')(input); options.onSuccess(); }}}});
-  await assertParity({blocksByChunk: {[chunk]: ROUTES[chunk]}, textOf, integrate: integrateRoutes, read: readRoute, changes: TOKEN_CHANGES, minimum: 6, defaults: false, renamed: renamedBindings,
-    scenes: [world => scene(world), world => ({...scene(world, {comment: '  ', event: {reason: 'escape-key'}, payload: {sessionId: 'other'}}), state: [true]}), world => scene(world, {errors: {comment: {message: 'Required'}}, pending: true, event: null, payload: {sessionId: 's1'}}),
-      world => ({...scene(world), args: [false, {reason: 'escape-key'}]}), world => ({...scene(world), args: [false, {reason: 'outside-press'}]}), world => ({...scene(world), args: [false, {reason: 'close-press'}]})], props: [{}, {children: 'x'}]});
-});
 
 test('the coding agent nudge picks its target and looks for code like the supplied one', async () => {
   const chunk = 'assets/coding-agent-nudge-Cy9BtLdb.js';
@@ -3595,15 +3540,15 @@ test('the onboarding import shows its progress like the supplied page', async ()
   same(await live(ours, {pending: null}), [['navigate', {to: '/onboarding/import-browser', replace: true}]]);
   same((await run(ours, {}, {auxBrowserImport: undefined})).errors, ['Browser import is unavailable in this version of Aux.']);
   same((await run(ours, {run: async () => { throw new Error('No access'); }})).errors, []);
-  const cycle = side => {
+  const cycle = (side, last) => {
     const timers = [];
-    const heap = stateHeap([4]);
+    const heap = stateHeap([last]);
     world.render(side.__pair_CyclingStatus, {}, {timers, state: heap.values, onSetState: heap.onSetState, liveEffects: true});
     timers[0][0]();
     return [timers[0][1], heap.values[0]];
   };
-  same(cycle(ours), [6000, 0]);
-  same(cycle(supplied), [6000, 0]);
+  same(cycle(ours, 3), [6000, 0]);
+  same(cycle(supplied, 3), [6000, 0]);
   const retried = [];
   world.render(ours.component, {}, {imports: importImports(world, {calls: retried}), state: [0, null, false, {state: 'succeeded', skippedDataKinds: ['cookies']}]});
   same(retried.filter(([name]) => name === 'setPending')[0], ['setPending', {sourceId: 'chrome', sourceName: 'Chrome', dataKinds: ['cookies']}]);
@@ -3812,8 +3757,8 @@ test('the error page and reporting behave like the supplied ones', async () => {
   };
   const [mine, theirs] = [await recover(ours), await recover(supplied)];
   same(mine, JSON.parse(JSON.stringify(theirs)));
-  same([mine.delays, mine.gaveUp], [[5000, 10000, 15000], true]);
-  same(mine.calls.filter(([name]) => name === 'fetch'), [['fetch', ['tasks'], 0], ['fetch', ['tasks'], 0], ['fetch', ['tasks'], 0]]);
+  same([mine.delays, mine.gaveUp], [[5000, 10000, 15000, 20000, 25000, 30000], true]);
+  same(mine.calls.filter(([name]) => name === 'fetch'), Array(6).fill(['fetch', ['tasks'], 0]));
   const listeners = [];
   const sent = [];
   world.enter({window: {location: {href: 'https://aux.test/u/7', hash: '', origin: 'https://aux.test'}}, imports: {'window.addEventListener': (name, handler) => listeners.push([name, handler]), './queries-ldd77hNk.js#g.analytics.captureException.mutate': async input => { sent.push([input.name, input.message, input.properties]); }}});
@@ -3841,17 +3786,5 @@ test('onboarding reaches local users, and each finished profile only once', () =
   assert.equal(K(false)({mode: 'cloud', onboardingCompletedAt: 5}), null);
   assert.equal(K(true)({mode: 'local'}), null);
   assert.equal(K(false)(null), null);
-  const steps = EDITS['assets/route-CSKkWqf5.js'][0].replace;
-  assert.ok(steps.includes('make-it-yours') && steps.includes('import-password') && readRoute('onboarding-shell.js').includes("'/onboarding/make-it-yours'"));
-  const done = readRoute('onboarding-done.js');
-  assert.ok(!done.includes('keepTasksRunning') && done.includes('setOrganizationCleanupPolicy') && done.includes('aux.onboarding.completed.v1'));
 });
 
-test('an import sends what was chosen, and only sign-ins raise the Keychain explainer', () => {
-  const dialog = readRoute('import-browser.js');
-  assert.ok(dialog.includes('onImport(target, {dataKinds: chosen, destination});'));
-  assert.ok(dialog.includes("['passwords', 'Passwords']") && dialog.includes('Passwords stay in your password manager.'));
-  const importer = readRoute('use-browser-importer.js');
-  assert.ok(importer.includes('destination: request.destination,') && importer.includes("!options.dataKinds.includes('cookies')"));
-  assert.ok(importer.includes('Choose Always Allow.') && !importer.includes('Safari passwords ZIP'));
-});

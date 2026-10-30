@@ -4,7 +4,7 @@
 // tokens; scripts/release/transforms.mjs copies this file to dist/assets/ and wires it in.
 import {A as interop, C as cx, E as requireReact, w as requireJsx} from "./browser-color-scheme-Df5VSuPV.js";
 import {Kt as useAccount, cn as Input} from "./strip-markdown-DRcmtuJc.js";
-import {g as trpc} from "./queries-ldd77hNk.js";
+import {g as trpc, i as readAccount} from "./queries-ldd77hNk.js";
 import {t as Button} from "./button-82u7k4S8.js";
 import {t as Textarea} from "./textarea-5TASg52t.js";
 import {t as Tooltip} from "./simple-tooltip-CHhnBkHz.js";
@@ -16,6 +16,7 @@ const React = interop(requireReact(), 1);
 const j = requireJsx();
 const {useCallback, useEffect, useRef, useState, useSyncExternalStore} = React;
 
+const GETTING_READY = "Getting your agent ready…";
 const DEFAULT = Object.freeze({name: "Aux", homeSessionId: null, avatarRevision: "", setupCompleted: true, isDefault: true});
 const NAME_KEY = "aux.agent.name.v1";
 // Dispatched on the side panel's window when the agent button is clicked: back to the home thread.
@@ -66,9 +67,15 @@ async function load(store, agent) {
 }
 
 function refresh(store) {
-  store.pending ??= load(store).catch(() => publish(store, {ready: true})).finally(() => { store.pending = null; });
+  store.pending ??= load(store).then(
+    () => { if (store.snapshot.unreachable) publish(store, {unreachable: false}); },
+    () => publish(store, {ready: true, unreachable: true}),
+  ).finally(() => { store.pending = null; });
   return store.pending;
 }
+
+/** Asks the browser to start a failed daemon now, where it can; the next load says how it went. */
+const retryDaemon = () => { try { globalThis.chrome?.auxBrowserPreferences?.retryDaemon?.()?.catch?.(() => {}); } catch {} };
 
 /** Loads now, then again on focus and every 15 s while visible, so edits from Settings or
  * another window show up everywhere. Returns the stop function. */
@@ -81,8 +88,9 @@ function watch(store) {
 }
 
 /** The agent for the current account, kept fresh while any view shows it. */
-export function useAuxAgent() {
-  const {accountId} = useAccount();
+export const useAuxAgent = () => useAgentFor(useAccount().accountId);
+
+function useAgentFor(accountId) {
   const store = storeFor(accountId);
   const subscribe = useCallback(listener => {
     store.listeners.add(listener);
@@ -94,7 +102,7 @@ export function useAuxAgent() {
   }, [store]);
   const snapshot = useSyncExternalStore(subscribe, () => store.snapshot);
   const call = useCallback(async (procedure, input) => load(store, await trpc.settings[procedure].mutate({accountId, ...input})), [store, accountId]);
-  return {...snapshot, accountId, call, refresh: () => refresh(store)};
+  return {...snapshot, accountId, call, refresh: () => refresh(store), tryAgain: () => { retryDaemon(); return refresh(store); }};
 }
 
 /** The composer's empty-text hint, following renames; `explicit` (a caller's own hint) wins.
@@ -113,14 +121,28 @@ function setSideChatDraft(value) {
 }
 /** "+" in the side panel opens a side chat draft instead of the home thread. */
 export function auxAgentStartSideChat() { setSideChatDraft(true); }
-/** Chats started in the side panel or the full view; routines, channels, New Tab and other
- * surfaces carry their own trigger. */
-const isSideChat = ({trigger}) => !trigger || trigger.type === "user" && trigger.source === "sidepanel";
-/** Chat menu rows: side chats only, without the home thread, which the title represents. */
-export function auxAgentSideChats(rows) {
+/** The chat menu's filters. Side chats start in the side panel or the full view; routines,
+ * channels and New Tab carry their own trigger. */
+const CHAT_FILTERS = [
+  {id: "side", label: "Side chats", empty: "No side chats yet", matches: ({trigger}) => !trigger || trigger.type === "user" && trigger.source === "sidepanel"},
+  {id: "routines", label: "Routines", empty: "No routine chats yet", matches: ({trigger}) => trigger?.type === "routine" || trigger?.type === "standalone-routine"},
+  {id: "channels", label: "Channels", empty: "No channel chats yet", matches: ({trigger}) => trigger?.type === "channel"},
+  {id: "new-tab", label: "New Tab", empty: "No New Tab chats yet", matches: ({trigger}) => trigger?.type === "user" && trigger.source === "new-tab"},
+];
+const chatFilter = id => CHAT_FILTERS.find(filter => filter.id === id) ?? CHAT_FILTERS[0];
+/** Chat menu rows under a filter, without the home thread, which the title represents. */
+export function auxAgentChats(rows, filter) {
   const home = [...stores.values()].map(store => store.snapshot.agent.homeSessionId).filter(Boolean);
-  return rows.filter(row => isSideChat(row) && !home.includes(row.id));
+  return rows.filter(row => chatFilter(filter).matches(row) && !home.includes(row.id));
 }
+export const auxAgentChatsEmpty = filter => chatFilter(filter).empty;
+/** The session list's options for a filter: routine chats are left out unless asked for. */
+export const auxAgentChatsQuery = filter => filter === "routines" ? {routines: "include"} : {};
+/** The row of filters at the top of the chat menu. */
+export const AuxAgentChatFilters = ({value, onChange}) => j.jsx("div", {role: "radiogroup", "aria-label": "Show chats", className: "flex flex-wrap gap-1 px-1 pt-1 pb-1.5",
+  children: CHAT_FILTERS.map(({id, label}) => j.jsx("button", {type: "button", role: "radio", "aria-checked": value === id, onClick: () => onChange(id),
+    className: cx("rounded-full px-2 py-0.5 text-xs font-medium transition-colors", value === id ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-muted"),
+    children: label}, id))});
 
 // --------------------------------------------------------------------------------- avatar
 
@@ -479,6 +501,12 @@ export function AuxAgentEmptyState() {
   const {availableModels, isLoading} = useAgentSettings();
   const name = agent.agent.name;
   const unconnected = !isLoading && !availableModels.length;
+  if (agent.unreachable) return j.jsxs("div", {role: "alert", className: "flex max-w-xs flex-col items-center gap-2.5 text-center", children: [
+    j.jsx(AuxAgentAvatar, {size: 44}),
+    j.jsx("div", {className: "font-display text-foreground text-lg font-medium", children: `${name} couldn’t start`}),
+    j.jsx(Button, {variant: "outline", size: "sm", onClick: agent.tryAgain, children: "Try again"}),
+  ]});
+  if (!agent.ready) return j.jsx("div", {role: "status", className: "text-muted-foreground text-sm", children: GETTING_READY});
   return j.jsxs("div", {className: "flex max-w-xs flex-col items-center gap-2.5 text-center", children: [
     j.jsx(AuxAgentAvatar, {size: 44}),
     j.jsx("div", {className: "font-display text-foreground text-lg font-medium", children: sideChatDraft ? "New side chat" : `Hi, I'm ${name}`}),
@@ -517,6 +545,10 @@ export function AuxAgentSettings() {
     j.jsx(SettingControl, {children: j.jsx(Button, {variant: "outline", size: "sm", onClick: () => openPage(agent.accountId, page), children: label})}),
   ]});
   return j.jsxs(SettingSection, {title: "Your agent", children: [
+    agent.unreachable && j.jsx(SettingGroup, {children: j.jsxs(SettingRow, {role: "alert", children: [
+      j.jsx(SettingText, {title: `${name} couldn’t start`, description: "Changes here wait until it’s running again."}),
+      j.jsx(SettingControl, {children: j.jsx(Button, {variant: "outline", size: "sm", onClick: agent.tryAgain, children: "Try again"})}),
+    ]})}),
     j.jsxs(SettingGroup, {children: [
       j.jsx(SettingRow, {className: "block", children: j.jsx(AgentFields, {draft, setDraft, error})}),
       saveRow(dirty, () => setDraft(original), () => run(() => saveDraft(agent, draft, {agent: agent.agent, avatarUrl: agent.avatarUrl}))),
@@ -533,4 +565,125 @@ export function AuxAgentSettings() {
       link("Routines", `${name} works when you ask. Routines let it check in or run tasks on a schedule.`, "Set up", "settings/routines"),
     ]}),
   ]});
+}
+
+// ------------------------------------------------------------------------------ onboarding
+
+/** Onboarding's Make it yours: the name and look, inline. Works before the daemon is ready: it
+ * says so, and the fields arrive on their own. Every change saves, so Next never loses one. */
+export function AuxAgentSetup() {
+  const [accountId, setAccountId] = useState(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let live = true;
+    const started = Date.now();
+    const look = async () => {
+      try {
+        const account = await readAccount();
+        if (live) setAccountId(account.accountId);
+      } catch {
+        if (!live) return;
+        if (Date.now() - started >= SETUP_WAIT_MS) setFailed(true);
+        else setTimeout(look, 2000);
+      }
+    };
+    setFailed(false);
+    look();
+    return () => { live = false; };
+  }, [attempt]);
+  if (accountId !== null) return j.jsx(AgentSetupFields, {accountId});
+  if (!failed) return j.jsx("p", {role: "status", className: "text-muted-foreground text-sm", children: GETTING_READY});
+  return j.jsxs("div", {role: "alert", className: "flex items-center gap-3", children: [
+    j.jsx("p", {className: "text-muted-foreground text-sm", children: "Your agent couldn’t start. You can name it later in the agent panel."}),
+    j.jsx(Button, {variant: "outline", size: "sm", onClick: () => { retryDaemon(); setAttempt(count => count + 1); }, children: "Try again"}),
+  ]});
+}
+const SETUP_WAIT_MS = 60000;
+
+function AgentSetupFields({accountId}) {
+  const agent = useAgentFor(accountId);
+  const [draft, setDraft] = useState(null);
+  const [error, setError] = useState(null);
+  const saved = useRef(null);
+  useEffect(() => {
+    if (!agent.ready || draft) return;
+    setDraft(draftFrom(agent.agent, agent.avatarUrl));
+    saved.current = {agent: agent.agent, avatarUrl: agent.avatarUrl};
+    // This step is the setup sheet: the panel doesn't need to offer it again.
+    if (!agent.agent.setupCompleted) agent.call("agentUpdate", {setupCompleted: true}).catch(() => {});
+  }, [agent.ready]);
+  useEffect(() => {
+    if (!draft || !saved.current || !draftChanged(draft, draftFrom(saved.current.agent, saved.current.avatarUrl))) return;
+    const timer = setTimeout(() => saveDraft(agent, draft, saved.current).then(
+      () => { saved.current = {agent: {...saved.current.agent, name: draft.name.trim() || DEFAULT.name}, avatarUrl: draft.avatar}; setError(null); },
+      problem => setError(problem?.message ?? "Could not save."),
+    ), 400);
+    return () => clearTimeout(timer);
+  }, [draft]);
+  if (!draft) return j.jsx("p", {role: "status", className: "text-muted-foreground text-sm", children: GETTING_READY});
+  return j.jsx(AgentFields, {draft, setDraft, error});
+}
+
+// ---------------------------------------------------------------------------- local agents
+
+/** Settings › Models: commands added by hand. A command is parsed by the daemon into the exact
+ * program and arguments, shown back, and only saved after a confirm; it never goes near a shell. */
+export function AuxLocalAgents() {
+  const {accountId} = useAccount();
+  const [agents, setAgents] = useState([]);
+  const [draft, setDraft] = useState(null);
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { trpc.models.providerCliAgents.query({accountId}).then(setAgents, () => {}); }, [accountId]);
+  const run = async action => {
+    setBusy(true);
+    setError(null);
+    try { await action(); } catch (problem) { setError(problem?.message ?? "Could not add this agent."); } finally { setBusy(false); }
+  };
+  const check = () => run(async () => {
+    const {command} = await trpc.models.providerCliCheckAgent.mutate({accountId, command: draft.command});
+    setDraft(current => ({...current, confirm: command}));
+  });
+  const add = () => run(async () => {
+    const result = await trpc.models.providerCliAddAgent.mutate({accountId, name: draft.name, command: draft.command});
+    setAgents(result.agents);
+    setDraft(null);
+  });
+  const remove = id => run(async () => setAgents((await trpc.models.providerCliRemoveAgent.mutate({accountId, id})).agents));
+  const close = () => { setDraft(null); setError(null); };
+  return j.jsx(SettingSection, {title: "Local agents", children: j.jsxs(SettingGroup, {children: [
+    agents.map(agent => j.jsxs(SettingRow, {children: [
+      j.jsx(SettingText, {title: agent.name, description: j.jsx("code", {className: "font-mono text-xs break-all", children: agent.command})}),
+      j.jsx(SettingControl, {children: j.jsx(Button, {variant: "outline", size: "sm", disabled: busy, onClick: () => remove(agent.id), children: "Remove"})}),
+    ]}, agent.id)),
+    !draft && j.jsxs(SettingRow, {children: [
+      j.jsx(SettingText, {title: "Add a local agent…", description: "Any command that speaks the Agent Client Protocol."}),
+      j.jsx(SettingControl, {children: j.jsx(Button, {variant: "outline", size: "sm", onClick: () => setDraft({name: "", command: ""}), children: "Add"})}),
+    ]}),
+    draft && j.jsx(SettingRow, {className: "block", children: j.jsxs("div", {className: "flex min-w-0 flex-col gap-3", children: [
+      draft.confirm
+        ? j.jsxs("div", {className: "flex min-w-0 flex-col gap-2", children: [
+          j.jsx("p", {className: "text-sm", children: `Aux will run exactly this whenever you use ${draft.name.trim() || "this agent"}. It runs as you, and its actions ask you first.`}),
+          j.jsx("code", {className: "bg-muted rounded-lg p-2 font-mono text-xs break-all", children: draft.confirm}),
+          j.jsx("p", {className: "text-muted-foreground text-xs", children: "Adding it starts it once, to check it speaks the protocol."}),
+        ]})
+        : j.jsxs("div", {className: "flex min-w-0 flex-col gap-2", children: [
+          j.jsx(Label, {htmlFor: "aux-local-agent-name", children: "Name"}),
+          j.jsx(Input, {id: "aux-local-agent-name", value: draft.name, maxLength: 64, autoComplete: "off", spellCheck: false,
+            onChange: event => setDraft({...draft, name: event.target.value})}),
+          j.jsx(Label, {htmlFor: "aux-local-agent-command", children: "Command"}),
+          j.jsx(Input, {id: "aux-local-agent-command", value: draft.command, placeholder: "my-agent --acp", autoComplete: "off", spellCheck: false,
+            className: "font-mono", onChange: event => setDraft({...draft, command: event.target.value})}),
+          j.jsx("p", {className: "text-muted-foreground text-xs", children: "Aux runs it directly, without a shell, so nothing in it is expanded."}),
+        ]}),
+      error && j.jsx("p", {className: "text-destructive text-xs", role: "alert", children: error}),
+      j.jsxs("div", {className: "flex justify-end gap-1", children: [
+        j.jsx(Button, {variant: "ghost", size: "sm", disabled: busy, onClick: draft.confirm ? () => setDraft({...draft, confirm: null}) : close, children: draft.confirm ? "Back" : "Cancel"}),
+        draft.confirm
+          ? j.jsx(Button, {size: "sm", disabled: busy, onClick: add, children: busy ? "Checking…" : "Add agent"})
+          : j.jsx(Button, {size: "sm", disabled: busy || !draft.command.trim(), onClick: check, children: "Continue"}),
+      ]}),
+    ]})}),
+  ]})});
 }

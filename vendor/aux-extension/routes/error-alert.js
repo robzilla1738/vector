@@ -160,11 +160,6 @@ function ReconnectButton({children = 'Reconnect'}) {
       })
     : null;
 }
-/** Reports a bug. */
-function ReportButton() {
-  const {actions} = useErrorAlert();
-  return (0, t.jsx)(ActionButton, {onClick: actions.report, children: 'Report bug'});
-}
 /** An error in a chat, with the actions its kind allows. */
 function $() {
   const {state} = useErrorAlert(),
@@ -195,7 +190,6 @@ function $() {
       error.kind === 'credits-other' && (0, t.jsx)(ReconnectButton, {children: 'Open Models'}),
       ['aborted', 'auth', 'credits-other', 'generic', 'network', 'offline', 'overloaded', 'provider-server', 'rate-limit'].includes(error.kind) &&
         (0, t.jsx)(RetryButton, {children: error.kind === 'aborted' ? 'Retry' : 'Try again'}),
-      error.kind === 'generic' && error.reportable && (0, t.jsx)(ReportButton, {}),
     ],
   });
 }

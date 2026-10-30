@@ -6,7 +6,10 @@
  * he pickDefaultTarget; f React stays as named, the JSX runtime is jsxRuntime.
  * Chunk names used: B/K/R React and JSX runtime, _ useNavigate, q Spinner, E usePlatform, U/M/Z the
  * field parts, G useTRPC, h Button, b toast, Y/$ the completed-imports and sources queries, A
- * setPendingImport, z/Q the radio group, P/C/N/k/F/D/S the dialog parts, H useSuspenseQueries. */
+ * setPendingImport, z/Q the radio group, P/C/N/k/F/D/S the dialog parts, H useSuspenseQueries.
+ * Aux changes: sources the browser lists as installed count as detected (the daemon's own list stops
+ * at the browsers it knew), the Keychain explainer names the browser's real item and shows for
+ * passwords as well as sign-ins, never for Firefox or Zen, and Safari's copy names the real menu. */
 var f = B(K(), 1),
   GRANT_PERMISSION_IMAGE = '/assets/grant-permission-lDve06mu.webp',
   SAFARI_EXPORT_IMAGE = '/assets/safari-file-export-ClYcYuwR.webp',
@@ -81,8 +84,7 @@ var f = B(K(), 1),
             sourceProfileId: target.kind === 'profile' ? target.profileId : void 0,
             navigateToProgress,
           };
-          // Only sign-ins touch the Keychain, so only they need the explainer.
-          if (os === 'windows' || (options?.dataKinds && !options.dataKinds.includes('cookies'))) {
+          if (os === 'windows' || !needsKeychain(target.source, options?.dataKinds)) {
             proceed(request);
             return;
           }
@@ -97,6 +99,12 @@ var f = B(K(), 1),
       }),
     };
   },
+  /** Passwords and sign-ins are encrypted with a Keychain item; Firefox and Zen keep no such key. */
+  needsKeychain = (source, dataKinds) =>
+    !['firefox', 'zen'].includes(source.id) &&
+    (!dataKinds || dataKinds.includes('cookies') || dataKinds.includes('passwords')),
+  /** The Keychain item macOS names in its prompt. */
+  safeStorage = ({id, name}) => (id === 'helium' ? 'Helium Storage Key' : `${name.replace(/^Google /, '')} Safe Storage`),
   /** The first detected target not yet imported, else any not yet imported, else the first. */
   he = targets =>
     targets.find(target => !target.alreadyImported && target.detected) ??
@@ -105,8 +113,9 @@ var f = B(K(), 1),
   /** What can be imported: a file for sources that need one, else each profile, or the source with no profiles. */
   importTargets = (sources, profilesByBrowser, completedKeys) =>
     Array.from(sources.values()).flatMap(source => {
+      if (source.installed === false) return [];
       const profiles = profilesByBrowser.get(source.id) ?? [],
-        detected = profilesByBrowser.has(source.id);
+        detected = profilesByBrowser.has(source.id) || source.installed === true;
       if (source.requiresFileImport) {
         const lastUsedAt = profiles
           .map(profile => profile.lastUsedAt)
@@ -159,7 +168,8 @@ var f = B(K(), 1),
     }),
   /** Explains the system prompt before reading browser data. */
   GrantPermissionDialog = ({dialog, onOpenChange, onProceed}) => {
-    const proceed = () => {
+    const storage = dialog?.source ? safeStorage(dialog.source) : 'Chrome Safe Storage',
+      proceed = () => {
         dialog?.type === 'grant-permission' && onProceed(dialog);
       },
       onKeyDown = event => {
@@ -177,10 +187,10 @@ var f = B(K(), 1),
           (0, jsxRuntime.jsxs)(k, {
             className: 'text-center',
             children: [
-              (0, jsxRuntime.jsx)(D, {className: 'font-display text-xl', children: 'macOS will ask about Chrome Safe Storage'}),
+              (0, jsxRuntime.jsx)(D, {className: 'font-display text-xl', children: `macOS will ask about ${storage}`}),
               (0, jsxRuntime.jsxs)(C, {
                 children: [
-                  'macOS will ask to let Aux read Chrome Safe Storage, so your sign-ins come over.',
+                  `macOS will ask to let Aux read ${storage}, so your passwords and sign-ins come over.`,
                   (0, jsxRuntime.jsx)('br', {}),
                   'Choose Always Allow.',
                 ],

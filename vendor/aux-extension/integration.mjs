@@ -16,6 +16,34 @@ import {readFileSync} from 'node:fs';
 export const GLOBALS_CSS = 'assets/globals-B-8L9em-.css';
 /** The supplied display face, Universal Sans Display renamed: commercial, not Aux's to ship. */
 export const REMOVED_FILES = Object.freeze(['assets/AuxDisplay-Variable-LuohODSt.woff2']);
+/** Chunks Aux doesn't ship: nothing renders them, and transforms.mjs takes them out of every Vite
+ * deps table so nothing preloads them either. */
+export const REMOVED_CHUNKS = Object.freeze(['assets/tasks-CtF0WxoJ.js', 'assets/session-feedback-dialog-BjDg0W8m.js',
+  'assets/context-awareness-BocPTg31.js', 'assets/add-on-credits-dialog-Dn5FxOyZ.js', 'assets/billing-DuRDVoRU.js']);
+/** The removed chunks' only asset. */
+export const REMOVED_ASSETS = Object.freeze(['assets/aux-context-awareness-CQFhCmYA.webp']);
+
+const DEPS_TABLE = /(const __vite__mapDeps=\(i,m=__vite__mapDeps,d=\(m\.f\|\|\(m\.f=)(\[[^\]]*\])/;
+
+/** A chunk with every reference to the removed chunks gone: a lazy loader becomes an empty module,
+ * a dep leaves each __vite__mapDeps call, and its table entry is blanked so the indexes hold. */
+export function dropRemovedChunks(text, removed = REMOVED_CHUNKS) {
+  const name = chunk => chunk.replace('assets/', '');
+  if (!removed.some(chunk => text.includes(name(chunk)))) return text;
+  const table = DEPS_TABLE.exec(text);
+  const list = table ? JSON.parse(table[2]) : [];
+  const gone = new Set(list.flatMap((file, index) => (removed.includes(file) ? [index] : [])));
+  let output = text;
+  for (const chunk of removed)
+    output = output.replaceAll(new RegExp(`\\w+\\(\\(\\)=>import\\("\\./${name(chunk).replace(/[.-]/g, '\\$&')}"\\),__vite__mapDeps\\(\\[[\\d,]*\\]\\)\\)`, 'g'), 'Promise.resolve({})');
+  output = output.replace(/__vite__mapDeps\(\[([\d,]*)\]\)/g, (_, indexes) =>
+    `__vite__mapDeps([${indexes.split(',').filter(index => index && !gone.has(Number(index))).join()}])`);
+  if (table) output = output.replace(table[2], JSON.stringify(list.map(file => (removed.includes(file) ? null : file))));
+  const left = removed.find(chunk => output.includes(name(chunk)));
+  if (left) throw Error(`Agent chunks: ${left} is still imported`);
+  return output;
+}
+
 /** The Geist fonts are OFL 1.1, which travels with them. */
 export const LICENSE = Object.freeze({source: 'fonts/Geist-OFL.txt', target: 'GEIST-LICENSE.txt'});
 
@@ -240,8 +268,6 @@ export const ROUTES = Object.freeze({
     '(0,e.jsx)(x,{title:"Create"})]})]})]})};', 'eddb999ec82b2a0d07f19ba3990cc57c4d45f40ca2ed680507e761eff3cc8dd5', 3656)],
   'assets/routine-item-menu-DJrYR2RE.js': [block('Routine row and menu', 'routine-item-menu.js', 'var j=z(k(),1),e=E(),v=50,le=({routineId',
     'e,{className:"size-4"}),"Remove"]})]})};', '29dccba48587313e77461322ce94bdbac59307eab9cf8eca7031b3aa4ebad589', 6333)],
-  'assets/tasks-CtF0WxoJ.js': [block('New Tab tasks', 'new-tab-tasks.js', 'var h=D(Q(),1),e=B(),P="rounded-full px-',
-    '})]}),s?.({taskCount:o?.length??0})]})};', '5b1fb9b6e811dfa6e504e30bada75f1b3ba843d77d4c77fd2e4b33db20b175aa', 7913)],
   'assets/tasks-D7OPjR17.js': [block('Tasks page', 'tasks-page.js', 'var e=F(),Ke=({size:s=24,ariaHidden:a=!0',
     'iew==="card"&&(0,e.jsx)(ss,{})]})]})]})}', 'e7f1eebeab6c8377b75b01b92e354a2301da199dd5bf9ff6f8ee2e29b4c9abad', 15327)],
   'assets/onboarding-helper-BVYyPOep.js': [block('New Tab onboarding helper', 'onboarding-helper.js', 'var e=w(),_=({size:t=24,ariaHidden:o=!0,',
@@ -273,8 +299,6 @@ export const ROUTES = Object.freeze({
     'ldren:"90 days"})]})]})})]})]})})]})]})}', 'ba75e3dffb6ae3a73c240ed99f89699bfa362deac1263f53882e40aa6ff33755', 1731)],
   'assets/import-DX5BoL4B.js': [block('Memory: import', 'memory-import.js', 'var t=e();function m(){return(0,t.jsx)("',
     'ter text-sm",children:"Import memory"})}', '49852f9282ac7bb75a5b147483cc01f06946d0bced12bdd8b263bd2101e4524e', 175)],
-  'assets/context-awareness-BocPTg31.js': [block('Memory: Context Awareness', 'context-awareness.js', 'var x=Se(ke(),1);function L(s){return s.',
-    '!M,onClick:E,children:"Add"})]})]})]})};', '6fd6cfd4239350f4ae50cd0f4a819bfc945d71ed544a518dae5bd65ede768db5', 20543)],
   // General: the Aux-facing settings code in two passes; three.js and the injected Aux code stay with their owners.
   'assets/general-3dgRbrRk.js': [
     block('General: account, import, capture and languages', 'general-settings.js', 'function vm({className:e,outsideSpeed:t=',
@@ -469,10 +493,6 @@ export const ROUTES = Object.freeze({
     block('Project list', 'project-list.js', 'U=({accountId:s,projects:t,userId:i})=>(',
       ';return t.isValid()?t.format("LL"):"—"};', '35a78ed2d11dd46c976a5476a00a288f841152926e367f32743c74a246087947', 2668),
   ],
-  'assets/session-feedback-dialog-BjDg0W8m.js': [
-    block('Session feedback dialog', 'session-feedback-dialog.js', 'var Y=g(v(),1),e=S();function G(){const ',
-      'n",{children:"Submit"})]})]})]})})})})};', '7738b42b511ba64a201614870de4593ceff3cba57d40d0b3417cdc6e04387980', 2261),
-  ],
   'assets/coding-agent-nudge-Cy9BtLdb.js': [
     block('Coding agent nudge', 'coding-agent-nudge.js', 's=k(),I=({children:e,className:n,dismiss',
       'rget:u,handleConnect:C,handleDismiss:w}}', '59553210ecd019381efdf30cc931e6c051d16ae829beb0ba381e4d2b739c6cfb', 5320),
@@ -630,8 +650,6 @@ export const TOKEN_CHANGES = Object.freeze([
   ['composer-conversation.js', 'rounded-2xl', 'rounded-xl'],
   // A hovered routine row used a fixed neutral-100 in light mode, unlike every other settings row.
   ['routines-settings.js', 'group-hover/routine:bg-neutral-100', 'group-hover/routine:bg-muted'],
-  // The New Tab confirmation card took the 16px step; the task cards beside it use the 12px one.
-  ['new-tab-tasks.js', 'rounded-2xl', 'rounded-xl'],
   // The channel settings dialog overrode the dialog corner with the 16px step; the required mark was a fixed orange.
   ['channels-connections.js', 'rounded-2xl', 'rounded-xl'],
   ['channels-setup.js', 'text-orange-500', 'text-destructive'],
@@ -697,7 +715,7 @@ export const TOKEN_CHANGES = Object.freeze([
 
 /** Route blocks that are Aux's own design rather than the supplied screen with edits: parity has
  * nothing to compare, so routes.test.mjs covers what each must do. */
-export const REWRITTEN = Object.freeze(['onboarding-welcome.js', 'import-browser.js', 'onboarding-done.js']);
+export const REWRITTEN = Object.freeze(['onboarding-welcome.js', 'import-browser.js', 'onboarding-done.js', 'appearance-route.js', 'use-browser-importer.js', 'import-progress.js']);
 
 const behavior = (file, name, find, replace) => Object.freeze({file, name, find, replace});
 
@@ -730,25 +748,12 @@ export const BEHAVIOR_CHANGES = Object.freeze([
   behavior('context-awareness.js', 'no plan gate on the switch', 
     '(0,e.jsxs)("div",{className:"relative",children:[(0,e.jsx)(J,{checked:g,disabled:u.isPending||m,onCheckedChange:Ae}),m&&(0,e.jsx)("span",{className:"bg-background absolute inset-0 rounded-full opacity-50"})]})}),m&&(0,e.jsx)(We,{children:"Context Awareness requires the Max plan"})',
     '(0,e.jsx)("div",{className:"relative",children:(0,e.jsx)(J,{checked:g,disabled:u.isPending,onCheckedChange:Ae})})})'),
-  behavior('context-awareness.js', 'no plan queries', '{data:d}=te(o.accounts.get.queryOptions({accountId:s})),{data:r=!1}=F(o.analytics.isExperimentalEligible.queryOptions({accountId:s})),m=!Ze(d,{experimentalEligible:r})&&!n.enabled,', ''),
   behavior('routines-settings.js', 'no Free plan banner', ['!1&&(0,e.jsxs)("div",{className:"inner-curved-shape-top', 'children:"Upgrade"})]}),'], ''),
   behavior('routines-settings.js', 'no plan lookup',
     ',{data:j}=g(l.accounts.get.queryOptions({accountId:r})),h=AUX_LAUNCH_POLICY.paymentsEnabled&&(j?.subscriptionPlan??"free")==="free",v=h&&u.filter(s=>s.status==="active").length>=3;', ';'),
   behavior('routines-settings.js', 'Create is never held at a plan limit', 'render:v?(0,e.jsx)("button",{type:"button",className:"pointer-events-none *:opacity-50",disabled:!0}):(0,e.jsx)(m,', 'render:(0,e.jsx)(m,'),
   behavior('tool-summaries.js', 'no plan-limit detail', 'mo(e.resultText)?"Routine limit reached.":"Routine update failed"', '"Routine update failed"'),
   behavior('tool-cards.js', 'no plan-limit notice', 'expandMode:"none",footer:Ep,standalone:!0}', 'expandMode:"none",standalone:!0}'),
-  // The Keychain explainer says what macOS will ask, and only sign-ins raise it; Safari's copy names the real menu.
-  behavior('use-browser-importer.js', 'the explainer title', '"Please grant permission"', '"macOS will ask about Chrome Safe Storage"'),
-  behavior('use-browser-importer.js', 'the explainer body', '"Your system may ask for permission to read browser data."', '"macOS will ask to let Aux read Chrome Safe Storage, so your sign-ins come over."'),
-  behavior('use-browser-importer.js', 'the explainer action', '"Approve the prompt to continue."', '"Choose Always Allow."'),
-  behavior('use-browser-importer.js', 'Safari is capitalized', '"Export your safari data first"', '"Export your Safari data first"'),
-  behavior('use-browser-importer.js', 'the real Safari menu',
-    '"In safari, click ",(0,e.jsx)("span",{children:"File > Export"}),", then import the ZIP file that Safari creates."',
-    '"In Safari, choose ",(0,e.jsx)("span",{children:"File › Export Browsing Data to File…"}),", then import the ZIP file Safari creates."'),
-  behavior('use-browser-importer.js', 'the image says the same', `alt:'In safari, click "File > Export", then import the ZIP file that Safari creates.'`, 'alt:"In Safari, choose File › Export Browsing Data to File…, then import the ZIP file Safari creates."'),
-  behavior('use-browser-importer.js', 'the file field names what it takes', '"Safari passwords ZIP file"', '"Safari browsing data ZIP file"'),
-  behavior('use-browser-importer.js', 'the destination reaches the import', 'dataKinds:t.dataKinds,sourceProfileId:t.sourceProfileId', 'dataKinds:t.dataKinds,destination:t.destination,sourceProfileId:t.sourceProfileId'),
-  behavior('use-browser-importer.js', 'an import asks only for sign-ins', 'dataKinds:u?.dataKinds,sourceProfileId:t.kind==="profile"?t.profileId:void 0,navigateToProgress:g};if(i==="windows"){', 'dataKinds:u?.dataKinds,destination:u?.destination,sourceProfileId:t.kind==="profile"?t.profileId:void 0,navigateToProgress:g};if(i==="windows"||u?.dataKinds&&!u.dataKinds.includes("cookies")){'),
   // The Models step is about local agents and API keys, not subscriptions (plan Batch 8).
   behavior('onboarding-ai.js', 'the step title', '"Choose your AI subscription"', '"Connect a model"'),
   behavior('onboarding-ai.js', 'the step text', '"Connect a subscription you already have, or use your own API key."', '"Use an agent CLI already signed in on this Mac, or your own API key."'),
@@ -772,6 +777,55 @@ export const BEHAVIOR_CHANGES = Object.freeze([
   behavior('error-alert.js', 'out of credits offers Models, and the new kinds retry',
     'e.kind==="credits-aux-v2"&&e.actions.map((i,a)=>i==="addCredits"?(0,t.jsx)(z,{primary:a===0},i):(0,t.jsx)(D,{primary:a===0},i)),["aborted","auth","generic","overloaded","provider-server","rate-limit"]',
     'e.kind==="credits-other"&&(0,t.jsx)(R,{children:"Open Models"}),["aborted","auth","credits-other","generic","network","offline","overloaded","provider-server","rate-limit"]'),
+  // Spaces replaced profiles, and Ask before quitting is a Preferences row (plan Batch 7).
+  behavior('appearance-settings.js', 'a stale page says Settings', 'Profile changed. Reopen settings before making changes.', 'Settings changed. Reopen this page before making changes.'),
+  // Settings › Import names what it brings, like onboarding does (plan Batch 6); the default search
+  // engine only comes when ticked, and the labels for data Aux doesn't import are gone.
+  behavior('general-settings.js', 'the search engine choice', '[f,R]=(0,at.useState)(null),', '[f,R]=(0,at.useState)(null),[auxSearchEngine,auxSetSearchEngine]=(0,at.useState)(false),'),
+  behavior('general-settings.js', 'a full import names its kinds', 'v=async()=>{if(!x||w&&x.alreadyImported)return;',
+    'auxOffersSearchEngine=w&&!!x?.source.categories?.includes("searchEngine"),auxKinds=()=>[...x.source.supportedDataKinds??[],...auxOffersSearchEngine&&auxSearchEngine?["searchEngine"]:[]],v=async()=>{if(!x||w&&x.alreadyImported)return;'),
+  behavior('general-settings.js', 'the import sends them', 'c.importTarget(x,{dataKinds:e,navigateToProgress:!1})', 'c.importTarget(x,{dataKinds:e??auxKinds(),navigateToProgress:!1})'),
+  behavior('general-settings.js', 'the search engine row and the passwords note',
+    '(0,A.jsx)(Lm,{disabled:T,lockImported:w,targets:b,value:d,onChange:u})]',
+    '(0,A.jsx)(Lm,{disabled:T,lockImported:w,targets:b,value:d,onChange:u}),auxOffersSearchEngine&&(0,A.jsxs)("label",{className:"text-primary flex items-center justify-between gap-2 px-1 text-sm",children:[`Use ${x.source.name}’s default search engine`,(0,A.jsx)(Ds,{checked:auxSearchEngine,disabled:T,onCheckedChange:auxSetSearchEngine})]}),w&&x&&!x.source.supportedDataKinds?.includes("passwords")&&(0,A.jsx)("p",{className:"text-muted-foreground px-1 text-xs",children:`Passwords can’t come over from ${x.source.name}. They stay there and in your password manager.`})]'),
+  behavior('general-settings.js', 'no labels for data Aux never imports', '["autofill","autofill data"],["paymentCards","payment cards"],["spaces","Spaces and pins"]]', '["spaces","Spaces and pins"],["searchEngine","default search engine"]]'),
+  behavior('general-settings.js', 'a partial import names what it skipped',
+    '(0,A.jsx)("span",{className:"block",children:"Imported everything except site sign-ins."})',
+    '(0,A.jsx)("span",{className:"block",children:`Imported everything except ${[...new Set(n.skippedDataKinds)].map(kind=>kind==="cookies"?"site sign-ins":Om.get(kind)??kind).join(" and ")}.`})'),
+  behavior('general-settings.js', 'Ask before quitting beside the New Tab row', '(0,A.jsx)(Km,{})]', '(0,A.jsx)(Km,{}),(0,A.jsx)(AuxConfirmQuitSetting,{})]'),
+  // Math and unit answers head the command bar (plan Batch 7); Enter copies.
+  behavior('tabsearch.js', 'the answer heads the results', 'navigationSections(auxNavContext,r,Pe($,r))', 'auxAnswerSections(r,navigationSections(auxNavContext,r,Pe($,r)))'),
+  behavior('tabsearch.js', 'Enter copies the answer', 'if(n.kind==="aux-settings"){', 'if(n.kind==="aux-answer"){await navigator.clipboard.writeText(n.text);auxNavSuccess=true;return}if(n.kind==="aux-settings"){'),
+  behavior('tabsearch.js', 'an answer wears an equals sign', 'function We({item:e}){return e.kind==="chat"?',
+    'function We({item:e}){return e.kind==="aux-answer"?(0,s.jsx)("div",{className:"text-muted-foreground pointer-events-none flex size-4.5 shrink-0 items-center justify-center text-sm select-none",draggable:!1,children:"="}):e.kind==="chat"?'),
+  // No plans, credits or feedback in a chat (owner, 2026-10-30): the transcript has no upgrade or
+  // add-on dialogs, an error offers Retry, and nothing reads a subscription.
+  behavior('composer-transcript-rows.js', 'no dialog state', '[b,v]=(0,g.useState)(!1),[C,S]=(0,g.useState)(!1),', ''),
+  behavior('composer-transcript-rows.js', 'no subscription or checkout',
+    ['{data:N}=Fe(x.billing.getSubscription.queryOptions(', 'ae=ve(x.billing.createAddOnCheckout.mutationOptions()),'], ''),
+  behavior('composer-transcript-rows.js', 'no billing callbacks', ['ye=(0,g.useCallback)(L=>{br(`/u/${m}/settings/billing${L}`)}', 'de.error("Could not open add-on credit checkout.")}},[m,ae]),'], ''),
+  behavior('composer-transcript-rows.js', 'the row context has no plan',
+    ['alwaysVisibleAssistantRunId:re,canChangePlan:W!=="max",', '[re,N,W,Le,Te,fe,le,t,V,I]'],
+    'alwaysVisibleAssistantRunId:re,hideAssistantActions:le,isReadonly:t,onRetryAssistant:fe,pendingToolCallId:V,sessionId:I}),[re,fe,le,t,V,I]'),
+  behavior('composer-transcript-rows.js', 'no plan or add-on dialogs',
+    ['(0,a.jsx)(Wl,{currentPeriod:O,', 'onCheckout:De,onOpenChange:S}),'], ''),
+  behavior('composer-conversation.js', 'a run reads no plan',
+    'canChangePlan:s,hideAssistantActions:o,isReadonly:i,onAddCreditsClick:c,onPaymentRequiredClick:l,onRetryAssistant:u,paymentRequiredCreditRefreshAt:h,paymentRequiredPlan:d,pendingToolCallId:m',
+    'hideAssistantActions:o,isReadonly:i,onRetryAssistant:u,pendingToolCallId:m'),
+  behavior('composer-conversation.js', 'no report action', ',w=C.provider==="aux",I=!i&&(M||C.stopReason==="error"),R=()=>x(da,{sessionId:p});', ',I=!i&&(M||C.stopReason==="error");'),
+  behavior('composer-conversation.js', 'nothing to broadcast', '{broadcast:x}=Ls(),b=!i&&!o&&!t.isHandoff,', 'b=!i&&!o&&!t.isHandoff,'),
+  behavior('composer-conversation.js', 'an error offers Retry', 'actions:{addCredits:w?c:void 0,report:R,retry:I?u:void 0,upgrade:w&&s?l:void 0}', 'actions:{retry:I?u:void 0}'),
+  behavior('composer-conversation.js', 'an error reads no plan', 'diagnostics:C.diagnostics,billing:{plan:d,creditRefreshAt:h}}', 'diagnostics:C.diagnostics}'),
+  behavior('error-alert.js', 'no Report bug button', 'function T(){const{actions:r}=d();return(0,t.jsx)(m,{onClick:r.report,children:"Report bug"})}', ''),
+  behavior('error-alert.js', 'no Report bug: feedback is hidden', ',e.kind==="generic"&&e.reportable&&(0,t.jsx)(T,{})', ''),
+  // The agent's startup states (plan 1.2): getting ready while the daemon starts, couldn't start
+  // with Try again, in every page behind the router, and on New Tab.
+  behavior('error-tracking.js', 'a slow first start is not a failure', 'attempts>=3){I(!0);return}', 'attempts>=ATTEMPTS){I(!0);return}'),
+  behavior('error-tracking.js', 'giving up says the agent couldn’t start', '!t||l?(0,n.jsx)(R,{...e}):', '!t?(0,n.jsx)(R,{...e}):l?(0,n.jsxs)("main",{role:"alert",className:"flex h-screen w-screen flex-col items-center justify-center gap-3 px-6 text-center",children:[(0,n.jsx)("p",{className:"text-muted-foreground text-sm",children:"Your agent couldn’t start."}),(0,n.jsx)(y,{variant:"outline",onClick:tryAgain,children:"Try again"})]}):'),
+  behavior('error-tracking.js', 'the agent is getting ready', 'children:"Reconnecting to Aux…"})]})}var X=class', 'children:"Getting your agent ready…"})]})}var tryAgain=()=>{chrome.auxBrowserPreferences?.retryDaemon?.(),window.location.reload()},ATTEMPTS=6,X=class'),
+  behavior('new-tab-island.js', 'New Tab can check again', '{data:a}=h({...$.queryOptions,queryFn:K})', '{data:a,refetch}=h({...$.queryOptions,queryFn:K})'),
+  behavior('new-tab-island.js', 'New Tab says when the agent isn’t up', '!o&&l&&(0,e.jsx)(x,{root:"#new-tab-content",', '!o&&!l&&(0,e.jsx)(x,{root:"#new-tab-tasks",children:(0,e.jsx)(AuxNewTabAgentStatus,{onCheck:refetch})}),!o&&l&&(0,e.jsx)(x,{root:"#new-tab-content",'),
+  behavior('model-settings.js', 'added local agents have a section', '(0,e.jsxs)(ce,{title:"Task models",children:', '(0,e.jsx)(AuxLocalAgents,{}),(0,e.jsxs)(ce,{title:"Task models",children:'),
   behavior('new-tab-island.js', 'New Tab mounts the suggestions without the task cards',
     '(0,e.jsx)(ye,{children:({taskCount:f})=>(0,e.jsx)(_e,{taskCount:f})})', '(0,e.jsx)(_e,{})'),
   behavior('onboarding-helper.js', 'the suggestions are a plain chip row: no fold, no Close or Show suggestions',

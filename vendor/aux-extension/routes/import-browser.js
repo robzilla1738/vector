@@ -10,7 +10,8 @@
  * tooltip parts, W/X/Z/$/S/K the onboarding layout parts, Q motion, y BrowserIcon.
  * Aux changes: the browser tiles and their placeholders take the 12px card corner (rounded-xl); the
  * dialog gained the what-to-bring-over step (data kinds, and own Space group or merge), so every
- * import goes through it; dataKinds and destination travel to chrome.auxBrowserImport.startImport. */
+ * import goes through it; dataKinds and destination travel to chrome.auxBrowserImport.startImport.
+ * The default search engine is a kind too, off until ticked. Arc comes first, then by last use. */
 var h = A(z(), 1),
   jsxRuntime = O(),
   /** What an import can bring, in display order; a source lists what it supports. */
@@ -21,7 +22,10 @@ var h = A(z(), 1),
     ['cookies', 'Stay signed in to sites'],
     ['extensions', 'Extensions'],
     ['passwords', 'Passwords'],
+    ['searchEngine', 'Default search engine'],
   ],
+  /** What the person has to ask for: a new default search engine is never a surprise. */
+  OPT_IN = ['searchEngine'],
   /** Each profile can stay its own group of Spaces, with its sign-ins apart, or join Default. */
   DESTINATIONS = [
     ['merge', 'Merge into your Spaces', 'Sign-ins join the ones you already have.'],
@@ -32,10 +36,13 @@ var h = A(z(), 1),
     const [step, setStep] = (0, h.useState)(initialStep),
       [browserId, setBrowserId] = (0, h.useState)(initialBrowserId),
       [targetId, setTargetId] = (0, h.useState)(''),
-      [unchecked, setUnchecked] = (0, h.useState)([]),
+      [unchecked, setUnchecked] = (0, h.useState)(OPT_IN),
       [destination, setDestination] = (0, h.useState)('merge'),
       browser = browsers.find(item => item.source.id === browserId),
-      supported = browser?.source.supportedDataKinds ?? [],
+      supported = [
+        ...(browser?.source.supportedDataKinds ?? []),
+        ...(browser?.source.categories?.includes('searchEngine') ? ['searchEngine'] : []),
+      ],
       kinds = DATA_KINDS.filter(([kind]) => supported.includes(kind)),
       chosen = kinds.map(([kind]) => kind).filter(kind => !unchecked.includes(kind)),
       target =
@@ -178,7 +185,7 @@ var h = A(z(), 1),
               !supported.includes('passwords') &&
                 (0, jsxRuntime.jsx)('p', {
                   className: 'text-muted-foreground text-xs',
-                  children: 'Passwords stay in your password manager.',
+                  children: `Passwords can’t come over from ${browser?.source.name}. They stay there and in your password manager.`,
                 }),
             ],
           }),
@@ -277,7 +284,7 @@ var ImportPlaceholder = () =>
             lastUsedAt: Math.max(0, ...targets.map(target => Date.parse(target.lastUsedAt ?? '') || 0)),
           };
         })
-        .sort((a, b) => b.lastUsedAt - a.lastUsedAt),
+        .sort((a, b) => (b.source.id === 'arc') - (a.source.id === 'arc') || b.lastUsedAt - a.lastUsedAt),
       selected =
         browsers.find(browser => browser.source.id === selectedId && !browser.alreadyImported) ??
         browsers.find(browser => !browser.alreadyImported),

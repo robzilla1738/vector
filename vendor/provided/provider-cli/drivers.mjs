@@ -79,12 +79,13 @@ export function buildArgs(driver, {prompt, images, model, effort, cwd, systemPro
       // Cursor reads always-applied project rules; --mode ask keeps its own tools read-only.
       const files = systemPrompt ? [writePrivate(path.join(cwd, '.cursor', 'rules', 'aux.mdc'), `---\ndescription: Aux\nalwaysApply: true\n---\n\n${systemPrompt}\n`)] : [];
       return {stdin: null, files, args: ['-p', '--output-format', 'stream-json', '--stream-partial-output', '--workspace', cwd,
-        '--trust', '--mode', 'ask', '--sandbox', 'enabled', ...mcp.args, ...optional('--model', model), ...optional('--resume', resume), prompt]};
+        '--trust', '--mode', 'ask', '--sandbox', 'enabled', ...mcp.args, ...folders.flatMap(folder => ['--add-dir', folder]),
+        ...optional('--model', model), ...optional('--resume', resume), prompt]};
     }
     case 'grok-streaming-json': {
       const file = writePrivate(path.join(cwd, 'prompt.txt'), prompt);
       return {stdin: null, files: [file], args: ['--prompt-file', file, '--output-format', 'streaming-json', '--include-partial-messages',
-        '--cwd', cwd, '--permission-mode', 'dontAsk', '--no-subagents', ...mcp.args, ...optional('--model', model),
+        '--cwd', cwd, '--permission-mode', 'dontAsk', '--no-subagents', ...mcp.args, ...folders.flatMap(folder => ['--add-dir', folder]), ...optional('--model', model),
         ...optional('--resume', resume), ...optional('--rules', systemPrompt)]};
     }
     case 'opencode-json': {
@@ -120,7 +121,7 @@ function queue() {
 
 /**
  * Run one turn. options: {provider, file, prompt, images?, cwd, env, model?, effort?, systemPrompt?,
- * mcp?: {url, token}, resume?, keep?, approve?, paused?, signal?, idleTimeoutMs?}. `resume` is the
+ * mcp?: {url, token}, resume?, keep?, approve?, paused?, signal?, idleTimeoutMs?, acpArgs?}. `resume` is the
  * CLI session to continue; `keep` lets the CLI store the session so a later turn can. Yields
  * events; the last one is always `done` or `error`. The child process group and every file the
  * turn wrote are gone when the generator returns, including on early `return()` by the caller.
@@ -348,6 +349,27 @@ export async function codexModels(file, {env, cwd, timeoutMs = 15000} = {}) {
   }
 }
 
+/** Whether a command answers ACP's `initialize`. It starts the program, once, after the person
+ * confirmed the exact command; no session or prompt. */
+export async function acpAnswers(file, args, {env, cwd, timeoutMs = 15000} = {}) {
+  const child = launch(file, args, {cwd, env, stdin: 'pipe'});
+  const peer = rpcPeer(child, {jsonrpc: true, onRequest: unsupported, onNotification: () => []});
+  child.stderr.resume();
+  const reader = (async () => { for await (const line of lines(child.stdout)) { try { peer.receive(JSON.parse(line)); } catch {} } })().catch(() => {});
+  const timer = setTimeout(() => terminate(child, 500), timeoutMs);
+  try {
+    const init = await Promise.race([peer.request('initialize', {protocolVersion: 1, clientCapabilities: {fs: {readTextFile: false, writeTextFile: false}, terminal: false},
+      clientInfo: {name: 'aux', title: 'Aux', version: '1.0.0'}}), new Promise(resolve => child.once('close', () => resolve(null)))]);
+    return Number.isInteger(init?.protocolVersion);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+    await terminate(child, 500);
+    await reader;
+  }
+}
+
 /** Claude Code's permission-prompt input as an Aux approval request, and Claude's expected answer. */
 export function claudePermissionRequest({tool_name: name = '', input = {}} = {}) {
   if (name === 'Bash') return {kind: 'command', command: input.command ?? ''};
@@ -376,7 +398,7 @@ function acpChoice(options = [], allowed) {
  * session/new or session/load, session/prompt, session/cancel. Aux offers no client file or
  * terminal access; the agent's own actions ask Aux through session/request_permission. */
 async function* runAcp(entry, options, env) {
-  const child = launch(options.file, entry.acpArgs, {cwd: options.cwd, env, stdin: 'pipe'});
+  const child = launch(options.file, options.acpArgs ?? entry.acpArgs, {cwd: options.cwd, env, stdin: 'pipe'});
   const parser = PARSERS.acp();
   const approve = options.approve ?? deny;
   let sessionId, loading = false;

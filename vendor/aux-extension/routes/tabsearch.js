@@ -9,7 +9,7 @@
  * queries oe fetch, H account id, auxFilesClient, auxFilesAccount; date me dayjs; scroll-area
  * ue backend URL, de ScrollArea; extension-page-url _; favicon R; avatar pe/fe/he Avatar parts;
  * empty we/be Empty parts; kbd ye; platform xe shortcut label; icons K arrow, ae chats, ie history,
- * ce search, V puzzle, le window. */
+ * ce search, V puzzle, le window; aux-quick-answer auxAnswerSections, the math and unit answer. */
 var jsxRuntime = re(),
   BookmarkIcon = ({size = 24, ariaHidden = true, ...props}) =>
     (0, jsxRuntime.jsx)('svg', {
@@ -965,7 +965,7 @@ function CommandBar() {
               mediaSections(
                 auxNavContext,
                 query,
-                navigationSections(auxNavContext, query, browserSections(sources, query)),
+                auxAnswerSections(query, navigationSections(auxNavContext, query, browserSections(sources, query))),
               ),
             ),
           ),
@@ -1036,6 +1036,11 @@ function CommandBar() {
           }
           if (item.kind?.startsWith('aux-developer-')) {
             await runDeveloperCommand(chrome.auxBrowserPreferences, chrome.tabs, auxNavContext, item);
+            auxNavSuccess = true;
+            return;
+          }
+          if (item.kind === 'aux-answer') {
+            await navigator.clipboard.writeText(item.text);
             auxNavSuccess = true;
             return;
           }
@@ -1459,7 +1464,13 @@ var /** A titled section of results. */
       ],
     }); /** A result’s icon: the favicon, else one for its kind. */
 function ResultIcon({item}) {
-  return item.kind === 'chat'
+  return item.kind === 'aux-answer'
+    ? (0, jsxRuntime.jsx)('div', {
+        className: 'text-muted-foreground pointer-events-none flex size-4.5 shrink-0 items-center justify-center text-sm select-none',
+        draggable: false,
+        children: '=',
+      })
+    : item.kind === 'chat'
     ? (0, jsxRuntime.jsx)('div', {
         className: 'pointer-events-none flex size-4.5 shrink-0 items-center justify-center select-none',
         draggable: false,

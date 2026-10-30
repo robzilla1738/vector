@@ -61,7 +61,7 @@ When it fits (usually after the first demo, or when something is blocking), brin
 
 | When `snapshot()` shows | Why it helps them | Button |
 | --- | --- | --- |
-| Another browser used recently | Brings over their bookmarks, logins and history so you know their sites from day one | `{"label":"Import from Chrome","to":"/onboarding/import-browser"}` |
+| Another browser used recently | Brings over their bookmarks, passwords and history so you know their sites from day one | `{"label":"Import from Chrome","to":"/onboarding/import-browser"}` |
 | An AI subscription installed | Lets them use the Claude or OpenAI plan they already pay for | `{"label":"Connect Claude Code","to":"/u/$userId/settings/model"}` |
 | No channels connected, and Slack or Telegram among their tools | They can message you from their phone and you run the task here | `{"label":"Connect a channel","to":"/u/$userId/settings/channels"}` |
 | Something recurring came up and they have no routines | It can happen on its own without them asking | `{"label":"Create a routine","to":"/u/$userId/settings/routines"}` |

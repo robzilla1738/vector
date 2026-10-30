@@ -2,7 +2,8 @@
  * newtab.html paints the omnibox itself; this island mounts the rest into the page's slots through
  * portals: the Spaces sidebar (#new-tab-sidebar), the sidebar-mode toggle (#new-tab-header), the
  * suggestion chips (#new-tab-tasks), nudges (#new-tab-content) and the update banner.
- * Aux change: no task cards on New Tab (owner, 2026-10-30); the page is always logo, search, chips.
+ * Aux changes: no task cards on New Tab (owner, 2026-10-30), so the page is always logo, search and
+ * chips; until the daemon answers, the chips' place says the agent is getting ready, or couldn't start.
  * The supplied profile and billing menu was already removed by a package edit (Aux has no
  * accounts or payments), so its unreachable code is gone here.
  *
@@ -99,7 +100,7 @@ var Ge = () => (0, jsxRuntime.jsx)(A, {
   // Once the account is known, each slot gets its piece; incognito keeps only the omnibox.
   NewTabBody = () => {
     const {accountId, browserMode, setAccountId} = ie();
-    const {data: account} = h({...$.queryOptions, queryFn: K});
+    const {data: account, refetch} = h({...$.queryOptions, queryFn: K});
     const resolvedAccountId = account?.accountId ?? null;
     const showUpdate = le({minDelayMs: 500, timeoutMs: 1e3});
     const incognito = browserMode === 'incognito';
@@ -122,6 +123,7 @@ var Ge = () => (0, jsxRuntime.jsx)(A, {
             children: (0, jsxRuntime.jsx)(OnboardingHelper, {}),
           }),
         }),
+        !incognito && !ready && (0, jsxRuntime.jsx)(x, {root: '#new-tab-tasks', children: (0, jsxRuntime.jsx)(AuxNewTabAgentStatus, {onCheck: refetch})}),
         !incognito && ready && (0, jsxRuntime.jsx)(x, {
           root: '#new-tab-content',
           children: (0, jsxRuntime.jsx)(React.Suspense, {fallback: null, children: (0, jsxRuntime.jsx)(Nudges, {accountId, className: 'mx-auto shrink-0'})}),

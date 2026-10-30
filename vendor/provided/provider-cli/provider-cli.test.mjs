@@ -70,7 +70,7 @@ test('settings rows: not installed, signed out, ready, hidden Copilot', () => {
   assert.match(ready.actions[0].text, /claude auth logout/);
   assert.equal(settingsRow(providerById('copilot'), {state: 'not-installed'}).hidden, true);
   assert.match(settingsRow(providerById('copilot'), {state: 'ready'}).message, /run copilot login/, 'no status command: the row names the login');
-  for (const entry of PROVIDERS) assert.ok(entry.driver && entry.login && entry.install.url.startsWith('https://'), entry.id);
+  for (const entry of PROVIDERS.filter(({id}) => id !== 'local')) assert.ok(entry.driver && entry.login && entry.install.url.startsWith('https://'), entry.id);
 });
 
 test('detection: ready, signed out, missing, crash, slow, warming, foreign binary', async () => {
@@ -317,6 +317,13 @@ test('a CLI dies with the daemon: closing fd 3 kills its whole process group', a
 });
 
 import {buildArgs} from './drivers.mjs';
+
+test('folders granted in Settings › Agent reach Cursor and Grok Build too', () => {
+  for (const driver of ['cursor-stream-json', 'grok-streaming-json']) {
+    const {args} = buildArgs(driver, {prompt: 'p', cwd: mkdtempSync(path.join(tmpdir(), 'aux-folders-')), folders: ['/a', '/b']}, {args: []});
+    assert.deepEqual(args.flatMap((arg, index) => arg === '--add-dir' ? [args[index + 1]] : []), ['/a', '/b'], driver);
+  }
+});
 
 test('folders granted in Settings › Agent reach Claude Code', () => {
   const {args} = buildArgs('claude-stream-json', {prompt: 'p', cwd: '/run', folders: ['/a', '/b']}, {args: []});

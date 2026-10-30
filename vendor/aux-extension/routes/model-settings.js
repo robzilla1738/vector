@@ -1183,6 +1183,7 @@ function Ws() {
                   title: 'Providers',
                   children: (0, jsxRuntime.jsx)(ee, {children: (0, jsxRuntime.jsx)(Providers, {})}),
                 }),
+                (0, jsxRuntime.jsx)(AuxLocalAgents, {}),
                 (0, jsxRuntime.jsxs)(ce, {
                   title: 'Task models',
                   children: [

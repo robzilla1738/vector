@@ -1171,7 +1171,7 @@ function createAuxFeatureSettingsSession(api, kind, onState, onError) {
       )
         throw Error('Invalid tab cleanup settings.');
       if (owner !== null && owner !== next.ownerGeneration)
-        throw Error('Profile changed. Reopen settings before making changes.');
+        throw Error('Settings changed. Reopen this page before making changes.');
       owner = next.ownerGeneration;
     } else if (
       ['sidebarNavigation', 'minimal', 'peekLinks', 'littleAuxLinks'].some(key => typeof next[key] !== 'boolean')
