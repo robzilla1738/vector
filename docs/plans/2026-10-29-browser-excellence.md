@@ -137,6 +137,9 @@ These overrule anything older in this plan.
 - **Send feedback is hidden.** Max plan and ultrabrowse leftovers are removed.
 - **The runtime is rebuilt for macOS 15 in full:** Node, Python and rg as well as the PDF stack.
 - **The address field sits directly above Tabs.**
+- **Collapsed sidebar, as in Arc:** no traffic lights over the page; they appear inside the sidebar when it pops out, and the page keeps the even gutter on every side.
+- **Site panel, as in Arc:** the address field keeps two simple icons, copy link and a sliders button. The sliders button opens one popover: a row of simple action tiles (share, screenshot, reader and the like), Extensions as a small icon grid with a + tile (replacing the puzzle button), Settings as a short list of this site's permissions, and a footer with the connection state and a ⋯ for the full site info.
+- **New Tab is always the centered logo, search bar and chip row.** The task cards stay off it.
 
 ## New decisions (2026-10-29)
 
