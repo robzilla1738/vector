@@ -1,11 +1,15 @@
 /* Utilities the Aux-owned components use that the sealed Tailwind build never compiled. Appended
  * to the end of the sealed globals CSS, inside the utilities layer, so they sort after every
- * compiled utility exactly as Tailwind would place them. Each mirrors its compiled neighbour
- * (.rounded-b-2xl). */
+ * compiled utility exactly as Tailwind would place them, each written like its compiled neighbours. */
 @layer utilities {
   /* Dialog and alert-dialog footers follow their content's popover corner (12px nominal). */
   .rounded-b-xl {
     border-bottom-right-radius: var(--radius-xl);
     border-bottom-left-radius: var(--radius-xl);
+  }
+  /* Task cards in the channel chat ask for the card surface; the supplied build never compiled it,
+     so they had no fill. --card is the popover surface and follows the Space tint (colors.css). */
+  .bg-card {
+    background-color: var(--card);
   }
 }

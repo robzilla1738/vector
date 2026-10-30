@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import {locateBlocks} from './integration.mjs';
 import {createWorld} from './render-harness.mjs';
+export {createWorld};
 
 /** `text` with only the intended class changes made, inside the replaced blocks. */
 export function expectedText(text, blocks, changes, label) {
@@ -32,7 +33,19 @@ function keptNames(text, blocks, read, label) {
   });
 }
 
-export async function assertParity({blocksByChunk, textOf, integrate, read, changes, minimum, scenes: extraScenes = []}) {
+/** Both versions of a chunk evaluated in `world`. Internal components both keep by name are
+ * exported too (__kept_<name>), and so are the bindings an Aux block renamed, in pairs (__pair_<Aux name>). */
+export async function evaluatePair({world, chunk, text, blocks, integrate, read, changes, renamed = () => ({})}) {
+  const kept = [...new Set(keptNames(text, blocks, read, chunk))];
+  const pairs = Object.entries(renamed(chunk));
+  const exposed = (source, side) => `${source}\nexport {${[...kept.map(name => `${name} as __kept_${name}`),
+    ...pairs.map(([before, after]) => `${side === 'supplied' ? before : after} as __pair_${after}`)].join(',')}};`;
+  const supplied = await world.evaluate(exposed(expectedText(text, blocks, changes, chunk), 'supplied'), `supplied:${chunk}`);
+  const ours = await world.evaluate(exposed(integrate(chunk, text), 'aux'), `aux:${chunk}`);
+  return {supplied, ours, kept, pairs};
+}
+
+export async function assertParity({blocksByChunk, textOf, integrate, read, changes, minimum, scenes: extraScenes = [], props: extraProps = [], renamed = () => ({})}) {
   const world = createWorld();
   // Callbacks are stubs, so every call a handler or effect makes to them is logged and compared.
   const spies = Object.fromEntries(['onClick', 'onCheckedChange', 'onOpenChange', 'onNarrowMorphHeightChange', 'onPointerDown', 'onPointerMove',
@@ -69,14 +82,12 @@ export async function assertParity({blocksByChunk, textOf, integrate, read, chan
     {context: {accountId: 7, mode: 'default'}, state: ['mem', 1, true, null], renderState: {checked: true}},
   ];
   scenes.push(...extraScenes.map(scene => (typeof scene === 'function' ? scene(world) : scene)));
+  PROPS.push(...extraProps.map(props => ({...(typeof props === 'function' ? props(world) : props), ...spies})));
   let compared = 0;
   for (const [chunk, blocks] of Object.entries(blocksByChunk)) {
     const text = textOf(chunk);
     // Internal components both versions keep by name are exported too, so they render on their own.
-    const kept = [...new Set(keptNames(text, blocks, read, chunk))];
-    const exposed = source => `${source}\nexport {${kept.map(name => `${name} as __kept_${name}`).join(',')}};`;
-    const supplied = await world.evaluate(exposed(expectedText(text, blocks, changes, chunk)), `supplied:${chunk}`);
-    const ours = await world.evaluate(exposed(integrate(chunk, text)), `aux:${chunk}`);
+    const {supplied, ours, kept, pairs} = await evaluatePair({world, chunk, text, blocks, integrate, read, changes, renamed});
     assert.deepEqual(Object.keys(ours).sort(), Object.keys(supplied).sort(), chunk);
     // The exports the Aux blocks define. The chunk's other exports are its unchanged text; calling
     // them under stubs only starts async work the stubs cannot finish.
@@ -84,6 +95,7 @@ export async function assertParity({blocksByChunk, textOf, integrate, read, chan
       list.split(',').map(entry => entry.split(' as ').map(part => part.trim()).reverse())));
     const owned = new Set(blocks.flatMap(({file}) => moduleNames(read(file))));
     for (const name of kept) local[`__kept_${name}`] = name;
+    for (const [, after] of pairs) local[`__pair_${after}`] = after;
     for (const name of Object.keys(supplied)) {
       const [a, b] = [supplied[name], ours[name]];
       if (!owned.has(local[name]) || typeof a !== 'function' && !a?.$forwardRef) { assert.equal(typeof b, typeof a, `${chunk} ${name}`); continue; }
@@ -99,7 +111,7 @@ export async function assertParity({blocksByChunk, textOf, integrate, read, chan
     }
   }
   assert.ok(compared >= minimum, `compared ${compared} renders`);
-  return compared;
+  return {compared, world};
 }
 
 /** Module-scope names each Aux block binds are not declared again in the rest of its chunk. */

@@ -102,7 +102,7 @@ function replaceBlocks(text, blocks, label, replacement) {
 
 /** Utilities the components need that the sealed build lacks, appended inside the utilities layer. */
 export const UTILITIES = 'utilities.css';
-const ADDED_UTILITIES = ['.rounded-b-xl{'];
+const ADDED_UTILITIES = ['.rounded-b-xl{', '.bg-card{'];
 
 export function integrateStyles(text) {
   for (const selector of ADDED_UTILITIES)
@@ -197,12 +197,29 @@ export const ROUTES = Object.freeze({
     '6a3f086ae431b181c598eafa4eee750d0dc396e9b1260d9c42748ab8bf1c3978', 2299)],
   'assets/route-TQyeTEXE.js': [block('Settings shell', 'settings-shell.js', 'te=[{label:"Extensions",icon:T1,kind:"chrome",to:"chrome://extensions"}]',
     '(0,t.jsx)(t1,{})})]})]})}', 'c0e43460db70c7d079b14069c2d29c3c4d89797ba8f92b0d9afd00313c5dd93b', 9554)],
+  'assets/conversation-D9Q3VEsl.js': [block('Channel chat view', 'conversation.js', 'var t=Ze(),kt=({size:e=24,aria',
+    'dren:(0,t.jsx)(kt,{className:"size-4"})})]})}', '215f89a711a4eb699b3e3b686037a11c2c4246e47a14d97b0741d2e55a877684', 54873)],
+  'assets/sidebar-Cj9gldy1.js': [block('Chats sidebar', 'sidebar.js', 'var e=G(),fe=({size:t=24,ariaH', 'tart",nativeButton:!1,...s,children:t});',
+    'c9fc0c814635a6b6707f45a01ab3ee98724a38d60383523857e4b220d3950abc', 9651)],
 });
+
+/** Supplied name → Aux name for the module bindings a route renamed (the parity tests compare them
+ * in pairs); routes/names/<route file>.json. */
+export const renamedBindings = chunk => (ROUTES[chunk] ?? []).reduce((all, {file}) => {
+  try {
+    return {...all, ...JSON.parse(readFileSync(new URL(`./routes/names/${file.replace(/\.js$/, '.json')}`, import.meta.url), 'utf8'))};
+  } catch (error) {
+    if (error.code === 'ENOENT') return all;
+    throw error;
+  }
+}, {});
 
 /** Theme consistency changes in the routes: [route file, supplied class, Aux class]. A hovered
  * Settings row used a fixed neutral-100 in light mode; --muted follows the Space tint. */
 export const TOKEN_CHANGES = Object.freeze([
   ['settings-layout.js', 'hover:bg-neutral-100', 'hover:bg-muted'],
+  // The channel chat's unread line was a fixed blue; the unread dots beside it already use the brand token.
+  ['conversation.js', 'text-blue-500 select-none dark:text-blue-400', 'text-brand-content select-none'],
 ]);
 
 export const readRoute = file => readFileSync(new URL(`./routes/${file}`, import.meta.url), 'utf8');

@@ -187,6 +187,7 @@ export function createWorld() {
     Object.assign(scenario, {context: undefined, state: undefined, event: undefined, renderState: undefined, imports: undefined}, scene);
     log.length = 0;
     stateCalls = 0;
+    seed = 1;
     effects = [];
     const tree = describe(component.$forwardRef ? {$element: true, type: component, props} : {$element: true, type: component, props});
     const ran = effects.map(run => { const before = log.length; const cleanup = call(run); return {cleanup, log: log.splice(before)}; });
@@ -207,6 +208,10 @@ export function createWorld() {
   const document = new Proxy({createElement: tag => (tag === 'canvas' ? canvas() : stub(`document.createElement(${tag})`))},
     {get: (target, key) => (key in target ? target[key] : stub(`document.${String(key)}`))});
 
+  // Math.random repeats the same sequence on every render, so random skeleton widths compare equal.
+  let seed = 1;
+  const seededMath = Object.assign(Object.create(Math), {random: () => (seed = (seed * 16807) % 2147483647) / 2147483647});
+
   /** Evaluates a chunk's text as a module; resolves with its namespace. */
   async function evaluate(text, identifier) {
     const context = vm.createContext({
@@ -214,7 +219,7 @@ export function createWorld() {
       requestAnimationFrame: fn => (log.push(['requestAnimationFrame']), 1), cancelAnimationFrame: () => log.push(['cancelAnimationFrame']),
       setTimeout: () => (log.push(['setTimeout']), 1), clearTimeout: () => log.push(['clearTimeout']),
       ResizeObserver: stub('ResizeObserver'), MutationObserver: stub('MutationObserver'), matchMedia: stub('matchMedia'),
-      getComputedStyle: stub('getComputedStyle'), queueMicrotask: () => {}, console, Math, JSON, Object, Array, Map, Set, WeakMap, WeakSet,
+      getComputedStyle: stub('getComputedStyle'), queueMicrotask: () => {}, console, Math: seededMath, JSON, Object, Array, Map, Set, WeakMap, WeakSet,
       Symbol, Promise, Error, TypeError, Number, String, Boolean, RegExp, Date, Reflect, Proxy, URL, parseFloat, parseInt, isNaN, Infinity, NaN,
       File, Blob, FormData, URLSearchParams, Intl, TextEncoder, TextDecoder, AbortController, Event, EventTarget, structuredClone, atob, btoa,
       encodeURIComponent, decodeURIComponent, isFinite, Uint8Array, Uint8ClampedArray, ArrayBuffer, DataView, BigInt, WeakRef,

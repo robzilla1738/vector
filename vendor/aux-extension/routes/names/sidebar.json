@@ -1,0 +1,23 @@
+{
+ "e": "jsxRuntime",
+ "u": "React",
+ "fe": "SidebarClosedIcon",
+ "be": "SidebarOpenIcon",
+ "ve": "random",
+ "N": "SIDEBAR_STATE_EVENT",
+ "je": "readStoredState",
+ "Se": "storeState",
+ "b": "readLocalState",
+ "T": "validState",
+ "we": "announceState",
+ "z": "extensionStorage",
+ "y": "PAGE_SIZE",
+ "Ce": "ChatList",
+ "ye": "ChatRow",
+ "Ee": "ChatListSkeleton",
+ "Ne": "rowHeight",
+ "Ie": "withPlainPreview",
+ "B": "SidebarContent",
+ "ke": "SidebarActions",
+ "E": "SidebarLink"
+}
