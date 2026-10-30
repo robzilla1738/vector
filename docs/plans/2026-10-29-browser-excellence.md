@@ -6,11 +6,11 @@ Robert asked for a thorough review of the browser experience — the agent, qual
 
 **Sources:** nine read-only code reviews of build 77 and the durable checkout, plus an on-screen look at build 77 beside the running Aside and the saved Arc references (`out/acceptance/20261027/ref/`). Findings marked *(check)* were inferred from code and need one look on screen before or while fixing. File paths are under the durable checkout's `src/` unless they start with `vendor/`, `scripts/` or `docs/`; `frame/` means `chrome/browser/ui/views/frame/`.
 
-## Progress (build 112, 2026-10-30)
+## Progress (build 117, 2026-10-30)
 
-**Read this first:** [the audit of build 112](2026-10-30-plan-audit.md) checked every item against the code and overrules this section. It found Batch 6 (onboarding) largely unbuilt, the chrome://settings cleanup in Batch 7 not started, and the Batch 8 approvals popover missing. The list below describes what was built, not what's finished.
+**Read this first:** [the second audit](2026-10-30-plan-audit-2.md) checked every item and [the owner's requests](2026-10-30-owner-requests.md) against build 117, and overrules this section. It supersedes [the first audit](2026-10-30-plan-audit.md), which found onboarding, the chrome://settings cleanup and the approvals popover unbuilt; all three are now in. The list below describes what was built.
 
-Build 112 (`out/release/1.0.0-112`) carries everything below. It is assembled from the durable checkout with the release transforms, `--pdf-runtime`, `--computer-use-helper` and `--memory-helper`. It launches, and the items marked *(seen)* were checked on screen. The rest is built and unit-tested but not yet driven by hand.
+Build 117 (`out/release/1.0.0-117`) carries everything below. It is assembled from the durable checkout with the release transforms, `--pdf-runtime`, `--computer-use-helper` and `--memory-helper`. It launches, and the items marked *(seen)* were checked on screen. The rest is built and unit-tested but not yet driven by hand.
 
 **Done**
 - **Batch 1:**
@@ -52,7 +52,7 @@ Build 112 (`out/release/1.0.0-112`) carries everything below. It is assembled fr
 - **Batch 6:**
   - Arc's pinned Spaces, folders, favorites and themes import into Aux Spaces.
   - Partial imports succeed with a plain message and Try again (onboarding and Settings).
-  - Edge is a source; the password writer is removed.
+  - Edge is a source; a password writer imports logins where the source allows (2026-10-30 decision).
 - **Batch 7:**
   - A Shortcuts page; command-bar commands (Settings pages, window, find, zoom, bookmark, duplicate, mute, full screen, pause ad blocking).
   - Per-site ad-block pause (command bar and Settings › Paused sites).

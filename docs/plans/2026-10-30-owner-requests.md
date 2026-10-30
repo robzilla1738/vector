@@ -54,7 +54,7 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 | # | Request | Status |
 |---|---|---|
 | 31 | Do the runtime work | seen (inventory found nothing above macOS 15 beyond the PDF stack; rg fixed) |
-| 32 | Everything in the plan complete and ready to test | open: see [the audit](2026-10-30-plan-audit.md) |
+| 32 | Everything in the plan complete and ready to test | open: see [the second audit](2026-10-30-plan-audit-2.md) |
 | 33 | Every item in the plan and from Robert done and excellent | open |
 
 ## Standing rules from earlier in the work
