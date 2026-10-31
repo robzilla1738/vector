@@ -3,7 +3,7 @@
  * they load. scripts/release/transforms.mjs applies them after the provider CLI integration;
  * any drifted anchor stops the release. */
 import {applyExactEdits} from '../provider-cli/integration.mjs';
-import {withoutDownloads} from './no-unreachable-downloads.mjs';
+import {withoutRemovedPaths} from './removed-paths.mjs';
 
 /** Copied beside aux-native-entry.mjs, under aux-agent/. */
 export const DAEMON_FILES = Object.freeze(['aux-agent.mjs', 'ask-first.mjs']);
@@ -118,7 +118,7 @@ function withoutSttRouter(text) {
 
 export function integrateDaemon(text) {
   if (text.includes('function auxAgentView(')) throw Error('Agent integration: the daemon entry already has the agent helpers');
-  return withoutDownloads(withoutSttRouter(applyExactEdits('agent daemon', DAEMON_EDITS, text))) + HELPERS;
+  return withoutRemovedPaths(withoutSttRouter(applyExactEdits('agent daemon', DAEMON_EDITS, text))) + HELPERS;
 }
 
 /** The UI module, copied to dist/assets/ and imported by the chunks below. */
@@ -128,7 +128,16 @@ const ui = names => `import{${names.join(',')}}from"./${UI_FILE}";`;
 
 /** dist/assets chunk → edits. Imports go first so a drifted chunk fails before any JSX edit. */
 export const EXTENSION_EDITS = Object.freeze({
+  // Once, after a first login form: Aux keeps no passwords, so say how to get them filled.
+  'content/content.js': [
+    edit('a page with a login form tells the extension, until the hint has been shown',
+      '(function(){var Ia=Object.create,At=Object.defineProperty,',
+      "(()=>{if(window!==top)return;const key='aux.loginHint.v1',seen=()=>{if(document.querySelector('input[type=\"password\"]'))chrome.runtime.sendMessage({type:'aux-login-form-seen'}).catch(()=>{})};chrome.storage.local.get(key).then(found=>{if(!found[key]){seen();setTimeout(seen,3000)}}).catch(()=>{})})();(function(){var Ia=Object.create,At=Object.defineProperty,"),
+  ],
   'background.js': [
+    edit('the first login form with no password manager gets the hint',
+      "chrome.auxAccount?.onProfileContextChanged?.addListener(()=>{auxCloseBrowserTasks().catch(()=>{})});",
+      "chrome.auxAccount?.onProfileContextChanged?.addListener(()=>{auxCloseBrowserTasks().catch(()=>{})});\nasync function auxLoginHint(){const key='aux.loginHint.v1';if((await chrome.storage.local.get(key))[key])return;await chrome.storage.local.set({[key]:true});if((await chrome.management.getAll()).some(item=>item.enabled&&/1password|bitwarden|dashlane|lastpass|proton pass|nordpass|keeper|enpass/i.test(item.name)))return;await oy({notificationId:crypto.randomUUID(),title:'Aux doesn’t save passwords',body:'Add a password manager like 1Password or Bitwarden, and it fills your logins here.'})}\nchrome.runtime.onMessage.addListener(message=>{if(message?.type==='aux-login-form-seen')auxLoginHint().catch(()=>{})});"),
     // Ask first watches what an agent command sends (ask-first.mjs). Native passes these through.
     edit('Ask first can pause requests: the commands',
       "'Emulation.setFocusEmulationEnabled','Input.dispatchKeyEvent'",
@@ -249,6 +258,15 @@ export const EXTENSION_EDITS = Object.freeze({
       'import{_ as R}from"./queries-ldd77hNk.js";',
       `import{_ as R}from"./queries-ldd77hNk.js";${ui(['AuxLocalAgents'])}`),
   ],
+  // The onboarding glow takes the person's theme accent; with none set it keeps the brand color.
+  'assets/floating-background-DQ7OXsyL.js': [
+    edit('the glow reads the theme',
+      'var e=a(),o=({className:i})=>',
+      'var e=a(),auxThemedGlow=n=>{n&&globalThis.chrome?.auxBrowserPreferences?.getThemeState?.().then(t=>{t?.tokens?.accent&&(n.style.backgroundColor=t.tokens.accent)}).catch(()=>{})},o=({className:i})=>'),
+    edit('the glow takes it',
+      '(0,e.jsx)(r.div,{className:"bg-brand/50 border-shape-initial!',
+      '(0,e.jsx)(r.div,{ref:auxThemedGlow,className:"bg-brand/50 border-shape-initial!'),
+  ],
   // Onboarding's Make it yours has the agent's name and look inline.
   'assets/glance-BfAlmExy.js': [
     edit('agent UI import',
@@ -267,6 +285,6 @@ export const EXTENSION_EDITS = Object.freeze({
 export function integrateExtensionChunk(relative, text) {
   const edits = EXTENSION_EDITS[relative];
   if (!edits) throw Error(`Agent integration: no edits for ${relative}`);
-  if (text.includes(UI_FILE) || text.includes('aux.agent.name.v1')) throw Error(`Agent integration: ${relative} is already integrated`);
+  if (text.includes(UI_FILE) || text.includes('aux.agent.name.v1') || text.includes('aux.loginHint.v1')) throw Error(`Agent integration: ${relative} is already integrated`);
   return applyExactEdits(`agent ${relative}`, edits, text);
 }

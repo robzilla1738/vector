@@ -189,6 +189,27 @@
    "why": "The agent button shortcut is named for what it opens (Batch 7, Shortcuts).",
    "find": "\"description\": \"Open Aux sidepanel\"",
    "replace": "\"description\": \"Open your agent\""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+   "count": 1,
+   "why": "Web pages embed only the frame and the bridge script; the command bar and chunks load from the extension itself, so nothing about them should be reachable from a page.",
+   "find": "        \"tabsearch.html\",\n",
+   "replace": ""
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+   "count": 1,
+   "why": "Same: chunks are never loaded from a web page.",
+   "find": "\"react-grab-bridge.js\",\n        \"assets/*\"\n",
+   "replace": "\"react-grab-bridge.js\"\n"
+  },
+  {
+   "target": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+   "count": 1,
+   "why": "One name: the agent is Aux.",
+   "find": "\"name\": \"Aux Browsing Agent\"",
+   "replace": "\"name\": \"Aux\""
   }
  ]
 }

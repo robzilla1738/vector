@@ -140,5 +140,5 @@ test('the release carries current DOMPurify, its own skill icons and no x64 node
   const entry = readFileSync(path.join(app, daemon, 'aux-native-entry.mjs'), 'utf8');
   assert.equal(entry.includes('127.0.0.1:9/'), false);
   assert.equal(entry.includes('createSttHttpRouter'), false);
-  for (const gone of ['install.ps1', 'install.sh', 'fetchRelease', 'getWindowsCliInstallation', 'aux-unavailable/releases']) assert.equal(entry.includes(gone), false, gone);
+  for (const gone of ['install.ps1', 'install.sh', 'fetchRelease', 'getWindowsCliInstallation', 'aux-unavailable/releases', 'verifyDaemonDevAuthToken', 'billing/embedded-checkout', 'files\\/metadata$']) assert.equal(entry.includes(gone), false, gone);
 });

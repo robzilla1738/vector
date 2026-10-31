@@ -1,6 +1,8 @@
-/** Aux doesn't download its agent runtime, memory models or CLI: the app carries all three, and the
- * Windows paths never apply. The supplied code for fetching them only ever reached a placeholder
- * address, so it's taken out, and each path now answers from what's bundled. */
+/** Supplied daemon code Aux has no use for, taken out rather than left unreachable.
+ * Aux doesn't download its agent runtime, memory models or CLI: the app carries all three, the
+ * Windows paths never apply, and fetching them only ever reached a placeholder address. Each path
+ * now answers from what's bundled. Aux has no payments, so no billing pages, and no development
+ * sign-in. */
 const cut = (name, from, to, replace = '') => Object.freeze({name, from, to, replace});
 
 export const CUTS = Object.freeze([
@@ -22,6 +24,10 @@ export const CUTS = Object.freeze([
   cut('CLI status', 'let ti=Cn.target===`win-x64`?await getWindowsCliInstallation(Cn):{commandPath:await resolveAuxCommandPath(Cn),currentVersion:null},ni=ti?.commandPath;', 'async function installCli(',
     'let ni=await resolveAuxCommandPath(Cn);return ni?{...ei,installed:!0,commandPath:ni,currentVersion:await getInstalledCliVersion(ni),latestVersion:null,updateAvailable:!1}:{...ei,installed:!1,commandPath:null,currentVersion:null,latestVersion:null,updateAvailable:!1}}'),
   cut('CLI Windows install', 'if(Cn.target===`win-x64`){await installWindowsCli(Cn);return}', '/* Aux ships its CLI inside the app;'),
+  // Payments: Stripe checkout pages and their return route.
+  cut('billing pages', 'function createBillingHttpRouter(Cn={}){', 'function createMcpHttpRouter(){'),
+  // A development website's sign-in, through an origin list a process environment could extend.
+  cut('development sign-in', 'async function verifyDaemonDevAuthToken(Cn,ei){', 'function verifyP256InstallationSignature('),
 ]);
 
 // [what, exact text, replacement]: the declarations and options the cuts leave unused.
@@ -30,6 +36,20 @@ export const REMOVALS = Object.freeze([
   ['model URL', 'MODEL_DOWNLOAD_BASE_URL=`http://127.0.0.1:9/aux-unavailable/releases/dev-updater/models`,', ''],
   ['memory runtime test host', ',baseUrl:process.env.AUX_MEMORY_TEST_RUNTIME_BASE_URL', ''],
   ['memory model test host', ',baseUrl:process.env.AUX_MEMORY_TEST_MODEL_BASE_URL', ''],
+  ['billing route', 'ei.route(`/`,createBillingHttpRouter()),', ''],
+  ['billing module start', 'init_http_routes$6(),', ''],
+  ['billing public paths', ',`/billing/embedded-checkout`,`/billing/return`,`/mcp/oauth/callback`]', ',`/mcp/oauth/callback`]'],
+  ['billing navigation', '(ti===`/mcp/oauth/callback`||ti===`/billing/return`||ti===`/billing/embedded-checkout`&&Cn.req.header(`sec-fetch-dest`)===`iframe`)', 'ti===`/mcp/oauth/callback`'],
+  // It answered whether a file exists, with its size and type, to any local process with no token.
+  ['session file metadata needs the session token', '||Cn.req.method===`GET`&&/^\\/sessions\\/[^/]+\\/files\\/metadata$/.test(ti)', ''],
+  ['development sign-in, HTTP', 'return await verifyDaemonSessionToken(ti)||await verifyDaemonDevAuthToken(ti,Cn)}', 'return await verifyDaemonSessionToken(ti)}'],
+  ['development sign-in, WebSocket', 'return await verifyDaemonSessionToken(ei)||await verifyDaemonDevAuthToken(ei,Cn)}', 'return await verifyDaemonSessionToken(ei)}'],
+  ['development signature', 'DAEMON_DEV_AUTH_SIGNATURE_PREFIX=Buffer$1.from(`Aux Daemon Dev Auth v1\\0`),', ''],
+  ['development signature declaration', 'DAEMON_DEV_AUTH_SIGNATURE_PREFIX,', ''],
+  ['development origins', 'DEV_AUTH_ALLOWED_ORIGINS=/* @__PURE__ */ new Set([`http://localhost:5175`,`http://127.0.0.1:5175`,`http://[::1]:5175`,...process.env.AUX_DEV_AUTH_ORIGINS?.split(`,`).map(Cn=>Cn.trim()).filter(Boolean)??[]]),', ''],
+  ['development origins declaration', 'DEV_AUTH_ALLOWED_ORIGINS,', ''],
+  ['development token', 'devTokenPayloadSchema=object({aud:literal(`aux-daemon-localhost-dev`),exp:number$2().int(),iss:literal(`aux-daemon-dev`),origin:string$3(),sub:literal(`internal-web`)}),', ''],
+  ['development token declaration', 'devTokenPayloadSchema,', ''],
   ['runtime status', 'return ei?withInstalledUpdateStatus(ei,Cn):', 'return ei?agentRuntimeStatusSchema.parse({installed:!0,version:ei,latestVersion:null,updateAvailable:!1}):'],
   ['runtime release URL', 'RELEASE_BASE_URL$1=`http://127.0.0.1:9/aux-unavailable/releases`,', ''],
   ['runtime archive declarations', 'var import_yauzl,RELEASE_BASE_URL$1,FETCH_TIMEOUT_MS,ARCHIVE_STALL_TIMEOUT_MS,ARCHIVE_DOWNLOAD_RETRIES,SYMLINK_TARGET_MAX_BYTES,', 'var '],
@@ -42,15 +62,15 @@ export const REMOVALS = Object.freeze([
   ['CLI release schemas', 'AUX_CLI_RELEASE_FETCH_TIMEOUT_MS=3e3,cliReleaseSchema=object({version:string$3().min(1),platform:string$3().optional()}),windowsCliReleaseSchema=cliReleaseSchema.extend({schemaVersion:literal(1),platform:literal(`win-x64`),arch:literal(`x64`),installUrl:string$3().url(),installerSha256:string$3().regex(/^[0-9a-f]{64}$/iu)})', ''],
 ]);
 
-export function withoutDownloads(text) {
+export function withoutRemovedPaths(text) {
   let result = text;
   for (const {name, from, to, replace} of CUTS) {
     const start = result.indexOf(from), end = result.indexOf(to, start);
-    if (start < 0 || end < 0 || result.split(from).length !== 2) throw Error(`Download removal drift: ${name}`);
+    if (start < 0 || end < 0 || result.split(from).length !== 2) throw Error(`Removal drift: ${name}`);
     result = result.slice(0, start) + replace + result.slice(end);
   }
   for (const [what, find, replace] of REMOVALS) {
-    if (result.split(find).length !== 2) throw Error(`Download removal drift: ${what}`);
+    if (result.split(find).length !== 2) throw Error(`Removal drift: ${what}`);
     result = result.replace(find, () => replace);
   }
   return result.replace(/,WINDOWS_CLI_PUBLISHER=`[^`]*`,WINDOWS_ROOT_CA_HINT=`[^`]*`,WINDOWS_INSTALL_COMMAND=`[^`]*`/, '').replace('RELEASE_BASE_URL=`http://127.0.0.1:9/aux-unavailable/releases`,', '')
