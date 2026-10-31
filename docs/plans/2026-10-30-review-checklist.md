@@ -32,7 +32,7 @@ Everything is committed locally. Nothing has been pushed.
 
 ## Not yet seen
 
-The approval popover: Ask first didn't raise one for a link click. There's also no pane swap control on the split pill, which shows the domain and a close button. These are built and tested in code, but I didn't reach them on screen in this round.
+The approval popover: Ask first doesn't ask for clicks or new sites, so I couldn't reach it. Should browsing ask? There's also no pane swap control on the split pill, which shows the domain and a close button. These are built and tested in code, but I didn't reach them on screen in this round.
 
 ## Needs your decision
 
@@ -55,7 +55,7 @@ The approval popover: Ask first didn't raise one for a link click. There's also 
 - The done step's bottom glow stays blue on other themes.
 - `darwin-x64` node-pty files still ship, pinned by the supplied inventory.
 - Web Store banner rule, theme preview per Space rather than per window, coalesced polls (8.14), Refresh still full (1.3), Orion bookmarks from an HTML export only, and no Firefox or Zen passwords.
-- `openTab` is slow, about 45 seconds in one test, and the agent's first try often errors before it recovers.
+- `openTab` takes about 14 seconds, and a short agent turn about 40.
 - After a click navigates an attached tab, the agent can't read that tab. It's a deliberate safety rule, so loosening it is your call.
 - Web search citations are labelled google.com.
 - `bash` and file edits return "Supervised task execution is disabled in this browser build". That's the local browser-only mode.
