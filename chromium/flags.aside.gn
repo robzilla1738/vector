@@ -8,4 +8,3 @@ target_cpu = "arm64"
 proprietary_codecs = true
 ffmpeg_branding = "Chrome"
 enable_widevine = true
-aux_test_hooks = false

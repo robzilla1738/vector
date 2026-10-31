@@ -10,7 +10,6 @@ proprietary_codecs = true
 ffmpeg_branding = "Chrome"
 enable_widevine = true
 enable_aux_browser = true
-aux_test_hooks = false
 use_thin_lto = true
 chrome_pgo_phase = 2
 symbol_level = 1

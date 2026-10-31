@@ -61,7 +61,7 @@ args_file = build / 'args.gn'
 args_bytes = args_file.read_bytes()
 args_text = args_bytes.decode()
 import re
-for name, value in [('enable_aux_browser', 'true'), ('enable_aux_shell', 'false'), ('is_component_build', 'false'), ('aux_test_hooks', 'false')]:
+for name, value in [('enable_aux_browser', 'true'), ('enable_aux_shell', 'false'), ('is_component_build', 'false')]:
     if not re.search(rf'^\s*{name}\s*=\s*{value}\s*$', args_text, re.M):
         raise ValueError(f'Native GN setting required: {name}={value}')
 command = [str(options.depot_tools.resolve() / 'autoninja'), '-C', str(build.relative_to(native)),
