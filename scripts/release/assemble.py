@@ -5,6 +5,7 @@
                 [--version 1.0.0] [--identity development|developer-id] [--daemon-profile PATH]
                 [--computer-use-helper 'apps/computer-use-helper/.build/app/Aux Computer Use.app']
                 [--memory-helper apps/memory-helper/.build/aux-memory]
+                [--runtime [out/runtime]] [--runtime-macos15]
 
 The native build supplies everything outside Contents/Resources/aux; the sealed candidate supplies
 the components. Package edits are exact and count-checked (package-edits.json). Nothing outside
@@ -282,34 +283,54 @@ def replace_memory_helper(app: Path, source: Path) -> tuple[list, list]:
     return [{'path': MEMORY_HELPER, 'why': "Aux's own memory helper", 'sha256': sha256(target)}], cascade
 
 
-# The PDF tools and their libraries rebuilt for macOS 15 (scripts/runtime/build-pdf-runtime.py).
-PDF_RUNTIME_MANIFEST = HERE.parent / 'runtime/pdf-runtime-macos15.json'
+# Every Mach-O in the agent runtime, rebuilt from upstream for macOS 15 (scripts/runtime/).
+RUNTIME_MANIFESTS = [HERE.parent / 'runtime/pdf-runtime-macos15.json', HERE.parent / 'runtime/runtime-macos15.json']
 
 
-def substitute_pdf_runtime(app: Path, built: Path, manifest: Path = PDF_RUNTIME_MANIFEST) -> list:
-    """Swap the supplied files for the rebuilt ones. Both sides must match the manifest exactly.
-    Returns (path, (old sha256, old size)) for each file to sign and re-pin: the replaced ones and
-    the `relinked` supplied files that load them, since hardened runtime needs one team on both sides."""
-    spec = json.loads(manifest.read_text())
-    files = spec['files']
+def runtime_entries(app: Path, manifests: list = RUNTIME_MANIFESTS) -> dict:
+    """{path in the app: (built path relative to the build root, manifest entry)} for the rebuilt files."""
     runtime = app / AUX / 'agent-runtime'
-    for rel, entry in files.items():
-        if sha256(runtime / rel) != entry['originalSha256']:
-            raise SystemExit(f'agent-runtime/{rel}: unexpected supplied contents; review the substitution')
-        if not (built / rel).is_file() or sha256(built / rel) != entry['sha256']:
-            raise SystemExit(f'{built / rel}: missing or not the built file the manifest records')
+    return {runtime / rel: (Path(spec['built']) / rel, entry)
+            for spec in map(lambda m: json.loads(m.read_text()), manifests) for rel, entry in spec['files'].items()}
+
+
+def substitute_runtime(app: Path, build: Path, manifests: list = RUNTIME_MANIFESTS) -> list:
+    """Swap the supplied files for the rebuilt ones. Both sides must match the manifests exactly.
+    Returns (path, (old sha256, old size)) for each file to sign and re-pin."""
+    entries = runtime_entries(app, manifests)
+    for target, (built, entry) in entries.items():
+        if sha256(target) != entry['originalSha256']:
+            raise SystemExit(f'{target}: unexpected supplied contents; review the substitution')
+        if not (build / built).is_file() or sha256(build / built) != entry['sha256']:
+            raise SystemExit(f'{build / built}: missing or not the built file the manifest records')
     replaced = []
-    for rel in files:
-        target = runtime / rel
+    for target, (built, _) in entries.items():
         before = (sha256(target), target.stat().st_size)
         mode = target.stat().st_mode & 0o777
-        shutil.copyfile(built / rel, target)
+        target.unlink()
+        shutil.copyfile(build / built, target)
         target.chmod(mode)
         replaced.append((target, before))
-    for rel in spec['relinked']:
-        target = runtime / rel
-        replaced.append((target, (sha256(target), target.stat().st_size)))
     return replaced
+
+
+def sign_runtime_file(path: Path, entry: dict, identity: str, release: bool, work: Path):
+    """Sign a rebuilt file, keeping the supplied identifier and the entitlements hardened runtime needs:
+    Node's JIT, and Python loading the native wheels a user installs."""
+    options = ['--identifier', entry.get('identifier', path.stem)]
+    if entry.get('entitlements'):
+        plist = work / f'{path.name}.entitlements.plist'
+        plist.write_bytes(plistlib.dumps(dict.fromkeys(entry['entitlements'], True)))
+        options += ['--entitlements', str(plist)]
+    run(['codesign', '--force', '--sign', identity, '--options', 'runtime',
+         '--timestamp' if release else '--timestamp=none', *options, str(path)])
+
+
+def foreign_runtime_signatures(app: Path, ours: str) -> list:
+    """Runtime Mach-O files carrying any signature other than this build's."""
+    runtime = app / AUX / 'agent-runtime'
+    signers = {path: signing_details(path)[0] for path in runtime.rglob('*') if macho(path)}
+    return sorted(f'{path.relative_to(runtime)}: {signer}' for path, signer in signers.items() if signer != ours)
 
 
 def above_minimum_macos(app: Path) -> list:
@@ -444,8 +465,9 @@ def main() -> int:
                              'their hashes are pinned in the browser and daemon policies')
     parser.add_argument('--crash-dsn-ref', help='op:// reference to the Sentry DSN, read with op-agents (never printed)')
     parser.add_argument('--daemon-executable', type=Path, help='relinked aux-daemon (scripts/candidate/relink_daemon.py)')
-    parser.add_argument('--pdf-runtime', type=Path, nargs='?', const=HERE.parents[1] / 'out/runtime/pdf-macos15',
-                        help='replace the runtime PDF tools with the macOS 15 rebuild (default out/runtime/pdf-macos15)')
+    parser.add_argument('--runtime', type=Path, nargs='?', const=HERE.parents[1] / 'out/runtime',
+                        help="replace every Mach-O in the agent runtime with Aux's rebuild, signed with Aux's identity "
+                             '(default out/runtime; see scripts/runtime/)')
     parser.add_argument('--runtime-macos15', action='store_true',
                         help='refuse a runtime with a Mach-O that declares a minimum macOS above 15.0')
     parser.add_argument('--computer-use-helper', type=Path,
@@ -519,15 +541,15 @@ def main() -> int:
     # Target executables are signed with their target in step 4, never here.
     covered = {main_executable(app, t) for t, _, _ in TARGETS if t != '.'}
     resigned, kept = [], {}
-    # Rebuilt PDF tools are signed with Aux's identity in both modes, keeping their identifiers.
-    pdf_runtime = substitute_pdf_runtime(app, args.pdf_runtime.resolve()) if args.pdf_runtime else []
+    # The rebuilt runtime is signed with Aux's identity in both modes.
+    rebuilt = substitute_runtime(app, args.runtime.resolve()) if args.runtime else []
     above = above_minimum_macos(app) if args.runtime_macos15 else []
     if above:
         raise SystemExit(f'{len(above)} runtime files need macOS above 15.0: {above[:5]}')
-    for path, _ in pdf_runtime:
-        run(['codesign', '--force', '--sign', identity, '--options', 'runtime',
-             '--timestamp' if release else '--timestamp=none', '--identifier', path.stem, str(path)])
-    resigned += pdf_runtime
+    entries = runtime_entries(app)
+    for path, _ in rebuilt:
+        sign_runtime_file(path, entries[path][1], identity, release, work)
+    resigned += rebuilt
     # The daemon policies pin these addons' exact bytes, and a timestamped signature
     # differs every time, so a release uses one fixed Developer ID copy of each.
     if args.release_addons:
@@ -547,6 +569,9 @@ def main() -> int:
             keep = ['--identifier', identifier] if identifier and current != 'unsigned' else []
             run(['codesign', '--force', '--sign', identity, '--options', 'runtime', '--timestamp', *keep, str(path)])
             resigned.append((path, before))
+    foreign = foreign_runtime_signatures(app, signing_details(rebuilt[0][0])[0]) if rebuilt else []
+    if foreign:
+        raise SystemExit(f'{len(foreign)} runtime files are not signed by this build: {foreign[:5]}')
     runtime = app / AUX / 'agent-runtime'
     pins = app / NATIVE / 'runtime-source-pins.json'
     pin_files = [pins, app / NATIVE / 'runtime-bootstrap.cjs']

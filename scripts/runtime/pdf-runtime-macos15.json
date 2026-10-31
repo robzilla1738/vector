@@ -2,6 +2,7 @@
  "format": "aux.pdf-runtime.v1",
  "deploymentTarget": "15.0",
  "arch": "arm64",
+ "built": "pdf-macos15",
  "tools": {
   "meson": "1.12.1",
   "ninja": "1.13.2",
@@ -340,8 +341,5 @@
    ],
    "sha256": "e8ea80604f360ce1312d6fd95b59da48a1806ced396dfcea4c56c081404c6128"
   }
- },
- "relinked": [
-  "native/bin/rg"
- ]
+ }
 }

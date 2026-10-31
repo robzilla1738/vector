@@ -1,0 +1,854 @@
+{
+ "format": "aux.agent-runtime.v1",
+ "deploymentTarget": "15.0",
+ "arch": "arm64",
+ "built": "macos15/tree",
+ "tools": {
+  "meson": "1.12.1",
+  "ninja": "1.13.2",
+  "packaging": "26.3",
+  "setuptools": "84.0.0",
+  "pybind11": "3.1.0"
+ },
+ "sources": [
+  {
+   "name": "rust",
+   "version": "1.99.1",
+   "url": "https://static.rust-lang.org/dist/rust-1.99.1-aarch64-apple-darwin.tar.xz",
+   "group": "tools",
+   "sha256": "30976378b6aaefd1861ba475905c6ba22a44c981418ce52285006af26337f98c"
+  },
+  {
+   "name": "llvm",
+   "version": "18.1.8",
+   "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-arm64-apple-macos11.tar.xz",
+   "group": "tools",
+   "sha256": "4573b7f25f46d2a9c8882993f091c52f416c83271db6f5b213c93f0bd0346a10"
+  },
+  {
+   "name": "ripgrep",
+   "version": "15.2.0",
+   "url": "https://github.com/BurntSushi/ripgrep/archive/refs/tags/15.2.0.tar.gz",
+   "group": "rg",
+   "sha256": "7605249d3eb0d5f170e3414498e3344e26b1e7a147aec518b57090b80036a562"
+  },
+  {
+   "name": "node",
+   "version": "26.5.0",
+   "url": "https://nodejs.org/dist/v26.5.0/node-v26.5.0.tar.xz",
+   "group": "node",
+   "sha256": "0e179470097e247a0c0769b77cc1359fc3e1baf0686df89bafe1fb48cb1887f4"
+  },
+  {
+   "name": "pbs",
+   "version": "20260320",
+   "url": "https://github.com/astral-sh/python-build-standalone/archive/refs/tags/20260320.tar.gz",
+   "group": "python",
+   "sha256": "cbf00c6db62275cd40a428dffacfbe8d8c396c27310212a52577b621d22654f7"
+  },
+  {
+   "name": "bzip2",
+   "version": "1.0.8",
+   "url": "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz",
+   "group": "python",
+   "sha256": "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269"
+  },
+  {
+   "name": "expat",
+   "version": "2.6.3",
+   "url": "https://github.com/libexpat/libexpat/releases/download/R_2_6_3/expat-2.6.3.tar.xz",
+   "group": "python",
+   "sha256": "274db254a6979bde5aad404763a704956940e465843f2a9bd9ed7af22e2c0efc"
+  },
+  {
+   "name": "libffi",
+   "version": "3.4.6",
+   "url": "https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz",
+   "group": "python",
+   "sha256": "b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e"
+  },
+  {
+   "name": "mpdecimal",
+   "version": "4.0.0",
+   "url": "https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-4.0.0.tar.gz",
+   "group": "python",
+   "sha256": "942445c3245b22730fd41a67a7c5c231d11cb1b9936b9c0f76334fb7d0b4468c"
+  },
+  {
+   "name": "openssl",
+   "version": "3.5.5",
+   "url": "https://github.com/openssl/openssl/releases/download/openssl-3.5.5/openssl-3.5.5.tar.gz",
+   "group": "python",
+   "sha256": "b28c91532a8b65a1f983b4c28b7488174e4a01008e29ce8e69bd789f28bc2a89"
+  },
+  {
+   "name": "sqlite",
+   "version": "3.50.4",
+   "url": "https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz",
+   "group": "python",
+   "sha256": "a3db587a1b92ee5ddac2f66b3edb41b26f9c867275782d46c3a088977d6a5b18"
+  },
+  {
+   "name": "xz",
+   "version": "5.8.1",
+   "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.1/xz-5.8.1.tar.gz",
+   "group": "python",
+   "sha256": "507825b599356c10dca1cd720c9d0d0c9d5400b9de300af00e4d1ea150795543"
+  },
+  {
+   "name": "tcl",
+   "version": "9.0.3",
+   "url": "https://downloads.sourceforge.net/project/tcl/Tcl/9.0.3/tcl9.0.3-src.tar.gz",
+   "group": "python",
+   "sha256": "2537ba0c86112c8c953f7c09d33f134dd45c0fb3a71f2d7f7691fd301d2c33a6"
+  },
+  {
+   "name": "tk",
+   "version": "9.0.3",
+   "url": "https://downloads.sourceforge.net/project/tcl/Tcl/9.0.3/tk9.0.3-src.tar.gz",
+   "group": "python",
+   "sha256": "bf344efadb618babb7933f69275620f72454d1c8220130da93e3f7feb0efbf9b"
+  },
+  {
+   "name": "uuid",
+   "version": "1.0.3",
+   "url": "https://downloads.sourceforge.net/project/libuuid/libuuid-1.0.3.tar.gz",
+   "group": "python",
+   "sha256": "46af3275291091009ad7f1b899de3d0cea0252737550e7919d17237997db5644"
+  },
+  {
+   "name": "cpython",
+   "version": "3.13.12",
+   "url": "https://www.python.org/ftp/python/3.13.12/Python-3.13.12.tar.xz",
+   "group": "python",
+   "sha256": "2a84cd31dd8d8ea8aaff75de66fc1b4b0127dd5799aa50a64ae9a313885b4593"
+  },
+  {
+   "name": "pil-xz",
+   "version": "5.8.4",
+   "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.4/xz-5.8.4.tar.gz",
+   "group": "pillow",
+   "sha256": "0014c7886930454fe8bd4228665b51af55eeae560ea135c9c4cd33f55b2591d9"
+  },
+  {
+   "name": "zlib-ng",
+   "version": "2.3.3",
+   "url": "https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz",
+   "group": "pillow",
+   "sha256": "f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1"
+  },
+  {
+   "name": "xcb-proto",
+   "version": "1.17.0",
+   "url": "https://xorg.freedesktop.org/archive/individual/proto/xcb-proto-1.17.0.tar.xz",
+   "group": "pillow",
+   "sha256": "2c1bacd2110f4799f74de6ebb714b94cf6f80fb112316b1219480fd22562148c"
+  },
+  {
+   "name": "xorgproto",
+   "version": "2025.1",
+   "url": "https://www.x.org/pub/individual/proto/xorgproto-2025.1.tar.gz",
+   "group": "pillow",
+   "sha256": "d6f89f65bafb8c9b735e0515882b8a1511e8e864dde5e9513e191629369f2256"
+  },
+  {
+   "name": "libXau",
+   "version": "1.0.12",
+   "url": "https://www.x.org/pub/individual/lib/libXau-1.0.12.tar.gz",
+   "group": "pillow",
+   "sha256": "2402dd938da4d0a332349ab3d3586606175e19cb32cb9fe013c19f1dc922dcee"
+  },
+  {
+   "name": "libpthread-stubs",
+   "version": "0.5",
+   "url": "https://xcb.freedesktop.org/dist/libpthread-stubs-0.5.tar.gz",
+   "group": "pillow",
+   "sha256": "593196cc746173d1e25cb54a93a87fd749952df68699aab7e02c085530e87747"
+  },
+  {
+   "name": "libxcb",
+   "version": "1.17.0",
+   "url": "https://www.x.org/releases/individual/lib/libxcb-1.17.0.tar.gz",
+   "group": "pillow",
+   "sha256": "2c69287424c9e2128cb47ffe92171e10417041ec2963bceafb65cb3fcf8f0b85"
+  },
+  {
+   "name": "libjpeg-turbo",
+   "version": "3.2.0",
+   "url": "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.2.0/libjpeg-turbo-3.2.0.tar.gz",
+   "group": "pillow",
+   "sha256": "6f30092cef9fb839779646608f4ee14ae3cbac989c47fa05e841b0841f09878e"
+  },
+  {
+   "name": "tiff",
+   "version": "4.7.2",
+   "url": "https://download.osgeo.org/libtiff/tiff-4.7.2.tar.gz",
+   "group": "pillow",
+   "sha256": "672bd7d10aee4606171afb864f3570b83340f6a33e2c186dc0512f7145ffdf6a"
+  },
+  {
+   "name": "dav1d",
+   "version": "1.5.3",
+   "url": "https://downloads.videolan.org/pub/videolan/dav1d/1.5.3/dav1d-1.5.3.tar.xz",
+   "group": "pillow",
+   "sha256": "732010aa5ef461fa93355ed2c6c5fedb48ddc4b74e697eaabe8907eaeb943011"
+  },
+  {
+   "name": "aom",
+   "version": "3.14.1",
+   "url": "https://storage.googleapis.com/aom-releases/libaom-3.14.1.tar.gz",
+   "group": "pillow",
+   "sha256": "44bf90dbd23e734d50e70a8c41c285193922938bd0d3bc2ee56764d181d55ef5"
+  },
+  {
+   "name": "libyuv",
+   "version": "644251f2",
+   "url": "https://chromium.googlesource.com/libyuv/libyuv",
+   "group": "pillow",
+   "commit": "644251f252a84bf8ce91ff0aca86a9b16b069ab8"
+  },
+  {
+   "name": "sharpyuv",
+   "version": "1.6.0",
+   "url": "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz",
+   "group": "pillow",
+   "sha256": "e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564"
+  },
+  {
+   "name": "libavif",
+   "version": "1.4.2",
+   "url": "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v1.4.2.tar.gz",
+   "group": "pillow",
+   "sha256": "2b645287340ba5a631d268b551dc2d72bd73ac33335962dd36dcdb6d8366921d"
+  },
+  {
+   "name": "libpng",
+   "version": "1.6.58",
+   "url": "https://downloads.sourceforge.net/project/libpng/libpng16/1.6.58/libpng-1.6.58.tar.xz",
+   "group": "pillow",
+   "sha256": "28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775"
+  },
+  {
+   "name": "lcms2",
+   "version": "2.19.1",
+   "url": "https://downloads.sourceforge.net/project/lcms/lcms/2.19.1/lcms2-2.19.1.tar.gz",
+   "group": "pillow",
+   "sha256": "bfc54f7bab59fbc921012014a8032e4cba4abd46db47d46b76416a8c0b2815c8"
+  },
+  {
+   "name": "openjpeg",
+   "version": "2.5.4",
+   "url": "https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.4.tar.gz",
+   "group": "pillow",
+   "sha256": "a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a"
+  },
+  {
+   "name": "libwebp",
+   "version": "1.6.0",
+   "url": "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz",
+   "group": "pillow",
+   "sha256": "e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564"
+  },
+  {
+   "name": "brotli",
+   "version": "1.2.0",
+   "url": "https://github.com/google/brotli/archive/refs/tags/v1.2.0.tar.gz",
+   "group": "pillow",
+   "sha256": "816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec"
+  },
+  {
+   "name": "harfbuzz",
+   "version": "14.5.0",
+   "url": "https://github.com/harfbuzz/harfbuzz/releases/download/14.5.0/harfbuzz-14.5.0.tar.xz",
+   "group": "pillow",
+   "sha256": "b7132e148358a45185c9feafd049dbaf243649d3c44414b3534d9c95d18592b9"
+  },
+  {
+   "name": "freetype",
+   "version": "2.14.3",
+   "url": "https://downloads.sourceforge.net/project/freetype/freetype2/2.14.3/freetype-2.14.3.tar.xz",
+   "group": "pillow",
+   "sha256": "36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f"
+  },
+  {
+   "name": "pillow",
+   "version": "13.0.0",
+   "url": "https://files.pythonhosted.org/packages/ce/a4/9cc30690a394a8305e8be4c9036aa16d0dfddadd09079860b582f562496d/pillow-13.0.0.tar.gz",
+   "group": "pillow",
+   "sha256": "cdcd1ba258178f7356d74170c9a81ba4eab6a5d55748bc402a5a2a6fe6be3510"
+  },
+  {
+   "name": "zlib",
+   "version": "1.3.2",
+   "url": "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz",
+   "group": "lxml",
+   "sha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"
+  },
+  {
+   "name": "libiconv",
+   "version": "1.18",
+   "url": "https://ftp.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz",
+   "group": "lxml",
+   "sha256": "3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8"
+  },
+  {
+   "name": "libxml2",
+   "version": "2.14.6",
+   "url": "https://download.gnome.org/sources/libxml2/2.14/libxml2-2.14.6.tar.xz",
+   "group": "lxml",
+   "sha256": "7ce458a0affeb83f0b55f1f4f9e0e55735dbfc1a9de124ee86fb4a66b597203a"
+  },
+  {
+   "name": "libxslt",
+   "version": "1.1.43",
+   "url": "https://download.gnome.org/sources/libxslt/1.1/libxslt-1.1.43.tar.xz",
+   "group": "lxml",
+   "sha256": "5a3d6b383ca5afc235b171118e90f5ff6aa27e9fea3303065231a6d403f0183a"
+  },
+  {
+   "name": "lxml",
+   "version": "6.1.3",
+   "url": "https://files.pythonhosted.org/packages/23/ad/28ecd7cb894d172f3c9c80a075eeeb2017ac62e3632cee05a5f9493547eb/lxml-6.1.3.tar.gz",
+   "group": "lxml",
+   "sha256": "45222d94ddd511536f3b2f7d9deae3b2339b4ce0f075f1ca25703b07cad9dd21"
+  }
+ ],
+ "files": {
+  "native/bin/rg": {
+   "originalSha256": "c96883f162d76b148b362455a06fe32fc766f51332ce86458145ce8a7a8041d2",
+   "id": null,
+   "links": [
+    "@loader_path/../lib/libpcre2-8.0.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "rg",
+   "sha256": "978a58c32cd7afbf9705290b05ed30043714bd825ab0559340c16d4a9cab30b7"
+  },
+  "node/bin/node": {
+   "originalSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+   "id": null,
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "node",
+   "sha256": "2e13b182d00b1ba1ab9835462285188f76641b1d3cbf400d56dac674d8239d0b",
+   "entitlements": [
+    "com.apple.security.cs.allow-dyld-environment-variables",
+    "com.apple.security.cs.allow-jit",
+    "com.apple.security.cs.allow-unsigned-executable-memory",
+    "com.apple.security.cs.disable-executable-page-protection",
+    "com.apple.security.cs.disable-library-validation"
+   ]
+  },
+  "python/runtime/bin/python3.13": {
+   "originalSha256": "aa297d23f1ad4ec74dc2fde694556b005c1aac0e6e156d060803bcbcf2fb6e1c",
+   "id": null,
+   "links": [
+    "@rpath/libpython3.13.dylib"
+   ],
+   "rpaths": [
+    "@executable_path/../lib"
+   ],
+   "mode": 493,
+   "identifier": "python3",
+   "sha256": "5d0874222e91d5033c43764d8cfd685e05d1ace16c730aafff05d84a165de3e8",
+   "entitlements": [
+    "com.apple.security.cs.disable-library-validation"
+   ]
+  },
+  "python/runtime/lib/itcl4.3.5/libitcl4.3.5.dylib": {
+   "originalSha256": "a2b4da029cea48a0cf18ea3e460e894c6761ed6bb1ded022f76f5b3a9b829a5c",
+   "id": "libitcl4.3.5.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 420,
+   "identifier": "libitcl4",
+   "sha256": "e2bc37a30c8be1919e6327b98c7b0b41347910f57594c8a5852553c2c351eb81"
+  },
+  "python/runtime/lib/itcl4.3.5/libtcl9itcl4.3.5.dylib": {
+   "originalSha256": "ec9a2ff1eee00b860abbc38080b51853b33ca61cda855ae9f80514eebb61e2f1",
+   "id": "libtcl9itcl4.3.5.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 420,
+   "identifier": "libtcl9itcl4",
+   "sha256": "6b9b9445776ef575f29ff109999c84e3ee6a535e887211031e57b54112e87f3e"
+  },
+  "python/runtime/lib/libpython3.13.dylib": {
+   "originalSha256": "d544d0dc79a8d75611e9b3017a19e4174d89ec9a65ef541fd71a44dc18f33ed5",
+   "id": "@rpath/libpython3.13.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libpython3",
+   "sha256": "8becc572a0ec10e8517d9d8d5a9d4a132216b9f1a0b2438748999c74e15a0640"
+  },
+  "python/runtime/lib/libtcl9.0.dylib": {
+   "originalSha256": "06b6d0424e4fdcb74f38c2695ecb99bb2dd3c320e6d8a45ea51ba07981262595",
+   "id": "@rpath/libtcl9.0.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "com.tcltk.tcllibrary",
+   "sha256": "af36af790e38c5c3a43100f177f44d124abbff06aa4496b616a05c6e31f82a97"
+  },
+  "python/runtime/lib/libtcl9tk9.0.dylib": {
+   "originalSha256": "2fb1d828f0d48dada72dc2a7938f81e030779932c5eafbd35082245916badd49",
+   "id": "@rpath/libtcl9tk9.0.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "com.tcltk.tklibrary",
+   "sha256": "5031d868202c784ec785365fbc8905418159d36c90aafd3009f49e6e26dbb142"
+  },
+  "python/runtime/lib/python3.13/lib-dynload/_ctypes_test.cpython-313-darwin.so": {
+   "originalSha256": "4c8ae001ebee1c0718803c13b2cc6cde227332bc98b0598eae2b7be338d3de99",
+   "id": null,
+   "links": [],
+   "rpaths": [
+    "@loader_path/../.."
+   ],
+   "mode": 493,
+   "identifier": "_ctypes_test.cpython-313-darwin",
+   "sha256": "fd2c6a58e0911e059ed77de6ac10aa7b19517e2d3dc9813301ce8d7570eac276"
+  },
+  "python/runtime/lib/python3.13/lib-dynload/_dbm.cpython-313-darwin.so": {
+   "originalSha256": "8dca76d0bfa25233df2b1016db38aad295ef7bfc10bce13ba8208fa83245ae91",
+   "id": null,
+   "links": [],
+   "rpaths": [
+    "@loader_path/../.."
+   ],
+   "mode": 493,
+   "identifier": "_dbm.cpython-313-darwin",
+   "sha256": "e17c3ef94a6e840e9de30835e97f615b278ab402e3869d47db9fdd595a30ddff"
+  },
+  "python/runtime/lib/python3.13/lib-dynload/_tkinter.cpython-313-darwin.so": {
+   "originalSha256": "726a4b3114dfc4f2eae5317e8f412ee5d7bef44d477f872a1b066f6fa7bd837c",
+   "id": null,
+   "links": [
+    "@rpath/libtcl9.0.dylib",
+    "@rpath/libtcl9tk9.0.dylib"
+   ],
+   "rpaths": [
+    "@loader_path/../.."
+   ],
+   "mode": 493,
+   "identifier": "_tkinter.cpython-313-darwin",
+   "sha256": "b1bb7f091fe010ca19d1ca745a15cfd591c31181116bbda1eef07054c8b203a5"
+  },
+  "python/runtime/lib/thread3.0.4/libtcl9thread3.0.4.dylib": {
+   "originalSha256": "eddbf7f001ede31a0153ab9789eb9df5cdf14e56bef734034842be21eb6ca411",
+   "id": "libtcl9thread3.0.4.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 420,
+   "identifier": "libtcl9thread3",
+   "sha256": "41878786b9de8e0f65d93490e30535f040f3d93b644d6136d991085bf891537c"
+  },
+  "python/runtime/lib/thread3.0.4/libthread3.0.4.dylib": {
+   "originalSha256": "ea0e8a6fdaca1f2dbfa6e1e143686b5e632f48f755e5d6907e70eccce1ccad56",
+   "id": "libthread3.0.4.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 420,
+   "identifier": "libthread3",
+   "sha256": "8198d84dfc539f88cf43bd85441075dbff3c84e058d8a6cf0b249f0693149b1a"
+  },
+  "python/venv/bin/python": {
+   "originalSha256": "9ebe3bab25ebb3b8134e2aface3621242e98ab13132c6f39bdaab70409032d0d",
+   "id": null,
+   "links": [
+    "@rpath/libpython3.13.dylib"
+   ],
+   "rpaths": [
+    "@executable_path/../lib"
+   ],
+   "mode": 493,
+   "identifier": "python",
+   "sha256": "c0a3bb0804fc28864c10c485aadeab5e7d93199475f10c49f063e08be1e73b6b",
+   "entitlements": [
+    "com.apple.security.cs.disable-library-validation"
+   ]
+  },
+  "python/venv/bin/python3": {
+   "originalSha256": "877f6bb7c68dd0ff3facb75da152f742f407b7e43bbbdca1811e4df8251b5ec4",
+   "id": null,
+   "links": [
+    "@rpath/libpython3.13.dylib"
+   ],
+   "rpaths": [
+    "@executable_path/../lib"
+   ],
+   "mode": 493,
+   "identifier": "python3",
+   "sha256": "5d0874222e91d5033c43764d8cfd685e05d1ace16c730aafff05d84a165de3e8",
+   "entitlements": [
+    "com.apple.security.cs.disable-library-validation"
+   ]
+  },
+  "python/venv/bin/python3.13": {
+   "originalSha256": "abaf21b06f2f7923d5aab5a1c88713888f8dd61c29b123e91d9eb747ca2c37e8",
+   "id": null,
+   "links": [
+    "@rpath/libpython3.13.dylib"
+   ],
+   "rpaths": [
+    "@executable_path/../lib"
+   ],
+   "mode": 493,
+   "identifier": "python3",
+   "sha256": "5d0874222e91d5033c43764d8cfd685e05d1ace16c730aafff05d84a165de3e8",
+   "entitlements": [
+    "com.apple.security.cs.disable-library-validation"
+   ]
+  },
+  "python/venv/lib/libpython3.13.dylib": {
+   "originalSha256": "cf71f496779fe2044252157b04a76aa99fcf64bd07e4e26e9032d130904072c5",
+   "id": "@rpath/libpython3.13.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libpython3",
+   "sha256": "8becc572a0ec10e8517d9d8d5a9d4a132216b9f1a0b2438748999c74e15a0640"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libXau.6.dylib": {
+   "originalSha256": "92f89fe3c1ab6effc9e6a592d640139ebcb3c6b1b9f353c7e0ee229e18bc62d4",
+   "id": "/DLC/PIL/.dylibs/libXau.6.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libXau.6",
+   "sha256": "a9cf4f1cf0134503552af87d186e15e9bd3b22f3fe63ec2d649197519201495c"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libavif.16.4.2.dylib": {
+   "originalSha256": "ea2a77369f47c6b82ca7a26b1abb76e7ef8d444d956dc8b6d01dfb8a09c67840",
+   "id": "/DLC/PIL/.dylibs/libavif.16.4.2.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libavif.16",
+   "sha256": "4f42ac601fb648ce4572e084db0aceeb48f8fededaea5547116289b2e1782e07"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libbrotlicommon.1.2.0.dylib": {
+   "originalSha256": "623775f447babf2a9dde797e2a666614064edae3d832687636785cd7a9544200",
+   "id": "/DLC/PIL/.dylibs/libbrotlicommon.1.2.0.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libbrotlicommon.1",
+   "sha256": "d293c4808f286feac41e487d963468d000e7891889e1d3292d60c8daef3178a7"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libbrotlidec.1.2.0.dylib": {
+   "originalSha256": "f2eae5fd343a394be7d002fe287190505303c213961833929104e6d085aed965",
+   "id": "/DLC/PIL/.dylibs/libbrotlidec.1.2.0.dylib",
+   "links": [
+    "@loader_path/libbrotlicommon.1.2.0.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libbrotlidec.1",
+   "sha256": "2db37bd593cb9690ab67f4ec5733c23070de4d18b1df9b9457cea9d76081dcc3"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libfreetype.6.dylib": {
+   "originalSha256": "3730105a746a3819c4275c23016af4b355ee293a80b651862e8450b253ebb581",
+   "id": "/DLC/PIL/.dylibs/libfreetype.6.dylib",
+   "links": [
+    "@loader_path/libpng16.16.dylib",
+    "@loader_path/libz.1.3.1.zlib-ng.dylib",
+    "@loader_path/libharfbuzz.0.dylib",
+    "@loader_path/libbrotlidec.1.2.0.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libfreetype.6",
+   "sha256": "6ecfc28cc0ee6774d6038b799986dc778835583f2da9b67f36900ce70e3fd853"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libharfbuzz.0.dylib": {
+   "originalSha256": "96fafdcb33c3e1074ecc9676f2f23d1a3803f16e0e185402c823edd8ac2fb1a8",
+   "id": "/DLC/PIL/.dylibs/libharfbuzz.0.dylib",
+   "links": [
+    "@loader_path/libfreetype.6.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libharfbuzz.0",
+   "sha256": "4488c6307b3e02e10c86e94c69dcbf85f2469a3ae528abc5e1719a8610691cd9"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libjpeg.62.4.0.dylib": {
+   "originalSha256": "f36102687e7962f41a5bf4a2fab3b6da9d1c47ef832cc29bcdce44ad2fa27185",
+   "id": "/DLC/PIL/.dylibs/libjpeg.62.4.0.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libjpeg.62",
+   "sha256": "ded54f79c64349d6f3234d18eb0881bc30f3f9dd6c690173cad1b076665546a5"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/liblcms2.2.dylib": {
+   "originalSha256": "1b0150a093615f6d4e585f936e43d7e1a94b543ea5ab901b1e851a7ca5c5f366",
+   "id": "/DLC/PIL/.dylibs/liblcms2.2.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "liblcms2",
+   "sha256": "7cb3143f70a198182578167f8606ef83472156c762f3fc5f9f2dcc0240c2811c"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/liblzma.5.dylib": {
+   "originalSha256": "0456fbe85a99ea9e65565d0f7bb6143737aaf7288bdce46b157c79ba6b18027d",
+   "id": "/DLC/PIL/.dylibs/liblzma.5.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "liblzma.5",
+   "sha256": "1544f20989b155a888e2d43cc6d6cda47628282f0ccc5436721bc2d110d94e47"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libopenjp2.2.5.4.dylib": {
+   "originalSha256": "a1d21081165e9085b3f3a7754b4f28e4a22d3db53734ac530dcb0c1aea041bb7",
+   "id": "/DLC/PIL/.dylibs/libopenjp2.2.5.4.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libopenjp2",
+   "sha256": "d972d7fe56f83266ea618d965253811a6cb3779d3636a733c4eb2f93fb801ca4"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libpng16.16.dylib": {
+   "originalSha256": "f08bfb449be78a119426699e64b1edebd0e31e6d7b6c85fb23ad2613cea95ea3",
+   "id": "/DLC/PIL/.dylibs/libpng16.16.dylib",
+   "links": [
+    "@loader_path/libz.1.3.1.zlib-ng.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libpng16",
+   "sha256": "85cf2b302be071ef5eb0fbe742b66b6943b85e9a0ce856628ee0b240d63d6dfa"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libsharpyuv.0.dylib": {
+   "originalSha256": "dd140b9c3a81a3db353c0031c8bfb9c89b7445ec806b1f037c68e9c17d4fdf44",
+   "id": "/DLC/PIL/.dylibs/libsharpyuv.0.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libsharpyuv.0",
+   "sha256": "9d421e225f0d3dadf5f270a52696d15bf279ff4a5c989084badbbf4976eee396"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libtiff.6.dylib": {
+   "originalSha256": "c22129f8210b4092bf007c4dceedbec41506e7d98508b92749bd24b3d1ea4512",
+   "id": "/DLC/PIL/.dylibs/libtiff.6.dylib",
+   "links": [
+    "@loader_path/liblzma.5.dylib",
+    "@loader_path/libjpeg.62.4.0.dylib",
+    "@loader_path/libz.1.3.1.zlib-ng.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libtiff.6",
+   "sha256": "94cc53e900b3fc5e3a3130703f05823179b10ca88bb495fba1fe7e6015dab90b"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libwebp.7.dylib": {
+   "originalSha256": "b6de60255a5f1b626408ef011901942497ca7fa9f679b3ff5602b9454e4a0d3e",
+   "id": "/DLC/PIL/.dylibs/libwebp.7.dylib",
+   "links": [
+    "@loader_path/libsharpyuv.0.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libwebp.7",
+   "sha256": "cfe3d91e4ef9228b471d9a1c298e10f361168572a558ebbface07e12c5953155"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libwebpdemux.2.dylib": {
+   "originalSha256": "c65475c301a424fd102ca7692a50c8328de1517fb1fefafca1f156d0b33912ae",
+   "id": "/DLC/PIL/.dylibs/libwebpdemux.2.dylib",
+   "links": [
+    "@loader_path/libwebp.7.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libwebpdemux.2",
+   "sha256": "f5e18d7889d818a946dacdb83c63a3cd077c2c1bcb843ce26671f70b1ffe5cb8"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libwebpmux.3.dylib": {
+   "originalSha256": "2fd577022d3115f296ef06aa880e8e09c7a01763ec3901d227a18f9cd65888cc",
+   "id": "/DLC/PIL/.dylibs/libwebpmux.3.dylib",
+   "links": [
+    "@loader_path/libwebp.7.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libwebpmux.3",
+   "sha256": "ec0d415a03b6e53949253965fc41bb8e46a6653dacf473ad69dd6d963db18fd8"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libxcb.1.1.0.dylib": {
+   "originalSha256": "5a5635f37dcd01117bdb94ba25d7b7a663358c22422a2785cb8fee575cbf2d43",
+   "id": "/DLC/PIL/.dylibs/libxcb.1.1.0.dylib",
+   "links": [
+    "@loader_path/libXau.6.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libxcb.1",
+   "sha256": "21a0ce0d92074c3af9743ba60a68516849244975af7bcd4a516e59a0b0cdf405"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/.dylibs/libz.1.3.1.zlib-ng.dylib": {
+   "originalSha256": "72416bfd77ffd44f4a92544e5bd087e069aef33352f2311e9eed92fb44dd0611",
+   "id": "/DLC/PIL/.dylibs/libz.1.3.1.zlib-ng.dylib",
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "libz.1.3.1.zlib-ng",
+   "sha256": "440bf85275eabd5918caedf8d7afbaeafa317eb68a19b1e9e1675b14e24deeb7"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/_avif.cpython-313-darwin.so": {
+   "originalSha256": "78bc878dabdd65eb34ed585087c367252fc2f0b7f0e57b12676caeec4389e15e",
+   "id": null,
+   "links": [
+    "@loader_path/.dylibs/libavif.16.4.2.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "_avif.cpython-313-darwin",
+   "sha256": "95b5e4dd9931bcc4e6d4e575ca97ef03a2452e683ab8d4fb7a9ea9fc33f92306"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/_imaging.cpython-313-darwin.so": {
+   "originalSha256": "46a0c06ed5a12a577424df2ee4afba0b298223900f77e0f1cd41e0e3eef9f53b",
+   "id": null,
+   "links": [
+    "@loader_path/.dylibs/libtiff.6.dylib",
+    "@loader_path/.dylibs/libjpeg.62.4.0.dylib",
+    "@loader_path/.dylibs/libopenjp2.2.5.4.dylib",
+    "@loader_path/.dylibs/libz.1.3.1.zlib-ng.dylib",
+    "@loader_path/.dylibs/libxcb.1.1.0.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "_imaging.cpython-313-darwin",
+   "sha256": "03a5be97ffcbcf141292322d20e9077f4161272be2c92f40a44d98e445ea53c0"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/_imagingcms.cpython-313-darwin.so": {
+   "originalSha256": "dd95ceab768b421856cda92de073a39f5b08a5543d10727daefefecf236c9adf",
+   "id": null,
+   "links": [
+    "@loader_path/.dylibs/liblcms2.2.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "_imagingcms.cpython-313-darwin",
+   "sha256": "79a9635705bed4afa14c3810c9ef06640a155839e109f0eef6ee8e1a7f0a8773"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/_imagingft.cpython-313-darwin.so": {
+   "originalSha256": "1d682f6aa7f760d184259f300069be45404d466de649c45c4314a5ca7ccaf065",
+   "id": null,
+   "links": [
+    "@loader_path/.dylibs/libfreetype.6.dylib",
+    "@loader_path/.dylibs/libharfbuzz.0.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "_imagingft.cpython-313-darwin",
+   "sha256": "126de53d8f00f3d1c5dc392e134142f31e1004145edc36905254c7618f37c893"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/_imagingmath.cpython-313-darwin.so": {
+   "originalSha256": "d158bfa2fea7539f2cbf11330eb90fd2dc269325b1cc74c978961ea59bc9f5e5",
+   "id": null,
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "_imagingmath.cpython-313-darwin",
+   "sha256": "6f7ed2ced7a1442c8e526c1ed3f39c37e3dcb50f4c0b003dc23fa303dd8ccbd3"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/_imagingmorph.cpython-313-darwin.so": {
+   "originalSha256": "2da05dc9e8aab96e91c501e09b6afa6be3575d61dd6447314893063983508451",
+   "id": null,
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "_imagingmorph.cpython-313-darwin",
+   "sha256": "9f59fc86b2b83807710fcff04498b6354f37dac64b998c7f3a96a5ea73b6546a"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/_imagingtk.cpython-313-darwin.so": {
+   "originalSha256": "d1550a3a128ea40d7998f6a9f859cfa6754ce42ff7c17e7ecdee5595f1788b8c",
+   "id": null,
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "_imagingtk.cpython-313-darwin",
+   "sha256": "ac8739f4c1ab025eb61d8e25d6839500c9bd6c92d989deb2a12c224df62a8625"
+  },
+  "python/venv/lib/python3.13/site-packages/PIL/_webp.cpython-313-darwin.so": {
+   "originalSha256": "d96d1c236d31d5a138e2d977925f123658ab262dd1bb3bf41d9feeeb4a04337b",
+   "id": null,
+   "links": [
+    "@loader_path/.dylibs/libwebp.7.dylib",
+    "@loader_path/.dylibs/libwebpmux.3.dylib",
+    "@loader_path/.dylibs/libwebpdemux.2.dylib"
+   ],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "_webp.cpython-313-darwin",
+   "sha256": "d15c60205b62868124cf4b8d7de28d59c52e9b2389ca58e48fdce1566b0076e9"
+  },
+  "python/venv/lib/python3.13/site-packages/lxml/_elementpath.cpython-313-darwin.so": {
+   "originalSha256": "fd800e939f1cca3e66b0cd28aa56de4b4dcb26972e7dc7a005bc2ac8504e3c21",
+   "id": null,
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "_elementpath.cpython-313-darwin",
+   "sha256": "94714362b4bb6d78ba861f5a6001358c1782c8120c96991e7ac606abc4013a45"
+  },
+  "python/venv/lib/python3.13/site-packages/lxml/builder.cpython-313-darwin.so": {
+   "originalSha256": "003751efefab4ccb8e4c76eeb91646163b48c99d7ea177fd73bf3a61ffaeec10",
+   "id": null,
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "builder.cpython-313-darwin",
+   "sha256": "917568ee387155858d63cec793ed02afb26c50d77acfbcaed189b6542c854602"
+  },
+  "python/venv/lib/python3.13/site-packages/lxml/etree.cpython-313-darwin.so": {
+   "originalSha256": "b02e751709b1a5ad233e66be77bb7589a8065c5dfbfbf60b1c737304f70359f0",
+   "id": null,
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "etree.cpython-313-darwin",
+   "sha256": "a3c8883ee0a9e36b12270829c7d467ea4a0c77508a7a8a57d931814907cbe12d"
+  },
+  "python/venv/lib/python3.13/site-packages/lxml/html/_difflib.cpython-313-darwin.so": {
+   "originalSha256": "ff2349b90e4295e181237d54605b7e342758afcf093251def8ac0b49e92cc328",
+   "id": null,
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "_difflib.cpython-313-darwin",
+   "sha256": "3715ae5c258646ce7c4c15c6a544a98a856f0282895dc9f22f3baaf545509bfa"
+  },
+  "python/venv/lib/python3.13/site-packages/lxml/html/diff.cpython-313-darwin.so": {
+   "originalSha256": "dd52988d6474fa6b3b8bbaeb5754024989242e6fc88aad3c7bda01bbf30c01d9",
+   "id": null,
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "diff.cpython-313-darwin",
+   "sha256": "60b606c51d0fb80ecf4d2b199d7785e509d56013bf3e7b39c19d03852a036b8b"
+  },
+  "python/venv/lib/python3.13/site-packages/lxml/objectify.cpython-313-darwin.so": {
+   "originalSha256": "6250095e9ea9804ebf7ff974f7b7b2e6579eeb2dbe542e7c1ce3044e9607e581",
+   "id": null,
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "objectify.cpython-313-darwin",
+   "sha256": "893fa8efcafa4331c889aa41b978e14e45cfa1c832d25b907e2faed4269a1a6c"
+  },
+  "python/venv/lib/python3.13/site-packages/lxml/sax.cpython-313-darwin.so": {
+   "originalSha256": "39835d3eb98b98fc33bd0c20f9488d1e85df50c3cec0b3d5d133ba30e4113794",
+   "id": null,
+   "links": [],
+   "rpaths": [],
+   "mode": 493,
+   "identifier": "sax.cpython-313-darwin",
+   "sha256": "cc5a1c9aa811d5a3ea128ff0abcdafb27243c47b06e4084b476a00b415b21bf9"
+  }
+ }
+}

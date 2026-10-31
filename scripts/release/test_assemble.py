@@ -74,43 +74,80 @@ class RuntimeRepin(unittest.TestCase):
             assemble.repin_runtime(app, [stray])
 
 
-class PdfRuntime(unittest.TestCase):
+class RebuiltRuntime(unittest.TestCase):
     def setUp(self):
-        self.app, self.built = Path(tempfile.mkdtemp()), Path(tempfile.mkdtemp())
-        self.target = self.app / assemble.AUX / 'agent-runtime/native/bin/pdfinfo'
+        self.app, self.build = Path(tempfile.mkdtemp()), Path(tempfile.mkdtemp())
+        self.runtime = self.app / assemble.AUX / 'agent-runtime'
+        self.target = self.runtime / 'native/bin/pdfinfo'
         self.target.parent.mkdir(parents=True)
         self.target.write_bytes(b'supplied')
         self.target.chmod(0o755)
-        (self.built / 'native/bin').mkdir(parents=True)
-        (self.built / 'native/bin/pdfinfo').write_bytes(b'rebuilt')
-        self.manifest = self.built / 'manifest.json'
-        self.linked = self.target.with_name('rg')
-        self.linked.write_bytes(b'links a rebuilt library')
-        self.manifest.write_text(json.dumps({'relinked': ['native/bin/rg'], 'files': {'native/bin/pdfinfo': {
-            'originalSha256': hashlib.sha256(b'supplied').hexdigest(),
-            'sha256': hashlib.sha256(b'rebuilt').hexdigest(), 'rpaths': []}}}))
+        (self.build / 'pdf/native/bin').mkdir(parents=True)
+        (self.build / 'pdf/native/bin/pdfinfo').write_bytes(b'rebuilt')
+        self.node = self.runtime / 'node/bin/node'
+        self.node.parent.mkdir(parents=True)
+        self.node.write_bytes(b'supplied node')
+        (self.build / 'rest/node/bin').mkdir(parents=True)
+        (self.build / 'rest/node/bin/node').write_bytes(b'rebuilt node')
+        self.manifests = [self.build / 'pdf.json', self.build / 'rest.json']
+        self.manifests[0].write_text(json.dumps({'built': 'pdf', 'files': {'native/bin/pdfinfo': self.entry(b'supplied', b'rebuilt')}}))
+        self.manifests[1].write_text(json.dumps({'built': 'rest', 'files': {'node/bin/node': {
+            **self.entry(b'supplied node', b'rebuilt node'), 'identifier': 'node',
+            'entitlements': ['com.apple.security.cs.allow-jit']}}}))
 
-    def test_replaces_and_reports_the_old_digest(self):
-        (path, (old, size)), _ = assemble.substitute_pdf_runtime(self.app, self.built, self.manifest)
-        self.assertEqual((path.read_bytes(), old, size), (b'rebuilt', hashlib.sha256(b'supplied').hexdigest(), 8))
-        self.assertEqual(path.stat().st_mode & 0o777, 0o755)
+    @staticmethod
+    def entry(old, new):
+        return {'originalSha256': hashlib.sha256(old).hexdigest(), 'sha256': hashlib.sha256(new).hexdigest(), 'rpaths': []}
 
-    def test_relinked_files_stay_byte_identical_but_are_signed_and_pinned_too(self):
-        _, (path, (old, size)) = assemble.substitute_pdf_runtime(self.app, self.built, self.manifest)
-        self.assertEqual(path, self.linked)
-        self.assertEqual(path.read_bytes(), b'links a rebuilt library')
-        self.assertEqual((old, size), (hashlib.sha256(path.read_bytes()).hexdigest(), 23))
+    def test_one_path_covers_every_manifest_and_reports_the_old_digests(self):
+        replaced = dict(assemble.substitute_runtime(self.app, self.build, self.manifests))
+        self.assertEqual(self.target.read_bytes(), b'rebuilt')
+        self.assertEqual(self.node.read_bytes(), b'rebuilt node')
+        self.assertEqual(replaced[self.target], (hashlib.sha256(b'supplied').hexdigest(), 8))
+        self.assertEqual(self.target.stat().st_mode & 0o777, 0o755)
 
-    def test_refuses_a_file_the_manifest_does_not_record(self):
-        (self.built / 'native/bin/pdfinfo').write_bytes(b'other')
+    def test_refuses_a_file_the_manifest_does_not_record_and_changes_nothing(self):
+        (self.build / 'rest/node/bin/node').write_bytes(b'other')
         with self.assertRaises(SystemExit):
-            assemble.substitute_pdf_runtime(self.app, self.built, self.manifest)
+            assemble.substitute_runtime(self.app, self.build, self.manifests)
         self.assertEqual(self.target.read_bytes(), b'supplied')
 
-    def test_shipped_manifest_covers_the_34_files(self):
-        files = json.loads(assemble.PDF_RUNTIME_MANIFEST.read_text())['files']
-        self.assertEqual(len(files), 34)
-        self.assertTrue(all(len(entry['originalSha256']) == 64 for entry in files.values()))
+    def test_refuses_a_supplied_file_that_changed(self):
+        self.target.write_bytes(b'changed underneath')
+        with self.assertRaises(SystemExit):
+            assemble.substitute_runtime(self.app, self.build, self.manifests)
+
+    def test_signing_keeps_the_identifier_and_entitlements(self):
+        subprocess.run(['clang', '-x', 'c', '-', '-o', self.node], input=b'int main(void) { return 0; }', check=True)
+        entry = assemble.runtime_entries(self.app, self.manifests)[self.node][1]
+        assemble.sign_runtime_file(self.node, entry, '-', False, self.build)
+        details = subprocess.run(['codesign', '-d', '--entitlements', '-', '--xml', '-v', self.node], capture_output=True)
+        self.assertIn(b'Identifier=node', details.stderr)
+        self.assertIn(b'com.apple.security.cs.allow-jit', details.stdout)
+
+    def test_any_other_signature_left_in_the_runtime_is_reported(self):
+        for path in (self.target, self.node):
+            subprocess.run(['clang', '-x', 'c', '-', '-o', path], input=b'int main(void) { return 0; }', check=True)
+        authorities = {self.target: 'Developer ID Application: Aux', self.node: 'Developer ID Application: At Inc.'}
+        real, assemble.signing_details = assemble.signing_details, lambda path: (authorities[path], None)
+        self.addCleanup(setattr, assemble, 'signing_details', real)
+        self.assertEqual(assemble.foreign_runtime_signatures(self.app, 'Developer ID Application: Aux'),
+                         ['node/bin/node: Developer ID Application: At Inc.'])
+
+    def test_shipped_manifests_cover_every_rebuilt_file_once(self):
+        pdf, rest = (json.loads(m.read_text())['files'] for m in assemble.RUNTIME_MANIFESTS)
+        self.assertEqual((len(pdf), len(rest)), (34, 50))
+        self.assertFalse(pdf.keys() & rest.keys())
+        self.assertIn('native/bin/rg', rest)
+        for entry in (*pdf.values(), *rest.values()):
+            self.assertEqual((len(entry['originalSha256']), len(entry['sha256'])), (64, 64))
+
+    def test_shipped_manifest_keeps_the_entitlements_hardened_runtime_needs(self):
+        rest = json.loads(assemble.RUNTIME_MANIFESTS[1].read_text())['files']
+        self.assertIn('com.apple.security.cs.allow-jit', rest['node/bin/node']['entitlements'])
+        self.assertNotIn('com.apple.security.get-task-allow', rest['node/bin/node']['entitlements'])
+        for name in ('runtime/bin/python3.13', 'venv/bin/python', 'venv/bin/python3', 'venv/bin/python3.13'):
+            self.assertEqual(rest[f'python/{name}']['entitlements'], ['com.apple.security.cs.disable-library-validation'])
 
 
 class MinimumMacos(unittest.TestCase):

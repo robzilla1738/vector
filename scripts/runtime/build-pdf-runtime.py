@@ -7,7 +7,7 @@ The supplied runtime copies Homebrew bottles that declare minos 26.0. This build
 upstream releases from sha256-pinned tarballs (pdf-runtime-macos15.json) for arm64 with
 MACOSX_DEPLOYMENT_TARGET=15.0, then gives the 34 shipped files the supplied install names
 (@loader_path/<name>, tools at @loader_path/../lib/<name>), LC_RPATHs and file names, and
-signs them ad hoc. Release assembly re-signs them (assemble.py --pdf-runtime).
+signs them ad hoc. Release assembly re-signs them (assemble.py --runtime).
 
 Everything lands in out/runtime/pdf-macos15: sources/ (verified tarballs), tools/ (meson and
 ninja in a venv), src/, prefix/ and native/{bin,lib} (the 34 files). Nothing is installed
@@ -15,15 +15,13 @@ system-wide. --write-manifest records the built files' sha256 in the manifest; a
 accepts files that match it.
 """
 import argparse
-import hashlib
 import json
 import os
 import shutil
-import subprocess
 import sys
-import tarfile
-import urllib.request
 from pathlib import Path
+
+from runtime_common import extract, fetch, output, run, sha256
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
@@ -31,44 +29,6 @@ MANIFEST = HERE / 'pdf-runtime-macos15.json'
 OUT = REPO / 'out/runtime/pdf-macos15'
 PREFIX, SOURCES, SRC, TOOLS, DIST = (OUT / d for d in ('prefix', 'sources', 'src', 'tools', 'native'))
 SYSTEM = ('/usr/lib/', '/System/Library/')
-
-
-def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def run(command, cwd=None, env=None):
-    print('+', ' '.join(map(str, command)), flush=True)
-    subprocess.run([str(c) for c in command], cwd=cwd, env=env, check=True)
-
-
-def output(*command) -> str:
-    return subprocess.run([str(c) for c in command], capture_output=True, text=True, check=True).stdout
-
-
-def fetch(source: dict) -> Path:
-    suffix = next(s for s in ('.tar.gz', '.tgz', '.tar.xz', '.tar.bz2') if source['url'].endswith(s))
-    archive = SOURCES / f"{source['name']}-{source['version']}{suffix}"
-    if not archive.exists() or sha256(archive) != source['sha256']:
-        SOURCES.mkdir(parents=True, exist_ok=True)
-        partial = archive.with_name(archive.name + '.partial')
-        with urllib.request.urlopen(source['url'], timeout=300) as response, partial.open('wb') as handle:
-            shutil.copyfileobj(response, handle)
-        if sha256(partial) != source['sha256']:
-            partial.unlink()
-            raise SystemExit(f"{source['name']}: sha256 mismatch for {source['url']}")
-        partial.rename(archive)
-    return archive
-
-
-def extract(source: dict, archive: Path) -> Path:
-    target = SRC / source['name']
-    shutil.rmtree(target, ignore_errors=True)
-    target.mkdir(parents=True)
-    with tarfile.open(archive) as tar:
-        tar.extractall(target, filter='data')
-    (root,) = target.iterdir()
-    return root
 
 
 def environment(sdk: str, jobs: int) -> dict:
@@ -321,7 +281,7 @@ def main() -> int:
         if stamp.exists() and stamp.read_text() == source['sha256']:
             continue
         print(f"== {source['name']} {source['version']}", flush=True)
-        steps[source['name']](extract(source, fetch(source)))
+        steps[source['name']](extract(source, fetch(source, SOURCES), SRC))
         for la in (PREFIX / 'lib').glob('*.la'):
             la.unlink()
         stamp.write_text(source['sha256'])
