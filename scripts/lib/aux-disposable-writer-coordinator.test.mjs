@@ -15,7 +15,7 @@ process.on('disconnect',()=>{clearInterval(timer);process.exit(0)});
 process.send({event:'ready'});`);
 const source={id:'writer',bytes:writer,sha256:sha(writer)};
 const initial=Buffer.from('old'),next=Buffer.from('new');
-async function fixture(){return createAuxDisposableWriterCoordinator({participantSources:[source],initialFiles:[{path:'state',bytes:initial},{path:'ticks',bytes:Buffer.alloc(0)}]});}
+async function fixture(){return createAuxDisposableWriterCoordinator({participantSources:[source],initialFiles:[{path:'state',bytes:initial},{path:'ticks',bytes:Buffer.alloc(0)}],deadlineMs:null});}
 
 test('admission closes synchronously, direct writer stops and real terminal verification controls reopen',async()=>{
  const coordinator=await fixture();
@@ -59,7 +59,7 @@ test('source drift is rejected before spawning and this API cannot adopt existin
 
 test('unclean participating writer exit keeps admission blocked',async()=>{
  const bytes=Buffer.from(writer.toString().replaceAll('process.exit(0)','process.exit(1)'));
- const coordinator=await createAuxDisposableWriterCoordinator({participantSources:[{id:'writer',bytes,sha256:sha(bytes)}],initialFiles:[{path:'ticks',bytes:Buffer.alloc(0)}]});
+ const coordinator=await createAuxDisposableWriterCoordinator({participantSources:[{id:'writer',bytes,sha256:sha(bytes)}],initialFiles:[{path:'ticks',bytes:Buffer.alloc(0)}],deadlineMs:null});
  try {
   await coordinator.start('writer').ready;
   await assert.rejects(()=>coordinator.freeze(),/cleanly|blocked/);
@@ -70,7 +70,7 @@ test('unclean participating writer exit keeps admission blocked',async()=>{
 
 test('early abnormal writer exit closes admission before any freeze request',async()=>{
  const bytes=Buffer.from(`process.send({event:'ready'});setTimeout(()=>process.exit(7),10);`);
- const coordinator=await createAuxDisposableWriterCoordinator({participantSources:[{id:'writer',bytes,sha256:sha(bytes)}],initialFiles:[{path:'state',bytes:initial}]});
+ const coordinator=await createAuxDisposableWriterCoordinator({participantSources:[{id:'writer',bytes,sha256:sha(bytes)}],initialFiles:[{path:'state',bytes:initial}],deadlineMs:null});
  try {
   const participant=coordinator.start('writer');await participant.ready;
   assert.equal((await participant.done).code,7);
@@ -94,5 +94,13 @@ test('dispose during an empty drain remains closed and cannot migrate',async()=>
   assert.throws(()=>coordinator.freeze(),/disposed/);
   await assert.rejects(()=>coordinator.migrate({id:'4'.repeat(32),files:[{path:'data/state',expectedSha256:sha(initial),bytes:next}]}),/disposed/);
   assert.equal((await readFile(join(coordinator.root,'data','state'))).toString(),'old');
+ }finally{await coordinator.dispose();await rm(coordinator.root,{recursive:true,force:true});}
+});
+
+test('a participant that never reports ready hits the deadline',async()=>{
+ const bytes=Buffer.from(`setInterval(()=>{},1000);process.on('message',()=>process.exit(0));process.on('disconnect',()=>process.exit(0));`);
+ const coordinator=await createAuxDisposableWriterCoordinator({participantSources:[{id:'writer',bytes,sha256:sha(bytes)}],deadlineMs:1});
+ try {
+  await assert.rejects(coordinator.start('writer').ready,/ready deadline/);
  }finally{await coordinator.dispose();await rm(coordinator.root,{recursive:true,force:true});}
 });
