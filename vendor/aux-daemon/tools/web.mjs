@@ -75,11 +75,15 @@ export function create({typebox, tools: t}) {
           seen.add(item.url);
           results.push({url: item.url, title: item.title, publish_date: item.publishedAtText ?? null, excerpts: item.snippet ? [item.snippet] : []});
         }
-      // Results arrive as Google redirect links; a citation should name the site itself.
-      await Promise.all(results.map(async item => {
-        if (!item.url.startsWith('https://www.google.com/goto?')) return;
-        item.url = (await context.browser.fetch(item.url, {redirect: 'manual', signal}).catch(() => null))?.headers.get('location') || item.url;
-      }));
+      // Results arrive as Google redirect links; a citation should name the site itself. One at a
+      // time, without the page's cookies: a burst through the browser left half of them unresolved.
+      const direct = new Set();
+      for (const item of [...results]) {
+        if (item.url.startsWith('https://www.google.com/goto?'))
+          item.url = (await fetch(item.url, {redirect: 'manual', signal}).catch(() => null))?.headers.get('location') || item.url;
+        if (direct.has(item.url)) results.splice(results.indexOf(item), 1);
+        else direct.add(item.url);
+      }
       if (!results.length) throw Error(`Web search has no results here. Open https://www.google.com/search?q=${encodeURIComponent(objective)} with openTab and read the page.`);
       const {details, result} = t.buildWebSearchToolResult({session_id: context.session.id, results});
       return reply(JSON.stringify(result), details);
