@@ -389,6 +389,13 @@ export const STORE_EDITS = Object.freeze([
   ...['listOpenTabs', 'resolveCliBrowserBinding', 'restoreCliBrowserBinding'].map(name => delegate('browserBinding', name, 'async ')),
   ...['listCliBrowserProfiles', 'isCliSession'].map(name => delegate('browserBinding', name)),
   edit('the MCP manager is Aux\'s', 'McpManager=class{#e;', 'McpManager=auxOwnedDaemon.store(`mcpManager`,auxOwnedDaemonBindings),auxSupplied_McpManager=class{#e;'),
+  // The start diagnostic reads only named sources, so the agent server's frames come with it.
+  edit('the start diagnostic reads the agent server\'s frames', String.raw`\/(aux-native-entry|index)\.mjs:(\d{1,7})`,
+    String.raw`\/(aux-native-entry|index|server)\.mjs:(\d{1,7})`),
+  edit('the start diagnostic names the agent server', `source: match[2] === 'index' ? 'index.mjs' : 'aux-native-entry.mjs'`,
+    `source: match[2] + '.mjs'`),
+  edit('the start diagnostic knows the agent server\'s methods', `'AgentSessionServer.#h', 'AgentSessionServer.#i'`,
+    `'AgentSessionServer.#reload', 'AgentSessionServer.#resume', 'AgentSessionServer.#dispatch'`),
   edit('the agent server is Aux\'s', 'AgentSessionServer=class{#auxClosing=false;',
     'AgentSessionServer=auxOwnedDaemon.store(`agentServer`,auxOwnedDaemonBindings),auxSupplied_AgentSessionServer=class{#auxClosing=false;'),
   edit('the model registry\'s catalog methods are Aux\'s', 'return Cn.filter(Cn=>isAiGatewayProvider(Cn.provider)?ei.get(Cn.provider)?.has(Cn.id)??!1:!0)}}}));',
