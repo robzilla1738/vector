@@ -6,7 +6,7 @@ Robert asked for a thorough review of the browser experience — the agent, qual
 
 **Sources:** nine read-only code reviews of build 77 and the durable checkout, plus an on-screen look at build 77 beside the running Aside and the saved Arc references (`out/acceptance/20261027/ref/`). Findings marked *(check)* were inferred from code and need one look on screen before or while fixing. File paths are under the durable checkout's `src/` unless they start with `vendor/`, `scripts/` or `docs/`; `frame/` means `chrome/browser/ui/views/frame/`.
 
-## Progress (build 136, 2026-10-30)
+## Progress (build 138, 2026-10-31)
 
 **Changed by Robert, 2026-10-30:** individual chats replace the one-thread agent. Lines below about a home thread or side chats are history; [the agent model page](2026-10-28-agent-model.md) has the current behavior.
 
@@ -96,7 +96,7 @@ Build 117 (`out/release/1.0.0-117`) carries everything below. It is assembled fr
 - **Batch 10, what remains supplied (build 128):**
   - Daemon: only the credential, key and token paths. The ledger, agent server, MCP manager and model listing are Aux source; a test keeps the catalog off the credential paths.
   - Extension: libraries, and the hosted sign-in chunks that the paused-account path still reaches.
-  - Native addons: `aux-pdf.node` needs the owner's link filter entry. Aux's `aux-macos-utilities.node` passes parity but is refused at bootstrap, so releases keep the supplied image (`docs/spec/native/macos-utilities.md`, section 7).
+  - Native addons: `aux-pdf.node` needs the owner's link filter entry. Aux's `aux-macos-utilities.node` passes parity, but swapping it invalidates existing homes, so releases keep the supplied image for now (`docs/spec/native/macos-utilities.md`, section 7).
   - The runtime is done: all 84 Mach-Os are rebuilt from upstream.
   - The memory-distribution `aux-memory` stays unsigned, as supplied. Notarization is out of scope here.
 - **Organization model unit tests:**

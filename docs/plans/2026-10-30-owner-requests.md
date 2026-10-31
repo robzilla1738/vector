@@ -54,7 +54,7 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 | # | Request | Status |
 |---|---|---|
 | 31 | Do the runtime work | seen (all 84 Mach-Os rebuilt from upstream for macOS 15; run under Developer ID in builds 120 to 128, and an agent turn finished on it) |
-| 32 | Everything in the plan complete and ready to test | ready to test as build 136; the open items are in [the review checklist](2026-10-30-review-checklist.md) |
+| 32 | Everything in the plan complete and ready to test | ready to test as build 138; the open items are in [the review checklist](2026-10-30-review-checklist.md) |
 | 33 | Every item in the plan and from Robert done and excellent | open |
 
 ## Agent

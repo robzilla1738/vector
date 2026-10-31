@@ -1,6 +1,6 @@
-# Review checklist, build 136
+# Review checklist, build 138
 
-Launch it: `/Users/rcourson/Documents/Vibe/Aux/out/release/1.0.0-136/Aux.app/Contents/MacOS/Aux --use-mock-keychain`
+Launch it: `/Users/rcourson/Documents/Vibe/Aux/out/release/1.0.0-138/Aux.app/Contents/MacOS/Aux --use-mock-keychain`
 
 Everything is committed locally. Nothing has been pushed.
 
@@ -48,16 +48,16 @@ The approval popover: Ask first doesn't ask for clicks or new sites, so I couldn
 5. **AGENTS.md rule wording**, the **unit-test allow-list**, how far **`aux exec --allow`** can pre-approve, and the Google Password page's **Offer to save** toggle.
 6. **The debugger notice.** While the agent works, "Aux Browsing Agent started debugging this browser" shows above the page. It's Chromium's notice. It could move inside the card, as the plan says, or be hidden now that tab rows show agent work. Hiding it removes a visible warning, so that's your call.
 7. **`apps/pdf-addon/build.sh`** is untracked. It goes once the PDF add-on links through the filter.
+8. **Aux's own add-ons.** Swapping any pinned add-on changes the policy hash your profile recorded, and the profile then refuses to start. Either start a new Aux home, which writes new Keychain items and leaves this profile behind, or have me write a one-time migration, which rewrites those journals. The PDF add-on needs the same choice.
 
 ## Known gaps
 
-- Aux's own `aux-macos-utilities.node` passes parity but is refused at bootstrap, so releases ship the supplied one. The cause needs a daemon build that reports it.
+- Aux's own `aux-macos-utilities.node` passes parity but doesn't ship yet: see decision 8.
 - The done step's bottom glow stays blue on other themes.
 - `darwin-x64` node-pty files still ship, pinned by the supplied inventory.
 - Web Store banner rule, theme preview per Space rather than per window, coalesced polls (8.14), Refresh still full (1.3), Orion bookmarks from an HTML export only, and no Firefox or Zen passwords.
 - `openTab` takes about 14 seconds, and a short agent turn about 40.
 - After a click navigates an attached tab, the agent can't read that tab. It's a deliberate safety rule, so loosening it is your call.
-- Web search citations are labelled google.com.
 - `bash` and file edits return "Supervised task execution is disabled in this browser build". That's the local browser-only mode.
 - The daemon still has its home-thread code. `aux ask` uses that ongoing chat, and nothing else does.
 - Build 124 and later testing closed some tabs in the review profile.
