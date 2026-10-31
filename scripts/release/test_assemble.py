@@ -398,6 +398,65 @@ class MemoryDistribution(unittest.TestCase):
             assemble.verify_memory_chain(self.app, self.pins, daemon)
 
 
+class FixedRuntime(unittest.TestCase):
+    def setUp(self):
+        self.app = Path(tempfile.mkdtemp())
+        runtime = self.app / assemble.AUX / 'agent-runtime'
+        (runtime / 'node/bin').mkdir(parents=True)
+        (runtime / 'node/bin/node').write_bytes(b'supplied')
+        self.bootstrap = self.app / assemble.RUNTIME_BOOTSTRAP
+        self.bootstrap.parent.mkdir(parents=True)
+        pins, root = self.app / assemble.RUNTIME_PINS, self.app / assemble.RUNTIME_TEXT_ROOT
+        pins.write_text('{"files":[]}')
+        root.write_text('{"runtimeRoot":"/Users/someone"}')
+        self.bootstrap.write_text(f"if(a!=='{assemble.sha256(pins)}')x;if(b!=='{assemble.sha256(root)}')x;"
+                                  f"if(c.filter((e)=>e).length !== {assemble.SUPPLIED_RELOCATED}) throw 1;\n")
+        self.entry = self.bootstrap.with_name('pinning.json')
+        self.entry.write_text(json.dumps({'sha256': assemble.sha256(self.bootstrap), 'size': self.bootstrap.stat().st_size}))
+        self.fixed = Path(tempfile.mkdtemp())
+        (self.fixed / 'agent-runtime/node/bin').mkdir(parents=True)
+        (self.fixed / 'agent-runtime/node/bin/node').write_bytes(b'ours, signed')
+        node = hashlib.sha256(b'ours, signed').hexdigest()
+        (self.fixed / 'runtime-source-pins.json').write_text(json.dumps({'files': [
+            {'path': 'node', 'type': 'directory'},
+            {'path': 'node/bin/node', 'type': 'file', 'size': 12, 'sourceSha256': node}]}))
+        (self.fixed / 'runtime-text-root.json').write_text('{"runtimeRoot":"/Applications/Aux.app"}')
+        self.record = {'pinsSha256': assemble.sha256(self.fixed / 'runtime-source-pins.json'),
+                       'textRootSha256': assemble.sha256(self.fixed / 'runtime-text-root.json'),
+                       'relocated': 8, 'textRoot': '/Applications/Aux.app'}
+        (self.fixed / 'pins.json').write_text(json.dumps(self.record))
+        self.node = node
+
+    def test_copies_it_and_repins_the_bootstrap_chain(self):
+        assemble.replace_runtime(self.app, self.fixed)
+        assemble.verify_runtime(self.app, self.fixed)
+        text = self.bootstrap.read_text()
+        self.assertIn('.length !== 8)', text)
+        self.assertIn(self.record['pinsSha256'], text)
+        self.assertEqual(json.loads(self.entry.read_text())['sha256'], assemble.sha256(self.bootstrap))
+        self.assertEqual(json.loads(self.entry.read_text())['size'], self.bootstrap.stat().st_size)
+
+    def test_refuses_an_inventory_that_is_not_its_pins(self):
+        (self.fixed / 'runtime-source-pins.json').write_text('{}')
+        with self.assertRaises(SystemExit):
+            assemble.replace_runtime(self.app, self.fixed)
+
+    def test_a_changed_file_is_refused(self):
+        assemble.replace_runtime(self.app, self.fixed)
+        (self.app / assemble.AUX / 'agent-runtime/node/bin/node').write_bytes(b'ours, sign3d')
+        with self.assertRaises(SystemExit):
+            assemble.verify_runtime(self.app, self.fixed)
+
+    def test_the_daemon_must_be_compiled_for_this_runtime(self):
+        assemble.replace_runtime(self.app, self.fixed)
+        daemon = Path(tempfile.mkdtemp()) / 'Aux Daemon'
+        daemon.write_bytes(self.node.encode() + b'/Applications/Aux.app')
+        assemble.verify_runtime(self.app, self.fixed, daemon)
+        daemon.write_bytes(b'/Applications/Aux.app')
+        with self.assertRaises(SystemExit):
+            assemble.verify_runtime(self.app, self.fixed, daemon)
+
+
 class EnclosingObject(unittest.TestCase):
     def test_a_digest_inside_a_path_finds_its_own_object(self):
         text = '{"a":{"path":"x/DIGEST/y","size":5}}'

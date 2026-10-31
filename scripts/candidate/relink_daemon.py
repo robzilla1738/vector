@@ -9,7 +9,7 @@ the candidate, so earlier repairs carry forward. Writes the rewritten commands
 and a receipt beside the outputs.
 
     relink_daemon.py --compile-recipe DIR --link-recipe DIR \
-        --source AuxNativeDaemonMain.cc [--substitute OLD=NEW ...] --out DIR
+        --source AuxNativeDaemonMain.cc [--substitute OLD=NEW ...] [--link-arg ARG ...] --out DIR
 """
 import argparse
 import hashlib
@@ -50,6 +50,7 @@ def main() -> int:
     parser.add_argument('--compile-recipe', type=Path, required=True)
     parser.add_argument('--link-recipe', type=Path, required=True)
     parser.add_argument('--substitute', action='append', default=[], help='OLD=NEW link input')
+    parser.add_argument('--link-arg', action='append', default=[], help='extra link argument, after the recorded ones')
     parser.add_argument('--source', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
@@ -69,7 +70,7 @@ def main() -> int:
     for pair in args.substitute:
         old, new = pair.split('=', 1)
         link_argv = replace_one(link_argv, old, str(Path(new).resolve()))
-    compile_argv, link_argv = preserved(compile_argv), preserved(link_argv)
+    compile_argv, link_argv = preserved(compile_argv), preserved(link_argv) + args.link_arg
     (out / 'compile.json').write_text(json.dumps(compile_argv) + '\n')
     (out / 'link.json').write_text(json.dumps({'cwd': link['cwd'], 'argv': link_argv}) + '\n')
     for name, argv, cwd in (('compile', compile_argv, None), ('link', link_argv, link['cwd'])):
@@ -78,7 +79,7 @@ def main() -> int:
             print(f'{name} failed:\n{result.stderr[-4000:]}', file=sys.stderr)
             return 1
     receipt = {'format': 'aux.daemon-relink.v1', 'compileRecipe': str(args.compile_recipe.resolve()),
-               'linkRecipe': str(args.link_recipe.resolve()), 'substitutions': args.substitute,
+               'linkRecipe': str(args.link_recipe.resolve()), 'substitutions': args.substitute, 'linkArguments': args.link_arg,
                'source': {'path': str(args.source.resolve()), 'sha256': sha256(args.source)},
                'executable': {'path': str(executable), 'sha256': sha256(executable)}}
     (out / 'receipt.json').write_text(json.dumps(receipt, indent=1) + '\n')

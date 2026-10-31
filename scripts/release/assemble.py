@@ -6,6 +6,7 @@
                 [--computer-use-helper 'apps/computer-use-helper/.build/app/Aux Computer Use.app']
                 [--memory-helper apps/memory-helper/.build/aux-memory]
                 [--memory-distribution out/live-inputs/completion-20261026/release-memory-a1]
+                [--fixed-runtime out/live-inputs/completion-20261026/release-runtime-a1]
                 [--runtime [out/runtime]] [--runtime-macos15]
 
 The native build supplies everything outside Contents/Resources/aux; the sealed candidate supplies
@@ -381,6 +382,60 @@ def verify_memory_chain(app: Path, pins: dict, daemon: Path | None = None):
         check('daemon constant', pins['sha256'].encode() in compiled and SUPPLIED_MEMORY['sha256'].encode() not in compiled)
 
 
+# The one signed agent runtime (scripts/candidate/fix_runtime.py). The daemon seeds a home's runtime
+# only if every file matches a table compiled into it, so assembly copies this and never signs it.
+RUNTIME_PINS = f'{NATIVE}/runtime-source-pins.json'
+RUNTIME_TEXT_ROOT = f'{NATIVE}/runtime-text-root.json'
+RUNTIME_BOOTSTRAP = f'{NATIVE}/runtime-bootstrap.cjs'
+SUPPLIED_RELOCATED = 9
+
+
+def replace_runtime(app: Path, source: Path) -> list:
+    """Swap in the fixed runtime, its inventory and its text root, and re-pin the bootstrap."""
+    record = json.loads((source / 'pins.json').read_text())
+    inventory, root = source / 'runtime-source-pins.json', source / 'runtime-text-root.json'
+    if (sha256(inventory), sha256(root)) != (record['pinsSha256'], record['textRootSha256']):
+        raise SystemExit(f'{source}: inventory or text root does not match its pins')
+    target = app / AUX / 'agent-runtime'
+    shutil.rmtree(target)
+    run(['ditto', str(source / 'agent-runtime'), str(target)])
+    bootstrap = app / RUNTIME_BOOTSTRAP
+    before = (sha256(bootstrap), bootstrap.stat().st_size)
+    text = bootstrap.read_text()
+    old = f'.length !== {SUPPLIED_RELOCATED})'
+    if text.count(old) != 1:
+        raise SystemExit(f'{RUNTIME_BOOTSTRAP}: expected one relocated-file count')
+    bootstrap.write_text(text.replace(old, f".length !== {record['relocated']})"))
+    cascade = repin_cascade(app, {before[0]: (sha256(bootstrap), before[1], bootstrap.stat().st_size)})
+    changes = {}
+    for pinned, fresh in ((app / RUNTIME_PINS, inventory), (app / RUNTIME_TEXT_ROOT, root)):
+        changes[sha256(pinned)] = (sha256(fresh), pinned.stat().st_size, fresh.stat().st_size)
+        shutil.copyfile(fresh, pinned)
+    return cascade + repin_cascade(app, changes)
+
+
+def verify_runtime(app: Path, source: Path, daemon: Path | None = None):
+    """The shipped runtime, its inventory and the compiled table agree, file by file."""
+    record = json.loads((source / 'pins.json').read_text())
+    pins = json.loads((app / RUNTIME_PINS).read_text())
+    runtime = app / AUX / 'agent-runtime'
+    if sha256(app / RUNTIME_PINS) != record['pinsSha256'] or sha256(app / RUNTIME_TEXT_ROOT) != record['textRootSha256']:
+        raise SystemExit('runtime pins: inventory or text root changed after replacement')
+    files = [row for row in pins['files'] if row['type'] == 'file']
+    for row in files:
+        path = runtime / row['path']
+        if (path.stat().st_size, sha256(path)) != (row['size'], row['sourceSha256']):
+            raise SystemExit(f"runtime pins: {row['path']} differs from its pin")
+    text = (app / RUNTIME_BOOTSTRAP).read_text()
+    if record['pinsSha256'] not in text or record['textRootSha256'] not in text:
+        raise SystemExit('runtime pins: the bootstrap does not pin this inventory')
+    if daemon:
+        compiled = daemon.read_bytes()
+        node = next(row for row in files if row['path'] == 'node/bin/node')
+        if node['sourceSha256'].encode() not in compiled or record['textRoot'].encode() not in compiled:
+            raise SystemExit('runtime pins: the daemon was not compiled for this runtime')
+
+
 # Every Mach-O in the agent runtime, rebuilt from upstream for macOS 15 (scripts/runtime/).
 RUNTIME_MANIFESTS = [HERE.parent / 'runtime/pdf-runtime-macos15.json', HERE.parent / 'runtime/runtime-macos15.json']
 
@@ -583,6 +638,9 @@ def main() -> int:
     parser.add_argument('--runtime', type=Path, nargs='?', const=HERE.parents[1] / 'out/runtime',
                         help="replace every Mach-O in the agent runtime with Aux's rebuild, signed with Aux's identity "
                              '(default out/runtime; see scripts/runtime/)')
+    parser.add_argument('--fixed-runtime', type=Path,
+                        help='the signed runtime from scripts/candidate/fix_runtime.py, whose pins the daemon has compiled in. '
+                             'Copied, never signed here; replaces --runtime for a release')
     parser.add_argument('--runtime-macos15', action='store_true',
                         help='refuse a runtime with a Mach-O that declares a minimum macOS above 15.0')
     parser.add_argument('--computer-use-helper', type=Path,
@@ -601,6 +659,10 @@ def main() -> int:
     release = args.identity == 'developer-id'
     if release and not args.daemon_profile:
         raise SystemExit('--daemon-profile is required for developer-id signing')
+    if release and not args.fixed_runtime:
+        raise SystemExit('--fixed-runtime is required for developer-id signing: the daemon refuses any other runtime')
+    if args.fixed_runtime and args.runtime:
+        raise SystemExit('--fixed-runtime and --runtime are alternatives')
     if release and not args.memory_distribution:
         raise SystemExit('--memory-distribution is required for developer-id signing: Apple rejects the supplied binary')
     identity = identity_sha1(args.identity)
@@ -668,6 +730,7 @@ def main() -> int:
     resigned, kept = [], {}
     # The rebuilt runtime is signed with Aux's identity in both modes.
     rebuilt = substitute_runtime(app, args.runtime.resolve()) if args.runtime else []
+    fixed_cascade = replace_runtime(app, args.fixed_runtime.resolve()) if args.fixed_runtime else []
     above = above_minimum_macos(app) if args.runtime_macos15 else []
     if above:
         raise SystemExit(f'{len(above)} runtime files need macOS above 15.0: {above[:5]}')
@@ -686,6 +749,8 @@ def main() -> int:
     for path in sorted((app / AUX).rglob('*'), key=lambda p: -len(p.parts)):
         if not macho(path) or path in covered or app / MEMORY_DISTRIBUTION in path.parents:
             continue
+        if args.fixed_runtime and app / AUX / 'agent-runtime' in path.parents:
+            continue
         current, identifier = signing_details(path)
         kept[current] = kept.get(current, 0) + 1
         if release and not current.startswith('Developer ID Application: '):
@@ -702,7 +767,7 @@ def main() -> int:
     pin_files = [pins, app / NATIVE / 'runtime-bootstrap.cjs']
     pins_before = {p: (sha256(p), p.stat().st_size) for p in pin_files}
     repinned = repin_runtime(app, [p for p, _ in resigned if runtime in p.parents])
-    cascade = helper_cascade + repin_cascade(app, {
+    cascade = helper_cascade + fixed_cascade + repin_cascade(app, {
         **{old: (sha256(p), size, p.stat().st_size) for p, (old, size) in resigned if runtime not in p.parents},
         **{old: (sha256(p), size, p.stat().st_size) for p, (old, size) in pins_before.items() if sha256(p) != old}})
 
@@ -718,6 +783,8 @@ def main() -> int:
     run(['codesign', '--verify', '--deep', '--strict', str(app)])
     if args.memory_distribution:
         verify_memory_chain(app, json.loads((args.memory_distribution / 'pins.json').read_text()), args.daemon_executable)
+    if args.fixed_runtime:
+        verify_runtime(app, args.fixed_runtime, args.daemon_executable)
 
     receipt = {
         'format': 'aux.release-assembly.v1', 'version': args.version, 'build': args.build,
