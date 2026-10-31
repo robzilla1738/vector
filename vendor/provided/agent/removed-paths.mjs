@@ -26,6 +26,7 @@ export const CUTS = Object.freeze([
   cut('CLI Windows install', 'if(Cn.target===`win-x64`){await installWindowsCli(Cn);return}', '/* Aux ships its CLI inside the app;'),
   // Payments: Stripe checkout pages and their return route.
   cut('billing pages', 'function createBillingHttpRouter(Cn={}){', 'function createMcpHttpRouter(){'),
+  cut('billing router', 'stripePriceLookupKeySchema,billingPortalResponseSchema,billingUsageResponseSchema,embeddedCheckoutResponseSchema,billingRouter,init_routes$22=__esmMin((()=>{', 'require_chunkstream=/* @__PURE__ */ __commonJSMin('),
   // A development website's sign-in, through an origin list a process environment could extend.
   cut('development sign-in', 'async function verifyDaemonDevAuthToken(Cn,ei){', 'function verifyP256InstallationSignature('),
 ]);
@@ -36,6 +37,7 @@ export const REMOVALS = Object.freeze([
   ['model URL', 'MODEL_DOWNLOAD_BASE_URL=`http://127.0.0.1:9/aux-unavailable/releases/dev-updater/models`,', ''],
   ['memory runtime test host', ',baseUrl:process.env.AUX_MEMORY_TEST_RUNTIME_BASE_URL', ''],
   ['memory model test host', ',baseUrl:process.env.AUX_MEMORY_TEST_MODEL_BASE_URL', ''],
+  ['billing router start', 'init_routes$22(),', ''],
   ['billing route', 'ei.route(`/`,createBillingHttpRouter()),', ''],
   ['billing module start', 'init_http_routes$6(),', ''],
   ['billing public paths', ',`/billing/embedded-checkout`,`/billing/return`,`/mcp/oauth/callback`]', ',`/mcp/oauth/callback`]'],

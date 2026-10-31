@@ -258,6 +258,12 @@ export const EXTENSION_EDITS = Object.freeze({
       'import{_ as R}from"./queries-ldd77hNk.js";',
       `import{_ as R}from"./queries-ldd77hNk.js";${ui(['AuxLocalAgents'])}`),
   ],
+  // Nothing queries billing any more.
+  'assets/strip-markdown-DRcmtuJc.js': [
+    edit('no billing queries to refresh',
+      'he.invalidateQueries(pe.billing.getSummary.queryFilter({accountId:e})),he.invalidateQueries(pe.billing.getSubscription.queryFilter({accountId:e})),',
+      ''),
+  ],
   // The onboarding glow takes the person's theme accent; with none set it keeps the brand color.
   'assets/floating-background-DQ7OXsyL.js': [
     edit('the glow reads the theme',

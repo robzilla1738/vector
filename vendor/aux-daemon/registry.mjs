@@ -9,7 +9,6 @@ export const NAMESPACES = Object.freeze({
   capture: './namespaces/capture.mjs',
   routines: './namespaces/routines.mjs',
   projects: './namespaces/projects.mjs',
-  billing: './namespaces/billing.mjs',
   referrals: './namespaces/referrals.mjs',
   settings: './namespaces/settings.mjs',
   developers: './namespaces/developers.mjs',

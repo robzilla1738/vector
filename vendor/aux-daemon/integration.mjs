@@ -36,9 +36,6 @@ export const BINDINGS = Object.freeze({
     get: 'getRoutine', updateServer: 'updateServerRoutine', remove: 'deleteRoutine', run: 'runRoutine'},
   projects: {ProjectStore: 'ProjectStore', projectSchema: 'projectSchema', SessionStore: 'SessionStore', GlobalAgentSessionServer: 'GlobalAgentSessionServer',
     EventBus: 'EventBus', getAccountTaskRoot: 'getAccountTaskRoot', stopCoderWork: 'stopCoderWork', notifyAgentFileChange: 'notifyAgentFileChange'},
-  billing: {lookupKeySchema: 'stripePriceLookupKeySchema', creditCentsSchema: 'addOnCreditCentsSchema', autoReloadSchema: 'autoReloadSettingsSchema',
-    fetchAuxAPIAuthenticated: 'fetchAuxAPIAuthenticated', fetchBillingSubscription: 'fetchBillingSubscription', summaryResponseSchema: 'billingSummaryResponseSchema',
-    usageResponseSchema: 'billingUsageResponseSchema', SessionStore: 'SessionStore', datetime: 'datetime'},
   referrals: {AccountRegistry: 'AccountRegistry'},
   settings: {settings: 'settings', setInputSchema: 'settingsSetInputSchema', putRemoteUserSettings: 'putRemoteUserSettings', isContextAwarenessSupported: 'isContextAwarenessSupported',
     accountHasAllowedPlan: 'accountHasAllowedPlan', contextAwarenessPlans: 'CONTEXT_AWARENESS_ALLOWED_PLANS', isAccountExperimentalEligible: 'isAccountExperimentalEligible',
@@ -305,7 +302,8 @@ export const DAEMON_EDITS = Object.freeze([
     'const auxOwnedDaemon=await (await import(new URL("./aux-daemon/dispatcher.mjs",import.meta.url))).createAuxOwnedDaemon();\nconst __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);'),
   edit('the root router goes through the dispatcher',
     `auxRouter=router({${ROOT_ROUTER}})`,
-    `auxRouter=router(auxOwnedDaemon.compose({${ROOT_ROUTER}},auxOwnedDaemonBindings()))`),
+    // Aux has no payments, so the supplied billing router isn't mounted (removed-paths.mjs drops it).
+    `auxRouter=router(auxOwnedDaemon.compose({${ROOT_ROUTER.replace('billing:billingRouter,', '')}},auxOwnedDaemonBindings()))`),
 ]);
 
 const INBOX_FUNCTIONS = ['ingestInboxMessage', 'listInboxMessages', 'recordObservedWebPushGrant', 'getWebPushNotificationOrigin', 'normalizeNotificationGrantOrigin',
