@@ -6,3 +6,7 @@ docs/integration/proposed/standard-profile-isolation/memory-runtime-v2-a1/actual
 docs/integration/proposed/standard-profile-isolation/memory-runtime-v2-a1/actual-distribution-a1.json:generic-api-key:26
 docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/index.mjs:generic-api-key:12
 docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/aux-native-entry.mjs:generic-api-key:12
+# SHA-256 pins in code, not keys: a supplied UI bundle digest and the embedding model's content key.
+11a8aaf99aad285dc636444995cd4f9cb27564a8:vendor/aux-extension/integration.mjs:generic-api-key:252
+011c9da7f2c6f3be1fefef92c8445e38895a44ef:vendor/aux-extension/integration.mjs:generic-api-key:252
+ea88f27c383ed9cf492b5964264111e56bcb57fb:scripts/memory-helper/compare.py:generic-api-key:41

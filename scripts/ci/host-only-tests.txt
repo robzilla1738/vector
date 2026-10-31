@@ -6,6 +6,10 @@
 # A new test file runs in CI by default; add it here only if it needs those inputs.
 # Paths are relative to the repository root. scripts/ci/hermetic-tests.mjs fails on
 # an entry that no longer exists.
+#
+# The Python host-only test is left out of the test:ci script in package.json
+# instead of listed here: scripts/candidate/test_repair_combined.py reads the
+# candidate app from out/.
 
 scripts/lib/aux-state-identity-contract.test.mjs
 scripts/lib/provided-computer-use.test.mjs

@@ -35,7 +35,7 @@ The workflow requires the `aux-macos` label so jobs run on the disposable Tartel
 
 ## Hermetic and host-only tests
 
-`pnpm test` on the host stays the full suite. `pnpm test:ci` runs the same Node test files minus those listed in `scripts/ci/host-only-tests.txt`, then the same Python tests. The listed files read inputs that exist only on the owner's Mac: the ignored `out/` folder (the frozen snapshot `out/provided-source-snapshot-1.26.1016.1852`, candidate apps, live inputs), the supplied files under `~/Downloads/aside-rea 2`, or the Chromium checkout. Without them they fail or skip.
+`pnpm test` on the host stays the full suite. `pnpm test:ci` runs the same Node test files minus those listed in `scripts/ci/host-only-tests.txt`, then the same Python tests except `scripts/candidate/test_repair_combined.py`, which reads the candidate app from `out/`. The listed files read inputs that exist only on the owner's Mac: the ignored `out/` folder (the frozen snapshot `out/provided-source-snapshot-1.26.1016.1852`, candidate apps, live inputs), the supplied files under `~/Downloads/aside-rea 2`, or the Chromium checkout. Without them they fail or skip.
 
 A new test file runs in CI by default. If it needs one of those inputs, add it to `host-only-tests.txt`; `hermetic-tests.mjs` fails on an entry that no longer exists.
 

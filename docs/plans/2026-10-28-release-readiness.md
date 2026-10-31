@@ -28,7 +28,7 @@ Accounts (use `hello@getaux.co` as the contact; put every key in the 1Password A
 7. ~~Google Cloud: a Safe Browsing API key restricted to that API, or a Web Risk application if the free API doesn't fit (decision 7).~~ Done 2026-10-28: free Safe Browsing (noncommercial first release), key restricted to that API, in the Agents vault. `scripts/release/set-google-api-key.py` writes it into a local `args.gn` only.
 8. Widevine: request a license at widevine.com, and get VMP signing (decision 8). Inquiries sent 2026-10-28. A native Chromium build needs castLabs' commercial 3PL audit before EVS access; free EVS covers only castLabs Electron builds.
 9. ~~Sentry: one project for native crash reports, and its DSN (decision 6).~~ Done 2026-10-28; the DSN is in the Agents vault and `assemble.py --crash-dsn-ref` builds the minidump endpoint from it. A crash reaching Sentry is not yet observed.
-10. ~~Better Stack: an account plus an API token, so Claude can create the readiness monitor with alerts to `robertcourson96@gmail.com` (decision 12).~~ Done 2026-10-28, with the Vercel log drain.
+10. ~~Better Stack: an account plus an API token, so Claude can create the readiness monitor with alerts to the owner's alert address (decision 12).~~ Done 2026-10-28, with the Vercel log drain.
 11. ~~Tartelet CI: create the GitHub App Tartelet asks for (it registers ephemeral runners) and install it on `robzilla1738/vector`. In the repo settings, set Actions to require approval for all outside collaborators.~~ Done 2026-10-28 ([receipt](../ci/2026-10-28-tartelet.json)).
 
 Hosted service (Vercel `aux-cloud`, Neon, Resend)
