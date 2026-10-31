@@ -1,7 +1,7 @@
 ---
 name: "draft-preview"
 description: "Use when the user explicitly asks for drafting content."
-icon: "https://app.getaux.co/builtin-skills/v1/draft-preview.jpg"
+icon: "/builtin-skills/v1/draft-preview.jpg"
 ---
 
 # Draft cards

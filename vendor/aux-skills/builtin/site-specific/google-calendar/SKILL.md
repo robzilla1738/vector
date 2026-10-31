@@ -2,7 +2,7 @@
 name: google-calendar
 siteSpecific: true
 description: Google Calendar event browsing, search, and creation guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/google-calendar.svg"
+icon: "/builtin-skills/v1/google-calendar.svg"
 autoInject:
   keywords: ["Google Calendar", "Calendar"]
   url:

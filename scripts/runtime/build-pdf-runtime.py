@@ -17,6 +17,7 @@ accepts files that match it.
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -28,6 +29,7 @@ REPO = HERE.parents[1]
 MANIFEST = HERE / 'pdf-runtime-macos15.json'
 OUT = REPO / 'out/runtime/pdf-macos15'
 PREFIX, SOURCES, SRC, TOOLS, DIST = (OUT / d for d in ('prefix', 'sources', 'src', 'tools', 'native'))
+NEUTRAL_PREFIX = b'/var/empty/aux-runtime'
 SYSTEM = ('/usr/lib/', '/System/Library/')
 
 
@@ -200,6 +202,16 @@ def recipes(env: dict, sdk: str) -> dict:
     }
 
 
+def without_build_paths(data: bytes, root: bytes) -> bytes:
+    """Point compile-time data directories (locale, poppler data, fontconfig) at a directory that
+    can't exist or be created on a user's Mac, in place of this machine's build prefix. Nothing
+    ships at those paths today, and a path under a writable folder could be planted."""
+    def neutral(match):
+        text = NEUTRAL_PREFIX + match.group(1)
+        return text + b'\0' * (len(match.group(0)) - len(text))
+    return re.sub(re.escape(root) + rb'([^\0]*)', neutral, data)
+
+
 def relocate(files: dict) -> list:
     """Copy the 34 shipped files out of the prefix and give them the supplied load commands."""
     names = {Path(rel).name for rel in files}
@@ -210,7 +222,7 @@ def relocate(files: dict) -> list:
         source = (PREFIX / ('bin' if tool else 'lib') / name).resolve()
         target = OUT / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source, target)
+        target.write_bytes(without_build_paths(source.read_bytes(), str(PREFIX).encode()))
         target.chmod(0o755 if tool else 0o644)
         lines = output('otool', '-L', target).splitlines()[1:]
         changes = []

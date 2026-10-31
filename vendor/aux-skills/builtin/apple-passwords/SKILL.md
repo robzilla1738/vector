@@ -1,7 +1,7 @@
 ---
 name: apple-passwords
 description: Use Apple Passwords on macOS when the user asks to save, retrieve, or autofill Apple/iCloud passwords or OTPs.
-icon: "https://app.getaux.co/builtin-skills/v1/apple-password.jpg"
+icon: "/builtin-skills/v1/apple-password.jpg"
 autoInject:
   keywords: ["Apple Passwords", "iCloud Passwords", "Passwords app", "apple password", "icloud password"]
 ---

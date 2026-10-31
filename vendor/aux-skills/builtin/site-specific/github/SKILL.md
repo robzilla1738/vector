@@ -2,7 +2,7 @@
 name: github
 siteSpecific: true
 description: GitHub repo, issue, PR, and review guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/github.svg"
+icon: "/builtin-skills/v1/github.svg"
 autoInject:
   keywords: ["GitHub"]
   url: ["github.com"]

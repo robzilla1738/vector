@@ -1,7 +1,7 @@
 ---
 name: notification-activation
 description: Enable browser notifications on websites for monitoring and event-driven routine flows.
-icon: "https://app.getaux.co/builtin-skills/v1/notification-activation.jpg"
+icon: "/builtin-skills/v1/notification-activation.jpg"
 autoInject:
   keywords:
     - notification

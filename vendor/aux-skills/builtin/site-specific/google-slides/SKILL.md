@@ -2,7 +2,7 @@
 name: google-slides
 siteSpecific: true
 description: Google Slides reading and editing guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/google-slides.svg"
+icon: "/builtin-skills/v1/google-slides.svg"
 autoInject:
   url:
     - docs.google.com/presentation/**

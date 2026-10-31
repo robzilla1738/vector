@@ -2,7 +2,7 @@
 name: clickup
 siteSpecific: true
 description: ClickUp command-bar, task, and inbox guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/clickup.svg"
+icon: "/builtin-skills/v1/clickup.svg"
 autoInject:
   url:
     - app.clickup.com

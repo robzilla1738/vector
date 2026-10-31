@@ -2,7 +2,7 @@
 name: jira
 siteSpecific: true
 description: Jira Cloud issue, search, and list-view guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/jira.svg"
+icon: "/builtin-skills/v1/jira.svg"
 autoInject:
   url:
     - "*.atlassian.net/jira/**"

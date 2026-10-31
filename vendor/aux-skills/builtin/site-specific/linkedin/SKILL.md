@@ -1,7 +1,7 @@
 ---
 name: linkedin
 description: Read this when you need to use LinkedIn.
-icon: "https://app.getaux.co/builtin-skills/v1/linkedin.svg"
+icon: "/builtin-skills/v1/linkedin.svg"
 autoInject:
   keywords: ["linkedin"]
 ---

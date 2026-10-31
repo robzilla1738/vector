@@ -1,7 +1,7 @@
 ---
 name: pdf
 description: Use this skill to read, render, merge, split, rotate, or fill PDFs.
-icon: "https://app.getaux.co/builtin-skills/v1/pdf.jpg"
+icon: "/builtin-skills/v1/pdf.jpg"
 ---
 
 # PDF

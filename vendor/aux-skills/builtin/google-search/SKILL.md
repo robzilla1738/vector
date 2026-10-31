@@ -1,7 +1,7 @@
 ---
 name: google-search
 description: Use this when you need to search web on Google and websearch tool is not enough
-icon: "https://app.getaux.co/builtin-skills/v1/google-search.jpg"
+icon: "/builtin-skills/v1/google-search.jpg"
 ---
 
 # Google Search

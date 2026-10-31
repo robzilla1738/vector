@@ -12,7 +12,8 @@ import {RUNTIME_FILES} from '../../vendor/provided/provider-cli/integration.mjs'
 import {DAEMON_FILES as AGENT_FILES, EXTENSION_EDITS as AGENT_EDITS, UI_FILE as AGENT_UI} from '../../vendor/provided/agent/integration.mjs';
 import {RUNTIME_FILES as AUX_DAEMON_FILES} from '../../vendor/aux-daemon/integration.mjs';
 import {ASSET_FILES as POLISH_ASSETS, EDITS as POLISH_EDITS} from '../../vendor/provided/polish/integration.mjs';
-import {BUILTIN_SKILLS_DIR, SKILL_FILES, frontMatter} from '../../vendor/aux-skills/integration.mjs';
+import {DOMPURIFY_CHUNK} from '../../vendor/provided/polish/dompurify.mjs';
+import {BUILTIN_SKILLS_DIR, SKILL_FILES, SKILL_ICONS, frontMatter} from '../../vendor/aux-skills/integration.mjs';
 import {COMPONENTS, GLOBALS_CSS, LICENSE as STYLES_LICENSE, NEWTAB_PAGE, REMOVED_ASSETS, REMOVED_CHUNKS, REMOVED_FILES as STYLES_REMOVED, ROUTES, integrateNewTab, integrateStyles, readComponent,
   readRoute}
   from '../../vendor/aux-extension/integration.mjs';
@@ -26,8 +27,9 @@ const skills = `${path.dirname(daemon)}/${BUILTIN_SKILLS_DIR}`;
 const skillFiles = SKILL_FILES.map(file => `${skills}/${file}`);
 const componentChunks = Object.keys(COMPONENTS).map(chunk => `${dist}/${chunk}`);
 const routeChunks = Object.keys(ROUTES).map(chunk => `${dist}/${chunk}`);
+const purifyChunk = `${dist}/${DOMPURIFY_CHUNK}`;
 const earlier = [`${dist}/assets/strip-markdown-DRcmtuJc.js`, ...agentChunks, ...polishChunks];
-const touched = [`${daemon}/aux-native-entry.mjs`, `${dist}/assets/strip-markdown-DRcmtuJc.js`, `${dist}/assets/connect-dialog-CacgpFap.js`, ...agentChunks, ...polishChunks,
+const touched = [`${daemon}/aux-native-entry.mjs`, `${dist}/assets/strip-markdown-DRcmtuJc.js`, `${dist}/assets/connect-dialog-CacgpFap.js`, ...agentChunks, ...polishChunks, purifyChunk,
   ...componentChunks.filter(chunk => !earlier.includes(chunk)), ...routeChunks.filter(chunk => !earlier.includes(chunk))];
 const newTab = `${dist}/${NEWTAB_PAGE}`;
 // The release applies package edits before the transforms; stage the touched files the same way.
@@ -50,6 +52,11 @@ for (const relative of styleFiles) copyFileSync(path.join(candidate, relative), 
 // The chunks Aux doesn't ship, and the sealed chunks whose deps tables still name them.
 const removedFiles = [...REMOVED_CHUNKS, ...REMOVED_ASSETS].map(file => `${dist}/${file}`);
 for (const relative of removedFiles) copyFileSync(path.join(candidate, relative), path.join(app, relative));
+const x64Pty = ['pty.node', 'spawn-helper'].map(file => `${path.dirname(daemon)}/native/node-pty/prebuilds/darwin-x64/${file}`);
+for (const relative of x64Pty) {
+  mkdirSync(path.dirname(path.join(app, relative)), {recursive: true});
+  copyFileSync(path.join(candidate, relative), path.join(app, relative));
+}
 // The whole sealed skills tree, with the glob package edits (icon host) applied.
 cpSync(path.join(candidate, skills), path.join(app, skills), {recursive: true});
 const stagedSkill = file => {
@@ -64,9 +71,9 @@ test('transforms.mjs adds the provider CLI, agent and Aux daemon files and appli
   const result = transform();
   assert.equal(result.status, 0, result.stderr);
   const applied = JSON.parse(result.stdout);
-  assert.deepEqual(applied.filter(entry => entry.added).map(entry => path.basename(entry.path)), [...RUNTIME_FILES, ...AGENT_FILES, AGENT_UI, ...POLISH_ASSETS, ...AUX_DAEMON_FILES.map(file => path.basename(file)), STYLES_LICENSE.target]);
-  assert.deepEqual(applied.filter(entry => !entry.added && !entry.removed && !entry.label.endsWith('out of the deps')).map(entry => entry.path), [...touched.slice(0, 3), touched[0], touched[0], ...agentChunks, ...polishChunks, ...skillFiles, styleFiles[0], newTab, ...componentChunks, ...routeChunks]);
-  assert.deepEqual(applied.filter(entry => entry.removed).map(entry => entry.path), [...styleFiles.slice(1), ...removedFiles]);
+  assert.deepEqual(applied.filter(entry => entry.added).map(entry => path.basename(entry.path)), [...RUNTIME_FILES, ...AGENT_FILES, AGENT_UI, ...POLISH_ASSETS, ...AUX_DAEMON_FILES.map(file => path.basename(file)), ...SKILL_ICONS, STYLES_LICENSE.target]);
+  assert.deepEqual(applied.filter(entry => !entry.added && !entry.removed && !entry.label.endsWith('out of the deps')).map(entry => entry.path), [...touched.slice(0, 3), touched[0], touched[0], ...agentChunks, ...polishChunks, purifyChunk, ...skillFiles, styleFiles[0], newTab, ...componentChunks, ...routeChunks]);
+  assert.deepEqual(applied.filter(entry => entry.removed).map(entry => entry.path), [...x64Pty, ...styleFiles.slice(1), ...removedFiles]);
   for (const file of removedFiles) assert.ok(!existsSync(path.join(app, file)), file);
   // Nothing left in the bundle names a chunk that is gone, in an import or a Vite deps table.
   for (const name of readdirSync(path.join(app, dist, 'assets')).filter(file => file.endsWith('.js'))) {
@@ -120,4 +127,17 @@ test('every supplied built-in skill has a rewrite with the same front matter, an
     assert.equal(frontMatter(ours), frontMatter(stagedSkill(file)), file);
     assert.notEqual(ours, stagedSkill(file), file);
   }
+});
+
+test('the release carries current DOMPurify, its own skill icons and no x64 node-pty', () => {
+  const chunk = readFileSync(path.join(app, purifyChunk), 'utf8');
+  assert.equal(chunk.includes('3.4.12'), false);
+  assert.ok(chunk.startsWith('import auxDomPurify from"./aux-dompurify.js";'));
+  assert.ok(readFileSync(path.join(app, dist, 'assets/aux-dompurify.js'), 'utf8').startsWith('/*! @license DOMPurify 3.4.17'));
+  assert.equal(SKILL_ICONS.length, 46);
+  for (const icon of SKILL_ICONS) assert.ok(existsSync(path.join(app, dist, 'builtin-skills/v1', icon)), icon);
+  for (const relative of x64Pty) assert.equal(existsSync(path.join(app, relative)), false, relative);
+  const entry = readFileSync(path.join(app, daemon, 'aux-native-entry.mjs'), 'utf8');
+  assert.equal(entry.includes('127.0.0.1:9/'), false);
+  assert.equal(entry.includes('createSttHttpRouter'), false);
 });

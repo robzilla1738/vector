@@ -1,7 +1,7 @@
 ---
 name: visual-browse
 description: Read this when you need a coordinate fallback for visible browser UI that snapshots, refs, or locators cannot target reliably.
-icon: "https://app.getaux.co/builtin-skills/v1/visual-browsing.jpg"
+icon: "/builtin-skills/v1/visual-browsing.jpg"
 ---
 
 # Visual browsing

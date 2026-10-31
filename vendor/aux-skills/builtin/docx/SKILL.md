@@ -1,7 +1,7 @@
 ---
 name: docx
 description: Use this skill whenever a Word .docx file must be read, created, inspected, or edited, including its tables, images, headers, footers, comments, tracked changes, and package metadata.
-icon: "https://app.getaux.co/builtin-skills/v1/docx.jpg"
+icon: "/builtin-skills/v1/docx.jpg"
 license: Proprietary. LICENSE.txt has complete terms
 ---
 

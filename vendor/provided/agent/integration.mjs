@@ -108,9 +108,16 @@ export const DAEMON_EDITS = Object.freeze([
     '.mutation(({ctx:Cn,input:ei})=>(auxAgentWriteContext(Cn.accountId,ei.fileName,ei.content),{success:!0}))'),
 ]);
 
+/** Drops the speech-to-text router: hosted AI is off in Aux and nothing mounts it. */
+function withoutSttRouter(text) {
+  const name = 'createSttHttpRouter', tail = 'throw ei}}),Cn}var init_http_routes$2=', start = text.indexOf(`function ${name}(){`), end = text.indexOf(tail, start);
+  if (start < 0 || end < 0 || text.split(name).length !== 2) throw Error('Agent integration: the STT router drifted');
+  return text.slice(0, start) + text.slice(end + 'throw ei}}),Cn}'.length);
+}
+
 export function integrateDaemon(text) {
   if (text.includes('function auxAgentView(')) throw Error('Agent integration: the daemon entry already has the agent helpers');
-  return applyExactEdits('agent daemon', DAEMON_EDITS, text) + HELPERS;
+  return withoutSttRouter(applyExactEdits('agent daemon', DAEMON_EDITS, text)) + HELPERS;
 }
 
 /** The UI module, copied to dist/assets/ and imported by the chunks below. */

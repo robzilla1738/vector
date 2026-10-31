@@ -1,7 +1,7 @@
 ---
 name: "skill-creator"
 description: "Create or update Aux skills. Use when the user wants to turn reusable instructions, site instructions, workflows, domain knowledge, scripts, references, or templates into an account skill."
-icon: "https://app.getaux.co/builtin-skills/v1/skill-creator.jpg"
+icon: "/builtin-skills/v1/skill-creator.jpg"
 ---
 
 # Making skills

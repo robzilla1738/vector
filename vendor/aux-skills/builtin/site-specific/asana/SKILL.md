@@ -2,7 +2,7 @@
 name: asana
 siteSpecific: true
 description: Asana inbox, my-tasks, and task-pane guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/asana.svg"
+icon: "/builtin-skills/v1/asana.svg"
 autoInject:
   url:
     - app.asana.com

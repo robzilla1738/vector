@@ -1,7 +1,7 @@
 ---
 name: chrome
 description: 'Read this when you need to use Chrome extension APIs: managing bookmarks, tabs, windows, tab groups, history, downloads, or top sites.'
-icon: "https://app.getaux.co/builtin-skills/v1/chrome.jpg"
+icon: "/builtin-skills/v1/chrome.jpg"
 ---
 
 # Chrome extension APIs

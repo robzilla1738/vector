@@ -1,7 +1,7 @@
 ---
 name: slack
 description: Read this when you need to use Slack.
-icon: "https://app.getaux.co/builtin-skills/v1/slack.jpg"
+icon: "/builtin-skills/v1/slack.jpg"
 autoInject:
   keywords: ["slack"]
 ---

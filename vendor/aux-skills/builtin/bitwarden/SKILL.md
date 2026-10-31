@@ -1,7 +1,7 @@
 ---
 name: bitwarden
 description: Read this skill when the user uses Bitwarden.
-icon: "https://app.getaux.co/builtin-skills/v1/bitwarden.svg"
+icon: "/builtin-skills/v1/bitwarden.svg"
 ---
 
 # Bitwarden

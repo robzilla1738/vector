@@ -1,7 +1,7 @@
 ---
 name: dashlane
 description: Read this skill when the user uses Dashlane.
-icon: "https://app.getaux.co/builtin-skills/v1/dashlane.svg"
+icon: "/builtin-skills/v1/dashlane.svg"
 ---
 
 # Dashlane

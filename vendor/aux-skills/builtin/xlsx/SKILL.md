@@ -1,7 +1,7 @@
 ---
 name: xlsx
 description: Use this skill whenever an .xlsx or .xlsm workbook must be read, created, inspected, or edited, including formulas, formatting, charts, images, comments, validation, links, macros, and workbook metadata.
-icon: "https://app.getaux.co/builtin-skills/v1/xlsx.svg"
+icon: "/builtin-skills/v1/xlsx.svg"
 license: Proprietary. LICENSE.txt has complete terms
 ---
 

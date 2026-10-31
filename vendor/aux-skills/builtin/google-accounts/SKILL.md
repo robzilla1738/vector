@@ -1,7 +1,7 @@
 ---
 name: google-accounts
 description: IMPORTANT- Read this skill before interacting any Google apps!
-icon: "https://app.getaux.co/builtin-skills/v1/google-accounts.jpg"
+icon: "/builtin-skills/v1/google-accounts.jpg"
 autoInject:
   keywords: ["google", "구글", "グーグル", "谷歌"]
 ---

@@ -1,7 +1,7 @@
 ---
 name: captcha-solver
 description: Read this skill when a page has a CAPTCHA that needs solving (reCAPTCHA, Turnstile, hCaptcha, or image CAPTCHA).
-icon: "https://app.getaux.co/builtin-skills/v1/captcha-resolver.jpg"
+icon: "/builtin-skills/v1/captcha-resolver.jpg"
 autoInject:
   keywords: ["captcha", "recaptcha", "turnstile", "hcaptcha", "i'm not a robot", "verify you are human", "challenge"]
 ---

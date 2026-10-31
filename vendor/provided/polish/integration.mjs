@@ -9,7 +9,7 @@ const edit = (name, find, replace, count = 1) => Object.freeze({name, find, repl
 const looksLikeUrl = "/^\\S+$/.test(text)&&/[.:/]|^localhost$/i.test(text)";
 
 /** Copied to dist/assets/ and imported by the chunks that use it. */
-export const ASSET_FILES = Object.freeze(['aux-quick-answer.js']);
+export const ASSET_FILES = Object.freeze(['aux-quick-answer.js', 'aux-dompurify.js']);
 
 const COMMAND_BAR = [
   edit('math and unit answers',

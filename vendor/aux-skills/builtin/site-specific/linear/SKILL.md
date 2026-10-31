@@ -2,7 +2,7 @@
 name: linear
 siteSpecific: true
 description: Linear issue, inbox, and keyboard-driven workflow guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/linear.svg"
+icon: "/builtin-skills/v1/linear.svg"
 autoInject:
   url:
     - linear.app

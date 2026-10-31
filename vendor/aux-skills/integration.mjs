@@ -16,8 +16,15 @@ const FRONT_MATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 
 const markdownFiles = dir => readdirSync(dir, {recursive: true}).filter(file => file.endsWith('.md')).map(String).sort();
 
+/** Icons the skills name, shipped in the extension (decision 10), so a skill shows offline and no
+ * hosted site is involved. Every extension page resolves `/builtin-skills/...` against itself. */
+const ICON = /^icon: "\/builtin-skills\/v1\/([^"]+)"$/m;
+
 /** Relative paths of our Markdown files (SKILL.md and the reference pages beside them). */
 export const SKILL_FILES = Object.freeze(markdownFiles(SOURCE));
+
+export const SKILL_ICONS = Object.freeze([...new Set(SKILL_FILES.filter(file => path.basename(file) === 'SKILL.md')
+  .flatMap(file => readFileSync(new URL(file, SOURCE), 'utf8').match(ICON)?.[1] ?? []))].sort());
 
 export const frontMatter = text => text.match(FRONT_MATTER)?.[1] ?? null;
 

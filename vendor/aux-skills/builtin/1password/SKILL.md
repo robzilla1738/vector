@@ -1,7 +1,7 @@
 ---
 name: 1password
 description: Read this skill when the user uses 1Password.
-icon: "https://app.getaux.co/builtin-skills/v1/1password.jpg"
+icon: "/builtin-skills/v1/1password.jpg"
 ---
 
 # 1Password

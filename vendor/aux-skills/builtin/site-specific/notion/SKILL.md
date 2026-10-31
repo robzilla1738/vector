@@ -2,7 +2,7 @@
 name: notion
 siteSpecific: true
 description: Notion workspace, page navigation, and block-editing guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/notion.svg"
+icon: "/builtin-skills/v1/notion.svg"
 autoInject:
   url:
     - notion.so

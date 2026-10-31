@@ -1,7 +1,7 @@
 ---
 name: google-docs
 description: Read this skill when you need to read or write Google Docs. Reading works without opening a browser tab.
-icon: "https://app.getaux.co/builtin-skills/v1/google-docs.jpg"
+icon: "/builtin-skills/v1/google-docs.jpg"
 autoInject:
   keywords: ["google docs", "document"]
   url:
