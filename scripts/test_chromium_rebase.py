@@ -94,7 +94,25 @@ class ChromiumRebaseTest(unittest.TestCase):
         report = rebase.rebase(fresh, 'v3', self.tree)
         self.assertFalse(report['applied'])
         self.assertIn({'path': 'chrome/browser/bar.cc', 'kind': 'failed'}, report['conflicts']['platform'])
-        self.assertFalse((fresh/'chrome/browser/aux/other.cc').exists())  # nothing is extracted after a failed apply
+        # One failed path must not hide the rest: conflicts are still reported and the other files still land.
+        self.assertIn({'path': 'chrome/browser/foo.cc', 'kind': 'conflict'}, report['conflicts']['platform'])
+        self.assertEqual((fresh/'chrome/browser/aux/other.cc').read_text(), '// Aux other\n')
+
+    def test_a_failed_path_does_not_hide_conflicts_in_a_dry_run(self):
+        git(self.origin, 'rm', '-q', 'chrome/browser/bar.cc')
+        git(self.origin, 'commit', '-qm', 'v3')
+        git(self.origin, 'tag', 'v3')
+        fresh = self.fresh('deleted-dry')
+        git(fresh, 'fetch', '-q', 'origin', '+refs/tags/v3:refs/tags/v3')
+        report = rebase.rebase(fresh, 'v3', self.tree, dry_run=True)
+        self.assertIn({'path': 'chrome/browser/bar.cc', 'kind': 'failed'}, report['conflicts']['platform'])
+        self.assertIn({'path': 'chrome/browser/foo.cc', 'kind': 'conflict'}, report['conflicts']['platform'])
+
+    def test_a_shallow_checkout_stays_shallow(self):
+        fresh = self.work/'shallow'
+        git(self.work, 'clone', '-q', '--depth=1', '--branch', 'v1', self.origin.as_uri(), str(fresh))
+        rebase.fetch(fresh, 'v2', git(self.origin, 'rev-parse', 'v1').strip())
+        self.assertEqual(git(fresh, 'rev-list', '--count', 'refs/tags/v2').strip(), '1')
 
     def test_dry_run_needs_the_tag_already_present(self):
         with self.assertRaises(SystemExit):

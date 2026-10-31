@@ -89,10 +89,24 @@ def existing(src, rev, paths):
 
 
 def fetch(src, tag, base):
-    git(src, 'fetch', '--no-tags', 'origin', f'+refs/tags/{tag}:refs/tags/{tag}')
+    # A plain fetch into a --no-history checkout would walk the tag's whole history.
+    shallow = git(src, 'rev-parse', '--is-shallow-repository').stdout.strip() == 'true'
+    depth = ['--depth=1'] if shallow else []
+    git(src, 'fetch', '--no-tags', *depth, 'origin', f'+refs/tags/{tag}:refs/tags/{tag}')
     # 3-way merges need the base's preimage blobs.
     if git(src, 'cat-file', '-e', f'{base}^{{commit}}', check=False).returncode:
-        git(src, 'fetch', '--no-tags', 'origin', base)
+        git(src, 'fetch', '--no-tags', *depth, 'origin', base)
+
+
+def apply_patch(src, patch, *options, env=None):
+    """git apply --3way, setting aside paths it cannot apply: one such path otherwise aborts the whole patch."""
+    failed = set()
+    while True:
+        done = git(src, 'apply', *options, '--3way', '--binary', *(f'--exclude={path}' for path in sorted(failed)), str(patch), env=env, check=False)
+        stuck = failures(done.stderr) - failed
+        if not stuck:
+            return done, failed
+        failed |= stuck
 
 
 def rebase(src, tag, tree_dir, dry_run=False):
@@ -113,17 +127,15 @@ def rebase(src, tag, tree_dir, dry_run=False):
         with tempfile.TemporaryDirectory() as scratch:
             env = {**os.environ, 'GIT_INDEX_FILE': str(Path(scratch)/'index')}
             git(src, 'read-tree', rev, env=env)
-            done = git(src, 'apply', '--cached', '--3way', '--binary', str(patch), env=env, check=False)
+            done, failed = apply_patch(src, patch, '--cached', env=env)
             unmerged = {line.split('\t', 1)[1] for line in git(src, 'ls-files', '-u', env=env).stdout.splitlines()}
     else:
         if git(src, 'status', '--porcelain', '--untracked-files=no').stdout.strip():
             raise SystemExit('The fresh checkout has local changes; start from a clean one')
         git(src, 'checkout', '--quiet', '--detach', rev)
-        done = git(src, 'apply', '--3way', '--binary', str(patch), check=False)
+        done, failed = apply_patch(src, patch)
         unmerged = set(git(src, 'diff', '--name-only', '--diff-filter=U').stdout.split('\n')) - {''}
-        if not failures(done.stderr):
-            tree.extract(tree_dir/'added.tar.gz', src, skip=collisions)
-    failed = failures(done.stderr) - unmerged
+        tree.extract(tree_dir/'added.tar.gz', src, skip=collisions)
     entries = [(p, 'conflict') for p in unmerged] + [(p, 'failed') for p in failed] + [(p, 'exists upstream') for p in collisions]
     return {'tag': tag, 'checkout': str(src), 'dryRun': dry_run, 'base': manifest['base'],
             'patched': len(patched), 'added': len(added), 'applied': not failed,
@@ -133,7 +145,7 @@ def rebase(src, tag, tree_dir, dry_run=False):
 NEXT = '''
 Next steps (docs/source/chromium-updates.md):
  1. Resolve conflicts in {src}: Aux-owned sources first, then branding, then platform edits. If the patch
-    failed outright, fix the listed paths and rerun this script on a fresh checkout.
+    listed a path as failed, upstream removed or moved it: port that part of aux.patch by hand.
  2. Sync dependencies: (cd {src} && gclient sync -D --with_branch_heads --with_tags), depot_tools from
     /Users/rcourson/Documents/Vibe/aux-chromium-durable/depot_tools.
  3. Update every pinned version: chromium/version.txt, base.json (via export), and the Framework
