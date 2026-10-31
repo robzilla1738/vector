@@ -6,7 +6,9 @@ Robert asked for a thorough review of the browser experience — the agent, qual
 
 **Sources:** nine read-only code reviews of build 77 and the durable checkout, plus an on-screen look at build 77 beside the running Aside and the saved Arc references (`out/acceptance/20261027/ref/`). Findings marked *(check)* were inferred from code and need one look on screen before or while fixing. File paths are under the durable checkout's `src/` unless they start with `vendor/`, `scripts/` or `docs/`; `frame/` means `chrome/browser/ui/views/frame/`.
 
-## Progress (build 128, 2026-10-30)
+## Progress (build 135, 2026-10-30)
+
+**Changed by Robert, 2026-10-30:** individual chats replace the one-thread agent. Lines below about a home thread or side chats are history; [the agent model page](2026-10-28-agent-model.md) has the current behavior.
 
 **Read this first:** [the third audit](2026-10-30-plan-audit-3.md) supersedes the rest of this section. [The second audit](2026-10-30-plan-audit-2.md) checked every item and [the owner's requests](2026-10-30-owner-requests.md) against build 117, and overrules this section. It supersedes [the first audit](2026-10-30-plan-audit.md), which found onboarding, the chrome://settings cleanup and the approvals popover unbuilt; all three are now in. The list below describes what was built.
 

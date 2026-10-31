@@ -590,9 +590,13 @@ const ONBOARDING_ROUTES = [
 const BACKGROUND = [
   // Opening a page never reads the tab beside it, and that tab is often New Tab or Settings, which a
   // task may not touch. Only opening the page needs a check, and the URL has its own.
+  // A tab this task never created isn't owned, whatever it shows; asking must not fail on New Tab.
+  edit('asking who owns a tab reads only the task',
+    "return {owned:task.created.get(command.params.targetId)===(await auxBrowserTaskTarget(task,command.params.targetId,signal)).tabId}",
+    "if(!task.created.has(command.params.targetId))return {owned:false};return {owned:task.created.get(command.params.targetId)===(await auxBrowserTaskTarget(task,command.params.targetId,signal)).tabId}"),
   edit('opening a tab does not depend on the page in front',
     'const target=command.params?.targetId??command.params?.anchorTargetId;',
-    "const target=command.params?.targetId??(command.method==='Aux.openProfileUrl'||command.method==='Aux.createAgentTab'?void 0:command.params?.anchorTargetId);"),
+    "const target=command.method==='Aux.ownsTarget'?void 0:command.params?.targetId??(command.method==='Aux.openProfileUrl'||command.method==='Aux.createAgentTab'?void 0:command.params?.anchorTargetId);"),
   // A new profile starts with setup; updates and restarts don't.
   edit('a new profile opens onboarding',
     'onInstalled.addListener(() => Vt(!0))',

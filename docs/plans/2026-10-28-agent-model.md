@@ -1,5 +1,7 @@
 # Aux: one personal agent in the browser
 
+**Superseded 2026-10-30 (Robert):** the one-thread agent is gone. The agent keeps its name, look and sidebar button, but work happens in individual chats: the panel opens on a chat, New chat starts one, and the Chats menu lists them. The old home thread is an ordinary chat. The sidebar doesn't list chats. `aux ask` and `repl` still keep one ongoing chat. Read the rest of this page as history.
+
 Approved by Robert, 2026-10-28 ("do this all"; product decisions delegated: "make best decisions to result in the best product"). This page is the current design; the dated decisions behind it are at the end.
 
 ## The idea

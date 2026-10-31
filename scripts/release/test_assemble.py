@@ -313,5 +313,16 @@ class MemoryHelper(unittest.TestCase):
         with self.assertRaises(SystemExit):
             assemble.replace_memory_helper(self.app, self.built)
 
+class ExtensionVersionTest(unittest.TestCase):
+    def test_each_build_moves_only_the_last_part(self):
+        with tempfile.TemporaryDirectory() as folder:
+            app = Path(folder)
+            path = app / assemble.EXTENSION_MANIFEST
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps({'version': '1.26.1016.1890', 'name': 'Aux'}))
+            self.assertEqual(assemble.stamp_extension_version(app, 131), '1.26.1016.2021')
+            self.assertEqual(json.loads(path.read_text())['name'], 'Aux')
+
+
 if __name__ == '__main__':
     unittest.main()

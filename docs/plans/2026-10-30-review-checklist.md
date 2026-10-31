@@ -1,6 +1,6 @@
-# Review checklist, build 128
+# Review checklist, build 135
 
-Launch it: `/Users/rcourson/Documents/Vibe/Aux/out/release/1.0.0-128/Aux.app/Contents/MacOS/Aux --use-mock-keychain`
+Launch it: `/Users/rcourson/Documents/Vibe/Aux/out/release/1.0.0-135/Aux.app/Contents/MacOS/Aux --use-mock-keychain`
 
 Everything is committed locally. Nothing has been pushed.
 
@@ -15,6 +15,8 @@ Everything is committed locally. Nothing has been pushed.
 - Settings: General, Account, Developers, Models, Add a local agent, search, the import picker.
 - Crash recovery: Restore pages, splits and pins come back.
 - `aux list`, `tabs`, `spaces`, `resolve`, `open`, and `aux mcp` tools against the live browser.
+- Individual chats: the panel opens on a new chat, with New chat and the Chats menu. The sidebar lists no chats.
+- The agent opening a page from Settings and from a web page, and reading it. Chat filters, gutter drag, the working dot.
 - The rebuilt runtime under Developer ID: `rg`, Node, Python and the PDF tools. One agent turn.
 
 ## Only you can test
@@ -29,7 +31,7 @@ Everything is committed locally. Nothing has been pushed.
 
 ## Not yet seen
 
-Chat filters, approval popovers, the working mark, pane swap, Reading mode panels, and dragging from the gutter. These are built and tested in code, but I didn't reach them on screen in this round.
+Approval popovers, pane swap and Reading mode panels. These are built and tested in code, but I didn't reach them on screen in this round.
 
 ## Needs your decision
 
@@ -43,7 +45,8 @@ Chat filters, approval popovers, the working mark, pane swap, Reading mode panel
 3. **expat 2.6.3** in the rebuilt Python matches the upstream recipe but is old, and it predates fixes such as CVE-2024-8176. Bumping it is one manifest line plus a rebuild.
 4. **Hosted sign-in chunks.** Unreachable from local mode now, but a paused account still links to them. Say if they should go.
 5. **AGENTS.md rule wording**, the **unit-test allow-list**, how far **`aux exec --allow`** can pre-approve, and the Google Password page's **Offer to save** toggle.
-6. **`apps/pdf-addon/build.sh`** is untracked. It goes once the PDF add-on links through the filter.
+6. **The debugger notice.** While the agent works, "Aux Browsing Agent started debugging this browser" shows above the page. It's Chromium's notice. It could move inside the card, as the plan says, or be hidden now that tab rows show agent work. Hiding it removes a visible warning, so that's your call.
+7. **`apps/pdf-addon/build.sh`** is untracked. It goes once the PDF add-on links through the filter.
 
 ## Known gaps
 
@@ -51,4 +54,7 @@ Chat filters, approval popovers, the working mark, pane swap, Reading mode panel
 - The done step's bottom glow stays blue on other themes.
 - `darwin-x64` node-pty files still ship, pinned by the supplied inventory.
 - Web Store banner rule, theme preview per Space rather than per window, coalesced polls (8.14), Refresh still full (1.3), Orion bookmarks from an HTML export only, and no Firefox or Zen passwords.
+- The agent can say a page "didn't confirm" when it worked, because `repl` shows only `console.log` and this model uses `return`. `openTab` is also slow, about 45 seconds in the last test.
+- `bash` and file edits return "Supervised task execution is disabled in this browser build". That's the local browser-only mode.
+- The daemon still has its home-thread code. `aux ask` uses that ongoing chat, and nothing else does.
 - Build 124 and later testing closed some tabs in the review profile.

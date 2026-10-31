@@ -342,6 +342,22 @@ def above_minimum_macos(app: Path) -> list:
                          for major, minor in re.findall(r'minos (\d+)\.(\d+)', build)))
 
 
+EXTENSION_MANIFEST = f'{AUX}/apps/extension/dist/manifest.json'
+
+
+def stamp_extension_version(app: Path, build: int) -> str:
+    """Chromium keeps a component extension's service worker until its version changes, so each
+    build carries its own or background.js changes never load. Only the last part moves."""
+    path = app / EXTENSION_MANIFEST
+    manifest = json.loads(path.read_text())
+    parts = manifest['version'].split('.')
+    if len(parts) != 4:
+        raise SystemExit(f'unexpected extension version {manifest["version"]}')
+    manifest['version'] = '.'.join([*parts[:3], str(int(parts[3]) + build)])
+    path.write_text(json.dumps(manifest, indent=2) + '\n')
+    return manifest['version']
+
+
 def main_executable(app: Path, target: str) -> Path:
     """The file a target's signature covers as code: a loose file itself, a bundle's executable."""
     path = app / target
@@ -507,6 +523,7 @@ def main() -> int:
         helper_cascade += memory_cascade
     # Component transforms written as modules (count-checked inside, see transforms.mjs).
     transforms = json.loads(run(['node', str(HERE / 'transforms.mjs'), str(app)]).stdout or '[]')
+    stamp_extension_version(app, args.build)
     marker_path = app / AUX / 'bundle.json'
     marker = json.loads(marker_path.read_text())
     shutil.copy2(marker_path, out / 'stage-provenance-bundle.json')

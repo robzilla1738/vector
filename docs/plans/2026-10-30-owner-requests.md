@@ -36,7 +36,7 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 | 21 | Hover pop-out outline correct in every theme | seen (navy, light, green, unthemed) |
 | 22 | Pins separate per Space | seen (a new Space shows none of Main's pins) |
 | 23 | Bookmarks separate per Space, regardless of cookies | seen |
-| 24 | Agent thread follows cookie sharing; can be separate across Spaces | built |
+| 24 | Agent thread follows cookie sharing; can be separate across Spaces | replaced by row 34 |
 
 ## Pages and panels
 
@@ -54,8 +54,15 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 | # | Request | Status |
 |---|---|---|
 | 31 | Do the runtime work | seen (all 84 Mach-Os rebuilt from upstream for macOS 15; run under Developer ID in builds 120 to 128, and an agent turn finished on it) |
-| 32 | Everything in the plan complete and ready to test | ready to test as build 128; the open items are in [the review checklist](2026-10-30-review-checklist.md) |
+| 32 | Everything in the plan complete and ready to test | ready to test as build 135; the open items are in [the review checklist](2026-10-30-review-checklist.md) |
 | 33 | Every item in the plan and from Robert done and excellent | open |
+
+## Agent
+
+| # | Request | Status |
+|---|---|---|
+| 34 | Individual chats again; the sidebar button stays and the sidebar lists no chats | seen (new chat, Chats menu, an agent turn) |
+| 35 | Agent browsing that works | seen (opens tabs from Settings and web pages, reads pages) |
 
 ## Standing rules from earlier in the work
 
