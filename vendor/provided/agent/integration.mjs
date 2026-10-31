@@ -3,6 +3,7 @@
  * they load. scripts/release/transforms.mjs applies them after the provider CLI integration;
  * any drifted anchor stops the release. */
 import {applyExactEdits} from '../provider-cli/integration.mjs';
+import {withoutDownloads} from './no-unreachable-downloads.mjs';
 
 /** Copied beside aux-native-entry.mjs, under aux-agent/. */
 export const DAEMON_FILES = Object.freeze(['aux-agent.mjs', 'ask-first.mjs']);
@@ -117,7 +118,7 @@ function withoutSttRouter(text) {
 
 export function integrateDaemon(text) {
   if (text.includes('function auxAgentView(')) throw Error('Agent integration: the daemon entry already has the agent helpers');
-  return withoutSttRouter(applyExactEdits('agent daemon', DAEMON_EDITS, text)) + HELPERS;
+  return withoutDownloads(withoutSttRouter(applyExactEdits('agent daemon', DAEMON_EDITS, text))) + HELPERS;
 }
 
 /** The UI module, copied to dist/assets/ and imported by the chunks below. */

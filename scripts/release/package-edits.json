@@ -189,13 +189,6 @@
    "why": "The agent button shortcut is named for what it opens (Batch 7, Shortcuts).",
    "find": "\"description\": \"Open Aux sidepanel\"",
    "replace": "\"description\": \"Open your agent\""
-  },
-  {
-   "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
-   "total": 5,
-   "why": "Unreachable model and CLI update hosts. A reserved name fails at once and sends nothing to a local port.",
-   "find": "http://127.0.0.1:9/aux-unavailable/",
-   "replace": "https://aux-unavailable.invalid/"
   }
  ]
 }
