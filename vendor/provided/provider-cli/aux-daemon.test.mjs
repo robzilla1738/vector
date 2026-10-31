@@ -236,7 +236,7 @@ test('per-turn MCP endpoint: token, scope, the Agent tool path, revocation', asy
   assert.equal(cli.liveTurns(), 0);
   const revoked = await cli.handleMcp(new Request(seen.mcp.url, {method: 'POST', headers: {authorization: `Bearer ${seen.mcp.token}`}, body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'tools/list'})}));
   assert.equal(revoked.status, 401, 'the token dies with its turn');
-  assert.deepEqual(MCP_TOOLS, ['repl', 'webfetch', 'websearch', 'get_time']);
+  assert.deepEqual(MCP_TOOLS, ['repl', 'webfetch', 'websearch', 'get_time', 'ask_user_question', 'request_action_confirmation']);
   assert.equal(cli.isMcpPath('/mcp/v1/abc'), true);
   assert.equal(cli.isMcpPath('/mcp/oauth/callback'), false);
 });

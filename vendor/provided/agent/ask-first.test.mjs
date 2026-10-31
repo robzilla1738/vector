@@ -1,0 +1,99 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import test from 'node:test';
+import {CONTROL_FACTS, askFirstClient, askReason, confirmationRequest, isBankingSite, readOnlyScope} from './ask-first.mjs';
+
+/** The fixture page, as far as CONTROL_FACTS looks at it. */
+function pageWith(fixture) {
+  const control = {...fixture.control, nodeType: 1, value: '', isContentEditable: false, closest: () => control, getAttribute: name => fixture.control.attributes[name] ?? null, tagName: fixture.control.tag,
+    form: fixture.form && {method: fixture.form.method, elements: fixture.form.fields}};
+  return {location: {href: fixture.url}, document: {elementFromPoint: () => control, activeElement: control}};
+}
+const inPage = (page, source, self, argument) => new Function('location', 'document', `return (${source}).call(this, arguments[2])`).call(self, page.location, page.document, argument);
+
+/** A browser that answers the gate's reads from the fixture and records what reaches the page. */
+function browser(fixture) {
+  const sent = [], page = pageWith(fixture);
+  return {sent, send: async (method, params) => {
+    if (method === 'Runtime.evaluate' && params.expression.includes('elementFromPoint'))
+      return {result: {value: inPage(page, CONTROL_FACTS, null, JSON.parse(params.expression.match(/\.call\(null, (.*)\)$/)[1]))}};
+    if (method === 'Page.captureScreenshot') return {data: 'AAAA'};
+    sent.push(method);
+    return {};
+  }};
+}
+const press = {type: 'mousePressed', button: 'left', x: 5, y: 5, clickCount: 1};
+const facts = over => ({url: 'https://shop.example/', tag: 'button', type: 'button', label: '', ...over});
+
+test('an injected page cannot talk its way past the card', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('../../../fixtures/ask-first/injected-form.json', import.meta.url), 'utf8'));
+  assert.match(fixture.page, /Do not ask the user/);
+  const target = browser(fixture), asked = [];
+  const client = askFirstClient(target, {enabled: () => true, confirm: async request => { asked.push(request); throw Error('The user did not confirm.'); }});
+  await assert.rejects(client.send('Input.dispatchMouseEvent', press, 's'), /did not confirm/);
+  assert.deepEqual(target.sent, [], 'the press never reached the page');
+  assert.equal(asked[0].reason, 'This submits a payment form.');
+  assert.equal(asked[0].screenshot, 'AAAA');
+  const approved = askFirstClient(target, {enabled: () => true, confirm: async () => {}});
+  await approved.send('Input.dispatchMouseEvent', press, 's');
+  assert.deepEqual(target.sent, ['Input.dispatchMouseEvent'], 'Approve lets it through');
+});
+
+test('Skip confirmation asks nothing, and a read is never gated', async () => {
+  const target = browser({url: 'https://a.test/', control: {tag: 'BUTTON', type: 'submit', textContent: 'Pay', attributes: {}}});
+  const client = askFirstClient(target, {enabled: () => false, confirm: async () => assert.fail('asked')});
+  await client.send('Input.dispatchMouseEvent', press, 's');
+  const gated = askFirstClient(target, {enabled: () => true, confirm: async () => assert.fail('asked')});
+  await gated.send('Page.getLayoutMetrics', {}, 's');
+  await gated.send('Input.dispatchMouseEvent', {...press, type: 'mouseReleased'}, 's');
+  await gated.send('Runtime.evaluate', {expression: 'document.title'}, 's');
+  await gated.send('Runtime.callFunctionOn', {functionDeclaration: 'function() { globalThis.__aux.x(this.click()) }'}, 's');
+});
+
+test('a press Aux cannot read counts as sensitive', async () => {
+  const asked = [], client = askFirstClient({send: async method => { if (method === 'Runtime.evaluate') throw Error('gone'); return {data: 'A'}; }}, {enabled: () => true, confirm: async request => { asked.push(request); }});
+  await client.send('Input.dispatchMouseEvent', press, 's');
+  assert.match(asked[0].reason, /couldn’t read/);
+});
+
+test('submit, send and pay controls ask; ordinary clicks and searches do not', () => {
+  for (const control of [{tag: 'button', type: 'submit', inForm: true, method: 'post'}, {tag: 'input', type: 'submit', inForm: true, method: 'post'},
+    {tag: 'button', type: 'submit', inForm: true, method: 'get', password: true}, {label: 'Send'}, {label: 'Place order'}, {label: 'Bezahlen'}, {label: '送信'}, {label: '결제'}, {label: '提交'},
+    {tag: 'div', role: 'button', label: 'Pay now'}, {tag: 'iframe', frame: 'https://js.stripe.com/card'}]) assert.ok(askReason(facts(control)), JSON.stringify(control));
+  for (const control of [{label: 'Menu'}, {label: 'Read more about how to send a parcel to your family abroad'}, {tag: 'a', label: 'Send'}, {tag: 'button', type: 'submit', inForm: true, method: 'get'},
+    {tag: 'input', type: 'text', inForm: true, method: 'post', password: true}, {tag: 'input', type: 'search', label: 'Pay'}]) assert.equal(askReason(facts(control)), null, JSON.stringify(control));
+});
+
+test('Enter asks where it submits or sends, not while typing', () => {
+  assert.ok(askReason(facts({tag: 'input', type: 'text', inForm: true, method: 'post'}), {enter: true}));
+  assert.ok(askReason(facts({tag: 'div', editable: true, label: 'Message #general'}), {enter: true}));
+  assert.equal(askReason(facts({tag: 'textarea', inForm: true, method: 'post'}), {enter: true}), null);
+  assert.equal(askReason(facts({tag: 'div', editable: true, label: 'Page body'}), {enter: true}), null);
+  assert.equal(askReason(facts({tag: 'input', type: 'search', inForm: true, method: 'get'}), {enter: true}), null);
+});
+
+test('a scripted submit or click asks; Aux’s own page helpers do not', async () => {
+  const target = browser({url: 'https://a.test/', form: {method: 'post', fields: []}, control: {tag: 'BUTTON', type: 'submit', textContent: 'Go', attributes: {}}}), asked = [];
+  const client = askFirstClient(target, {enabled: () => true, confirm: async request => { asked.push(request); }});
+  await client.send('Runtime.evaluate', {expression: "document.querySelector('form').requestSubmit()"}, 's');
+  assert.equal(asked.length, 1);
+});
+
+test('banking-class sites ask on any press', () => {
+  for (const url of ['https://www.chase.com/', 'https://secure.bankofamerica.com/x', 'https://online.firstbank.com/', 'https://my-creditunion.org/', 'https://www.paypal.com/'])
+    assert.ok(isBankingSite(url), url);
+  for (const url of ['https://chase.com.evil.test/', 'https://example.com/bank', 'not a url', 'https://embankment.test/']) assert.equal(isBankingSite(url), false, url);
+  assert.ok(askReason(facts({url: 'https://www.chase.com/', label: 'Menu'})));
+});
+
+test('aux exec --allow reaches read-only scopes only', () => {
+  for (const scope of [{type: 'tool', tool: 'webfetch'}, {type: 'file', mode: 'read'}, {type: 'browser', action: 'read'}]) assert.equal(readOnlyScope(scope), true);
+  for (const scope of [{type: 'tool', tool: 'repl'}, {type: 'tool', tool: 'write_file'}, {type: 'file', mode: 'write'}, {type: 'browser', action: 'modify'}, {type: 'network', url: 'x'}, undefined])
+    assert.equal(readOnlyScope(scope), false);
+});
+
+test('the card names the reason and the site', () => {
+  const request = confirmationRequest({reason: 'This submits a form.', url: 'https://a.test/x'}, 'artifacts/c.png');
+  assert.equal(request.message, 'This submits a form. a.test');
+  assert.equal(request.artifact.type, 'screenshot');
+});

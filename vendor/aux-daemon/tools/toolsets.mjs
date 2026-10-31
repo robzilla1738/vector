@@ -85,6 +85,7 @@ export function create({typebox, tools: t}) {
    * read-only, checked again on every call because a chat's mode can change after it loads. */
   function createMcpAgentTools(manager, listed, context) {
     const taken = new Set(), held = context ? tool => fixed(context, tool) : tool => tool;
+    const asksFirst = () => context.session.runtimeConfig?.finalConfirm === true && !t.isHeadlessSessionTrigger(context.session.trigger);
     const blocked = tool => !!context && tool.annotations?.readOnlyHint !== true && (context.session.permissionMode === 'read-only' || t.isReadOnlySubagent(context.session));
     return listed.filter(({tool}) => !blocked(tool)).map(({serverName, tool}) => {
       const schema = structuredClone(tool.inputSchema);
@@ -92,11 +93,15 @@ export function create({typebox, tools: t}) {
       for (const property of Object.values(schema.properties ?? {}))
         if (property && typeof property === 'object' && 'pattern' in property && typeof property.pattern === 'string')
           property.pattern = property.pattern.replace(/\\\\|\\_/g, match => match === '\\_' ? '_' : match);
+      const name = agentToolName(taken, serverName, tool.name);
       return held({
-        name: agentToolName(taken, serverName, tool.name), label: `${serverName}: ${tool.title ?? tool.name}`, description: tool.description ?? `MCP tool '${tool.name}' from server '${serverName}'.`,
+        name, label: `${serverName}: ${tool.title ?? tool.name}`, description: tool.description ?? `MCP tool '${tool.name}' from server '${serverName}'.`,
         parameters: typebox.Unsafe(schema), executionMode: 'sequential',
         execute: async (id, input, signal) => {
           if (blocked(tool)) return {content: [text(`This chat is read-only, and ${serverName} doesn't mark ${tool.name} as read-only.`)], details: {}, isError: true};
+          // Under Ask first a tool that can act on the outside world asks, as a send or pay control does.
+          if (context && asksFirst() && tool.annotations?.readOnlyHint !== true && (await context.suspend('approval', id, {scope: {type: 'tool', tool: name, args: input}})).verdict !== 'allow')
+            return {content: [text('The user did not allow this tool call.')], details: {}, isError: true};
           try {
             const result = await manager.callTool(serverName, tool.name, input, signal);
             return {content: await t.mcpResultToAgentContent(result), details: {}, isError: result.isError === true};

@@ -5,7 +5,7 @@
 import {applyExactEdits} from '../provider-cli/integration.mjs';
 
 /** Copied beside aux-native-entry.mjs, under aux-agent/. */
-export const DAEMON_FILES = Object.freeze(['aux-agent.mjs']);
+export const DAEMON_FILES = Object.freeze(['aux-agent.mjs', 'ask-first.mjs']);
 
 const edit = (name, find, replace, count = 1) => Object.freeze({name, find, replace, count});
 
@@ -18,6 +18,9 @@ const PROCEDURES = 'agentGet:accountProcedure.query(({ctx:Cn})=>auxAgentView(Cn.
 
 /** Entry-scope helpers. Function declarations, so they are hoisted above their callers. */
 const HELPERS = `
+// Ask first in code (ask-first.mjs). Mirrors when the session offers request_action_confirmation.
+function auxAskFirstOn(Cn,ei){let ti=SessionStore.get(Cn,ei);return!!ti&&ti.runtimeConfig?.finalConfirm===!0&&ti.permissionMode!==\`read-only\`&&!isHeadlessSessionTrigger(ti.trigger)}
+async function auxAskFirstCard(Cn,ei){let ti=\`\${ei.toolCallId}_confirm_\${globalThis.crypto.randomUUID().replaceAll(\`-\`,\`\`)}\`,ni=\`artifacts/confirm-\${ti.slice(-12)}.png\`,ri=resolveSessionPath(Cn.sessionDir,ni),ii=await auxBrokerBoundary().awaited(async()=>{try{fs.mkdirSync(path.dirname(ri),{recursive:!0});fs.writeFileSync(ri,Buffer$1.from(ei.screenshot,\`base64\`))}catch(Cn){return Cn}});if(ii)throw ii;let{verdict:ai,instruction:oi}=await Cn.suspend(\`action-confirmation\`,ti,auxAskFirst.confirmationRequest(ei,ni));if(ai!==\`confirm\`)throw Error(oi?.trim()?\`The user did not confirm. Follow this instruction instead: \${oi.trim()}\`:\`The user did not confirm. Do not perform this action.\`)}
 function auxAgentUsable(Cn){return!!Cn&&!Cn.archivedAt&&!Cn.ephemeral&&!Cn.incognito}
 function auxAgentAskChat(Cn,ei){return auxAgentUsable(SessionStore.get(Cn,ei))?SessionStore.listPreviewItems(Cn,{sessionIds:[ei],parent:\`all\`})[0]:void 0}
 function auxAgentView(Cn){let ei=auxAgent.read(Cn);return auxAgent.view(ei,!!(ei.homeSessionId&&auxAgentAskChat(Cn,ei.homeSessionId)))}
@@ -68,7 +71,20 @@ export const DAEMON_EDITS = Object.freeze([
     'Cn.post(`/session/for-chrome/stop-all`,async Cn=>{let ei=Cn.get(`accountId`),ti=SessionStore.listFull(ei).filter(Cn=>Cn.status===`running`);for(let Cn of ti)await GlobalAgentSessionServer.interrupt(ei,Cn.id);return Cn.json({stopped:ti.length})}),Cn.post(`/session/for-chrome/mark-all-read`,'),
   edit('load the agent module beside the entry',
     'const __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);',
-    'const auxAgent=(await import(new URL("./aux-agent/aux-agent.mjs",import.meta.url))).createAuxAgent({control:Cn=>auxControlAccountRoot(Cn),task:Cn=>getAccountTaskRoot(Cn),shared:()=>path.join(AUX_HOME_PATH,`agent-shared`)});\nconst __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);'),
+    'const auxAgent=(await import(new URL("./aux-agent/aux-agent.mjs",import.meta.url))).createAuxAgent({control:Cn=>auxControlAccountRoot(Cn),task:Cn=>getAccountTaskRoot(Cn),shared:()=>path.join(AUX_HOME_PATH,`agent-shared`)});\nconst auxAskFirst=await import(new URL("./aux-agent/ask-first.mjs",import.meta.url));\nconst __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);'),
+  // Every page command of a task goes through the gate, so no way of acting can skip it.
+  edit('Ask first holds in code: the page client',
+    'this.#e=auxReferenceCdpClient(auxScopedBrowserCdpClient(Cn,ei,ti,()=>this.#L(),()=>this.state.tabs,target=>this.#H(target)),()=>this.state.tabs,()=>this.#L()),this.#S=',
+    'this.#e=auxAskFirst.askFirstClient(auxReferenceCdpClient(auxScopedBrowserCdpClient(Cn,ei,ti,()=>this.#L(),()=>this.state.tabs,target=>this.#H(target)),()=>this.state.tabs,()=>this.#L()),{enabled:()=>auxAskFirstOn(ei,ti.id),confirm:Cn=>this.auxConfirmAction(Cn)}),this.#S='),
+  edit('Ask first holds in code: the browser asks',
+    'async ensureAccess(Cn,ei,ti=getCurrentReplToolCallId()){',
+    'async auxConfirmAction(Cn){let ei=getCurrentReplToolCallId();if(!this.#i||!ei)throw Error(`This action needs your confirmation, and no task is here to ask.`);let ti={...Cn,toolCallId:ei,action:`submit`};await this.#i.trigger(`browser.access`,ti,ti)}async ensureAccess(Cn,ei,ti=getCurrentReplToolCallId()){'),
+  edit('Ask first holds in code: the card',
+    '"browser.access":async ei=>{let ti=await checkPermission(',
+    '"browser.access":async ei=>{if(ei.action===`submit`)return auxAskFirstCard(Cn,ei);let ti=await checkPermission('),
+  edit('aux exec approves read-only tools only',
+    'ei.kind===`permission-approval`&&await resolveSuspension({accountId:oi,sessionId:ri,toolCallId:ni,response:{verdict:ti===`approve`?`allow`:`deny`,always:!1}})',
+    'ei.kind===`permission-approval`&&await resolveSuspension({accountId:oi,sessionId:ri,toolCallId:ni,response:{verdict:ti===`approve`&&(!si.ephemeral||!isCliSession(si)||auxAskFirst.readOnlyScope(si.suspension.request.scope))?`allow`:`deny`,always:!1}})'),
   edit('system prompts open with the agent identity',
     'return[Cn??SYSTEM_PROMPT$1,...ti?[ti]:[]].join(',
     'return[Cn??auxAgent.systemPrompt(SYSTEM_PROMPT$1,ei.scanContexts?.accountId),...ti?[ti]:[]].join('),
