@@ -1284,7 +1284,7 @@
   "chrome/browser/ui/views/frame/aux_section_clip_view.cc": "79775577b9da907607f07194784d9d96f4f049b9342a10c9410c120879bc0866",
   "chrome/browser/ui/views/frame/aux_section_clip_view.h": "cce12f024ecf9181fca73d30c4635da0f4d7ec847e9387fc1155b436f1c5085c",
   "chrome/browser/ui/views/frame/aux_section_icons.inc": "16391c41effcb4321ac0ed1268d0cd7c5d84bce235313132abe20b34ad412895",
-  "chrome/browser/ui/views/frame/aux_section_view.cc": "3324ee38f3e3058578bfc82d57fdf799924603a6599553bdd0ba9082e23dba9e",
+  "chrome/browser/ui/views/frame/aux_section_view.cc": "9335bd40db9ce3e4b57f34fe9a50ef63ed4aa317ec437eda8d673445580dc291",
   "chrome/browser/ui/views/frame/aux_section_view.h": "c5152ae37ede4cf3e3d5541dcfd309cabe8c599a04eb191fe5e28342a6022109",
   "chrome/browser/ui/views/frame/aux_sidebar_body.cc": "a121f06557c18d7b451696fe8af612beb9b90f1530cfca8760df269112f48d5b",
   "chrome/browser/ui/views/frame/aux_sidebar_body.h": "cf4a1cea92ad269202ce81364aacf2f05b47909e39fef45b31835ece73395b4e",
