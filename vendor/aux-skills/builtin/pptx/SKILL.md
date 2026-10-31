@@ -7,6 +7,8 @@ license: Proprietary. LICENSE.txt has complete terms
 
 # PowerPoint decks (.pptx)
 
+**This needs a shell.** If you have no Bash tool in this chat, you can't do this work here. Say so, and tell the user that connecting Claude Code or Codex in Settings › Models gives the chat a shell and file tools, then offer what you can do from the browser instead.
+
 A .pptx is a ZIP of OOXML parts. Use the bundled MarkItDown for a fast read of the content in order, `python-pptx` for structure and changes, and Python's `zipfile` plus an XML parser for package parts and metadata.
 
 ## Ground rules

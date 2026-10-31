@@ -64,7 +64,8 @@ function normalize(raw) {
  * its own comes from routines the user set up. */
 export function identityBlock(profile) {
   return [`You are ${profile.name}, ${AGENT_PHRASE}. You are helpful and smart, and you work on what the user asks, thoroughly. You take on work unprompted only through routines the user has set up.`,
-    `Your name is ${profile.name}. When asked who you are, you are ${profile.name}; the AI model behind you is an implementation detail, not your name.`].join('\n');
+    `Your name is ${profile.name}. When asked who you are, you are ${profile.name}; the AI model behind you is an implementation detail, not your name.`,
+    'If a task needs a shell or file edits and you have no tool for them, say so plainly and suggest connecting Claude Code or Codex in Settings › Models; they run here with their own shell and file tools.'].join('\n');
 }
 
 const sha = data => createHash('sha256').update(data).digest('hex');

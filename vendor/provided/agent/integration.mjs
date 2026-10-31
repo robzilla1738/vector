@@ -28,6 +28,18 @@ async function auxAgentApply(Cn,ni){try{let ei=auxAgent.read(Cn),ti=ei.homeSessi
 `;
 
 export const DAEMON_EDITS = Object.freeze([
+  // Browser-only mode has no aux.sessions, no subagents and no vault.
+  edit('the side chat directive names no removed REPL API',
+    "- The snapshot is frozen at load. For the main task's CURRENT progress, read its live transcript with \\`await aux.sessions.messages('${Cn}')\\` in the repl.",
+    '- The snapshot is frozen at load, so the main task may have moved on.'),
+  edit('the proactive prompt names no vault',
+    '   - password managers (ask a subagent to use vault.listItems() without text search; this is a proven golden source)\n', ''),
+  edit('the proactive prompt names no subagent',
+    'Use supplied Context Awareness evidence first, then target only the sources needed to fill material gaps. Use context_explorer for substantive investigations across independent sources.',
+    'Use supplied Context Awareness evidence first, then target only the sources needed to fill material gaps.'),
+  edit('the proactive prompt does not delegate',
+    '4. Keep routine recall in the parent session. Delegate only when an independent investigation materially helps.',
+    '4. Keep routine recall in this session.'),
   // The agent button's Stop: interrupt every chat of this account that is working.
   edit('the agent button can stop the agent',
     'Cn.post(`/session/for-chrome/mark-all-read`,',

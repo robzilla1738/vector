@@ -5,6 +5,9 @@ import {reply, text} from './common.mjs';
 export function create({typebox, tools: t}) {
   /** A fixed tool, tied to the account and session that made it. */
   const fixed = (context, tool) => t.registerDirectFixedTool(context, tool);
+  /** Browser-only mode dispatches only the REPL, read_file and direct fixed tools; any other
+   * tool always fails there, so the model is not offered it. */
+  const live = tools => t.usesBoundBrowserActions() ? tools.filter(tool => tool.name === 'repl' || tool.name === 'read_file' || t.isDirectFixedTool(tool)) : tools;
 
   function createCoreToolset(context, browser = context.browser) {
     if (!browser) throw Error('The desktop toolset requires a local browser');
@@ -18,7 +21,7 @@ export function create({typebox, tools: t}) {
       fixed(context, t.createWebFetchTool(context)), fixed(context, t.createWebSearchTool(context)), fixed(context, t.createGetTimeTool())];
     if (session.permissionMode !== 'read-only' && !t.isReadOnlySubagent(session)) tools.push(t.createWriteFileTool(context), t.createEditFileTool(context));
     if (!session.incognito) tools.push(fixed(context, t.createMemoryReadTool(context)));
-    return tools;
+    return live(tools);
   }
 
   function createAgentToolset(context, browser = context.browser) {
@@ -41,7 +44,7 @@ export function create({typebox, tools: t}) {
     }
     if (session.routineId && session.parentId) tools.push(t.createRoutineNotifyParentTool(context));
     if (coder) tools.push(t.createStartCoderTool(context));
-    return tools;
+    return live(tools);
   }
 
   function createCoderTools(context) {
@@ -51,7 +54,7 @@ export function create({typebox, tools: t}) {
       ...t.createBackgroundProcessTools(context), fd: t.createFdTool(context), rg: t.createRgTool(context), ...core.has('memory_search') && t.createMemoryTools(context),
       message_agent: t.createMessageAgentTool(context), subagent: t.createSubagentTool(context, ['context_explorer']), subagent_wait: t.createSubagentWaitTool(context),
       workflow: t.createWorkflowTool(context), ...t.createAutomationTools(context)};
-    const tools = t.coderToolNames(context.session).flatMap(name => available[name] ?? []);
+    const tools = live(t.coderToolNames(context.session).flatMap(name => available[name] ?? []));
     return context.session.trigger?.type === 'subagent' ? tools.map(t.withChildTimeout) : tools;
   }
 
@@ -81,6 +84,7 @@ export function create({typebox, tools: t}) {
 
   function createMcpAgentTools(manager, listed) {
     const taken = new Set();
+    if (t.usesBoundBrowserActions()) return [];
     return listed.map(({serverName, tool}) => {
       const schema = structuredClone(tool.inputSchema);
       // Some servers escape `_` in patterns, which the model providers reject.

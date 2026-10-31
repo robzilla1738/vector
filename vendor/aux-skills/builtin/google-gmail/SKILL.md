@@ -146,5 +146,5 @@ await page.locator('[data-tooltip*="Discard"]').click();
 ```
 ````
 
-- Then go ahead and send, unless the user asked to confirm first. If they did, ask with the notification tool, not `ask_user_question`.
+- Then go ahead and send, unless the user asked to confirm first. If they did, ask with `request_action_confirmation`.
 - Right before clicking Send, check again that the composer body isn't empty.

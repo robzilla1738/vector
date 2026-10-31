@@ -7,6 +7,8 @@ license: Proprietary. LICENSE.txt has complete terms
 
 # Word documents (.docx)
 
+**This needs a shell.** If you have no Bash tool in this chat, you can't do this work here. Say so, and tell the user that connecting Claude Code or Codex in Settings › Models gives the chat a shell and file tools, then offer what you can do from the browser instead.
+
 A .docx is a ZIP of OOXML parts. Work on it with the bundled `python-docx`, and drop to Python's `zipfile` plus an XML parser for anything the library doesn't model (package parts, metadata, revisions).
 
 ## Ground rules

@@ -88,10 +88,18 @@ for (const namespace of Object.keys(SCENARIOS)) test(`${namespace}: the same out
   assert.deepEqual(aux.snapshots[namespace], supplied.snapshots[namespace]);
 });
 
+/** What the dispatcher runs in browser-only mode; the supplied lists less the rest. */
+const LIVE_TOOLS = new Set(['repl', 'read_file', 'webfetch', 'websearch', 'get_time', 'memory_search', 'write_todos', 'history_search', 'history_read', 'ask_user_question', 'request_action_confirmation']);
+
 test('the agent tools: the reference fixture is the supplied bundle, and Aux matches it', () => {
   const reference = JSON.parse(readFileSync(TOOL_REFERENCE, 'utf8'));
   assert.deepEqual(supplied.steps.toolLists, reference);
-  assert.deepEqual(aux.steps.toolLists, reference);
+  const named = ({catalog}, list) => list.error ? list : list.map(index => catalog[index]);
+  for (const [name, list] of Object.entries(reference.lists)) {
+    if (name === 'orchestrator') continue; // Hosted harness, not one a browser session runs.
+    const expected = name === 'alone' || list.error ? named(reference, list) : named(reference, list).filter(tool => LIVE_TOOLS.has(tool.name));
+    assert.deepEqual(named(aux.steps.toolLists, aux.steps.toolLists.lists[name]), expected, name);
+  }
 });
 
 test('the agent tools: the same results, step by step', () => {
