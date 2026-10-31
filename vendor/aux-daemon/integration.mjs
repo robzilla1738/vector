@@ -219,7 +219,7 @@ export const BINDINGS = Object.freeze({
     sendCommandToExtension: 'sendCommandToExtension', sessionTmpDir: 'sessionTmpDir', setAutomations: 'setAutomations', settings: 'settings', sliceLines: 'sliceLines',
     spawnSubagent: 'spawnSubagent', start: 'start', startCoder: 'startCoder', stop: 'stop', stripBom: 'stripBom', timeoutScope: 'timeoutScope',
     timersBySession: 'timersBySession', toMemoryRelative: 'toMemoryRelative', truncateHead: 'truncateHead', updateRoutine: 'updateRoutine',
-    usesBoundBrowserActions: 'auxUsesBoundBrowserActions', isDirectFixedTool: 'auxIsDirectFixedTool', waitForSubagent: 'waitForSubagent', waitUnlessMessaged: 'waitUnlessMessaged',
+    models: 'models', usesBoundBrowserActions: 'auxUsesBoundBrowserActions', isDirectFixedTool: 'auxIsDirectFixedTool', waitForSubagent: 'waitForSubagent', waitUnlessMessaged: 'waitUnlessMessaged',
     withChildTimeout: 'withChildTimeout', withoutHistory: 'withoutHistory', writeMemoryPage: 'writeMemoryPage'},
   stores: {
     settings: {settingsCache: 'settingsCache', FileJsonStoreBackend: 'FileJsonStoreBackend', getSettingsJsonPath: 'getSettingsJsonPath', schema: 'settingsSchema',

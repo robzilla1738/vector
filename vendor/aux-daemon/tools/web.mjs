@@ -12,9 +12,37 @@ import {reply} from './common.mjs';
 const DEFAULT_TIMEOUT_SEC = 30, MAX_TIMEOUT_SEC = 120, MAX_RESPONSE_SIZE = 5242880, REDDIT_HOSTS = ['reddit.com', 'www.reddit.com', 'sh.reddit.com'];
 const CITATION = source => `<webfetch-citation source_id="${source.id}" />`;
 const TOO_LARGE = 'Response too large (exceeds 5MB limit)';
+// One query's results are reused briefly, so a turn that rephrases itself doesn't spend Google's
+// patience twice. Failures are never kept.
+const SEARCH_TTL_MS = 5 * 60000, SEARCH_ENTRIES = 64;
+export const SEARCH_KEY_PROVIDER = 'brave-search';
+const LIMITED = /bot challenge|fetch failed: (?:403|429|503)/;
+const searchKey = query => query.trim().replace(/\s+/g, ' ').toLowerCase();
+
+/** A user's own Brave Search key, instead of reading Google's result page. */
+async function braveSearch(key, query, signal) {
+  const url = new URL('https://api.search.brave.com/res/v1/web/search');
+  url.search = new URLSearchParams({q: query, count: '6'});
+  const response = await fetch(url, {headers: {Accept: 'application/json', 'X-Subscription-Token': key}, signal});
+  if (!response.ok) throw Error(`Brave Search failed: ${response.status}`);
+  return ((await response.json()).web?.results ?? []).map(item => ({url: item.url, title: item.title, snippet: item.description, publishedAtText: item.age}));
+}
 
 export function create({typebox, tools: t}) {
   const schemas = toolSchemas(typebox);
+  const searches = new Map();
+
+  /** The search for one query, shared by identical calls while it's fresh. */
+  function cachedSearch(scope, query, run) {
+    const key = `${scope}\0${searchKey(query)}`, held = searches.get(key);
+    if (held && Date.now() - held.at < SEARCH_TTL_MS) return held.found;
+    const found = run();
+    searches.delete(key);
+    searches.set(key, {at: Date.now(), found});
+    if (searches.size > SEARCH_ENTRIES) searches.delete(searches.keys().next().value);
+    found.catch(() => { if (searches.get(key)?.found === found) searches.delete(key); });
+    return found;
+  }
 
   /** Saves a response that is not inline text and tells the model where it went. */
   async function download(context, response, url, disposition, statusLine, mime) {
@@ -69,7 +97,10 @@ export function create({typebox, tools: t}) {
     execute: async (id, {objective, search_queries: queries}, signal) => {
       if (!context.browser) throw Error('Web search needs the Aux browser.');
       const client = new t.GoogleSearchClient({fetch: (url, options) => context.browser.fetch(url, {...options, signal})}), seen = new Set(), results = [];
-      for (const found of await Promise.allSettled([objective, ...queries].map(query => client.search(query, {limit: 6}))))
+      const key = t.models(context.accountId).credentials.get(SEARCH_KEY_PROVIDER)?.key, unique = new Map([objective, ...queries].map(query => [searchKey(query), query]));
+      const search = query => key ? braveSearch(key, query, signal) : client.search(query, {limit: 6});
+      const settled = await Promise.allSettled([...unique.values()].map(query => context.session.incognito ? search(query) : cachedSearch(context.accountId, query, () => search(query))));
+      for (const found of settled)
         for (const item of found.status === 'fulfilled' ? found.value : []) {
           if (seen.has(item.url) || results.length >= 10) continue;
           seen.add(item.url);
@@ -84,6 +115,8 @@ export function create({typebox, tools: t}) {
         if (direct.has(item.url)) results.splice(results.indexOf(item), 1);
         else direct.add(item.url);
       }
+      if (!results.length && settled.some(found => LIMITED.test(found.reason?.message ?? '')))
+        throw Error(`Google is limiting searches from this browser for now. Open https://www.google.com/search?q=${encodeURIComponent(objective)} with openTab and read the page, or add a Brave Search key in Settings › Agent.`);
       if (!results.length) throw Error(`Web search has no results here. Open https://www.google.com/search?q=${encodeURIComponent(objective)} with openTab and read the page.`);
       const {details, result} = t.buildWebSearchToolResult({session_id: context.session.id, results});
       return reply(JSON.stringify(result), details);

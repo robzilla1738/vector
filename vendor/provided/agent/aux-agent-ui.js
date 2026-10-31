@@ -17,6 +17,7 @@ const j = requireJsx();
 const {useCallback, useEffect, useRef, useState, useSyncExternalStore} = React;
 
 const GETTING_READY = "Getting your agent ready…";
+const SEARCH_KEY_PROVIDER = "brave-search";
 const DEFAULT = Object.freeze({name: "Aux", homeSessionId: null, avatarRevision: "", setupCompleted: true, isDefault: true});
 const NAME_KEY = "aux.agent.name.v1";
 // The command bar's question for this window's panel, and how long it waits to be picked up.
@@ -498,7 +499,30 @@ export function AuxAgentSettings() {
     j.jsxs(SettingGroup, {children: [
       link("Memory", `What ${name} remembers about you, and how to change it.`, "Open", "settings/memories"),
       link("Routines", `${name} works when you ask. Routines let it check in or run tasks on a schedule.`, "Set up", "settings/routines"),
+      j.jsx(WebSearchKey, {accountId: agent.accountId}),
     ]}),
+  ]});
+}
+
+/** The optional Brave Search key web search uses instead of reading Google's result page. */
+function WebSearchKey({accountId}) {
+  const [saved, setSaved] = useState(false);
+  const [key, setKey] = useState("");
+  const [error, setError] = useState(null);
+  const refresh = useCallback(() => trpc.models.getCredentialStatus.query({accountId, providerId: SEARCH_KEY_PROVIDER}).then(({exists}) => setSaved(exists), () => {}), [accountId]);
+  useEffect(() => { if (accountId) refresh(); }, [refresh, accountId]);
+  const run = async change => {
+    setError(null);
+    try { await change(); setKey(""); await refresh(); } catch (problem) { setError(problem?.message ?? "Could not save."); }
+  };
+  return j.jsxs(SettingRow, {children: [
+    j.jsx(SettingText, {title: "Web search key", description: error ?? (saved ? "Searches go to Brave Search with your key." : "Optional. With a Brave Search key, searches go to Brave instead of reading Google’s results.")}),
+    j.jsx(SettingControl, {className: "flex gap-1", children: saved
+      ? j.jsx(Button, {variant: "outline", size: "sm", onClick: () => run(() => trpc.models.removeCredential.mutate({accountId, providerId: SEARCH_KEY_PROVIDER})), children: "Remove"})
+      : j.jsxs(j.Fragment, {children: [
+        j.jsx(Input, {type: "password", value: key, "aria-label": "Brave Search key", onChange: event => setKey(event.target.value)}),
+        j.jsx(Button, {variant: "outline", size: "sm", disabled: !key.trim(), onClick: () => run(() => trpc.models.setCredential.mutate({accountId, providerId: SEARCH_KEY_PROVIDER, credential: {type: "api_key", key: key.trim()}})), children: "Save"}),
+      ]})}),
   ]});
 }
 

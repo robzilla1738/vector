@@ -147,7 +147,9 @@ test('the same state.db and account files', () => {
   assert.ok(supplied.ledger.rows.context_awareness_events.length, 'the ledger has fixture rows');
   assert.deepEqual(aux.ledger, supplied.ledger);
   assert.deepEqual(aux.files, supplied.files);
-  for (const [file, content] of Object.entries(supplied.jsonFiles)) assert.equal(aux.jsonFiles[file], content, file);
+  // The shared clock ticks per call, and a chat's prompt stamp time is not the behaviour compared.
+  const unstamped = content => content?.replace(/"at": \d+/g, '"at": 0');
+  for (const [file, content] of Object.entries(supplied.jsonFiles)) assert.equal(unstamped(aux.jsonFiles[file]), unstamped(content), file);
   assert.ok(supplied.agentFileChanges.length, 'the scenarios send agent file change notifications');
   assert.deepEqual(aux.agentFileChanges, supplied.agentFileChanges);
 });

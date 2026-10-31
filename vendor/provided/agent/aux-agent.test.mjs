@@ -33,6 +33,7 @@ test('an account with no agent file has Aux, named outright and working on reque
   assert.match(prompt, /Your name is Aux\. When asked who you are, you are Aux;/);
   assert.ok(prompt.endsWith('# Goal\n\n- Act proactively.'));
   assert.equal(agent.promptStale(1, {id: 'x'}, PROMPT), true, 'chats frozen with the supplied opener rebuild once');
+  agent.promptBuilt(1, {id: 'x'}, prompt);
   assert.equal(agent.promptStale(1, {id: 'x'}, prompt), false);
   assert.deepEqual(agent.view(profile, false), {name: 'Aux', homeSessionId: null, avatarRevision: '',
     setupCompleted: false, isDefault: true});
@@ -75,21 +76,23 @@ test('a renamed agent opens every prompt with its name', () => {
 test('frozen prompts from before a rename are rebuilt; foreign prompts never are', () => {
   agent.update(3, {name: 'Nova'});
   assert.equal(agent.promptStale(3, {id: 's'}, PROMPT), true, 'the supplied opener predates the rename');
+  agent.promptBuilt(3, {id: 's'}, agent.systemPrompt(PROMPT, 3));
   assert.equal(agent.promptStale(3, {id: 's'}, agent.systemPrompt(PROMPT, 3)), false);
   agent.update(3, {name: 'Aux'});
+  agent.promptBuilt(3, {id: 's'}, agent.systemPrompt(PROMPT, 3));
   assert.equal(agent.promptStale(3, {id: 's'}, agent.systemPrompt(PROMPT, 3)), false, 'back to Aux');
   assert.equal(agent.promptStale(3, {id: 's'}, 'You are a coding worker.'), false);
   assert.equal(agent.promptStale(3, {id: 's'}, ''), false);
 });
 
-test('the home thread rebuilds when its instructions or memory change, then keeps its prompt', () => {
-  agent.setHome(4, 'home');
-  const home = {id: 'home'}, built = agent.systemPrompt(PROMPT, 4);
+test('every chat rebuilds when its instructions or memory change, then keeps its prompt', () => {
+  const home = {id: 'home'}, side = {id: 'side'}, built = agent.systemPrompt(PROMPT, 4);
   assert.equal(agent.promptStale(4, home, built), true, 'no context recorded yet');
   assert.equal(agent.promptStale(4, home, built), true, 'a rebuild that never stored a prompt is tried again');
   agent.promptBuilt(4, home, built);
   assert.equal(agent.promptStale(4, home, built), false);
-  assert.equal(agent.promptStale(4, {id: 'side'}, built), false, 'side chats keep their frozen prompt');
+  assert.equal(agent.promptStale(4, side, built), true, 'each chat has its own record');
+  agent.promptBuilt(4, side, built);
   const task = roots.task(4);
   mkdirSync(path.join(task, 'memory'), {recursive: true});
   for (const [file, text] of [['AGENTS.md', 'Always show prices in USD.'], ['memory/MEMORY.md', 'Lives in Birmingham.']]) {
@@ -97,10 +100,12 @@ test('the home thread rebuilds when its instructions or memory change, then keep
     assert.equal(agent.promptStale(4, home, built), true, file);
     agent.promptBuilt(4, home, built);
     assert.equal(agent.promptStale(4, home, built), false, file);
+    assert.equal(agent.promptStale(4, side, built), true, `${file}, the other open chat`);
+    agent.promptBuilt(4, side, built);
   }
 });
 
-test('a rename leaves a note for the home thread with the new name', () => {
+test('a rename leaves a note with the new name', () => {
   const note = agent.renameNote('Nova');
   assert.equal(note.role, 'system-message');
   assert.equal(note.kind, 'agent_identity');
@@ -121,9 +126,9 @@ test('avatars are PNGs only, bounded, and versioned by content', () => {
   assert.equal(agent.read(5).avatarRevision, '');
 });
 
-test('the native feed drops the home thread from the lists and reports the most urgent state', () => {
+test('the native feed drops the aux ask chat from the lists and reports the most urgent state', () => {
   agent.update(6, {name: 'Iris'});
-  agent.setHome(6, 'h');
+  agent.setAskChat(6, 'h');
   const preview = row => ({id: row.id, status: row.status});
   const lists = {pinned: [{id: 'p', status: 'idle'}], recents: [{id: 'h', status: 'running'}, {id: 'r', status: 'idle'}]};
   const status = (home, ...active) => agent.chromeChats(6, lists, preview, id => ({id, status: home}), active.map((status, i) => ({id: `a${i}`, status}))).agent.status;
@@ -151,10 +156,10 @@ test('a damaged agent file falls back to defaults instead of failing', () => {
   assert.equal(profile.avatarRevision, '');
 });
 
-test('every data group has the same agent, each with its own home thread', () => {
+test('every data group has the same agent, each with its own aux ask chat', () => {
   agent.update(21, {name: 'Juno', setupCompleted: true});
-  agent.setHome(21, 'home-a');
-  agent.setHome(22, 'home-b');
+  agent.setAskChat(21, 'home-a');
+  agent.setAskChat(22, 'home-b');
   assert.equal(agent.read(22).name, 'Juno');
   assert.equal(agent.read(22).setupCompleted, true);
   assert.equal(agent.read(21).homeSessionId, 'home-a');

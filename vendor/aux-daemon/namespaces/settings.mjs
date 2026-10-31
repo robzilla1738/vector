@@ -1,4 +1,4 @@
-/** The `settings` tRPC namespace: account settings, the agent's profile and home thread (Aux's
+/** The `settings` tRPC namespace: account settings, the agent's profile and its `aux ask` chat (Aux's
  * agent layer), the agent context files, and the completion sound. The settings store, the agent
  * module and its entry helpers, and the side effects of particular keys stay the supplied ones. */
 import {readFileSync} from 'node:fs';
@@ -57,7 +57,7 @@ export function create({accountProcedure, z, TRPCError, settings: s}) {
       if (view.homeSessionId) return view;
       const session = s.SessionStore.get(ctx.accountId, input.sessionId);
       if (!session || session.parentId || !s.auxAgentUsable(session)) throw new TRPCError({code: 'BAD_REQUEST', message: 'This chat cannot be the agent home.'});
-      s.auxAgent.setHome(ctx.accountId, session.id);
+      s.auxAgent.setAskChat(ctx.accountId, session.id);
       await s.auxAgentApply(ctx.accountId);
       return s.auxAgentView(ctx.accountId);
     }),
