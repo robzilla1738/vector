@@ -54,6 +54,7 @@ The approval popover: Ask first doesn't ask for clicks or new sites, so I couldn
 
 - Aux's own `aux-macos-utilities.node` passes parity but doesn't ship yet: see decision 8.
 - The done step's bottom glow stays blue on other themes.
+- Web citations name the real site for about half of results; the rest still read google.com.
 - `darwin-x64` node-pty files still ship, pinned by the supplied inventory.
 - Web Store banner rule, theme preview per Space rather than per window, coalesced polls (8.14), Refresh still full (1.3), Orion bookmarks from an HTML export only, and no Firefox or Zen passwords.
 - `openTab` takes about 14 seconds, and a short agent turn about 40.
