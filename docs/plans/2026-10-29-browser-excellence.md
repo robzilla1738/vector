@@ -1,5 +1,7 @@
 # Browser excellence plan (2026-10-29)
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 Robert asked for a thorough review of the browser experience — the agent, quality of life, Spaces, profiles, the gutter and window borders, how tabs work, dragging, pinning, renaming, creating a Space — and a plan to make all of it excellent, with Aside and Arc as the references. During the review he added: support for macOS versions before 27; Aux's own implementation of everything that came from Aside, behaving the same; every Settings item set up correctly for Aux; import from other browsers and a proper onboarding flow; **Spaces instead of profiles**; and no over-testing.
 
 **Out of scope:** release, notarization, distribution, updates and the hosted cloud service. Everything stays local.

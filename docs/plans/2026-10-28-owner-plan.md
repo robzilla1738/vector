@@ -1,5 +1,7 @@
 # Aux release: owner plan
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 2026-10-28. Everything only Robert can do before Aux is released, in the order that unblocks the most work. Claude's side is in the [agent plan](2026-10-28-agent-plan.md). The decisions behind both are in the [release readiness checklist](2026-10-28-release-readiness.md), section 1.
 
 Conventions:

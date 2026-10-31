@@ -1,5 +1,7 @@
 # Aux provider-funded launch
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 Launch policy still stands. Which candidate has been observed, and what provider journeys remain, is in [STATUS](../STATUS.md).
 
 Owner direction, October23, 2026: launch Aux without payments. Users bring an AI-provider API key or use a local agent CLI they are signed in to (Codex, Claude Code, Cursor and others). Aux subscriptions, paid tiers, credit purchases and Aux-funded hosted inference are deferred. Preserve the current supplied UI styling, native geometry, glass, sidebars and interactions; change only availability and copy needed for this launch scope.

@@ -1,5 +1,7 @@
 # Sidebar polish (2026-10-29, builds 71–77)
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 Robert: "make sure everything in sidebar is excellent. Dragging tabs, dragging tab to bookmark, dragging tab out to split with another and then what shows during that. Closing tabs, renaming etc and all icons are same size and it's beautiful and well spaced out."
 
 The native changes are in `chromium/tree`, exported and committed with the Spaces pass in `252870228` (see "Handoff" below). Screenshots are in `out/acceptance/20261029/sidebar/` (local only).

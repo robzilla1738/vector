@@ -1,5 +1,7 @@
 # Spaces, profiles and themes (2026-10-29, builds 64–69 and 80–81)
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 Robert asked that profiles and Spaces be customizable the way Arc does it: a color per Space and per profile, an emoji per Space, a theme editor, and a Create a Space flow that works well. He then asked that the color reach both sidebars, the New Tab page and dropdowns; that the theme be Aux's own rather than a copy of Arc's, with borders that follow it and contrast handled for the user; that everything be one uniform shade rather than lighter in some places; and for terminal-style default themes. Builds 70–79 belong to the parallel sidebar session ([sidebar polish](2026-10-29-sidebar-polish.md)); the two sessions shared the durable checkout under build and UI locks. The native changes are in the durable checkout and exported to `chromium/tree`. Screenshots are in `out/acceptance/20261029b/` (local only).
 
 ## The model

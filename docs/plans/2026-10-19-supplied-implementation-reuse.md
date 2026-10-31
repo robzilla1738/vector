@@ -1,5 +1,7 @@
 # Aux: reuse the supplied implementation and rebrand it
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 Status: active. Owner direction, 2026-10-19. This supersedes the clean-room reconstruction plan and instructions to independently recreate the product.
 
 Launch scope update, 2026-10-23: ship without Aux payments. Reuse BYOK and integrate eligible ChatGPT/Codex plan connections; defer Aux subscriptions, paid tiers and Aux-funded inference while preserving the current UI. See [the active provider-funded launch plan](2026-10-23-provider-funded-launch.md). Earlier Stripe requirements are future paid-release work, not launch prerequisites.

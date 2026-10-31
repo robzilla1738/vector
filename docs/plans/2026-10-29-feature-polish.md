@@ -1,5 +1,7 @@
 # Feature polish pass (2026-10-29, builds 57–63)
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 Robert: "for the ones that do exist make sure they are excellent." Each existing feature was used on a local Developer ID build and fixed where it fell short. Screenshots are in `out/acceptance/20261029/` (local only). Build 63 (`out/release/1.0.0-63`) holds everything below.
 
 ## Fixed and checked on screen

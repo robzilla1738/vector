@@ -1,3 +1,5 @@
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 Audit of build 112 against docs/plans/2026-10-29-browser-excellence.md.
 
 Audit of `docs/plans/2026-10-29-browser-excellence.md` against the code and the assembled build 112. Nothing was edited, committed or launched.

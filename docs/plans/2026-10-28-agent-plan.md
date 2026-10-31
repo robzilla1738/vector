@@ -1,5 +1,7 @@
 # Aux release: agent plan
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 2026-10-28. Everything Claude does to take Aux from seal `b606bf7c` to a signed, notarized, self-updating release candidate. It stops right before anything is published. Robert's side is in the [owner plan](2026-10-28-owner-plan.md). The decisions behind both are in the [release readiness checklist](2026-10-28-release-readiness.md), section 1. Evidence for every finding is in [2026-10-28-release-audit/](2026-10-28-release-audit/).
 
 ## Ground rules for this plan

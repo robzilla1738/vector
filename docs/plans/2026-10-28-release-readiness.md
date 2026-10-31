@@ -1,5 +1,7 @@
 # Aux release readiness
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 2026-10-28. Everything that stands between the current seal and a public, signed, self-updating macOS release. It builds on [STATUS](../STATUS.md), the [excellence audit](2026-10-27-excellence-audit.md) and three read-only audits run today, whose full tables with file and line evidence are in [2026-10-28-release-audit/](2026-10-28-release-audit/) ([native](2026-10-28-release-audit/native.md), [service](2026-10-28-release-audit/service.md), [components](2026-10-28-release-audit/components.md)). Nothing was built, launched, signed or deployed for this list.
 
 Baseline on 2026-10-28: candidate seal `b606bf7c`. `pnpm test` gives 416 pass, 0 fail, 5 skipped. `verify-candidate.py` checks 89 pins and 11,191 entries, with 0 differences. Service tests pass 64/64 and `tsc` is clean. `chromium/tree` matches the durable checkout. No desktop journey has been driven on this seal, because the OS grants (D12) are still missing.
@@ -115,18 +117,18 @@ Robert answered the first six; for the rest he asked for whatever gives the best
 Fix these before the acceptance pass, so it runs once.
 
 ### Permissions and identity of the shipped app
-- **Entitlements.** The outer app is signed with hardened runtime and only `allow-jit`. Without the camera, microphone, location and Apple Events entitlements that `chrome/app/app-entitlements.plist` already declares, web video calls, geolocation and Safari import should fail. `Aux Computer Use.app` has no entitlements but asks for Contacts and Apple Events. Add them per helper, then check each in the live pass.
+- ~~**Entitlements.** The outer app is signed with hardened runtime and only `allow-jit`. Without the camera, microphone, location and Apple Events entitlements that `chrome/app/app-entitlements.plist` already declares, web video calls, geolocation and Safari import should fail. `Aux Computer Use.app` has no entitlements but asks for Contacts and Apple Events. Add them per helper, then check each in the live pass.~~ Closed: camera, microphone, location and Apple Events are on the app.
 - **Shipping launch path.** The binary refuses any `--user-data-dir` except a `/private/tmp/aux-fresh-browser-*` path, and the candidate only starts through `Launch Aux.command`. The release must start from Finder, the Dock and default-browser link opens, with the real Keychain (D2), the final state folder, and no test-only path acceptance.
 - **Packaged leftovers.**
-  - A 4.3 MB `bundle.json` lists about 995 owner and `/private/tmp` paths plus dev-cloud metadata (`cloudPolicy` mode `development`).
+  - ~~A 4.3 MB `bundle.json` lists about 995 owner and `/private/tmp` paths plus dev-cloud metadata (`cloudPolicy` mode `development`).~~ Closed.
   - 646 `.pyc` files embed `/Users/rcourson/.aside/...`.
   - The venv config, pip shebangs and `runtime-text-root.json` point at the old `/Vibe/web/...` path.
   - `prepare-python.py` prints "Aside: …".
   - The `aside-runtime`/`bro-components` CI path is in `aux-daemon` and `runtime-source-pins.json`.
-  Strip or regenerate all of these.
+  Strip or regenerate what's left (PKG-2).
 - **Third-party signatures.** 86 runtime and PTY binaries (`rg`, the poppler tools, 31 dylibs, lxml, x64 node-pty) are signed by At Inc.'s Developer ID. Re-sign them under Aux, which hardened-runtime library validation needs anyway. Drop the x64 prebuilds on an arm64-only app.
 - **About page.** It says "Aux is made possible by the Aux open source project" (`components_chromium_strings.grd:279`). Credit Chromium.
-- **Exported file types.** The app exports `org.chromium.*` UTIs that collide with an installed Chrome or Chromium.
+- ~~**Exported file types.** The app exports `org.chromium.*` UTIs that collide with an installed Chrome or Chromium.~~ Closed: Aux has its own UTIs.
 
 ### Google and Chrome surfaces
 - Turn off Glic, Lens and Compose through feature defaults instead of only the appended `--disable-features` switch. Disable Google sign-in and sync (`kSigninAllowed` is only false for non-personal profiles), the iOS promos, AI Mode, actor and contextual tasks. Then delete the 751 profile-switch guard lines that only exist for them.
@@ -135,12 +137,12 @@ Fix these before the acceptance pass, so it runs once.
 
 ### Agent and daemon
 - **Daemon recovery.** On the shipping native route a retry can't relaunch a dead daemon, so the agent stays down until the browser restarts. There is also no "agent unavailable / retry" state in the UI.
-- **Version pin.** The health check pins daemon version `1.26.1016.1852`, which breaks the first update that bumps it.
+- ~~**Version pin.** The health check pins daemon version `1.26.1016.1852`, which breaks the first update that bumps it.~~ Closed: the health check no longer pins a daemon version.
 - **Inherited keys.** AWS/Bedrock credentials, `HF_TOKEN` and about 12 other provider variables still pass from the launching environment into the daemon.
 - **Dead code with security weight.** The Vault passkey broker is still in the WebAuthn path, and the Vault extension ID is still trusted for CDP. Remove both, along with the legacy carrier route (`RunCarrier`) and the shell-era `chrome://aux` host in `webui_browser/`.
-- **Dead help link.** The messenger bot setup links to `127.0.0.1:9/aux-unavailable/docs/help/channels-*.md`.
+- ~~**Dead help link.** The messenger bot setup links to `127.0.0.1:9/aux-unavailable/docs/help/channels-*.md`.~~ Closed: it opens the docs (`package-edits.json`).
 - **Skill icons.** Bundle the 46 icons in the app, then retire `dev-cloud.getaux.co` (decision 10).
-- **Daemon CORS.** Trust `app.getaux.co` only; drop `api.getaux.co` (decision 11).
+- ~~**Daemon CORS.** Trust `app.getaux.co` only; drop `api.getaux.co` (decision 11).~~ Closed: the daemon trusts `app.getaux.co` only.
 - **Languages.** Translate the extension UI and the Aux native strings into the nine launch languages, and unpin the extension from English (decision 9).
 - **Crash reports.** Wire Crashpad to Sentry behind the opt-in prompt (decision 6).
 - **State folder and version.** Switch to `Aux` and Aux 1.0.0 (decisions 3 and 5).
@@ -148,7 +150,7 @@ Fix these before the acceptance pass, so it runs once.
 - **Bugs.** `isAux` is hard-coded false in settings, which breaks the Library's return to History after clearing data. One timestamp still follows the system locale.
 
 ### Polish that a release should have
-- Downgrade the 162 `LOG(ERROR)` traces, including one on every palette event.
+- ~~Downgrade the 162 `LOG(ERROR)` traces, including one on every palette event.~~ Closed: 19 traces are left, under NATIVE-1.
 - Give the 2 unnamed buttons accessible names, announce the agent-running state, and do a VoiceOver pass.
 - Move about 23 hard-coded `SkColor` sites to ColorProvider, so high contrast and the theme editor reach every view.
 - Use one form of each name: "Aux", "Aux Daemon" (today "Aux Browser", "Aux daemon" and "Aux Daemon" are mixed).
@@ -172,24 +174,24 @@ Fix these before the acceptance pass, so it runs once.
 ## 4. Hosted service
 
 Owner:
-- Deploy the two undeployed commits (`09c024eba` users/settings merge, `608f900e3` site icon; `app.getaux.co/icon.png` returns 404). Then record a compatible rollback deployment.
-- Create the Better Stack monitor on readiness with alerts to `robertcourson96@gmail.com`, and add a log drain and the Firewall rate rule on the email-code route (decision 12). Today a failing cron returns 500 and nobody is told.
+- ~~Deploy the two undeployed commits (`09c024eba` users/settings merge, `608f900e3` site icon; `app.getaux.co/icon.png` returns 404). Then record a compatible rollback deployment.~~ Closed.
+- ~~Create the Better Stack monitor on readiness with alerts to `robertcourson96@gmail.com`, and add a log drain and the Firewall rate rule on the email-code route (decision 12). Today a failing cron returns 500 and nobody is told.~~ Closed.
 - Run J5 step 10 (delete the test account) and its cleanup check. It is the only live proof that the purge works.
-- Remove the stale Stripe and hosted-AI variables, and mark the database URLs, Postgres passwords and Blob token as sensitive.
+- ~~Remove the stale Stripe and hosted-AI variables, and mark the database URLs, Postgres passwords and Blob token as sensitive.~~ Closed.
 - Confirm the Neon point-in-time restore window.
 
 Agent:
 - Vercel BotID on the email-code sign-in (decision 12). It shares a global cap of 300 sends an hour, so today a spread-out attack can block every real sign-in.
 - `check-environment` requires `AUX_READINESS_SECRET` only in production, so Preview builds work again.
-- Add `Reply-To: hello@getaux.co` to the sign-in code email, and have `check-environment` require an `@getaux.co` `RESEND_FROM` (decision 15).
+- ~~Add `Reply-To: hello@getaux.co` to the sign-in code email, and have `check-environment` require an `@getaux.co` `RESEND_FROM` (decision 15).~~ Closed.
 - An operator-blocked share state. Today the owner can republish a share the operator took down.
 - An end-to-end purge test. The current test only checks that every user table is listed.
 - Clear the share title on unshare.
 - JSON auth and recovery logs that carry the request ID.
-- Bump zod past 4.6.6 (the one high advisory) and apply the Clerk, Hono and Next patch releases.
+- ~~Bump zod past 4.6.6 (the one high advisory) and apply the Clerk, Hono and Next patch releases.~~ Closed.
 - Show the terms at desktop email-code sign-up, and record age with consent.
-- Point `getaux.co/policy/*`, `/docs` and `/community` at `app.getaux.co`, or add redirects. Decide on `/support`.
-- Add a lint script.
+- ~~Point `getaux.co/policy/*`, `/docs` and `/community` at `app.getaux.co`, or add redirects. Decide on `/support`.~~ Closed: `/policy/*` redirects, and `/docs`, `/community` and `/support` live on the site.
+- ~~Add a lint script.~~ Closed.
 
 ## 5. Signing, notarization and updates
 

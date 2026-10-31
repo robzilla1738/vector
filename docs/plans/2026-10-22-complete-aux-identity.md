@@ -1,5 +1,7 @@
 # Complete Aux identity, preserve the accepted UI
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 Owner direction still stands. The evidence section below is the 2026-10-22 successor chain. It is not the current candidate. Live artifact and remaining Aside identifiers: [STATUS](../STATUS.md). Wire bytes and `aside.dk.*` domains stay until a versioned migration.
 
 Active owner direction, 2026-10-22: “Everything that is currently pointing to aside or mentions them needs to be Aux. No trace of Aside or their brand anywhere”, followed by “while preserving our UI that we currently have - do not change that”.

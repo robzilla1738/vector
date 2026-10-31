@@ -1,5 +1,7 @@
 # Aux desktop feature expansion — parallel execution plan
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 The requirements below stay in force. The artifact table is the 2026-10-23 baseline, including its `/private/tmp` checkout path. The live candidate, the durable checkout, and the resume list are in [STATUS](../STATUS.md).
 
 Planning date: 2026-10-23. Source baseline: local `main` at `2301a7d66` with a clean working tree before this documentation pass. **Planning only: no feature implementation, build, application lifecycle action, signing or release was performed.** Three read-only agents audited native capabilities, productivity/AI, and synchronization; the integrator reconciled their findings against the selected product and inspected saved actual-app captures.

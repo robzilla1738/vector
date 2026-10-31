@@ -1,5 +1,7 @@
 # Aux excellence audit and plan
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 2026-10-27. Item-by-item status as of 2026-10-28 is in [2026-10-28-release-audit/](2026-10-28-release-audit/) and the [release readiness checklist](2026-10-28-release-readiness.md). Read-only review of the whole product: the native browser (Chromium delta), daemon and runtime, extension UI and branding, the hosted service, and the repo, pipeline and docs. Five parallel reviews, with the most consequential findings checked directly (marked **✓ verified**). Nothing was changed. Live layout review was limited to the first screen, because UI control (Accessibility/Automation) is still not granted.
 
 ## Verdict

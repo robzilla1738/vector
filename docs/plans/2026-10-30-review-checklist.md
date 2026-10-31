@@ -1,5 +1,7 @@
 # Review checklist, build 139
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 Launch it: `/Users/rcourson/Documents/Vibe/Aux/out/release/1.0.0-139/Aux.app/Contents/MacOS/Aux --use-mock-keychain`
 
 Everything is committed locally. Nothing has been pushed.

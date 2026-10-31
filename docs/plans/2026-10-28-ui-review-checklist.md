@@ -1,5 +1,7 @@
 # UI review checklist (Robert, 2026-10-28)
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 Every UI request from the 2026-10-28 review, with its state. "Verified" means checked in a real Developer ID build; "built" means compiled into the next build but not yet seen.
 
 | # | Request | State |

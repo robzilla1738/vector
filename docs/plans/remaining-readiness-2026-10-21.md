@@ -1,3 +1,5 @@
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 > Current cross-workstream execution and completion gates: [Aux execution graph](../ROADMAP-EXECUTION-GRAPH.md). The dated preview evidence below remains historical; cloud/native progress is reconciled in that graph and STATUS.
 
 Current scope update — 2026-10-23: the provider-funded launch supersedes older Stripe, paid-tier and Aux-funded inference/speech launch requirements below. Do not resume payment setup. BYOK and eligible official ChatGPT plan connection source is integrated; the final source stage passed preservation checks, and the native retirement successor passed a full unsigned link. These are distinct from protected startup, complete profile/process custody and actual final-candidate provider/UI acceptance. Production desktop/cloud activation and backup runner operations remain separate. See [current status](../STATUS.md) and the [active launch plan](2026-10-23-provider-funded-launch.md); older build/evidence rows below are historical, not the latest artifact state.

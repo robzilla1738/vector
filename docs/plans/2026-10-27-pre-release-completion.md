@@ -1,5 +1,7 @@
 # Aux: plan to full pre-release
 
+> **Superseded:** the [finish plan](../ROADMAP-EXECUTION-GRAPH.md) replaces this page wherever they disagree. It stays for its decisions and history.
+
 ## Context
 
 Aux is the supplied Aside browser rebranded and isolated as Aux. The current candidate, `out/provided-candidate-completion-20261026-a1/Aux.app` (seal `2a215e71`), launches, restores, splits and quits. The repo was cleaned on 2026-10-27, and `pnpm test` passes 406 tests. Before the owner paused work, a lot was built but little was formally accepted. Of the 29 desktop requirements, only R19 and R21 have been seen working on this seal, and none is formally accepted. Several external gates (Apple, OpenAI, 1Password, production deploy) haven't moved since Oct 26.
