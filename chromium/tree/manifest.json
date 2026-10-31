@@ -1023,7 +1023,7 @@
   "chrome/browser/ui/cocoa/applescript/window_applescript.mm": "9e0722bc9e2d5d7a2470067c8d2860138168bbd25e24050b03218bb7a256ced9",
   "chrome/browser/ui/cocoa/browser_window_command_handler.mm": "5ad42cbd3c7c0f65546c68507ca95bd6e5e30f3053007d79cd58bf050dde5412",
   "chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.mm": "e090b31b2239c848326a1e48de1498efdad51482854797b85bc449b655424dce",
-  "chrome/browser/ui/cocoa/main_menu_builder.mm": "980d3133f2cbad1848a8445f2ef4ecd97a9db24db84248aea643fdb4db798cab",
+  "chrome/browser/ui/cocoa/main_menu_builder.mm": "ac4c861610b8912825fcef0374530aca194d4e4fe79e210bdbe8186369af3017",
   "chrome/browser/ui/color/chrome_color_mixers.cc": "ac588bffab325d2b8f1416aa3f6d5cbf59a4afdd44e18df02cbe9dafc4ace92f",
   "chrome/browser/ui/context_highlight/BUILD.gn": "a2b38d2e2176e58b6df5f96bf9b518d14827291e618252a55ffc12ec242f6842",
   "chrome/browser/ui/context_highlight/context_highlight_window_feature.cc": "1e799a4c74252c583133addce4a65befa9b036422878ab4a205a13b0137aab4e",

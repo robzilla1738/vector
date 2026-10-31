@@ -803,6 +803,9 @@ export const BEHAVIOR_CHANGES = Object.freeze([
   behavior('tool-summaries.js', 'no plan-limit detail', 'mo(e.resultText)?"Routine limit reached.":"Routine update failed"', '"Routine update failed"'),
   behavior('tool-cards.js', 'no plan-limit notice', 'expandMode:"none",footer:Ep,standalone:!0}', 'expandMode:"none",standalone:!0}'),
   // The Models step is about local agents and API keys, not subscriptions (plan Batch 8).
+  // Connecting a model is optional (plan Batch 6).
+  behavior('onboarding-ai.js', 'the step can be skipped', '(0,e.jsx)(Ve,{type:"submit",form:"provider-form",children:"Connect"})',
+    '(0,e.jsxs)("div",{className:"flex gap-2",children:[(0,e.jsx)(f,{variant:"secondary",size:"lg",nativeButton:!1,render:(0,e.jsx)(ne,{to:"/onboarding/done",replace:!0}),children:"Skip"}),(0,e.jsx)(Ve,{type:"submit",form:"provider-form",children:"Connect"})]})'),
   behavior('onboarding-ai.js', 'the step title', '"Choose your AI subscription"', '"Connect a model"'),
   behavior('onboarding-ai.js', 'the step text', '"Connect a subscription you already have, or use your own API key."', '"Use an agent CLI already signed in on this Mac, or your own API key."'),
   behavior('onboarding-ai.js', 'More options', '"Connect another subscription or use your own API key."', '"Use another local agent or your own API key."'),

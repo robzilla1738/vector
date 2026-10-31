@@ -124749,7 +124749,7 @@ index 96e3c9bb38a197bdb982919fc90c7a130a12a323..04d86df4bf9b1aca906e17a21a9a206a
                                     priority:ui::AcceleratorManager::
                                                  kNormalPriority]) {
 diff --git a/chrome/browser/ui/cocoa/main_menu_builder.mm b/chrome/browser/ui/cocoa/main_menu_builder.mm
-index 4a178fc76a14d7fe6550ef2332dd610648ce3d93..48649784af32bbce0e5b0581ce846f2882b3f3fc 100644
+index 4a178fc76a14d7fe6550ef2332dd610648ce3d93..07578f1af956e25b36d0b5396a5edca4a369957b 100644
 --- a/chrome/browser/ui/cocoa/main_menu_builder.mm
 +++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
 @@ -12,6 +12,7 @@
@@ -124952,7 +124952,15 @@ index 4a178fc76a14d7fe6550ef2332dd610648ce3d93..48649784af32bbce0e5b0581ce846f28
    return item;
  }
  
-@@ -587,6 +738,26 @@ NSMenuItem* BuildTabMenu(NSApplication* nsapp,
+@@ -469,6 +620,7 @@ NSMenuItem* BuildPeopleMenu(NSApplication* nsapp,
+       Item(IDS_PROFILES_MENU_NAME)
+           .tag(IDC_PROFILE_MAIN_MENU)
+           .submenu({})
++          .set_hidden(true)  // Spaces replace profiles; nothing shows one.
+           .Build();
+   // clang-format on
+   return item;
+@@ -587,6 +739,26 @@ NSMenuItem* BuildTabMenu(NSApplication* nsapp,
            })
            .Build();
    // clang-format on
@@ -124979,7 +124987,7 @@ index 4a178fc76a14d7fe6550ef2332dd610648ce3d93..48649784af32bbce0e5b0581ce846f28
    return item;
  }
  
-@@ -622,6 +793,11 @@ NSMenuItem* BuildHelpMenu(NSApplication* nsapp,
+@@ -622,6 +794,11 @@ NSMenuItem* BuildHelpMenu(NSApplication* nsapp,
            .Build();
    // clang-format on
  
@@ -124991,7 +124999,7 @@ index 4a178fc76a14d7fe6550ef2332dd610648ce3d93..48649784af32bbce0e5b0581ce846f28
    nsapp.helpMenu = item.submenu;
    return item;
  }
-@@ -645,6 +821,9 @@ NSMenu* BuildMainMenu(NSApplication* nsapp,
+@@ -645,6 +822,9 @@ NSMenu* BuildMainMenu(NSApplication* nsapp,
             &BuildBookmarksMenu,
             &BuildPeopleMenu,
             &BuildTabMenu,

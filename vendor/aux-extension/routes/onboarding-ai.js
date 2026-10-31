@@ -103,7 +103,19 @@ function qs() {
               (0, jsxRuntime.jsx)('span', {children: 'Back'}),
             ],
           }),
-          (0, jsxRuntime.jsx)(Ve, {type: 'submit', form: 'provider-form', children: 'Connect'}),
+          (0, jsxRuntime.jsxs)('div', {
+            className: 'flex gap-2',
+            children: [
+              (0, jsxRuntime.jsx)(f, {
+                variant: 'secondary',
+                size: 'lg',
+                nativeButton: false,
+                render: (0, jsxRuntime.jsx)(ne, {to: '/onboarding/done', replace: true}),
+                children: 'Skip',
+              }),
+              (0, jsxRuntime.jsx)(Ve, {type: 'submit', form: 'provider-form', children: 'Connect'}),
+            ],
+          }),
         ],
       }),
     ],
