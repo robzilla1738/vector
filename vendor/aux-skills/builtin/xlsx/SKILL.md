@@ -7,6 +7,8 @@ license: Proprietary. LICENSE.txt has complete terms
 
 # Excel workbooks (.xlsx, .xlsm)
 
+**This needs a shell.** If you have no Bash tool in this chat, you can't do this work here. Say so, and tell the user that connecting Claude Code or Codex in Settings › Models gives the chat a shell and file tools, then offer what you can do from the browser instead.
+
 A workbook is a ZIP of OOXML parts. Use the bundled pandas for analyzing tables, `openpyxl` for workbook structure and edits, and Python's `zipfile` plus an XML parser for package parts and metadata.
 
 ## Ground rules

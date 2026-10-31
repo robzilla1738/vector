@@ -264,10 +264,13 @@ test('parsers keep exactly one terminal event and tolerate unknown records', () 
   }
 });
 
-test('CLI actions ask Aux; a turn waiting on the answer is not idle', async () => {
+test('CLI actions ask Aux; a turn waiting on the answer is not idle', async t => {
+  // The idle timer runs on a mock clock that moves only while a card is open, so a slow fake CLI
+  // can't trip it and the card can stay open for many idle periods in no real time.
+  t.mock.timers.enable({apis: ['setTimeout']});
   const asked = [];
   let waiting = 0;
-  const approve = async request => { asked.push(request); waiting++; await new Promise(r => setTimeout(r, 2000)); waiting--; return {allow: true}; };
+  const approve = async request => { asked.push(request); waiting++; t.mock.timers.tick(7000); waiting--; return {allow: true}; };
   const options = () => ({approve, paused: () => waiting > 0, idleTimeoutMs: 700});
   const codex = await run('codex', 'ready', options);
   assert.deepEqual(terminal(codex.events), {type: 'done', reason: 'end'}, 'no stall while the card is open');
@@ -276,6 +279,8 @@ test('CLI actions ask Aux; a turn waiting on the answer is not idle', async () =
   assert.equal(acp.events.find(e => e.type === 'tool' && e.phase === 'end').isError, false);
   assert.deepEqual(acp.log.find(entry => entry.result?.outcome).result, {outcome: {outcome: 'selected', optionId: 'yes'}});
   assert.deepEqual(asked.map(request => [request.kind, request.command]), [['command', 'touch notes.txt'], ['command', 'touch notes.txt']]);
+  const unpaused = await run('codex', 'ready', () => ({...options(), paused: () => false}));
+  assert.equal(terminal(unpaused.events).code, 'stalled', 'the same wait with nothing paused is a stall');
 });
 
 test('resume continues the CLI session; one that cannot be found fails as resume', async () => {

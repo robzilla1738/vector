@@ -14,7 +14,7 @@ Use this to create or update the user's own account skills.
 <accountRoot>/skills/user/<skill-name>/SKILL.md
 ```
 
-Write the file with the bash and write_file tools.
+Write the file with write_file. To change a skill that already exists, use edit_file.
 
 ## Front matter
 

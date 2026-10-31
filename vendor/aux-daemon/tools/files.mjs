@@ -6,7 +6,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {EDIT_FILE, FD, OVERWRITE_FILE, READ_FILE, RG, WRITE_FILE} from './prompts.mjs';
 import {FD_DEFAULT_LIMIT, FD_MAX_DEPTH, FD_MAX_LIMIT, RG_DEFAULT_COUNT, RG_MAX_CONTEXT, RG_MAX_COUNT, toolSchemas} from './schemas.mjs';
-import {pathInside, reply, text} from './common.mjs';
+import {brokered, pathInside, reply, text} from './common.mjs';
 
 const OFFICE_SKILLS = new Map([['.docx', 'docx'], ['.pptx', 'pptx'], ['.xlsx', 'xlsx'], ['.xlsm', 'xlsx']]);
 const HEIC_EXTENSIONS = new Set(['.heic', '.heif']);
@@ -95,7 +95,7 @@ export function create({typebox, tools: t}) {
       const file = t.resolveFileToolPath(context, requested), existing = await fs.stat(file).catch(() => null);
       if (existing?.isFile() && !overwrite) throw Error(`Error: file already exists at '${requested}'. cannot overwrite`);
       if (existing && !existing.isFile()) throw Error(`Error: path points to a directory '${requested}'`);
-      await t.brokerBoundary().awaited(async () => {
+      await brokered(t.brokerBoundary(), async () => {
         await fs.mkdir(path.dirname(file), {recursive: true});
         await fs.writeFile(file, content);
       });
@@ -115,7 +115,7 @@ export function create({typebox, tools: t}) {
       signal?.throwIfAborted();
       const {bom, text: body} = t.stripBom(original), ending = t.detectLineEnding(body);
       const {baseContent, output} = t.applyEdits(t.normalizeToLF(body), edits, appendText, requested), diff = t.diff(baseContent, output);
-      await t.brokerBoundary().awaited(() => fs.writeFile(file, bom + t.restoreLineEndings(output, ending), {encoding: 'utf-8', signal}));
+      await brokered(t.brokerBoundary(), () => fs.writeFile(file, bom + t.restoreLineEndings(output, ending), {encoding: 'utf-8', signal}));
       const relative = typeof context.sessionDir === 'string' ? pathInside(context.sessionDir, file, path) : undefined;
       return reply(edits.length > 0 ? `Successfully replaced ${edits.length} block(s) in ${requested}.` : `Successfully appended to ${requested}.`, {
         diff, firstChangedLine: t.getFirstChangedLine(diff), ...relative ? {filesChanged: [{type: 'updated', path: relative, ...t.countChangedDiffLines(diff)}]} : {},

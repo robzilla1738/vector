@@ -36,7 +36,7 @@ const TRANSFORMS = [
   ['provider CLIs: daemon hooks, no borrowed sign-in', `${daemon}/node-development/aux-native-entry.mjs`, integrateDaemon],
   ['provider CLIs: Agent provider list', `${agent}/${AGENT_PATH}`, integrateAgentList],
   ['provider CLIs: connect dialogs', `${agent}/${CONNECT_DIALOG_PATH}`, integrateConnectDialog],
-  ['agent: daemon profile, home thread and identity', `${daemon}/node-development/aux-native-entry.mjs`, integrateAgentDaemon],
+  ['agent: daemon profile, open chats and identity', `${daemon}/node-development/aux-native-entry.mjs`, integrateAgentDaemon],
   ['Aux daemon routers: the root router goes through the dispatcher', `${daemon}/node-development/aux-native-entry.mjs`, integrateAuxDaemon],
   ...Object.keys(AGENT_EXTENSION_EDITS).map(chunk => [`agent: ${chunk}`, `${agent}/${chunk}`, text => integrateAgentChunk(chunk, text)]),
   ...Object.keys(POLISH_EDITS).map(chunk => [`polish: ${chunk}`, `${agent}/${chunk}`, text => integratePolish(chunk, text)]),

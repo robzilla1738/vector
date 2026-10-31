@@ -14,20 +14,54 @@ const PROCEDURES = 'agentGet:accountProcedure.query(({ctx:Cn})=>auxAgentView(Cn.
   + 'agentAvatar:accountProcedure.input(object({revision:string$3().max(64)})).query(({ctx:Cn})=>({dataUrl:auxAgent.avatarDataUrl(Cn.accountId)})),'
   + 'agentSetAvatar:accountProcedure.input(object({dataUrl:string$3().max(11e5)})).mutation(({ctx:Cn,input:ei})=>{try{auxAgent.setAvatar(Cn.accountId,ei.dataUrl)}catch(ti){throw new TRPCError({code:`BAD_REQUEST`,message:ti.message})}return auxAgentView(Cn.accountId)}),'
   + 'agentClearAvatar:accountProcedure.mutation(({ctx:Cn})=>(auxAgent.clearAvatar(Cn.accountId),auxAgentView(Cn.accountId))),'
-  + 'agentSetHome:accountProcedure.input(object({sessionId:string$3().min(1)})).mutation(async({ctx:Cn,input:ei})=>{let ti=auxAgentView(Cn.accountId);if(ti.homeSessionId)return ti;let ni=SessionStore.get(Cn.accountId,ei.sessionId);if(!ni||ni.parentId||!auxAgentUsable(ni))throw new TRPCError({code:`BAD_REQUEST`,message:`This chat cannot be the agent home.`});auxAgent.setHome(Cn.accountId,ni.id);await auxAgentApply(Cn.accountId);return auxAgentView(Cn.accountId)}),';
+  + 'agentSetHome:accountProcedure.input(object({sessionId:string$3().min(1)})).mutation(async({ctx:Cn,input:ei})=>{let ti=auxAgentView(Cn.accountId);if(ti.homeSessionId)return ti;let ni=SessionStore.get(Cn.accountId,ei.sessionId);if(!ni||ni.parentId||!auxAgentUsable(ni))throw new TRPCError({code:`BAD_REQUEST`,message:`This chat cannot be the agent home.`});auxAgent.setAskChat(Cn.accountId,ni.id);await auxAgentApply(Cn.accountId);return auxAgentView(Cn.accountId)}),';
 
 /** Entry-scope helpers. Function declarations, so they are hoisted above their callers. */
 const HELPERS = `
 function auxAgentUsable(Cn){return!!Cn&&!Cn.archivedAt&&!Cn.ephemeral&&!Cn.incognito}
-function auxAgentHome(Cn,ei){return auxAgentUsable(SessionStore.get(Cn,ei))?SessionStore.listPreviewItems(Cn,{sessionIds:[ei],parent:\`all\`})[0]:void 0}
-function auxAgentView(Cn){let ei=auxAgent.read(Cn);return auxAgent.view(ei,!!(ei.homeSessionId&&auxAgentHome(Cn,ei.homeSessionId)))}
+function auxAgentAskChat(Cn,ei){return auxAgentUsable(SessionStore.get(Cn,ei))?SessionStore.listPreviewItems(Cn,{sessionIds:[ei],parent:\`all\`})[0]:void 0}
+function auxAgentView(Cn){let ei=auxAgent.read(Cn);return auxAgent.view(ei,!!(ei.homeSessionId&&auxAgentAskChat(Cn,ei.homeSessionId)))}
 // One agent across Spaces: its instructions and personality are the same in every data
 // group's local account, so an edit in one is written to all of them.
 function auxAgentWriteContext(Cn,ei,ti){const ni=[\`AGENTS.md\`,\`SOUL.md\`].includes(ei)?AccountRegistry.getAll().accounts.filter(ei=>ei.mode===\`local\`||ei.id===Cn).map(ei=>ei.id):[Cn];for(const ri of new Set([Cn,...ni])){writeFileSync(path.join(getAccountTaskRoot(ri),ei),ti,\`utf-8\`);auxAgentApply(ri)}}
-async function auxAgentApply(Cn,ni){try{let ei=auxAgent.read(Cn),ti=ei.homeSessionId&&SessionStore.get(Cn,ei.homeSessionId);if(!auxAgentUsable(ti))return;ti.title!==ei.name&&SessionStore.update(Cn,ti.id,{title:ei.name});GlobalAgentSessionServer.getLoadedAgent(Cn,ti.id)&&!GlobalAgentSessionServer.isRunning(Cn,ti.id)&&await GlobalAgentSessionServer.reloadLoadedAgentSession(Cn,ti.id);ni&&ni!==ei.name&&await GlobalAgentSessionServer.appendMessage(Cn,ti.id,auxAgent.renameNote(ei.name))}catch(ei){console.warn(\`[aux-agent] could not apply the agent profile: \${ei?.message??ei}\`)}}
+// Every open chat picks up a new name, personality or memory; the \`aux ask\` chat is titled after the agent.
+async function auxAgentApply(Cn,ni){let ei=auxAgent.read(Cn),ti=ei.homeSessionId&&SessionStore.get(Cn,ei.homeSessionId);auxAgentUsable(ti)&&ti.title!==ei.name&&SessionStore.update(Cn,ti.id,{title:ei.name});for(let ri of SessionStore.listFull(Cn)){if(!auxAgentUsable(ri)||ri.parentId||!GlobalAgentSessionServer.getLoadedAgent(Cn,ri.id))continue;try{GlobalAgentSessionServer.isRunning(Cn,ri.id)||await GlobalAgentSessionServer.reloadLoadedAgentSession(Cn,ri.id);ni&&ni!==ei.name&&await GlobalAgentSessionServer.appendMessage(Cn,ri.id,auxAgent.renameNote(ei.name))}catch(ii){console.warn(\`[aux-agent] could not apply the agent profile: \${ii?.message??ii}\`)}}}
 `;
 
 export const DAEMON_EDITS = Object.freeze([
+  // Browser-only mode has no aux.sessions and Aux has no vault.
+  edit('the side chat directive names no removed REPL API',
+    "- The snapshot is frozen at load. For the main task's CURRENT progress, read its live transcript with \\`await aux.sessions.messages('${Cn}')\\` in the repl.",
+    '- The snapshot is frozen at load, so the main task may have moved on.'),
+  edit('the proactive prompt names no vault',
+    '   - password managers (ask a subagent to use vault.listItems() without text search; this is a proven golden source)\n', ''),
+  // Notifications, completion sounds, history search and clearing the agent's tab group reach the
+  // extension. The bound path allowed only tab commands, so these failed on every call. None is
+  // tied to one window, and a cue or a cleanup often has none to name.
+  edit('bound browser actions carry the windowless commands',
+    "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.debuggerAttach'",
+    "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.clearAiTabsGroup','Aux.debuggerAttach'"),
+  edit('windowless commands need no task window',
+    "command.method!=='Aux.resolveBindingWindow'&&(!Number.isInteger(route.windowId)||route.windowId<0)",
+    "!['Aux.resolveBindingWindow','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.clearAiTabsGroup'].includes(command.method)&&(!Number.isInteger(route.windowId)||route.windowId<0)"),
+  // A user's MCP tools run in their session's fixed scope like every other tool, so the dispatcher
+  // admits them and permission modes reach them.
+  edit('MCP tools are registered for the session that owns them',
+    'ti=ei.initialize(Cn.inventories),ni=new Set(this.#k)',
+    'ti=ei.initialize(Cn.inventories,this.ctx),ni=new Set(this.#k)'),
+  // Subagent waits and MCP calls can outlast a quit; the scope close that ends a quit waits for them.
+  edit('a quit aborts fixed tools still running: the set',
+    'const auxSelectedReadFileTools=new WeakSet;',
+    'const auxSelectedReadFileTools=new WeakSet;\nconst auxFixedToolControllers=new Set;'),
+  edit('a quit aborts fixed tools still running: the stop',
+    'function auxStopSelectedReadScopes(){return Promise.all(',
+    "function auxStopSelectedReadScopes(){for(const controller of auxFixedToolControllers)controller.abort(Error('Aux is shutting down.'));return Promise.all("),
+  edit('a quit aborts fixed tools still running: admission',
+    'const signal = parent ? AbortSignal.any([parent, controller.signal]) : controller.signal;\n    controllers.add(controller);',
+    'const signal = parent ? AbortSignal.any([parent, controller.signal]) : controller.signal;\n    controllers.add(controller);auxFixedToolControllers.add(controller);'),
+  edit('a quit aborts fixed tools still running: release',
+    'const finish = () => { pending.delete(operation); controllers.delete(controller); };',
+    'const finish = () => { pending.delete(operation); controllers.delete(controller); auxFixedToolControllers.delete(controller); };'),
   // The agent button's Stop: interrupt every chat of this account that is working.
   edit('the agent button can stop the agent',
     'Cn.post(`/session/for-chrome/mark-all-read`,',
@@ -41,19 +75,19 @@ export const DAEMON_EDITS = Object.freeze([
   edit('a frozen prompt older than the agent identity is rebuilt',
     'oi?.includes(`## Context Awareness`)&&(oi=``),',
     'oi?.includes(`## Context Awareness`)&&(oi=``),auxAgent.promptStale(ei,ti,oi)&&(oi=``),'),
-  edit('the home thread records its context only once a rebuilt prompt is stored',
+  edit('a chat records its context only once a rebuilt prompt is stored',
     'SessionStore.get(ei,ti.id)?.projectId===ti.projectId&&SessionStore.update(ei,ti.id,{systemPrompt:oi}))',
     'SessionStore.get(ei,ti.id)?.projectId===ti.projectId&&(SessionStore.update(ei,ti.id,{systemPrompt:oi}),auxAgent.promptBuilt(ei,ti,oi)))'),
-  edit('native Chats feed: home thread out, agent state across every live session in',
+  edit('native Chats feed: agent state across every live session in',
     'return Cn.json({pinned:ei.map(toChromeSidebarPreview),recents:ti.map(toChromeSidebarPreview)})',
-    'let ni=Cn.get(`accountId`);return Cn.json(auxAgent.chromeChats(ni,{pinned:ei,recents:ti},toChromeSidebarPreview,Cn=>auxAgentHome(ni,Cn),SessionStore.listPreviewItems(ni,{parent:`root`,archived:`exclude`,ephemeral:`include`,routines:`include`,statuses:[`running`,`suspended`]})))'),
+    'let ni=Cn.get(`accountId`);return Cn.json(auxAgent.chromeChats(ni,{pinned:ei,recents:ti},toChromeSidebarPreview,Cn=>auxAgentAskChat(ni,Cn),SessionStore.listPreviewItems(ni,{parent:`root`,archived:`exclude`,ephemeral:`include`,routines:`include`,statuses:[`running`,`suspended`]})))'),
   edit('native avatar route',
     'Cn.get(`/session/for-chrome/recents`,',
     'Cn.use(`/agent/*`,requestAccountMiddleware),Cn.get(`/agent/for-chrome/avatar`,Cn=>{let ei=auxAgent.avatar(Cn.get(`accountId`));return ei?Cn.body(ei,200,{"content-type":`image/png`,"cache-control":`no-store`}):Cn.json({error:{code:`NOT_FOUND`,message:`The agent has no custom avatar.`}},404)}),Cn.get(`/session/for-chrome/recents`,'),
   edit('agent procedures',
     'readContextFile:accountProcedure.input(',
     `${PROCEDURES}readContextFile:accountProcedure.input(`),
-  edit('personality and instruction edits reach the home thread',
+  edit('personality and instruction edits reach every open chat',
     '.mutation(({ctx:Cn,input:ei})=>(writeFileSync(path.join(getAccountTaskRoot(Cn.accountId),ei.fileName),ei.content,`utf-8`),{success:!0}))',
     '.mutation(({ctx:Cn,input:ei})=>(auxAgentWriteContext(Cn.accountId,ei.fileName,ei.content),{success:!0}))'),
 ]);
@@ -70,6 +104,14 @@ const ui = names => `import{${names.join(',')}}from"./${UI_FILE}";`;
 
 /** dist/assets chunk → edits. Imports go first so a drifted chunk fails before any JSX edit. */
 export const EXTENSION_EDITS = Object.freeze({
+  'background.js': [
+    edit('bound browser actions carry the windowless commands: the allowlist',
+      "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences']);",
+      "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.clearAiTabsGroup']);"),
+    edit('bound browser actions carry the windowless commands: the handlers',
+      " if(task.route.windowId===undefined)throw Error('Choose the task browser window first.');\n",
+      " if(['Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.clearAiTabsGroup'].includes(command.method)){const result=await vy(command,signal,task.route,task.events);await auxBrowserTaskCurrent(task,signal);return result}\n if(task.route.windowId===undefined)throw Error('Choose the task browser window first.');\n"),
+  ],
   // Side panel header and its session controller.
   'assets/-components-4o0FSqQ9.js': [
     edit('agent UI import',

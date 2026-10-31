@@ -88,10 +88,19 @@ for (const namespace of Object.keys(SCENARIOS)) test(`${namespace}: the same out
   assert.deepEqual(aux.snapshots[namespace], supplied.snapshots[namespace]);
 });
 
+/** Aux has no in-app shell in 1.0 (roadmap decision 4); these need one. */
+const NO_SHELL_TOOLS = new Set(['bash', 'bash_interact', 'start_coder']);
+
 test('the agent tools: the reference fixture is the supplied bundle, and Aux matches it', () => {
   const reference = JSON.parse(readFileSync(TOOL_REFERENCE, 'utf8'));
   assert.deepEqual(supplied.steps.toolLists, reference);
-  assert.deepEqual(aux.steps.toolLists, reference);
+  // Registering a tool with the broker adds its dispose hook; the rest is what the model is shown.
+  const named = ({catalog}, list) => list.error ? list : list.map(index => ({...catalog[index], dispose: undefined}));
+  for (const [name, list] of Object.entries(reference.lists)) {
+    if (name === 'orchestrator') continue; // Hosted harness, not one a browser session runs.
+    const expected = name === 'alone' || list.error ? named(reference, list) : named(reference, list).filter(tool => !NO_SHELL_TOOLS.has(tool.name));
+    assert.deepEqual(named(aux.steps.toolLists, aux.steps.toolLists.lists[name]), expected, name);
+  }
 });
 
 test('the agent tools: the same results, step by step', () => {
@@ -139,7 +148,9 @@ test('the same state.db and account files', () => {
   assert.ok(supplied.ledger.rows.context_awareness_events.length, 'the ledger has fixture rows');
   assert.deepEqual(aux.ledger, supplied.ledger);
   assert.deepEqual(aux.files, supplied.files);
-  for (const [file, content] of Object.entries(supplied.jsonFiles)) assert.equal(aux.jsonFiles[file], content, file);
+  // The shared clock ticks per call, and a chat's prompt stamp time is not the behaviour compared.
+  const unstamped = content => content?.replace(/"at": \d+/g, '"at": 0');
+  for (const [file, content] of Object.entries(supplied.jsonFiles)) assert.equal(unstamped(aux.jsonFiles[file]), unstamped(content), file);
   assert.ok(supplied.agentFileChanges.length, 'the scenarios send agent file change notifications');
   assert.deepEqual(aux.agentFileChanges, supplied.agentFileChanges);
 });

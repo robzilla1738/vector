@@ -18,7 +18,9 @@ function relative(path) {
  * Sources are explicit, hash-pinned synthetic/direct participant modules.
  * They must not spawn descendants: this boundary makes no descendant claim.
  */
-export async function createAuxDisposableWriterCoordinator({participantSources,initialFiles=[],root:existingRoot}) {
+// deadlineMs bounds a stuck participant; null waits as long as the participant takes, for callers
+// that have their own bound (a loaded machine can take seconds just to start Node).
+export async function createAuxDisposableWriterCoordinator({participantSources,initialFiles=[],root:existingRoot,deadlineMs=2000}) {
   if(existingRoot!==undefined)throw Error('Existing state adoption is not supported');
   if(!Array.isArray(participantSources)||!participantSources.length||participantSources.length>8)throw Error('One to eight explicit direct participants required');
   const sources=new Map();
@@ -73,7 +75,7 @@ export async function createAuxDisposableWriterCoordinator({participantSources,i
     });
     current.done=done;
     const ready=new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(Error('Direct participant ready deadline exceeded')),2000);
+      const timer=deadlineMs===null?undefined:setTimeout(()=>reject(Error('Direct participant ready deadline exceeded')),deadlineMs);
       child.on('message',message=>{if(message?.event==='ready'&&!current.ready&&!settled){current.ready=true;clearTimeout(timer);resolve({id,pid:child.pid,epoch:current.epoch});}});
       done.then(()=>{clearTimeout(timer);if(!current.ready)reject(Error('Direct participant exited before ready'));});
     });
@@ -90,7 +92,7 @@ export async function createAuxDisposableWriterCoordinator({participantSources,i
       for(const {child} of owned)if(child.connected)child.send({event:'aux-fence-stop'},()=>{});
       let timer;
       try {
-        const outcomes=await Promise.race([Promise.all(owned.map(item=>item.done)),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Direct participant drain deadline exceeded')),2000);})]);
+        const outcomes=await Promise.race([Promise.all(owned.map(item=>item.done)),new Promise((_,reject)=>{if(deadlineMs!==null)timer=setTimeout(()=>reject(Error('Direct participant drain deadline exceeded')),deadlineMs);})]);
         if(disposed||phase!=='draining')throw Error('Coordinator closed or blocked during drain');
         if(phase==='blocked'||outcomes.some(result=>result.code!==0||result.signal||result.error)||children.size)throw Error('Direct participant did not stop cleanly');
         await ownRoot();

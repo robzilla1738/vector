@@ -5,6 +5,14 @@
 import {rename, rm, stat} from 'node:fs/promises';
 import {basename, dirname, isAbsolute, relative, resolve} from 'node:path';
 
+/** `aux ask` and `aux exec` can't answer a card. A new message from the command line replaces what
+ * the chat was waiting on, or the message would sit behind a question nobody sees. */
+export async function dropUnanswerableCard(s, accountId, session) {
+  const {status, suspension} = session;
+  if (!s.isCliSession(session) || status !== 'suspended' || !suspension || suspension.response || suspension.error) return;
+  await s.rejectSuspension({accountId, sessionId: session.id, toolCallId: suspension.toolCallId, suspensionId: suspension.suspensionId, error: 'The user moved on with a new message.'});
+}
+
 /** A suspension error from the agent server, as the tRPC code a client acts on. */
 const suspensionError = (TRPCError, error) => {
   const message = error instanceof Error ? error.message : String(error);
@@ -282,6 +290,7 @@ export function create({accountProcedure, z, TRPCError, sessions: s}) {
       return current(ctx);
     }),
     queue: bySession.input(prompt).mutation(async ({ctx, input}) => {
+      await dropUnanswerableCard(s, ctx.accountId, ctx.session);
       await s.GlobalAgentSessionServer.queue(ctx.accountId, ctx.session.id, userMessage(input.prompt));
       return current(ctx);
     }),

@@ -618,7 +618,7 @@ const CONVERSATION = [
 ];
 
 /** Edits per extension chunk, relative to dist/. */
-// The command bar's Ask goes to the agent panel's home thread (aux-agent-ui.js picks it
+// The command bar's Ask goes to the agent panel (aux-agent-ui.js picks it
 // up from session storage) instead of opening a composer in a new tab.
 const PALETTE_ASK = [
   edit("Ask is a send to your agent",
