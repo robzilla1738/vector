@@ -1,7 +1,7 @@
 ---
 name: KakaoTalk
 description: Read your KakaoTalk chats and messages (read-only).
-icon: "https://app.getaux.co/builtin-skills/v1/kakaotalk.svg"
+icon: "/builtin-skills/v1/kakaotalk.svg"
 platform: ["mac"]
 settingsGate: experimental.kakaotalk
 ---

@@ -1,7 +1,7 @@
 ---
 name: lastpass
 description: Read this skill when the user uses LastPass.
-icon: "https://app.getaux.co/builtin-skills/v1/lastpass.svg"
+icon: "/builtin-skills/v1/lastpass.svg"
 ---
 
 # LastPass

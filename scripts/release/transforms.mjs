@@ -12,7 +12,9 @@ import { DAEMON_FILES as AGENT_DAEMON_FILES, EXTENSION_EDITS as AGENT_EXTENSION_
   integrateDaemon as integrateAgentDaemon, integrateExtensionChunk as integrateAgentChunk } from '../../vendor/provided/agent/integration.mjs';
 import { RUNTIME_FILES as AUX_DAEMON_FILES, integrateDaemon as integrateAuxDaemon } from '../../vendor/aux-daemon/integration.mjs';
 import { ASSET_FILES as POLISH_ASSETS, EDITS as POLISH_EDITS, integratePolish } from '../../vendor/provided/polish/integration.mjs';
-import { BUILTIN_SKILLS_DIR, SKILL_FILES, assertSameSkillFiles, replaceSkillFile } from '../../vendor/aux-skills/integration.mjs';
+import { DOMPURIFY_CHUNK, integrateDomPurify } from '../../vendor/provided/polish/dompurify.mjs';
+import { RUNTIME_FILE as I18N_RUNTIME, carriesStrings, followLocale, localize, localizeAnchors, runtimeModule, withRuntime } from '../../vendor/provided/i18n/integration.mjs';
+import { BUILTIN_SKILLS_DIR, SKILL_FILES, SKILL_ICONS, assertSameSkillFiles, replaceSkillFile } from '../../vendor/aux-skills/integration.mjs';
 import { COMPONENTS, GLOBALS_CSS, LICENSE as STYLES_LICENSE, NEWTAB_PAGE, REMOVED_ASSETS, REMOVED_CHUNKS, REMOVED_FILES as STYLES_REMOVED, ROUTES, dropRemovedChunks, integrateComponents,
   integrateNewTab, integrateRoutes, integrateStyles } from '../../vendor/aux-extension/integration.mjs';
 
@@ -28,6 +30,7 @@ const ADDITIONS = [
   ['agent UI', `vendor/provided/agent/${AGENT_UI_FILE}`, `${agent}/assets/${AGENT_UI_FILE}`],
   ...POLISH_ASSETS.map(file => ['polish asset', `vendor/provided/polish/${file}`, `${agent}/assets/${file}`]),
   ...AUX_DAEMON_FILES.map(file => ['Aux daemon routers', `vendor/aux-daemon/${file}`, `${daemon}/node-development/aux-daemon/${file}`]),
+  ...SKILL_ICONS.map(file => ['built-in skill icon', `services/aux-cloud/public/builtin-skills/v1/${file}`, `${agent}/builtin-skills/v1/${file}`]),
   ['Agent extension styles: Geist license', `vendor/aux-extension/${STYLES_LICENSE.source}`, `${agent}/${STYLES_LICENSE.target}`],
 ];
 
@@ -40,6 +43,7 @@ const TRANSFORMS = [
   ['Aux daemon routers: the root router goes through the dispatcher', `${daemon}/node-development/aux-native-entry.mjs`, integrateAuxDaemon],
   ...Object.keys(AGENT_EXTENSION_EDITS).map(chunk => [`agent: ${chunk}`, `${agent}/${chunk}`, text => integrateAgentChunk(chunk, text)]),
   ...Object.keys(POLISH_EDITS).map(chunk => [`polish: ${chunk}`, `${agent}/${chunk}`, text => integratePolish(chunk, text)]),
+  ['polish: current DOMPurify', `${agent}/${DOMPURIFY_CHUNK}`, integrateDomPurify],
   ...SKILL_FILES.map(file => [`built-in skills: ${file}`, `${daemon}/${BUILTIN_SKILLS_DIR}/${file}`, text => replaceSkillFile(file, text)]),
   ['Agent extension styles: Aux-owned tokens, fonts and base styles', `${agent}/${GLOBALS_CSS}`, integrateStyles],
   ['Agent extension styles: New Tab first-paint tokens and fonts', `${agent}/${NEWTAB_PAGE}`, integrateNewTab],
@@ -49,7 +53,8 @@ const TRANSFORMS = [
 ];
 
 // [label, staged file]. Supplied files Aux may not ship; a missing file stops the release.
-const REMOVALS = [...STYLES_REMOVED.map(file => ['Agent extension styles: the supplied display font', `${agent}/${file}`]),
+const REMOVALS = [...['pty.node', 'spawn-helper'].map(file => ['node-pty: Aux ships for Apple silicon only', `${daemon}/native/node-pty/prebuilds/darwin-x64/${file}`]),
+  ...STYLES_REMOVED.map(file => ['Agent extension styles: the supplied display font', `${agent}/${file}`]),
   ...[...REMOVED_CHUNKS, ...REMOVED_ASSETS].map(file => ['Agent extension: a chunk Aux does not ship', `${agent}/${file}`])];
 
 assertSameSkillFiles(path.join(app, daemon, BUILTIN_SKILLS_DIR));
@@ -68,6 +73,18 @@ for (const [label, relative, transform] of TRANSFORMS) {
   if (after === before) throw new Error(`${label} changed nothing in ${relative}`);
   writeFileSync(file, after);
   applied.push({ label, path: relative });
+}
+// Languages go last so they cover what every edit above wrote, Aux's own screens included.
+writeFileSync(path.join(app, agent, 'assets', I18N_RUNTIME), runtimeModule());
+applied.push({label: 'languages: runtime', path: `${agent}/assets/${I18N_RUNTIME}`, added: true});
+const localized = new Set();
+for (const relative of ['background.js', ...readdirSync(path.join(app, agent, 'assets')).filter(file => file.endsWith('.js') && file !== I18N_RUNTIME).map(file => `assets/${file}`)]) {
+  const file = path.join(app, agent, relative);
+  if (!existsSync(file) || REMOVED_CHUNKS.includes(relative)) continue;
+  const before = readFileSync(file, 'utf8');
+  if (!carriesStrings(relative, before)) continue;
+  const after = withRuntime(relative, localizeAnchors(relative, followLocale(relative, localize(before, localized)), localized));
+  if (after !== before) { writeFileSync(file, after); applied.push({label: 'languages', path: `${agent}/${relative}`}); }
 }
 // Last of the edits: every chunk's imports and Vite deps tables are final by now.
 for (const name of readdirSync(path.join(app, agent, 'assets')).filter(file => file.endsWith('.js') && !REMOVED_CHUNKS.includes(`assets/${file}`))) {

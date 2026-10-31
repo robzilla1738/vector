@@ -2,7 +2,7 @@
 name: google-drive
 siteSpecific: true
 description: Google Drive navigation and result-reading guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/google-drive.svg"
+icon: "/builtin-skills/v1/google-drive.svg"
 autoInject:
   url:
     - drive.google.com

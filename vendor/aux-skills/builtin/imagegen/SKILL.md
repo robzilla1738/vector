@@ -1,7 +1,7 @@
 ---
 name: Image Generation
 description: Generate a new image or edit an existing image from a text prompt. Use for illustrations, photos, textures, mockups, visual variants, and reference-image transformations that should produce a bitmap artifact.
-icon: "https://app.getaux.co/builtin-skills/v1/image-generation.jpg"
+icon: "/builtin-skills/v1/image-generation.jpg"
 autoInject:
   keywords: ["generate an image", "create an image", "make an image", "edit this image", "image generation", "imagegen"]
 ---

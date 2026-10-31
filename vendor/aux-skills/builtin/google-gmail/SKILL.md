@@ -1,7 +1,7 @@
 ---
 name: google-gmail
 description: Read this skill when you need to use user's Gmail. Don't have to open a browser tab.
-icon: "https://app.getaux.co/builtin-skills/v1/google-gmail.jpg"
+icon: "/builtin-skills/v1/google-gmail.jpg"
 autoInject:
   keywords: ["gmail", "email", "mail"]
 ---

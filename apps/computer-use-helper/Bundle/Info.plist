@@ -30,6 +30,8 @@
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>
 	<string>Aux uses Accessibility to read visible app content when Context Awareness is enabled.</string>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>Aux uses Screen Recording to read what's on screen when Context Awareness is enabled.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 </dict>

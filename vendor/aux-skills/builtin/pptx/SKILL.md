@@ -1,7 +1,7 @@
 ---
 name: pptx
 description: Use this skill whenever a PowerPoint .pptx file must be read, created, inspected, or edited, including slides, notes, images, tables, charts, layouts, and package metadata.
-icon: "https://app.getaux.co/builtin-skills/v1/pptx.jpg"
+icon: "/builtin-skills/v1/pptx.jpg"
 license: Proprietary. LICENSE.txt has complete terms
 ---
 

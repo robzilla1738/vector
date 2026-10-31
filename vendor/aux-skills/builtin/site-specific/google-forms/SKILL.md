@@ -2,7 +2,7 @@
 name: google-forms
 siteSpecific: true
 description: Google Forms navigation and editing guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/google-forms.svg"
+icon: "/builtin-skills/v1/google-forms.svg"
 autoInject:
   url:
     - docs.google.com/forms/**

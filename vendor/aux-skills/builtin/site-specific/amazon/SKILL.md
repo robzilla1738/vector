@@ -2,7 +2,7 @@
 name: amazon
 siteSpecific: true
 description: Amazon shopping, orders, and account-state guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/amazon.svg"
+icon: "/builtin-skills/v1/amazon.svg"
 autoInject:
   keywords: ["Amazon"]
   url:

@@ -55,10 +55,10 @@
   },
   {
    "name": "expat",
-   "version": "2.6.3",
-   "url": "https://github.com/libexpat/libexpat/releases/download/R_2_6_3/expat-2.6.3.tar.xz",
+   "version": "2.9.0",
+   "url": "https://github.com/libexpat/libexpat/releases/download/R_2_9_0/expat-2.9.0.tar.xz",
    "group": "python",
-   "sha256": "274db254a6979bde5aad404763a704956940e465843f2a9bd9ed7af22e2c0efc"
+   "sha256": "1e6371862cc31999b368c3b89b49994f0677e1bab5f1b2b85ae3741f5d803051"
   },
   {
    "name": "libffi",

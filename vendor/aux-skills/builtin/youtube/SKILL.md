@@ -1,7 +1,7 @@
 ---
 name: youtube
 description: Use this skill when you need to search YouTube, read video transcripts, or inspect comments without opening YouTube manually.
-icon: "https://app.getaux.co/builtin-skills/v1/youtube.jpg"
+icon: "/builtin-skills/v1/youtube.jpg"
 autoInject:
   keywords: ["youtube", "video transcript", "youtube comments", "youtube search"]
 ---

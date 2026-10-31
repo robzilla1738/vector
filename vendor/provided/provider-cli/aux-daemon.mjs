@@ -16,8 +16,9 @@ export const API = 'aux-provider-cli';
 /** Daemon provider id → CLI id. Codex and Claude Code take over the supplied subscription rows. */
 export const DAEMON_PROVIDERS = Object.freeze({'openai-codex': 'codex', 'claude-code': 'claude', 'cursor-cli': 'cursor',
   'grok-cli': 'grok', 'opencode-cli': 'opencode', 'copilot-cli': 'copilot', 'gemini-cli': 'gemini', 'local-agent-cli': 'local'});
-/** The Agent's browser tools a CLI turn may call over MCP. Shell and file tools stay off. */
-export const MCP_TOOLS = Object.freeze(['repl', 'webfetch', 'websearch', 'get_time']);
+/** The Agent's tools a CLI turn may call over MCP: the browser, plus asking the user. A CLI has its
+ * own shell and file tools. */
+export const MCP_TOOLS = Object.freeze(['repl', 'webfetch', 'websearch', 'get_time', 'ask_user_question', 'request_action_confirmation']);
 export const MCP_PATH = /^\/mcp\/v1\/([A-Za-z0-9_-]{1,80})\/?$/;
 const MCP_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 // Settings checks reuse a result for 30 s, or 2 s while a CLI is signed out or failing so a
@@ -417,7 +418,13 @@ export function createAuxProviderCli({detect = detectAll, run = runTurn, env = (
       const {call, verdict} = await gate(turn, {...toolCall, arguments: parsed});
       if (verdict?.block) return toolResult({content: [{type: 'text', text: verdict.reason || 'Tool execution was blocked.'}]}, true);
       const execute = () => tool.execute(toolCall.id, parsed, signal, () => {});
-      let value = await (scope.execute ? scope.execute({toolCall, tool, args: parsed}, execute) : execute()), isError = false;
+      turn.waiting++;
+      let value, isError = false;
+      try {
+        value = await (scope.execute ? scope.execute({toolCall, tool, args: parsed}, execute) : execute());
+      } finally {
+        turn.waiting--;
+      }
       const after = await scope.afterToolCall?.({...call, result: value, isError}, signal);
       if (after) { value = {...value, content: after.content ?? value.content}; isError = after.isError ?? isError; }
       return toolResult(value, isError);

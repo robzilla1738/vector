@@ -1,7 +1,7 @@
 ---
 name: Onboarding
 description: Run the first-session onboarding - get to know the user from the tools they already use, show a couple of things you can do for them, and gently point them at the Aux setup that matters, without interrogating them.
-icon: "https://app.getaux.co/builtin-skills/v1/aux.svg"
+icon: "/builtin-skills/v1/aux.svg"
 settingsGate: experimental.onboarding
 ---
 

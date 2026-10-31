@@ -1,7 +1,7 @@
 ---
 name: Messages
 description: Read iMessages conversations, text someone, or get SMS codes.
-icon: "https://app.getaux.co/builtin-skills/v1/imessage.svg"
+icon: "/builtin-skills/v1/imessage.svg"
 platform: ["mac"]
 ---
 

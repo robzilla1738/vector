@@ -1,7 +1,7 @@
 ---
 name: aux
 description: Use this when you need to inspect or update Aux daemon settings, Projects, sessions, routines, task transcripts, child sessions, session runtime config, or Slack/Telegram/Discord channel connections.
-icon: "https://app.getaux.co/builtin-skills/v1/aux.svg"
+icon: "/builtin-skills/v1/aux.svg"
 ---
 
 # Aux

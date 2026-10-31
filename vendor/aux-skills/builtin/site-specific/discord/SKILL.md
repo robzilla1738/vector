@@ -2,7 +2,7 @@
 name: discord
 siteSpecific: true
 description: Discord web app channel and message workflow guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/discord.svg"
+icon: "/builtin-skills/v1/discord.svg"
 autoInject:
   url:
     - discord.com

@@ -1,7 +1,7 @@
 ---
 name: google-sheets
 description: Read this skill when you need to read or write Google Sheets. Works without opening a browser tab for reads.
-icon: "https://app.getaux.co/builtin-skills/v1/google-sheets.jpg"
+icon: "/builtin-skills/v1/google-sheets.jpg"
 autoInject:
   keywords: ["google sheets", "spreadsheet"]
   url:

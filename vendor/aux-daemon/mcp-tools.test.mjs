@@ -3,7 +3,7 @@ import test from 'node:test';
 import {create} from './tools/toolsets.mjs';
 
 const registered = [];
-const tools = {registerDirectFixedTool: (context, tool) => (registered.push(tool.name), tool), getAgentToolName: (server, name) => `mcp__${server}__${name}`, isReadOnlySubagent: () => false,
+const tools = {registerDirectFixedTool: (context, tool) => (registered.push(tool.name), tool), getAgentToolName: (server, name) => `mcp__${server}__${name}`, isReadOnlySubagent: () => false, isHeadlessSessionTrigger: trigger => trigger === 'routine',
   mcpResultToAgentContent: async result => result.content, McpConnectionError: class {}, UnauthorizedError: class {}, McpError: class {}, ErrorCode: {}};
 const {createMcpAgentTools} = create({typebox: {Unsafe: schema => schema}, tools});
 const listed = [{serverName: 'srv', tool: {name: 'read', inputSchema: {type: 'object'}, annotations: {readOnlyHint: true}}}, {serverName: 'srv', tool: {name: 'send', inputSchema: {type: 'object'}}}];
@@ -22,4 +22,14 @@ test('a read-only chat is offered only read-only MCP tools, and a mode change st
   const refused = await send.execute('id', {});
   assert.equal(refused.isError, true);
   assert.match(refused.content[0].text, /read-only/);
+});
+
+test('Ask first asks before an MCP tool that can act; read-only tools and routines go straight on', async () => {
+  const asked = [], suspend = async (kind, id, request) => { asked.push(request.scope.tool); return {verdict: 'deny'}; };
+  const [read, send] = createMcpAgentTools(manager, listed, {suspend, session: {permissionMode: 'guard', runtimeConfig: {finalConfirm: true}}});
+  assert.equal((await read.execute('id', {})).isError, false);
+  assert.equal((await send.execute('id', {})).isError, true);
+  assert.deepEqual(asked, ['mcp__srv__send']);
+  const [, routine] = createMcpAgentTools(manager, listed, {suspend, session: {permissionMode: 'guard', trigger: 'routine', runtimeConfig: {finalConfirm: true}}});
+  assert.equal((await routine.execute('id', {})).isError, false);
 });

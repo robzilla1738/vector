@@ -1,7 +1,7 @@
 ---
 name: image-search
 description: Use when you need to search images
-icon: "https://app.getaux.co/builtin-skills/v1/image-search.jpg"
+icon: "/builtin-skills/v1/image-search.jpg"
 autoInject:
   keywords: ["image search", "images", "photo search", "google images", "thumbnail"]
 ---

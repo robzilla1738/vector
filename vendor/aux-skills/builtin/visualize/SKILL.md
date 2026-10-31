@@ -1,7 +1,7 @@
 ---
 name: visualize
 description: Read before answering with a visual (chart, table, diagram, timeline, comparison, image collage, mockup) rendered inline in the chat.
-icon: "https://app.getaux.co/builtin-skills/v1/visualize.jpg"
+icon: "/builtin-skills/v1/visualize.jpg"
 ---
 
 # Inline visuals

@@ -2,7 +2,7 @@
 name: airtable
 siteSpecific: true
 description: Airtable base, view, and record-pane guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/airtable.svg"
+icon: "/builtin-skills/v1/airtable.svg"
 autoInject:
   url:
     - airtable.com

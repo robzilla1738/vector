@@ -2,7 +2,7 @@
 name: confluence
 siteSpecific: true
 description: Confluence Cloud page and editor guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/confluence.svg"
+icon: "/builtin-skills/v1/confluence.svg"
 autoInject:
   url:
     - "*.atlassian.net/wiki/**"

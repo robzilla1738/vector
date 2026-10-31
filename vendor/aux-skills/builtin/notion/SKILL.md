@@ -1,7 +1,7 @@
 ---
 name: notion
 description: Read this skill when you need to use Notion. Don't have to open a browser tab.
-icon: "https://app.getaux.co/builtin-skills/v1/notion.jpg"
+icon: "/builtin-skills/v1/notion.jpg"
 autoInject:
   keywords: ["notion"]
   url:

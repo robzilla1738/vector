@@ -229,18 +229,6 @@ const projects = {calls: [
   ['list', a],
 ]};
 
-const billing = {calls: [
-  ['getUsage', {accountId: 0, start: 'yesterday', end: 'today'}], ['getUsage', {accountId: 0, start: '2026-01-01T00:00:00Z', end: '2026-01-02T00:00:00Z', limit: 101}],
-  ['getSubscription', {accountId: 0, fresh: true}],
-  ['getSummary', a], ['getSubscription', a], ['getUsage', {accountId: 0, start: '2026-01-01T00:00:00Z', end: '2026-01-02T00:00:00Z'}],
-  ['createPortal', {accountId: 0, returnUrl: 'https://app.getaux.co/settings'}], ['createPortal', {accountId: 0, returnUrl: 'nope', place: 'settings'}],
-  ['createCheckout', {accountId: 0, lookupKey: 'aux_pro_month', returnUrl: 'https://app.getaux.co'}], ['createCheckout', {accountId: 0, lookupKey: 'pro', returnUrl: 'https://app.getaux.co'}],
-  ['createAddOnCheckout', {accountId: 0, cancelUrl: 'https://app.getaux.co', successUrl: 'https://app.getaux.co', creditCents: 1000}],
-  ['createAddOnCheckout', {accountId: 0, cancelUrl: 'https://app.getaux.co', successUrl: 'https://app.getaux.co', creditCents: 7}],
-  ['setAutoReload', {accountId: 0, enabled: false}], ['setAutoReload', {accountId: 0}],
-  ['createPortal', {accountId: 3, returnUrl: 'https://app.getaux.co'}],
-]};
-
 const referrals = {calls: [['getGuestPasses', a], ['getCode', a], ['getCode', {accountId: 4}]]};
 
 const settings = {calls: [
@@ -706,7 +694,7 @@ const accounts = {
   ],
 };
 
-export const SCENARIOS = {inbox, uiAttention, fullDiskAccess, agentRuntime, capture, routines, projects, billing, referrals,
+export const SCENARIOS = {inbox, uiAttention, fullDiskAccess, agentRuntime, capture, routines, projects, referrals,
   settings, developers, onboarding, meta, 'sessions.tabs': sessionTabs, mcp, channels, cli, memory, contextAwareness, models, sessions, analytics, sync, lasso,
   // Last: it adds and removes accounts.
   accounts};

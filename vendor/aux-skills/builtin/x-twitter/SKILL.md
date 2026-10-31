@@ -1,7 +1,7 @@
 ---
 name: x-twitter
 description: Read this skill when you need to use X (Twitter). Don't have to open a browser tab.
-icon: "https://app.getaux.co/builtin-skills/v1/x-twitter.svg"
+icon: "/builtin-skills/v1/x-twitter.svg"
 autoInject:
   keywords: ["twitter", "tweet", "x.com"]
   url: ["x.com", "twitter.com"]

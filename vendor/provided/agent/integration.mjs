@@ -3,9 +3,10 @@
  * they load. scripts/release/transforms.mjs applies them after the provider CLI integration;
  * any drifted anchor stops the release. */
 import {applyExactEdits} from '../provider-cli/integration.mjs';
+import {withoutRemovedPaths} from './removed-paths.mjs';
 
 /** Copied beside aux-native-entry.mjs, under aux-agent/. */
-export const DAEMON_FILES = Object.freeze(['aux-agent.mjs']);
+export const DAEMON_FILES = Object.freeze(['aux-agent.mjs', 'ask-first.mjs']);
 
 const edit = (name, find, replace, count = 1) => Object.freeze({name, find, replace, count});
 
@@ -18,6 +19,9 @@ const PROCEDURES = 'agentGet:accountProcedure.query(({ctx:Cn})=>auxAgentView(Cn.
 
 /** Entry-scope helpers. Function declarations, so they are hoisted above their callers. */
 const HELPERS = `
+// Ask first in code (ask-first.mjs). Mirrors when the session offers request_action_confirmation.
+function auxAskFirstOn(Cn,ei){let ti=SessionStore.get(Cn,ei);return!!ti&&ti.runtimeConfig?.finalConfirm===!0&&ti.permissionMode!==\`read-only\`&&!isHeadlessSessionTrigger(ti.trigger)}
+async function auxAskFirstCard(Cn,ei){let ti=\`\${ei.toolCallId}_confirm_\${globalThis.crypto.randomUUID().replaceAll(\`-\`,\`\`)}\`,ni=\`artifacts/confirm-\${ti.slice(-12)}.png\`,ri=resolveSessionPath(Cn.sessionDir,ni),ii=await auxBrokerBoundary().awaited(async()=>{try{fs.mkdirSync(path.dirname(ri),{recursive:!0});fs.writeFileSync(ri,Buffer$1.from(ei.screenshot,\`base64\`))}catch(Cn){return Cn}});if(ii)throw ii;let{verdict:ai,instruction:oi}=await Cn.suspend(\`action-confirmation\`,ti,auxAskFirst.confirmationRequest(ei,ni));if(ai!==\`confirm\`)throw Error(oi?.trim()?\`The user did not confirm. Follow this instruction instead: \${oi.trim()}\`:\`The user did not confirm. Do not perform this action.\`)}
 function auxAgentUsable(Cn){return!!Cn&&!Cn.archivedAt&&!Cn.ephemeral&&!Cn.incognito}
 function auxAgentAskChat(Cn,ei){return auxAgentUsable(SessionStore.get(Cn,ei))?SessionStore.listPreviewItems(Cn,{sessionIds:[ei],parent:\`all\`})[0]:void 0}
 function auxAgentView(Cn){let ei=auxAgent.read(Cn);return auxAgent.view(ei,!!(ei.homeSessionId&&auxAgentAskChat(Cn,ei.homeSessionId)))}
@@ -68,7 +72,20 @@ export const DAEMON_EDITS = Object.freeze([
     'Cn.post(`/session/for-chrome/stop-all`,async Cn=>{let ei=Cn.get(`accountId`),ti=SessionStore.listFull(ei).filter(Cn=>Cn.status===`running`);for(let Cn of ti)await GlobalAgentSessionServer.interrupt(ei,Cn.id);return Cn.json({stopped:ti.length})}),Cn.post(`/session/for-chrome/mark-all-read`,'),
   edit('load the agent module beside the entry',
     'const __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);',
-    'const auxAgent=(await import(new URL("./aux-agent/aux-agent.mjs",import.meta.url))).createAuxAgent({control:Cn=>auxControlAccountRoot(Cn),task:Cn=>getAccountTaskRoot(Cn),shared:()=>path.join(AUX_HOME_PATH,`agent-shared`)});\nconst __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);'),
+    'const auxAgent=(await import(new URL("./aux-agent/aux-agent.mjs",import.meta.url))).createAuxAgent({control:Cn=>auxControlAccountRoot(Cn),task:Cn=>getAccountTaskRoot(Cn),shared:()=>path.join(AUX_HOME_PATH,`agent-shared`)});\nconst auxAskFirst=await import(new URL("./aux-agent/ask-first.mjs",import.meta.url));\nconst __auxCryptoBaseURL=new URL("./aux-crypto/",import.meta.url);'),
+  // Every page command of a task goes through the gate, so no way of acting can skip it.
+  edit('Ask first holds in code: the page client',
+    'this.#e=auxReferenceCdpClient(auxScopedBrowserCdpClient(Cn,ei,ti,()=>this.#L(),()=>this.state.tabs,target=>this.#H(target)),()=>this.state.tabs,()=>this.#L()),this.#S=',
+    'this.#e=auxAskFirst.askFirstClient(auxReferenceCdpClient(auxScopedBrowserCdpClient(Cn,ei,ti,()=>this.#L(),()=>this.state.tabs,target=>this.#H(target)),()=>this.state.tabs,()=>this.#L()),{enabled:()=>auxAskFirstOn(ei,ti.id),call:()=>getCurrentReplToolCallId(),confirm:(Cn,ei)=>this.auxConfirmAction(Cn,ei)}),this.#S='),
+  edit('Ask first holds in code: the browser asks',
+    'async ensureAccess(Cn,ei,ti=getCurrentReplToolCallId()){',
+    'async auxConfirmAction(Cn,ei){if(!this.#i||!ei)throw Error(`This action needs your confirmation, and no task is here to ask.`);let ti={...Cn,toolCallId:ei,action:`submit`};await this.#i.trigger(`browser.access`,ti,ti)}async ensureAccess(Cn,ei,ti=getCurrentReplToolCallId()){'),
+  edit('Ask first holds in code: the card',
+    '"browser.access":async ei=>{let ti=await checkPermission(',
+    '"browser.access":async ei=>{if(ei.action===`submit`)return auxAskFirstCard(Cn,ei);let ti=await checkPermission('),
+  edit('aux exec approves read-only tools only',
+    'ei.kind===`permission-approval`&&await resolveSuspension({accountId:oi,sessionId:ri,toolCallId:ni,response:{verdict:ti===`approve`?`allow`:`deny`,always:!1}})',
+    'ei.kind===`permission-approval`&&await resolveSuspension({accountId:oi,sessionId:ri,toolCallId:ni,response:{verdict:ti===`approve`&&(!si.ephemeral||!isCliSession(si)||auxAskFirst.readOnlyScope(si.suspension.request.scope))?`allow`:`deny`,always:!1}})'),
   edit('system prompts open with the agent identity',
     'return[Cn??SYSTEM_PROMPT$1,...ti?[ti]:[]].join(',
     'return[Cn??auxAgent.systemPrompt(SYSTEM_PROMPT$1,ei.scanContexts?.accountId),...ti?[ti]:[]].join('),
@@ -92,9 +109,16 @@ export const DAEMON_EDITS = Object.freeze([
     '.mutation(({ctx:Cn,input:ei})=>(auxAgentWriteContext(Cn.accountId,ei.fileName,ei.content),{success:!0}))'),
 ]);
 
+/** Drops the speech-to-text router: hosted AI is off in Aux and nothing mounts it. */
+function withoutSttRouter(text) {
+  const name = 'createSttHttpRouter', tail = 'throw ei}}),Cn}var init_http_routes$2=', start = text.indexOf(`function ${name}(){`), end = text.indexOf(tail, start);
+  if (start < 0 || end < 0 || text.split(name).length !== 2) throw Error('Agent integration: the STT router drifted');
+  return text.slice(0, start) + text.slice(end + 'throw ei}}),Cn}'.length);
+}
+
 export function integrateDaemon(text) {
   if (text.includes('function auxAgentView(')) throw Error('Agent integration: the daemon entry already has the agent helpers');
-  return applyExactEdits('agent daemon', DAEMON_EDITS, text) + HELPERS;
+  return withoutRemovedPaths(withoutSttRouter(applyExactEdits('agent daemon', DAEMON_EDITS, text))) + HELPERS;
 }
 
 /** The UI module, copied to dist/assets/ and imported by the chunks below. */
@@ -104,7 +128,23 @@ const ui = names => `import{${names.join(',')}}from"./${UI_FILE}";`;
 
 /** dist/assets chunk → edits. Imports go first so a drifted chunk fails before any JSX edit. */
 export const EXTENSION_EDITS = Object.freeze({
+  // Once, after a first login form: Aux keeps no passwords, so say how to get them filled.
+  'content/content.js': [
+    edit('a page with a login form tells the extension, until the hint has been shown',
+      '(function(){var Ia=Object.create,At=Object.defineProperty,',
+      "(()=>{if(window!==top)return;const key='aux.loginHint.v1',seen=()=>{if(document.querySelector('input[type=\"password\"]'))chrome.runtime.sendMessage({type:'aux-login-form-seen'}).catch(()=>{})};chrome.storage.local.get(key).then(found=>{if(!found[key]){seen();setTimeout(seen,3000)}}).catch(()=>{})})();(function(){var Ia=Object.create,At=Object.defineProperty,"),
+  ],
   'background.js': [
+    edit('the first login form with no password manager gets the hint',
+      "chrome.auxAccount?.onProfileContextChanged?.addListener(()=>{auxCloseBrowserTasks().catch(()=>{})});",
+      "chrome.auxAccount?.onProfileContextChanged?.addListener(()=>{auxCloseBrowserTasks().catch(()=>{})});\nasync function auxLoginHint(){const key='aux.loginHint.v1';if((await chrome.storage.local.get(key))[key])return;await chrome.storage.local.set({[key]:true});if((await chrome.management.getAll()).some(item=>item.enabled&&/1password|bitwarden|dashlane|lastpass|proton pass|nordpass|keeper|enpass/i.test(item.name)))return;await oy({notificationId:crypto.randomUUID(),title:'Aux doesn’t save passwords',body:'Add a password manager like 1Password or Bitwarden, and it fills your logins here.'})}\nchrome.runtime.onMessage.addListener(message=>{if(message?.type==='aux-login-form-seen')auxLoginHint().catch(()=>{})});"),
+    // Ask first watches what an agent command sends (ask-first.mjs). Native passes these through.
+    edit('Ask first can pause requests: the commands',
+      "'Emulation.setFocusEmulationEnabled','Input.dispatchKeyEvent'",
+      "'Emulation.setFocusEmulationEnabled','Fetch.continueRequest','Fetch.disable','Fetch.enable','Fetch.failRequest','Input.dispatchKeyEvent'"),
+    edit('Ask first can pause requests: the event',
+      "if(!/^(Accessibility|DOM|Emulation|Input|Inspector|Network|Page|Runtime|Target)\\./.test(method))return;",
+      "if(!/^(Accessibility|DOM|Emulation|Fetch|Input|Inspector|Network|Page|Runtime|Target)\\./.test(method))return;\n if(method==='Fetch.requestPaused'&&['GET','HEAD','OPTIONS'].includes(params?.request?.method)){auxWorkerPhysical('browser-fetch-continue',()=>chrome.debugger.sendCommand(source,'Fetch.continueRequest',{requestId:params.requestId,...root.reference?{__auxDocumentCapability:root.reference.documentCapability}:{}}),false).catch(()=>{});return}"),
     edit('bound browser actions carry the windowless commands: the allowlist',
       "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences']);",
       "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.clearAiTabsGroup']);"),
@@ -218,6 +258,21 @@ export const EXTENSION_EDITS = Object.freeze({
       'import{_ as R}from"./queries-ldd77hNk.js";',
       `import{_ as R}from"./queries-ldd77hNk.js";${ui(['AuxLocalAgents'])}`),
   ],
+  // Nothing queries billing any more.
+  'assets/strip-markdown-DRcmtuJc.js': [
+    edit('no billing queries to refresh',
+      'he.invalidateQueries(pe.billing.getSummary.queryFilter({accountId:e})),he.invalidateQueries(pe.billing.getSubscription.queryFilter({accountId:e})),',
+      ''),
+  ],
+  // The onboarding glow takes the person's theme accent; with none set it keeps the brand color.
+  'assets/floating-background-DQ7OXsyL.js': [
+    edit('the glow reads the theme',
+      'var e=a(),o=({className:i})=>',
+      'var e=a(),auxThemedGlow=n=>{n&&globalThis.chrome?.auxBrowserPreferences?.getThemeState?.().then(t=>{t?.tokens?.accent&&(n.style.backgroundColor=t.tokens.accent)}).catch(()=>{})},o=({className:i})=>'),
+    edit('the glow takes it',
+      '(0,e.jsx)(r.div,{className:"bg-brand/50 border-shape-initial!',
+      '(0,e.jsx)(r.div,{ref:auxThemedGlow,className:"bg-brand/50 border-shape-initial!'),
+  ],
   // Onboarding's Make it yours has the agent's name and look inline.
   'assets/glance-BfAlmExy.js': [
     edit('agent UI import',
@@ -236,6 +291,6 @@ export const EXTENSION_EDITS = Object.freeze({
 export function integrateExtensionChunk(relative, text) {
   const edits = EXTENSION_EDITS[relative];
   if (!edits) throw Error(`Agent integration: no edits for ${relative}`);
-  if (text.includes(UI_FILE) || text.includes('aux.agent.name.v1')) throw Error(`Agent integration: ${relative} is already integrated`);
+  if (text.includes(UI_FILE) || text.includes('aux.agent.name.v1') || text.includes('aux.loginHint.v1')) throw Error(`Agent integration: ${relative} is already integrated`);
   return applyExactEdits(`agent ${relative}`, edits, text);
 }

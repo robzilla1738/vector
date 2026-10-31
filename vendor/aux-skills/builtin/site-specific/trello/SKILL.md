@@ -2,7 +2,7 @@
 name: trello
 siteSpecific: true
 description: Trello board, inbox, and card workflow guidance.
-icon: "https://app.getaux.co/builtin-skills/v1/trello.svg"
+icon: "/builtin-skills/v1/trello.svg"
 autoInject:
   url:
     - trello.com
