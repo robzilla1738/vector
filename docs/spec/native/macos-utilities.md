@@ -1,6 +1,6 @@
 # macOS utilities addon (`aux-macos-utilities.node`)
 
-Status: **implemented** by `apps/macos-utilities-addon` (Swift with a C Node-API shim), checked against the supplied addon by `apps/macos-utilities-addon/tests/parity.test.mjs`, and **shipped** by `--release-addons out/live-inputs/completion-20261026/release-addons-a2` (section 7). Batch 10 of [the browser excellence plan](../../plans/2026-10-29-browser-excellence.md) ("the native addons"). This page is current work, not part of the historical clean-room set described in [README](../README.md).
+Status: **implemented** by `apps/macos-utilities-addon` (Swift with a C Node-API shim), checked against the supplied addon by `apps/macos-utilities-addon/tests/parity.test.mjs`. **Not shipped:** builds with this image are refused at startup (section 7), so releases keep the supplied image.
 
 Reference artifact: the supplied image's fixed Developer ID copy `out/live-inputs/completion-20261026/release-addons-a1/aux-macos-utilities.node` (409,712 bytes, sha256 `66a61601…c4c6`, identifier `dev.aux.browser.macos-utilities`, team `9F2JXY8TCK`), which builds through 118 ship. The parity test keeps comparing against it. The release image is Aux's: `release-addons-a2/aux-macos-utilities.node` (163,344 bytes, sha256 `10bdcb53…1c5b`).
 
@@ -119,6 +119,8 @@ Not tested, and why:
 - Running inside the real daemon (hardened runtime, Developer ID signature, sandbox, TCC): needs a launch (section 7).
 
 ## 7. Integration
+
+**Open, 2026-10-30:** builds 120 and 121 (`release-addons-a2`, `release-state-root-a7`, the a2 browser pin) never reach a window. The daemon stops with `Aux native daemon refused at bootstrap (status -1)` about 2 seconds in, and the browser reports `paired daemon receipt`. Build 122 is the same source with `release-addons-a1`, `release-state-root-a6` and the a1 browser pin, and it starts, so the swap is the cause; the rebuilt runtime is not (build 121 left it out and still failed). Ruled out: pins, sizes in the compiled daemon, signing leaf, identifier, policy JSON, Node-API imports. Untested differences from a1: the `@rpath` install name and the smaller export and Swift library list. Debugging it needs a build of the daemon that reports the refusal's cause. The steps below are what the a2 attempt changed.
 
 Done for the release path (relink `release-state-root-a7`, sources in `docs/integration/proposed/completion-20261026/runtime/release-addons-a2/`). New bytes mean every pin changes:
 
