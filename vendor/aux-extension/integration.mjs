@@ -236,7 +236,7 @@ export const ROUTES = Object.freeze({
     '6e5ea2bd545821ed1078577def24b5fa0f51ba66737e3c5ad9fec15b300e34db', 2942)],
   // Only the panel header; the panel's session and draft plumbing around it stays supplied.
   'assets/-components-4o0FSqQ9.js': [block('Agent panel header', 'agent-panel-header.js', 'qe=({leading:e})=>{const{os:n}=_(),{data',
-    ':(0,s.jsx)(e==="windows"?ce:ee,{})})})};', '751383ec0b97c0872a530eaca39a6a1ded8687a940eb63b996ce6664918e2f82', 1567)],
+    ':(0,s.jsx)(e==="windows"?ce:ee,{})})})};', 'efef3f983cb67af7704852398d7c23f190d6271c11395dae8769699b50740ce6', 1512)],
   'assets/-layouts-CcApOQbE.js': [block('Settings page kit', 'settings-layout.js', 'var s=l(),p=', '"flex max-w-40 min-w-0 shrink justify-end",e.className)});',
     '6a3f086ae431b181c598eafa4eee750d0dc396e9b1260d9c42748ab8bf1c3978', 2299)],
   'assets/glance-BfAlmExy.js': [block('Onboarding: Welcome and Make it yours', 'onboarding-welcome.js', 'var r=C(G(),1),$="/assets/icons-BJUd505g.webp"',

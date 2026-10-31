@@ -19,15 +19,12 @@ const {useCallback, useEffect, useRef, useState, useSyncExternalStore} = React;
 const GETTING_READY = "Getting your agent ready…";
 const DEFAULT = Object.freeze({name: "Aux", homeSessionId: null, avatarRevision: "", setupCompleted: true, isDefault: true});
 const NAME_KEY = "aux.agent.name.v1";
-// Dispatched on the side panel's window when the agent button is clicked: back to the home thread.
-const HOME_EVENT = "aux-agent-home";
 // The command bar's question for this window's panel, and how long it waits to be picked up.
 const PENDING_ASK_KEY = "aux.agent.pendingAsk.v1";
 const PENDING_ASK_MS = 15000;
 // ---------------------------------------------------------------------------------- store
 
 const stores = new Map();
-let sideChatDraft = false;
 
 function readStoredName() {
   try { return localStorage.getItem(NAME_KEY) || DEFAULT.name; } catch { return DEFAULT.name; }
@@ -112,29 +109,17 @@ export function useAuxAgentPlaceholder(explicit) {
   return explicit ?? `Message ${name}, @ for context`;
 }
 export const auxAgentAsk = () => `Ask ${lastName}`;
-/** Whether an empty panel is a side chat draft rather than the home thread. Every view
- * that reads it re-renders when it changes, even if the route stays the same. */
-function setSideChatDraft(value) {
-  if (sideChatDraft === value) return;
-  sideChatDraft = value;
-  for (const store of stores.values()) publish(store, {sideChatDraft: value});
-}
-/** "+" in the side panel opens a side chat draft instead of the home thread. */
-export function auxAgentStartSideChat() { setSideChatDraft(true); }
-/** The chat menu's filters. Side chats start in the side panel or the full view; routines,
- * channels and New Tab carry their own trigger. */
+/** The chat menu's filters. Chats start in the side panel or the full view; routines, channels
+ * and New Tab carry their own trigger. */
 const CHAT_FILTERS = [
-  {id: "side", label: "Side chats", empty: "No side chats yet", matches: ({trigger}) => !trigger || trigger.type === "user" && trigger.source === "sidepanel"},
+  {id: "side", label: "Chats", empty: "No chats yet", matches: ({trigger}) => !trigger || trigger.type === "user" && trigger.source === "sidepanel"},
   {id: "routines", label: "Routines", empty: "No routine chats yet", matches: ({trigger}) => trigger?.type === "routine" || trigger?.type === "standalone-routine"},
   {id: "channels", label: "Channels", empty: "No channel chats yet", matches: ({trigger}) => trigger?.type === "channel"},
   {id: "new-tab", label: "New Tab", empty: "No New Tab chats yet", matches: ({trigger}) => trigger?.type === "user" && trigger.source === "new-tab"},
 ];
 const chatFilter = id => CHAT_FILTERS.find(filter => filter.id === id) ?? CHAT_FILTERS[0];
-/** Chat menu rows under a filter, without the home thread, which the title represents. */
-export function auxAgentChats(rows, filter) {
-  const home = [...stores.values()].map(store => store.snapshot.agent.homeSessionId).filter(Boolean);
-  return rows.filter(row => chatFilter(filter).matches(row) && !home.includes(row.id));
-}
+/** Chat menu rows under a filter. */
+export const auxAgentChats = (rows, filter) => rows.filter(chatFilter(filter).matches);
 export const auxAgentChatsEmpty = filter => chatFilter(filter).empty;
 /** The session list's options for a filter: routine chats are left out unless asked for. */
 export const auxAgentChatsQuery = filter => filter === "routines" ? {routines: "include"} : {};
@@ -397,76 +382,32 @@ export function AuxAgentSheet({open, onOpenChange, setup = false}) {
 
 // ------------------------------------------------------------------------------ side panel
 
-/** Header title: the agent on its home thread; a way back to it from a side chat. menu(label)
- * renders the supplied chat menu, listing side chats, with an optional trigger label. */
-export function AuxAgentTitle({sessionId, menu, navigate}) {
+/** Header title: the agent's name, which opens its customize sheet, and the supplied chat menu,
+ * labelled until a chat is open. */
+export function AuxAgentTitle({sessionId, menu}) {
   const agent = useAuxAgent();
   const [open, setOpen] = useState(false);
-  const home = agent.agent.homeSessionId;
-  const onHome = sessionId ? sessionId === home : !sideChatDraft;
-  if (onHome) {
-    return j.jsxs(j.Fragment, {children: [
-      // The name alone: the face already lives in the sidebar button and the greeting.
-      j.jsx(Tooltip, {content: `Customize ${agent.agent.name}`, children: j.jsx(Button, {variant: "ghost", size: "sm", className: "no-drag min-w-0 px-2",
-        "aria-label": `Customize ${agent.agent.name}`, onClick: () => setOpen(true),
-        children: j.jsx("span", {className: "truncate text-sm font-medium", children: agent.agent.name})})}),
-      menu("Side chats"),
-      j.jsx(AuxAgentSheet, {open, onOpenChange: setOpen}),
-    ]});
-  }
-  const back = () => { setSideChatDraft(false); navigate(home ?? null); };
   return j.jsxs(j.Fragment, {children: [
-    j.jsx(Tooltip, {content: `Back to ${agent.agent.name}`, children: j.jsxs(Button, {variant: "ghost", size: "sm", className: "no-drag shrink-0 gap-1 px-1.5",
-      "aria-label": `Back to ${agent.agent.name}`, onClick: back, children: [
-        j.jsx("svg", {viewBox: "0 0 16 16", width: 12, height: 12, "aria-hidden": true, className: "text-muted-foreground",
-          children: j.jsx("path", {d: "M10 3 5 8l5 5", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round"})}),
-        j.jsx("span", {className: "text-muted-foreground text-sm font-medium", children: agent.agent.name}),
-      ]})}),
-    sessionId ? menu() : j.jsx("span", {className: "text-muted-foreground truncate px-1 text-sm", children: "New side chat"}),
+    // The name alone: the face already lives in the sidebar button and the greeting.
+    j.jsx(Tooltip, {content: `Customize ${agent.agent.name}`, children: j.jsx(Button, {variant: "ghost", size: "sm", className: "no-drag min-w-0 shrink-0",
+      "aria-label": `Customize ${agent.agent.name}`, onClick: () => setOpen(true),
+      children: j.jsx("span", {className: "truncate text-sm font-medium", children: agent.agent.name})})}),
+    menu(sessionId ? undefined : "Chats"),
+    j.jsx(AuxAgentSheet, {open, onOpenChange: setOpen}),
   ]});
 }
 
-/** Keeps the side panel on the agent's home thread: an empty panel opens it, the first chat
- * sent from an empty panel becomes it, and a new profile is offered the setup sheet once. */
-export function AuxAgentHomeRoute({sessionId, onSessionChange}) {
+/** The panel's jobs that aren't a chat: a new profile is offered the setup sheet once, and a
+ * question asked from the command bar (aux-palette-ask.mjs) opens as a new chat. */
+export function AuxAgentPanelRoute() {
   const agent = useAuxAgent();
   const {mode} = useAccount();
-  const previous = useRef(sessionId);
-  const claiming = useRef(false);
-  const home = agent.agent.homeSessionId;
   const [setupOpen, setSetupOpen] = useState(false);
-
-  useEffect(() => {
-    const before = previous.current;
-    previous.current = sessionId;
-    if (!agent.ready || mode === "incognito") return;
-    if (sessionId && sessionId === home) { setSideChatDraft(false); return; }
-    if (!sessionId && home && !sideChatDraft) { onSessionChange(home); return; }
-    if (sessionId && !before && !home && !sideChatDraft && !claiming.current) {
-      claiming.current = true;
-      agent.call("agentSetHome", {sessionId}).catch(() => agent.refresh()).finally(() => { claiming.current = false; });
-    }
-    if (sessionId && !before && sideChatDraft) setSideChatDraft(false);
-  }, [sessionId, home, agent.ready, mode]);
 
   useEffect(() => {
     if (agent.ready && !agent.agent.setupCompleted && mode !== "incognito") setSetupOpen(true);
   }, [agent.ready, agent.agent.setupCompleted, mode]);
 
-  useEffect(() => {
-    if (mode === "incognito") return;
-    const goHome = () => { setSideChatDraft(false); onSessionChange(home ?? null); };
-    // The background worker relays the agent button's click to every panel; only this window's acts.
-    let windowId = null;
-    chrome.windows?.getCurrent?.().then(current => { windowId = current.id; }, () => {});
-    const relay = message => { if (message?.type === HOME_EVENT && message.windowId === windowId) goHome(); };
-    window.addEventListener(HOME_EVENT, goHome);
-    chrome.runtime?.onMessage?.addListener(relay);
-    return () => { window.removeEventListener(HOME_EVENT, goHome); chrome.runtime?.onMessage?.removeListener(relay); };
-  }, [home, mode, onSessionChange]);
-
-  // A question asked from the command bar (aux-palette-ask.mjs) goes to the home thread. With no
-  // home thread yet, it opens in the New Tab composer, as it did before the panel took it.
   useEffect(() => {
     if (!agent.ready || mode === "incognito" || !chrome.storage?.session) return;
     let alive = true;
@@ -476,20 +417,15 @@ export function AuxAgentHomeRoute({sessionId, onSessionChange}) {
       if (!alive || !ask || ask.windowId !== current.id) return;
       await chrome.storage.session.remove(PENDING_ASK_KEY);
       if (Date.now() - ask.at > PENDING_ASK_MS || typeof ask.text !== "string" || !ask.text.trim()) return;
-      if (!home) {
-        const url = new URL(chrome.runtime.getURL("newtab.html"));
-        url.searchParams.set("mode", "ask"); url.searchParams.set("q", ask.text);
-        await chrome.tabs.create({windowId: current.id, url: url.href});
-        return;
-      }
-      setSideChatDraft(false); onSessionChange(home);
-      await trpc.sessions.queue.mutate({accountId: agent.accountId, sessionId: home, prompt: ask.text});
+      const url = new URL(chrome.runtime.getURL("newtab.html"));
+      url.searchParams.set("mode", "ask"); url.searchParams.set("q", ask.text);
+      await chrome.tabs.create({windowId: current.id, url: url.href});
     };
     const changed = (changes, area) => { if (area === "session" && changes[PENDING_ASK_KEY]?.newValue) take().catch(() => {}); };
     take().catch(() => {});
     chrome.storage.onChanged.addListener(changed);
     return () => { alive = false; chrome.storage.onChanged.removeListener(changed); };
-  }, [agent.ready, agent.accountId, home, mode, onSessionChange]);
+  }, [agent.ready, mode]);
 
   return j.jsx(AuxAgentSheet, {setup: true, open: setupOpen, onOpenChange: setSetupOpen});
 }
@@ -509,9 +445,8 @@ export function AuxAgentEmptyState() {
   if (!agent.ready) return j.jsx("div", {role: "status", className: "text-muted-foreground text-sm", children: GETTING_READY});
   return j.jsxs("div", {className: "flex max-w-xs flex-col items-center gap-2.5 text-center", children: [
     j.jsx(AuxAgentAvatar, {size: 44}),
-    j.jsx("div", {className: "font-display text-foreground text-lg font-medium", children: sideChatDraft ? "New side chat" : `Hi, I'm ${name}`}),
+    j.jsx("div", {className: "font-display text-foreground text-lg font-medium", children: `Hi, I'm ${name}`}),
     j.jsx("div", {className: "text-muted-foreground text-sm", children: unconnected ? "Connect a model to start."
-      : sideChatDraft ? `Starts fresh. ${name} still remembers what matters.`
       : "Ask me anything, or tell me what to get done on the web. I'll remember what matters."}),
     unconnected && j.jsx(Button, {variant: "outline", size: "sm", onClick: () => openPage(agent.accountId, "settings/model"), children: "Open Models"}),
   ]});

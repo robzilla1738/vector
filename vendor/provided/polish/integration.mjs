@@ -588,14 +588,15 @@ const ONBOARDING_ROUTES = [
     'function Ht(e){return e.replace(/\\/+$/,"")===Mt}function auxAgentReady(){return(0,i.jsx)("div",{className:"text-muted-foreground flex h-screen items-center justify-center text-sm",children:"Getting your agent ready…"})}async function auxOnboardingDue(){try{if(chrome.extension?.inIncognitoContext)return!1;const key="aux.onboarding.completed.v1",api=chrome.auxBrowserPreferences;if(localStorage.getItem(key)==="1")return api?.setOnboardingCompleted?.(!0)?.catch(()=>{}),!1;if(await api?.getOnboardingCompleted?.())return localStorage.setItem(key,"1"),!1;return!0}catch{return!1}}'),
 ];
 const BACKGROUND = [
+  // Opening a page never reads the tab beside it, and that tab is often New Tab or Settings, which a
+  // task may not touch. Only opening the page needs a check, and the URL has its own.
+  edit('opening a tab does not depend on the page in front',
+    'const target=command.params?.targetId??command.params?.anchorTargetId;',
+    "const target=command.params?.targetId??(command.method==='Aux.openProfileUrl'||command.method==='Aux.createAgentTab'?void 0:command.params?.anchorTargetId);"),
   // A new profile starts with setup; updates and restarts don't.
   edit('a new profile opens onboarding',
     'onInstalled.addListener(() => Vt(!0))',
     'onInstalled.addListener(async (details) => { Vt(!0); if (details?.reason === "install" && !(await chrome.auxBrowserPreferences?.getOnboardingCompleted?.().catch(() => false))) chrome.tabs.create({ url: chrome.runtime.getURL("main.html#/onboarding/glance") }); })'),
-  // The agent panel listens for this and goes back to the home thread.
-  edit('the agent button returns the panel to the home thread',
-    'chrome.action.onClicked.addListener(async (e) => {\n  e.windowId && await chrome.sidePanel.open({ windowId: e.windowId });\n});',
-    'chrome.action.onClicked.addListener(async (e) => {\n  e.windowId && await chrome.sidePanel.open({ windowId: e.windowId });\n  e.windowId && chrome.runtime.sendMessage({ type: "aux-agent-home", windowId: e.windowId }).catch(() => {});\n});'),
 ];
 
 const COMPOSER = [

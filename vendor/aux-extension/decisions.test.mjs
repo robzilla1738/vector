@@ -359,7 +359,7 @@ test('the agent’s startup states: getting ready, then couldn’t start with Tr
 const agentUi = async world => world.evaluate(readFileSync(new URL('../provided/agent/aux-agent-ui.js', import.meta.url), 'utf8')
   .replace(/^import \{([^}]*)\} from "/gm, 'import{$1}from"'), 'decisions:aux-agent-ui');
 
-test('the panel’s chat menu filters side chats, routines, channels and New Tab', async () => {
+test('the panel’s chat menu filters chats, routines, channels and New Tab', async () => {
   const world = createWorld();
   const ui = await agentUi(world);
   const rows = [{id: 'a'}, {id: 'b', trigger: {type: 'user', source: 'sidepanel'}}, {id: 'c', trigger: {type: 'routine'}}, {id: 'd', trigger: {type: 'standalone-routine', routineId: 'r'}},
@@ -372,7 +372,7 @@ test('the panel’s chat menu filters side chats, routines, channels and New Tab
   assert.equal(ui.auxAgentChatsEmpty('new-tab'), 'No New Tab chats yet');
   assert.equal(JSON.stringify(ui.auxAgentChatsQuery('routines')), '{"routines":"include"}');
   assert.equal(JSON.stringify(ui.auxAgentChatsQuery('side')), '{}');
-  assert.match(text(world.render(ui.AuxAgentChatFilters, {value: 'side', onChange: () => {}})), /Side chats[^]*Routines[^]*Channels[^]*New Tab/);
+  assert.match(text(world.render(ui.AuxAgentChatFilters, {value: 'side', onChange: () => {}})), /Chats[^]*Routines[^]*Channels[^]*New Tab/);
 });
 
 test('Add a local agent shows the exact command and saves only after a confirm', async () => {

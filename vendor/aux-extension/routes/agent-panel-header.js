@@ -1,10 +1,10 @@
 /* Aux-owned source: the Agent panel header (assets/-components-4o0FSqQ9.js, exported as t), with its
- * New side chat, Open full view and Close side panel buttons. This block starts inside the chunk's
+ * New chat, Open full view and Close side panel buttons. This block starts inside the chunk's
  * `var` list. The title in it is vendor/provided/agent/integration.mjs's Aux agent title.
  * Chunk names used: s JSX runtime, a React, T cn, _ platform, ie toolbar layout, b useApp, R the
  * session context, Ce useSidepanelRouteContext, xe the session menu, N SimpleTooltip, C Button,
  * oe openPage, D closeSidePanel, z the new chat icon, J arrow-up-right, ee cross, ce the Windows
- * close icon; AuxAgentTitle and auxAgentStartSideChat from aux-agent-ui.js.
+ * close icon; AuxAgentTitle from aux-agent-ui.js.
  * Aux change: the header has no side padding, so its title sits 8px in (the title button's own
  * padding), in line with the composer's text, like the sidebar's row labels; the buttons meet the
  * panel edge, as the composer card does. */
@@ -22,29 +22,28 @@
             leading,
             (0, s.jsx)(AuxAgentTitle, {
               sessionId: Ce().currentSessionId,
-              navigate: R().navigate,
               menu: auxLabel => (0, s.jsx)(xe, {label: auxLabel}),
             }),
           ],
         }),
         (0, s.jsxs)('div', {
           className: T('no-drag **:no-drag flex shrink-0 items-center gap-0', os === 'windows' && toolbarLayout !== 'horizontal' && 'mr-[135px]'),
-          children: [(0, s.jsx)(NewSideChatButton, {}), (0, s.jsx)(OpenFullViewButton, {}), (0, s.jsx)(CloseSidePanelButton, {})],
+          children: [(0, s.jsx)(NewChatButton, {}), (0, s.jsx)(OpenFullViewButton, {}), (0, s.jsx)(CloseSidePanelButton, {})],
         }),
       ],
     });
   },
-  NewSideChatButton = () => {
+  NewChatButton = () => {
     const {navigate} = R();
     return (0, s.jsx)(N, {
-      content: 'New side chat',
+      content: 'New chat',
       children: (0, s.jsx)(C, {
         className: 'text-muted-foreground shrink-0',
         variant: 'ghost',
         size: 'icon-sm',
         shape: 'pill',
-        'aria-label': 'New side chat',
-        onClick: () => (auxAgentStartSideChat(), navigate(null)),
+        'aria-label': 'New session',
+        onClick: () => navigate(null),
         children: (0, s.jsx)(z, {}),
       }),
     });

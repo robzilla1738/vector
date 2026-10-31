@@ -47,7 +47,7 @@ var jsxRuntime = se(),
       id: 'using-cli',
       question: 'How can I use Aux CLI?',
       answer:
-        'Choose the command that matches the task:\n\n- `aux ask "..."` sends one prompt to the agent\'s home thread and prints the reply. Anything that needs approval waits for you in Aux.\n- `aux exec "..."` runs one prompt in a chat of its own and prints JSON. Anything that needs approval is refused unless you name it with `--allow`.\n- `aux repl` is `aux ask`, one line at a time.\n- `aux mcp` lets an MCP-compatible coding agent call Aux tools itself.\n\nAux must be open. Run `aux --help`, `aux ask --help`, or `aux exec --help` for current command options.',
+        'Choose the command that matches the task:\n\n- `aux ask "..."` sends one prompt to the agent\'s ongoing chat and prints the reply. Anything that needs approval waits for you in Aux.\n- `aux exec "..."` runs one prompt in a chat of its own and prints JSON. Anything that needs approval is refused unless you name it with `--allow`.\n- `aux repl` is `aux ask`, one line at a time.\n- `aux mcp` lets an MCP-compatible coding agent call Aux tools itself.\n\nAux must be open. Run `aux --help`, `aux ask --help`, or `aux exec --help` for current command options.',
     },
     {
       id: 'coding-agents',
