@@ -75,7 +75,7 @@ export function create({typebox, tools: t}) {
           seen.add(item.url);
           results.push({url: item.url, title: item.title, publish_date: item.publishedAtText ?? null, excerpts: item.snippet ? [item.snippet] : []});
         }
-      if (!results.length) throw Error(`Web search found nothing for “${objective}”.`);
+      if (!results.length) throw Error(`Web search has no results here. Open https://www.google.com/search?q=${encodeURIComponent(objective)} with openTab and read the page.`);
       const {details, result} = t.buildWebSearchToolResult({session_id: context.session.id, results});
       return reply(JSON.stringify(result), details);
     },

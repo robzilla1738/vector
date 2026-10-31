@@ -389,6 +389,10 @@ export const STORE_EDITS = Object.freeze([
   ...['listOpenTabs', 'resolveCliBrowserBinding', 'restoreCliBrowserBinding'].map(name => delegate('browserBinding', name, 'async ')),
   ...['listCliBrowserProfiles', 'isCliSession'].map(name => delegate('browserBinding', name)),
   edit('the MCP manager is Aux\'s', 'McpManager=class{#e;', 'McpManager=auxOwnedDaemon.store(`mcpManager`,auxOwnedDaemonBindings),auxSupplied_McpManager=class{#e;'),
+  // A top-level return was dropped, so a model that returned a value saw an empty result and
+  // decided the step had failed. The value prints as console.log would.
+  edit('a repl return value reaches the agent', 'await auxRunBrowserJsBridge(Cn,()=>Cn.evalAsync(`(async () => {\\n${ei}\\n})()`));return',
+    'await auxRunBrowserJsBridge(Cn,()=>Cn.evalAsync(`(async () => {const auxReturned=await (async () => {\\n${ei}\\n})();if(auxReturned!==undefined)console.log(auxReturned)})()`));return'),
   // The start diagnostic reads only named sources, so the agent server's frames come with it.
   edit('the start diagnostic reads the agent server\'s frames', String.raw`\/(aux-native-entry|index)\.mjs:(\d{1,7})`,
     String.raw`\/(aux-native-entry|index|server)\.mjs:(\d{1,7})`),
