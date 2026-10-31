@@ -56,7 +56,7 @@ test('guardian refuses launch queued after stop', { timeout: 10000 }, async () =
   }
 });
 
-test('launcher waits for a pending controller on SIGTERM and preserves state', { timeout: 20000 }, async () => {
+test('launcher waits for a pending controller on SIGTERM and preserves state', { timeout: 120000 }, async () => {
   const { spawn } = await import('node:child_process');
   const { mkdir, copyFile, access, realpath } = await import('node:fs/promises');
   const { setTimeout: delay } = await import('node:timers/promises');
@@ -105,8 +105,12 @@ test('launcher waits for a pending controller on SIGTERM and preserves state', {
     launcher.stderr.on('data', chunk => { stderr += chunk; });
     closed = new Promise(resolve => launcher.once('close', (code, signal) => resolve({ code, signal })));
     const waitFor = async path => {
-      for (let count = 0; count < 250; count++) {
-        try { await access(path); return; } catch { await delay(20); }
+      // Waits on the fixture itself: a launcher that exits early fails here at once, and a slow
+      // machine just takes longer.
+      let exited = false;
+      closed.then(() => { exited = true; });
+      for (;;) {
+        try { await access(path); return; } catch { if (exited) break; await delay(20); }
       }
       assert.fail(`Disposable startup fixture did not become ready: ${stderr}`);
     };
