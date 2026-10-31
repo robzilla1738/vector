@@ -152876,6 +152876,22 @@ index b84d596bb71209598015e0507388b37566805663..b7608cf188b2b88658c43638227e1637
    views::ViewTracker tracker_;
    base::ScopedObservation<views::Widget, views::WidgetObserver>
        bubble_widget_observation_{this};
+diff --git a/chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.cc b/chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.cc
+index e9b830d6bc64be4f01cdbc03807c2b537b5c3381..fcc54bca14ed885ca5b96dedfd0a2d6091a82f94 100644
+--- a/chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.cc
++++ b/chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.cc
+@@ -399,7 +399,10 @@ bool TabHoverCardController::UseAnimations() {
+ void TabHoverCardController::OnViewIsDeleting(views::View* observed_view) {
+   if (hover_card_ == observed_view) {
+     OnCardClosing();
+-  } else if (target_tab_ && target_tab_->GetView() == observed_view) {
++  } else if (target_tab_ &&
++             target_tab_observation_.IsObservingSource(observed_view)) {
++    // Not target_tab_->GetView(): where View is the first base, as on Aux's
++    // sidebar rows, the anchor target has already been destroyed by now.
+     UpdateHoverCard(nullptr,
+                     TabSlotController::HoverCardUpdateType::kTabRemoved);
+     // These postconditions should always be met after calling
 diff --git a/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc b/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
 index ffb1fdda20d8fab805bee5ee1f0ce5860c330982..6f451d7baf2541340652138f244c56473f2e0ef7 100644
 --- a/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc

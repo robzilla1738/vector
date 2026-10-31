@@ -16,7 +16,8 @@ function OnboardingPage({title, description, children, footer}) {
         className: 'flex min-h-0 grow flex-col overflow-y-auto',
         children: [
           (0, jsxRuntime.jsxs)(z, {
-            className: 'pt-9 pb-0',
+            // A step with nothing below its heading centers it, so Welcome isn't a heading over an empty page.
+            className: children ? 'pt-9 pb-0' : 'my-auto pb-0',
             children: [(0, jsxRuntime.jsx)(M, {children: title}), (0, jsxRuntime.jsx)(T, {children: description})],
           }),
           children,

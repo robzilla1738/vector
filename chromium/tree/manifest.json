@@ -1494,6 +1494,7 @@
   "chrome/browser/ui/views/tabs/common/vertical_tab_style_views.cc": "d71ee89030297be300cd233da265e12dc0d6a23dfd1322ffb93a1cea50c911fb",
   "chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.cc": "609a08bbd30975c2bb3ad71f300e5a13cf047f3a429cccf0289bdbd08d3e6f83",
   "chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.h": "02862e405843f8a9f6f73d9c59a8cd87d55813e3938445d83bb5698660685719",
+  "chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.cc": "aa7397ca578b3ddaeb3953a9800b76b2b2c6efbda55364acc32dc9b0a80c958d",
   "chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc": "6744e066ef1655398800b3e0c9b83ab0587f5927e0799429febbbfc1bfc9a255",
   "chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h": "d3ee19c2edea8d8cdfff47f34f08aae02e84fdd5266ad14cfaada33a27e46908",
   "chrome/browser/ui/views/tabs/tab/tab_accessibility.cc": "3d9491f1ecb3b27a90fbdcad477bdf97981768b9f09e2fb67b8069107510a3a9",
