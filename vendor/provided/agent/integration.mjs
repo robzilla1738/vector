@@ -75,10 +75,10 @@ export const DAEMON_EDITS = Object.freeze([
   // Every page command of a task goes through the gate, so no way of acting can skip it.
   edit('Ask first holds in code: the page client',
     'this.#e=auxReferenceCdpClient(auxScopedBrowserCdpClient(Cn,ei,ti,()=>this.#L(),()=>this.state.tabs,target=>this.#H(target)),()=>this.state.tabs,()=>this.#L()),this.#S=',
-    'this.#e=auxAskFirst.askFirstClient(auxReferenceCdpClient(auxScopedBrowserCdpClient(Cn,ei,ti,()=>this.#L(),()=>this.state.tabs,target=>this.#H(target)),()=>this.state.tabs,()=>this.#L()),{enabled:()=>auxAskFirstOn(ei,ti.id),confirm:Cn=>this.auxConfirmAction(Cn)}),this.#S='),
+    'this.#e=auxAskFirst.askFirstClient(auxReferenceCdpClient(auxScopedBrowserCdpClient(Cn,ei,ti,()=>this.#L(),()=>this.state.tabs,target=>this.#H(target)),()=>this.state.tabs,()=>this.#L()),{enabled:()=>auxAskFirstOn(ei,ti.id),call:()=>getCurrentReplToolCallId(),confirm:(Cn,ei)=>this.auxConfirmAction(Cn,ei)}),this.#S='),
   edit('Ask first holds in code: the browser asks',
     'async ensureAccess(Cn,ei,ti=getCurrentReplToolCallId()){',
-    'async auxConfirmAction(Cn){let ei=getCurrentReplToolCallId();if(!this.#i||!ei)throw Error(`This action needs your confirmation, and no task is here to ask.`);let ti={...Cn,toolCallId:ei,action:`submit`};await this.#i.trigger(`browser.access`,ti,ti)}async ensureAccess(Cn,ei,ti=getCurrentReplToolCallId()){'),
+    'async auxConfirmAction(Cn,ei){if(!this.#i||!ei)throw Error(`This action needs your confirmation, and no task is here to ask.`);let ti={...Cn,toolCallId:ei,action:`submit`};await this.#i.trigger(`browser.access`,ti,ti)}async ensureAccess(Cn,ei,ti=getCurrentReplToolCallId()){'),
   edit('Ask first holds in code: the card',
     '"browser.access":async ei=>{let ti=await checkPermission(',
     '"browser.access":async ei=>{if(ei.action===`submit`)return auxAskFirstCard(Cn,ei);let ti=await checkPermission('),
@@ -121,6 +121,13 @@ const ui = names => `import{${names.join(',')}}from"./${UI_FILE}";`;
 /** dist/assets chunk → edits. Imports go first so a drifted chunk fails before any JSX edit. */
 export const EXTENSION_EDITS = Object.freeze({
   'background.js': [
+    // Ask first watches what an agent command sends (ask-first.mjs). Native passes these through.
+    edit('Ask first can pause requests: the commands',
+      "'Emulation.setFocusEmulationEnabled','Input.dispatchKeyEvent'",
+      "'Emulation.setFocusEmulationEnabled','Fetch.continueRequest','Fetch.disable','Fetch.enable','Fetch.failRequest','Input.dispatchKeyEvent'"),
+    edit('Ask first can pause requests: the event',
+      "if(!/^(Accessibility|DOM|Emulation|Input|Inspector|Network|Page|Runtime|Target)\\./.test(method))return;",
+      "if(!/^(Accessibility|DOM|Emulation|Fetch|Input|Inspector|Network|Page|Runtime|Target)\\./.test(method))return;\n if(method==='Fetch.requestPaused'&&['GET','HEAD','OPTIONS'].includes(params?.request?.method)){auxWorkerPhysical('browser-fetch-continue',()=>chrome.debugger.sendCommand(source,'Fetch.continueRequest',{requestId:params.requestId,...root.reference?{__auxDocumentCapability:root.reference.documentCapability}:{}}),false).catch(()=>{});return}"),
     edit('bound browser actions carry the windowless commands: the allowlist',
       "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences']);",
       "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.clearAiTabsGroup']);"),
