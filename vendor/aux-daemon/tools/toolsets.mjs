@@ -5,9 +5,8 @@ import {reply, text} from './common.mjs';
 export function create({typebox, tools: t}) {
   /** A fixed tool, tied to the account and session that made it. */
   const fixed = (context, tool) => t.registerDirectFixedTool(context, tool);
-  /** Browser-only mode dispatches only the REPL, read_file and direct fixed tools; any other
-   * tool always fails there, so the model is not offered it. */
-  const live = tools => t.usesBoundBrowserActions() ? tools.filter(tool => tool.name === 'repl' || tool.name === 'read_file' || t.isDirectFixedTool(tool)) : tools;
+  /** Aux has no in-app shell in 1.0: local CLIs bring their own (roadmap decision 4). */
+  const noShell = () => t.usesBoundBrowserActions();
 
   function createCoreToolset(context, browser = context.browser) {
     if (!browser) throw Error('The desktop toolset requires a local browser');
@@ -17,11 +16,11 @@ export function create({typebox, tools: t}) {
       isPathAllowed: (file, mode) => t.hasPermission(t.resolvePermission({accountRoot, permissionMode: session.permissionMode, accountPermission: context.settings.get('permission'), sessionPermission: session.permission}), {type: 'file', path: file, mode}) === 'allow',
       incognito: session.incognito, channelEnabled: session.trigger?.type === 'channel', imageGenerationModels: context.models, canSendMessages: !session.parentId || t.isForkSelfSubagent(session),
       settings: t.settings(accountId)}), accountId, session.id, session.createdAt);
-    const tools = [t.registerBrowserReplTool(Object.assign(t.createReplTool(repl), {dispose: () => repl.dispose()}), repl), t.createReadFileTool({context}), t.createTerminalTool(context), t.createTerminalInteractTool(context),
+    const tools = [t.registerBrowserReplTool(Object.assign(t.createReplTool(repl), {dispose: () => repl.dispose()}), repl), t.createReadFileTool({context}), ...noShell() ? [] : [t.createTerminalTool(context), t.createTerminalInteractTool(context)],
       fixed(context, t.createWebFetchTool(context)), fixed(context, t.createWebSearchTool(context)), fixed(context, t.createGetTimeTool())];
-    if (session.permissionMode !== 'read-only' && !t.isReadOnlySubagent(session)) tools.push(t.createWriteFileTool(context), t.createEditFileTool(context));
+    if (session.permissionMode !== 'read-only' && !t.isReadOnlySubagent(session)) tools.push(fixed(context, t.createWriteFileTool(context)), fixed(context, t.createEditFileTool(context)));
     if (!session.incognito) tools.push(fixed(context, t.createMemoryReadTool(context)));
-    return live(tools);
+    return tools;
   }
 
   function createAgentToolset(context, browser = context.browser) {
@@ -35,16 +34,16 @@ export function create({typebox, tools: t}) {
       tools.push(fixed(context, t.createHistorySearchTool({accountId, contextAwareness, extensionBridgeRoute: () => browser.extensionBridgeRoute})));
       if (contextAwareness) tools.push(fixed(context, t.createHistoryReadTool({accountId})));
     }
-    if (!session.routineId && t.canUseAgentMessaging(session)) tools.push(t.createMessageAgentTool(context));
-    if (!child || forkSelf || session.trigger?.type === 'routine') tools.push(t.createSubagentTool(context, coder ? ['code_explorer'] : []), t.createSubagentWaitTool(context));
-    if ((!child || forkSelf) && !session.routineId) tools.push(t.createRoutineUpdateTool(context), t.createNotificationTool(context));
+    if (!session.routineId && t.canUseAgentMessaging(session)) tools.push(fixed(context, t.createMessageAgentTool(context)));
+    if (!child || forkSelf || session.trigger?.type === 'routine') tools.push(fixed(context, t.createSubagentTool(context, coder ? ['code_explorer'] : [])), fixed(context, t.createSubagentWaitTool(context)));
+    if ((!child || forkSelf) && !session.routineId) tools.push(fixed(context, t.createRoutineUpdateTool(context)), fixed(context, t.createNotificationTool(context)));
     if (!child || t.isSideChat(session)) {
       if (!headless) tools.push(fixed(context, t.createAskUserQuestionTool(context)));
       if (finalConfirm) tools.push(fixed(context, t.createActionConfirmationTool(context)));
     }
-    if (session.routineId && session.parentId) tools.push(t.createRoutineNotifyParentTool(context));
-    if (coder) tools.push(t.createStartCoderTool(context));
-    return live(tools);
+    if (session.routineId && session.parentId) tools.push(fixed(context, t.createRoutineNotifyParentTool(context)));
+    if (coder && !noShell()) tools.push(t.createStartCoderTool(context));
+    return tools;
   }
 
   function createCoderTools(context) {
@@ -54,7 +53,7 @@ export function create({typebox, tools: t}) {
       ...t.createBackgroundProcessTools(context), fd: t.createFdTool(context), rg: t.createRgTool(context), ...core.has('memory_search') && t.createMemoryTools(context),
       message_agent: t.createMessageAgentTool(context), subagent: t.createSubagentTool(context, ['context_explorer']), subagent_wait: t.createSubagentWaitTool(context),
       workflow: t.createWorkflowTool(context), ...t.createAutomationTools(context)};
-    const tools = live(t.coderToolNames(context.session).flatMap(name => available[name] ?? []));
+    const tools = t.coderToolNames(context.session).flatMap(name => available[name] ?? []);
     return context.session.trigger?.type === 'subagent' ? tools.map(t.withChildTimeout) : tools;
   }
 
@@ -82,19 +81,22 @@ export function create({typebox, tools: t}) {
 
   const isConnectionFailure = error => error instanceof t.McpConnectionError || error instanceof t.UnauthorizedError || error instanceof t.McpError && error.code === t.ErrorCode.ConnectionClosed;
 
-  function createMcpAgentTools(manager, listed) {
-    const taken = new Set();
-    if (t.usesBoundBrowserActions()) return [];
-    return listed.map(({serverName, tool}) => {
+  /** context: the session the tools belong to. Its read-only mode allows only tools a server marks
+   * read-only, checked again on every call because a chat's mode can change after it loads. */
+  function createMcpAgentTools(manager, listed, context) {
+    const taken = new Set(), held = context ? tool => fixed(context, tool) : tool => tool;
+    const blocked = tool => !!context && tool.annotations?.readOnlyHint !== true && (context.session.permissionMode === 'read-only' || t.isReadOnlySubagent(context.session));
+    return listed.filter(({tool}) => !blocked(tool)).map(({serverName, tool}) => {
       const schema = structuredClone(tool.inputSchema);
       // Some servers escape `_` in patterns, which the model providers reject.
       for (const property of Object.values(schema.properties ?? {}))
         if (property && typeof property === 'object' && 'pattern' in property && typeof property.pattern === 'string')
           property.pattern = property.pattern.replace(/\\\\|\\_/g, match => match === '\\_' ? '_' : match);
-      return {
+      return held({
         name: agentToolName(taken, serverName, tool.name), label: `${serverName}: ${tool.title ?? tool.name}`, description: tool.description ?? `MCP tool '${tool.name}' from server '${serverName}'.`,
         parameters: typebox.Unsafe(schema), executionMode: 'sequential',
         execute: async (id, input, signal) => {
+          if (blocked(tool)) return {content: [text(`This chat is read-only, and ${serverName} doesn't mark ${tool.name} as read-only.`)], details: {}, isError: true};
           try {
             const result = await manager.callTool(serverName, tool.name, input, signal);
             return {content: await t.mcpResultToAgentContent(result), details: {}, isError: result.isError === true};
@@ -103,7 +105,7 @@ export function create({typebox, tools: t}) {
             return {content: [text(error instanceof Error ? error.message : String(error))], details: {openSettings: isConnectionFailure(error)}, isError: true};
           }
         },
-      };
+      });
     });
   }
 

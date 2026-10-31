@@ -205,14 +205,11 @@ async function runTools(harness) {
   await run(automations.automation_delete, [{ids: []}, {ids: ['au-9']}, {ids: ['au-1', 'au-1']}]);
   await run(automations.automation_list, [{}]);
 
-  // Browser-only mode offers no MCP tools, so these run past the gate; the wrapper is what's compared.
-  harness.supervise(true);
   const mcpTools = daemon.createMcpAgentTools({callTool: async (server, name, input) => {
     if (name === 'boom') throw Error('MCP failed');
     return {content: [{type: 'text', text: `${server}/${name}:${JSON.stringify(input)}`}], isError: name === 'bad'};
   }}, [{serverName: 'srv', tool: {name: 'ok', inputSchema: {type: 'object', properties: {a: {type: 'string', pattern: 'a\\_b\\\\_c'}}}}}, {serverName: 'srv', tool: {name: 'ok', title: 'Same', description: 'd', inputSchema: {type: 'object'}}},
     {serverName: 'srv', tool: {name: 'bad', inputSchema: {type: 'object'}}}, {serverName: 'srv', tool: {name: 'boom', inputSchema: {type: 'object'}}}]);
-  harness.supervise(false);
   results.push({mcpTools: mcpTools.map(describeTool)});
   for (const tool of mcpTools) await run(tool, [{a: 'b'}]);
 
@@ -566,9 +563,7 @@ async function runMcp(harness) {
 
   const manager = new daemon.McpManager({servers}, {accountId: 0, startupTimeoutMs: 500, toolTimeoutMs: 500});
   await attempt('listTools', async () => { const {tools, failures} = await manager.listTools(); return {tools: tools.map(({serverName, tool}) => `${serverName}/${tool.name}`), failures}; });
-  harness.supervise(true);
   await attempt('initialize', () => manager.initialize({ok: {tools: MCP_TOOLS}, off: {tools: MCP_TOOLS}}).map(tool => tool.name));
-  harness.supervise(false);
   await attempt('testConnection', () => manager.testConnection('ok'));
   await attempt('testConnection, unknown', () => manager.testConnection('absent'));
   await attempt('testConnection, off', () => manager.testConnection('off'));

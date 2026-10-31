@@ -29,18 +29,35 @@ async function auxAgentApply(Cn,ni){let ei=auxAgent.read(Cn),ti=ei.homeSessionId
 `;
 
 export const DAEMON_EDITS = Object.freeze([
-  // Browser-only mode has no aux.sessions, no subagents and no vault.
+  // Browser-only mode has no aux.sessions and Aux has no vault.
   edit('the side chat directive names no removed REPL API',
     "- The snapshot is frozen at load. For the main task's CURRENT progress, read its live transcript with \\`await aux.sessions.messages('${Cn}')\\` in the repl.",
     '- The snapshot is frozen at load, so the main task may have moved on.'),
   edit('the proactive prompt names no vault',
     '   - password managers (ask a subagent to use vault.listItems() without text search; this is a proven golden source)\n', ''),
-  edit('the proactive prompt names no subagent',
-    'Use supplied Context Awareness evidence first, then target only the sources needed to fill material gaps. Use context_explorer for substantive investigations across independent sources.',
-    'Use supplied Context Awareness evidence first, then target only the sources needed to fill material gaps.'),
-  edit('the proactive prompt does not delegate',
-    '4. Keep routine recall in the parent session. Delegate only when an independent investigation materially helps.',
-    '4. Keep routine recall in this session.'),
+  // Task notifications, completion sounds and history search reach the extension; the bound path
+  // allowed only tab commands, so these failed on every call.
+  edit('bound browser actions carry notifications and history',
+    "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.debuggerAttach'",
+    "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.debuggerAttach'"),
+  // A user's MCP tools run in their session's fixed scope like every other tool, so the dispatcher
+  // admits them and permission modes reach them.
+  edit('MCP tools are registered for the session that owns them',
+    'ti=ei.initialize(Cn.inventories),ni=new Set(this.#k)',
+    'ti=ei.initialize(Cn.inventories,this.ctx),ni=new Set(this.#k)'),
+  // Subagent waits and MCP calls can outlast a quit; the scope close that ends a quit waits for them.
+  edit('a quit aborts fixed tools still running: the set',
+    'const auxSelectedReadFileTools=new WeakSet;',
+    'const auxSelectedReadFileTools=new WeakSet;\nconst auxFixedToolControllers=new Set;'),
+  edit('a quit aborts fixed tools still running: the stop',
+    'function auxStopSelectedReadScopes(){return Promise.all(',
+    "function auxStopSelectedReadScopes(){for(const controller of auxFixedToolControllers)controller.abort(Error('Aux is shutting down.'));return Promise.all("),
+  edit('a quit aborts fixed tools still running: admission',
+    'const signal = parent ? AbortSignal.any([parent, controller.signal]) : controller.signal;\n    controllers.add(controller);',
+    'const signal = parent ? AbortSignal.any([parent, controller.signal]) : controller.signal;\n    controllers.add(controller);auxFixedToolControllers.add(controller);'),
+  edit('a quit aborts fixed tools still running: release',
+    'const finish = () => { pending.delete(operation); controllers.delete(controller); };',
+    'const finish = () => { pending.delete(operation); controllers.delete(controller); auxFixedToolControllers.delete(controller); };'),
   // The agent button's Stop: interrupt every chat of this account that is working.
   edit('the agent button can stop the agent',
     'Cn.post(`/session/for-chrome/mark-all-read`,',
@@ -83,6 +100,14 @@ const ui = names => `import{${names.join(',')}}from"./${UI_FILE}";`;
 
 /** dist/assets chunk → edits. Imports go first so a drifted chunk fails before any JSX edit. */
 export const EXTENSION_EDITS = Object.freeze({
+  'background.js': [
+    edit('bound browser actions carry notifications and history: the allowlist',
+      "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences']);",
+      "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory']);"),
+    edit('bound browser actions carry notifications and history: the handlers',
+      " if(task.route.windowId===undefined)throw Error('Choose the task browser window first.');\n",
+      " if(task.route.windowId===undefined)throw Error('Choose the task browser window first.');\n if(['Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory'].includes(command.method)){const result=await vy(command,signal,task.route,task.events);await auxBrowserTaskCurrent(task,signal);return result}\n"),
+  ],
   // Side panel header and its session controller.
   'assets/-components-4o0FSqQ9.js': [
     edit('agent UI import',

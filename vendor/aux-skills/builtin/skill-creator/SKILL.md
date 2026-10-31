@@ -14,7 +14,7 @@ Use this to create or update the user's own account skills.
 <accountRoot>/skills/user/<skill-name>/SKILL.md
 ```
 
-Write the file with your shell or file tools. If you have neither in this chat, say so, show the user the finished `SKILL.md` to save there themselves, and mention that connecting Claude Code or Codex in Settings › Models lets you write it directly.
+Write the file with write_file. To change a skill that already exists, use edit_file.
 
 ## Front matter
 

@@ -19,8 +19,8 @@ export function create({mcpManager: m}) {
     }
 
     /** The agent tools of the saved inventories, for the enabled servers. */
-    initialize(inventories) {
-      return m.createMcpAgentTools(this, [...this.#servers.keys()].flatMap(serverName => (inventories[serverName]?.tools ?? []).map(tool => ({serverName, tool}))));
+    initialize(inventories, context) {
+      return m.createMcpAgentTools(this, [...this.#servers.keys()].flatMap(serverName => (inventories[serverName]?.tools ?? []).map(tool => ({serverName, tool}))), context);
     }
 
     async #listServer(serverName, server) {
