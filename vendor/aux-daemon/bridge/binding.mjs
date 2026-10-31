@@ -53,7 +53,7 @@ export function create({z, logger, bridge: b}) {
 
   /** For extensions from before `Aux.resolveBindingWindow`: the same answer from the windows API. */
   async function resolveLegacyBindingWindow(accountId, profileId) {
-    const route = {accountId, profileId}, {globalExtensionBridge: extension} = b;
+    const route = {accountId, profileId, browserMode: 'default'}, {globalExtensionBridge: extension} = b;
     const [allWindows, lastFocused, tabs] = await Promise.all([extension.sendCommandToExtension(windowsApi('chrome.windows.getAll', [{populate: true}]), route),
       extension.sendCommandToExtension(windowsApi('chrome.windows.getLastFocused', [{windowTypes: ['normal']}]), route).catch(() => undefined), listOpenTabs(accountId, profileId)]);
     const windows = z.array(b.legacyWindowSchema).parse(allWindows), lastFocusedWindowId = b.legacyLastFocusedWindowSchema.safeParse(lastFocused).data?.id;
@@ -83,7 +83,7 @@ export function create({z, logger, bridge: b}) {
     try {
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const reply = await b.globalExtensionBridge.sendCommandToExtension({method: 'Aux.resolveBindingWindow', params: {}}, {accountId, profileId});
+          const reply = await b.globalExtensionBridge.sendCommandToExtension({method: 'Aux.resolveBindingWindow', params: {}}, {accountId, profileId, browserMode: 'default'});
           return {resolved: b.commands.resolveBindingWindowResponseSchema.parse(reply), protocol: 'binding-window'};
         } catch (error) {
           if (attempt > 0 || !(error instanceof Error) || error.message !== b.BRIDGE_CONNECTION_REPLACED_MESSAGE) throw error;

@@ -193,17 +193,16 @@ export function createAuxAgent(roots) {
       return {role: 'system-message', kind: 'agent_identity', metadata: {}, timestamp: Date.now(),
         content: `The user renamed you to ${name}. Your name is ${name} from now on; earlier replies that used another name are out of date.`};
     },
-    /** The native Chats feed with the `aux ask` chat taken out and the agent's state added.
+    /** The native Chats feed with the agent's state added.
      * active: every running or suspended session, side chats and routines included; the
      * button shows the most urgent of them (approval, then question, then working), else
      * the ask chat's own state. */
     chromeChats(account, {pinned, recents}, preview, askPreview, active) {
       const profile = read(account);
       const ask = profile.homeSessionId ? askPreview(profile.homeSessionId) : undefined;
-      const others = rows => rows.filter(row => row.id !== profile.homeSessionId).map(preview);
       const urgent = (a, b) => BUSY_STATUSES.indexOf(b) > BUSY_STATUSES.indexOf(a) ? b : a;
       return {
-        pinned: others(pinned), recents: others(recents),
+        pinned: pinned.map(preview), recents: recents.map(preview),
         agent: {name: profile.name, homeSessionId: ask ? profile.homeSessionId : null,
           status: active.map(row => preview(row).status).reduce(urgent, ask ? preview(ask).status : 'idle'),
           avatarRevision: profile.avatarRevision},

@@ -126,7 +126,7 @@ test('avatars are PNGs only, bounded, and versioned by content', () => {
   assert.equal(agent.read(5).avatarRevision, '');
 });
 
-test('the native feed drops the aux ask chat from the lists and reports the most urgent state', () => {
+test('the native feed lists the aux ask chat and reports the most urgent state', () => {
   agent.update(6, {name: 'Iris'});
   agent.setAskChat(6, 'h');
   const preview = row => ({id: row.id, status: row.status});
@@ -134,7 +134,7 @@ test('the native feed drops the aux ask chat from the lists and reports the most
   const status = (home, ...active) => agent.chromeChats(6, lists, preview, id => ({id, status: home}), active.map((status, i) => ({id: `a${i}`, status}))).agent.status;
   const chats = agent.chromeChats(6, lists, preview, id => ({id, status: 'finished-unread'}), []);
   assert.deepEqual(chats.pinned, [{id: 'p', status: 'idle'}]);
-  assert.deepEqual(chats.recents, [{id: 'r', status: 'idle'}]);
+  assert.deepEqual(chats.recents, [{id: 'h', status: 'running'}, {id: 'r', status: 'idle'}]);
   assert.deepEqual(chats.agent, {name: 'Iris', homeSessionId: 'h', status: 'finished-unread', avatarRevision: ''});
   assert.equal(status('idle', 'running', 'awaiting-answer'), 'awaiting-answer', 'a side chat or routine asking shows on the button');
   assert.equal(status('awaiting-answer', 'awaiting-approval', 'running'), 'awaiting-approval');

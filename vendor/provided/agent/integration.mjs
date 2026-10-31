@@ -35,11 +35,15 @@ export const DAEMON_EDITS = Object.freeze([
     '- The snapshot is frozen at load, so the main task may have moved on.'),
   edit('the proactive prompt names no vault',
     '   - password managers (ask a subagent to use vault.listItems() without text search; this is a proven golden source)\n', ''),
-  // Task notifications, completion sounds and history search reach the extension; the bound path
-  // allowed only tab commands, so these failed on every call.
-  edit('bound browser actions carry notifications and history',
+  // Notifications, completion sounds, history search and clearing the agent's tab group reach the
+  // extension. The bound path allowed only tab commands, so these failed on every call. None is
+  // tied to one window, and a cue or a cleanup often has none to name.
+  edit('bound browser actions carry the windowless commands',
     "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.debuggerAttach'",
-    "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.debuggerAttach'"),
+    "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.clearAiTabsGroup','Aux.debuggerAttach'"),
+  edit('windowless commands need no task window',
+    "command.method!=='Aux.resolveBindingWindow'&&(!Number.isInteger(route.windowId)||route.windowId<0)",
+    "!['Aux.resolveBindingWindow','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.clearAiTabsGroup'].includes(command.method)&&(!Number.isInteger(route.windowId)||route.windowId<0)"),
   // A user's MCP tools run in their session's fixed scope like every other tool, so the dispatcher
   // admits them and permission modes reach them.
   edit('MCP tools are registered for the session that owns them',
@@ -74,7 +78,7 @@ export const DAEMON_EDITS = Object.freeze([
   edit('a chat records its context only once a rebuilt prompt is stored',
     'SessionStore.get(ei,ti.id)?.projectId===ti.projectId&&SessionStore.update(ei,ti.id,{systemPrompt:oi}))',
     'SessionStore.get(ei,ti.id)?.projectId===ti.projectId&&(SessionStore.update(ei,ti.id,{systemPrompt:oi}),auxAgent.promptBuilt(ei,ti,oi)))'),
-  edit('native Chats feed: the aux ask chat out, agent state across every live session in',
+  edit('native Chats feed: agent state across every live session in',
     'return Cn.json({pinned:ei.map(toChromeSidebarPreview),recents:ti.map(toChromeSidebarPreview)})',
     'let ni=Cn.get(`accountId`);return Cn.json(auxAgent.chromeChats(ni,{pinned:ei,recents:ti},toChromeSidebarPreview,Cn=>auxAgentAskChat(ni,Cn),SessionStore.listPreviewItems(ni,{parent:`root`,archived:`exclude`,ephemeral:`include`,routines:`include`,statuses:[`running`,`suspended`]})))'),
   edit('native avatar route',
@@ -101,12 +105,12 @@ const ui = names => `import{${names.join(',')}}from"./${UI_FILE}";`;
 /** dist/assets chunk → edits. Imports go first so a drifted chunk fails before any JSX edit. */
 export const EXTENSION_EDITS = Object.freeze({
   'background.js': [
-    edit('bound browser actions carry notifications and history: the allowlist',
+    edit('bound browser actions carry the windowless commands: the allowlist',
       "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences']);",
-      "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory']);"),
-    edit('bound browser actions carry notifications and history: the handlers',
+      "'Aux.ensureTabInAiTabsGroup','Aux.validateTabReferences','Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.clearAiTabsGroup']);"),
+    edit('bound browser actions carry the windowless commands: the handlers',
       " if(task.route.windowId===undefined)throw Error('Choose the task browser window first.');\n",
-      " if(task.route.windowId===undefined)throw Error('Choose the task browser window first.');\n if(['Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory'].includes(command.method)){const result=await vy(command,signal,task.route,task.events);await auxBrowserTaskCurrent(task,signal);return result}\n"),
+      " if(['Aux.showNotification','Aux.playNotificationSound','Aux.searchHistory','Aux.clearAiTabsGroup'].includes(command.method)){const result=await vy(command,signal,task.route,task.events);await auxBrowserTaskCurrent(task,signal);return result}\n if(task.route.windowId===undefined)throw Error('Choose the task browser window first.');\n"),
   ],
   // Side panel header and its session controller.
   'assets/-components-4o0FSqQ9.js': [
