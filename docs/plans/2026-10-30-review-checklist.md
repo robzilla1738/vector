@@ -1,6 +1,6 @@
-# Review checklist, build 135
+# Review checklist, build 136
 
-Launch it: `/Users/rcourson/Documents/Vibe/Aux/out/release/1.0.0-135/Aux.app/Contents/MacOS/Aux --use-mock-keychain`
+Launch it: `/Users/rcourson/Documents/Vibe/Aux/out/release/1.0.0-136/Aux.app/Contents/MacOS/Aux --use-mock-keychain`
 
 Everything is committed locally. Nothing has been pushed.
 
@@ -16,6 +16,7 @@ Everything is committed locally. Nothing has been pushed.
 - Crash recovery: Restore pages, splits and pins come back.
 - `aux list`, `tabs`, `spaces`, `resolve`, `open`, and `aux mcp` tools against the live browser.
 - Individual chats: the panel opens on a new chat, with New chat and the Chats menu. The sidebar lists no chats.
+- Web search, and Reading Mode in a split, in theme.
 - The agent opening a page from Settings and from a web page, and reading it. Chat filters, gutter drag, the working dot.
 - The rebuilt runtime under Developer ID: `rg`, Node, Python and the PDF tools. One agent turn.
 
@@ -31,7 +32,7 @@ Everything is committed locally. Nothing has been pushed.
 
 ## Not yet seen
 
-Approval popovers, pane swap and Reading mode panels. These are built and tested in code, but I didn't reach them on screen in this round.
+The approval popover: Ask first didn't raise one for a link click. There's also no pane swap control on the split pill, which shows the domain and a close button. These are built and tested in code, but I didn't reach them on screen in this round.
 
 ## Needs your decision
 
@@ -54,7 +55,9 @@ Approval popovers, pane swap and Reading mode panels. These are built and tested
 - The done step's bottom glow stays blue on other themes.
 - `darwin-x64` node-pty files still ship, pinned by the supplied inventory.
 - Web Store banner rule, theme preview per Space rather than per window, coalesced polls (8.14), Refresh still full (1.3), Orion bookmarks from an HTML export only, and no Firefox or Zen passwords.
-- The agent can say a page "didn't confirm" when it worked, because `repl` shows only `console.log` and this model uses `return`. `openTab` is also slow, about 45 seconds in the last test.
+- `openTab` is slow, about 45 seconds in one test, and the agent's first try often errors before it recovers.
+- After a click navigates an attached tab, the agent can't read that tab. It's a deliberate safety rule, so loosening it is your call.
+- Web search citations are labelled google.com.
 - `bash` and file edits return "Supervised task execution is disabled in this browser build". That's the local browser-only mode.
 - The daemon still has its home-thread code. `aux ask` uses that ongoing chat, and nothing else does.
 - Build 124 and later testing closed some tabs in the review profile.
