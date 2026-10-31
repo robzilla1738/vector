@@ -5,6 +5,7 @@
                 [--version 1.0.0] [--identity development|developer-id] [--daemon-profile PATH]
                 [--computer-use-helper 'apps/computer-use-helper/.build/app/Aux Computer Use.app']
                 [--memory-helper apps/memory-helper/.build/aux-memory]
+                [--memory-distribution out/live-inputs/completion-20261026/release-memory-a1]
                 [--runtime [out/runtime]] [--runtime-macos15]
 
 The native build supplies everything outside Contents/Resources/aux; the sealed candidate supplies
@@ -257,9 +258,18 @@ def replace_computer_use_helper(app: Path, source: Path) -> tuple[list, list]:
 # Aux's own memory helper (apps/memory-helper/build.sh) replaces the supplied one the daemon launches.
 MEMORY_HELPER = f'{DAEMON_APP}/Contents/Resources/memory-helper/aux-memory'
 MEMORY_POLICY = f'{DAEMON_APP}/Contents/Resources/AuxMemoryHelperLaunchPolicy.json'
-# The daemon hashes this unsigned copy against a compiled constant (the policy's sourceSha256), so
-# signing must leave it exactly as supplied.
+# The seeded runtime copy. Its hash is pinned in a compiled daemon constant (the policy's
+# sourceSha256), and a timestamped signature differs every time, so assembly copies one fixed signed
+# binary (--memory-distribution) and never signs this path. Build 43 signed it here and lost memory.
 MEMORY_DISTRIBUTION = f'{AUX}/memory-distribution'
+MEMORY_CATALOG = f'{MEMORY_DISTRIBUTION}/memory-catalog.json'
+MEMORY_RUNTIMES = f'{MEMORY_DISTRIBUTION}/memory-runtimes'
+MEMORY_ENTRY = f'{DAEMON_APP}/Contents/Resources/node-development/aux-native-entry.mjs'
+SUPPLIED_MEMORY = {'sha256': 'b4c7d12efa87ed88515092527c7d1e7d9b43e605f39f03543e2b0e8e7005b3c0', 'bytes': 3411427,
+                   'compressedSha256': '03f37c6a97a7d18903a70fe19f42e6552da6e99aaf465ad1a40ebaab1e254698',
+                   'compressedBytes': 1094197,
+                   'runtimeKey': 'a3a6ff1214564e80f18999e80e3125da517530794e30661bbf16c320124d4e33'}
+MEMORY_GENERATION = 'a3a6ff12-1456-5e80-b189-99e80e3125da'
 MEMORY_POLICY_KEYS = {'format', 'sourceSha256', 'sha256', 'bytes', 'identifier', 'team', 'modelDescriptorSha256'}
 
 
@@ -281,6 +291,94 @@ def replace_memory_helper(app: Path, source: Path) -> tuple[list, list]:
     if json.loads(policy_path.read_text()) != {**policy, 'sha256': sha256(target), 'bytes': target.stat().st_size}:
         raise SystemExit(f'{MEMORY_POLICY}: re-pin did not produce the expected record')
     return [{'path': MEMORY_HELPER, 'why': "Aux's own memory helper", 'sha256': sha256(target)}], cascade
+
+
+def require_release_signature(path: Path, identifier: str):
+    """Developer ID, hardened runtime, secure timestamp and the expected identifier, or refuse."""
+    detail = subprocess.run(['codesign', '-dvv', str(path)], capture_output=True, text=True).stderr
+    wanted = (f'Identifier={identifier}\n', 'Authority=Developer ID Application: ', '(runtime)', 'Timestamp=', f'TeamIdentifier={TEAM}')
+    if any(part not in detail for part in wanted):
+        raise SystemExit(f'{path}: not a Developer ID, hardened, timestamped {identifier}')
+
+
+def memory_runtime_descriptor(pins: dict) -> bytes:
+    """runtime.json exactly as the catalog loader serializes it; its SHA-256 names the cache directory."""
+    return json.dumps({'formatVersion': 2, 'id': 'aux-memory-runtime-v2', 'target': 'darwin-arm64', 'executable': 'aux-memory',
+                       'files': {'aux-memory': {'bytes': pins['bytes'], 'sha256': pins['sha256']}}},
+                      separators=(',', ':')).encode()
+
+
+def replace_memory_distribution(app: Path, source: Path) -> tuple[list, list]:
+    """Copy the fixed signed aux-memory over the seeded runtime and re-pin its whole chain:
+    runtime.json and its digest-named directory, memory-catalog.json, the entry module's seed
+    manifest, and the launch policy's sourceSha256, which aux-daemon compares with a constant."""
+    pins = json.loads((source / 'pins.json').read_text())
+    fixed = source / 'aux-memory'
+    if (sha256(fixed), fixed.stat().st_size) != (pins['sha256'], pins['bytes']):
+        raise SystemExit(f'{fixed}: does not match its pins')
+    require_release_signature(fixed, pins['identifier'])
+    generation = app / MEMORY_RUNTIMES / SUPPLIED_MEMORY['runtimeKey'] / MEMORY_GENERATION
+    target = generation / 'aux-memory'
+    if (sha256(target), target.stat().st_size) != (SUPPLIED_MEMORY['sha256'], SUPPLIED_MEMORY['bytes']):
+        raise SystemExit(f'{MEMORY_RUNTIMES}: unexpected supplied aux-memory; review the replacement')
+    if sha256(generation / 'runtime.json') != SUPPLIED_MEMORY['runtimeKey']:
+        raise SystemExit(f'{MEMORY_RUNTIMES}: unexpected supplied runtime.json; review the replacement')
+    shutil.copyfile(fixed, target)
+    target.chmod(0o700)
+    cascade = repin_cascade(app, {SUPPLIED_MEMORY['sha256']: (pins['sha256'], SUPPLIED_MEMORY['bytes'], pins['bytes'])})
+    # The cascade follows the plain digests; the catalog's download fields are this file's alone.
+    catalog = app / MEMORY_CATALOG
+    before = (sha256(catalog), catalog.stat().st_size)
+    old = f'"compressedBytes":{SUPPLIED_MEMORY["compressedBytes"]},"compressedSha256":"{SUPPLIED_MEMORY["compressedSha256"]}"'
+    text = catalog.read_text()
+    if text.count(old) != 1:
+        raise SystemExit(f'{MEMORY_CATALOG}: expected one supplied aux-memory download record')
+    catalog.write_text(text.replace(old, f'"compressedBytes":{pins["compressedBytes"]},"compressedSha256":"{pins["compressedSha256"]}"'))
+    cascade += repin_cascade(app, {before[0]: (sha256(catalog), before[1], catalog.stat().st_size)})
+    verify_memory_chain(app, pins)
+    return [{'path': str(target.relative_to(app.parent)), 'why': 'fixed Developer ID aux-memory', 'sha256': pins['sha256']}], cascade
+
+
+def verify_memory_chain(app: Path, pins: dict, daemon: Path | None = None):
+    """Every link from the seeded binary to the compiled constant, exactly. A clean assembly does
+    not prove memory works, but a break here would refuse it at launch."""
+    def check(name: str, ok: bool):
+        if not ok:
+            raise SystemExit(f'memory pin chain: {name}')
+    key = pins['runtimeKey']
+    root = app / MEMORY_RUNTIMES / key
+    check('supplied runtime directory left behind', not (app / MEMORY_RUNTIMES / SUPPLIED_MEMORY['runtimeKey']).exists())
+    check('runtime directory', root.is_dir() and (root / 'CURRENT').read_text() == MEMORY_GENERATION)
+    binary, descriptor = root / MEMORY_GENERATION / 'aux-memory', root / MEMORY_GENERATION / 'runtime.json'
+    check('binary', (sha256(binary), binary.stat().st_size) == (pins['sha256'], pins['bytes']))
+    check('runtime.json', descriptor.read_bytes() == memory_runtime_descriptor(pins) and sha256(descriptor) == key)
+    catalog_path = app / MEMORY_CATALOG
+    runtimes = json.loads(catalog_path.read_text())['runtimes']
+    check('catalog', len(runtimes) == 1 and runtimes[0]['files'] == {'aux-memory': {
+        field: pins[field] for field in ('bytes', 'sha256', 'compressedBytes', 'compressedSha256')}})
+    entry = (app / MEMORY_ENTRY).read_text(encoding='utf-8', errors='surrogateescape')
+    seeds = re.findall(r'const AUX_MEMORY_V2_SEED=(\{.*?\});\n', entry)
+    check('one seed manifest', len(seeds) == 1)
+    seed = json.loads(seeds[0])
+    check('seed catalog hash', seed['catalogSha256'] == sha256(catalog_path))
+    groups = [g for g in seed['groups'] if g['kind'] == 'memory-runtimes']
+    prefix = f'memory-runtimes/{key}/{MEMORY_GENERATION}'
+    check('seed group', len(groups) == 1 and (groups[0]['key'], groups[0]['generation'], groups[0]['sourcePrefix']) == (key, MEMORY_GENERATION, prefix))
+    pinned = {row['path']: (row['size'], row['sha256']) for row in groups[0]['files']}
+    actual = {path.name: (path.stat().st_size, sha256(path)) for path in (binary, descriptor)}
+    check('seed group files', pinned == actual)
+    rows = {row['path']: row for row in seed['entries'] if row['type'] == 'file'}
+    expected = {'memory-catalog.json': catalog_path, f'memory-runtimes/{key}/CURRENT': root / 'CURRENT',
+                f'{prefix}/aux-memory': binary, f'{prefix}/runtime.json': descriptor}
+    for path, file in expected.items():
+        check(f'seed entry {path}', path in rows and (rows[path]['size'], rows[path]['sha256']) == (file.stat().st_size, sha256(file)))
+    policy = json.loads((app / MEMORY_POLICY).read_text())
+    check('launch policy sourceSha256', policy['sourceSha256'] == pins['sha256'])
+    for name, text in (('catalog', catalog_path.read_text()), ('entry', entry), ('policy', json.dumps(policy))):
+        check(f'{name} still pins the supplied binary', not any(SUPPLIED_MEMORY[field] in text for field in ('sha256', 'runtimeKey')))
+    if daemon:
+        compiled = daemon.read_bytes()
+        check('daemon constant', pins['sha256'].encode() in compiled and SUPPLIED_MEMORY['sha256'].encode() not in compiled)
 
 
 # Every Mach-O in the agent runtime, rebuilt from upstream for macOS 15 (scripts/runtime/).
@@ -375,8 +473,9 @@ TEXT_SUFFIXES = ('.json', '.js', '.mjs', '.cjs', '.md', '.txt', '.plist')
 def enclosing_object(text: str, index: int) -> tuple[int, int] | None:
     """Span of the innermost {...} around index, skipping JSON strings; None outside one."""
     depth, start, in_string = 0, None, False
-    # The digest sits inside a JSON string: begin before its opening quote.
-    begin = index - 2 if index > 0 and text[index - 1] == '"' else index - 1
+    # The digest sits inside a JSON string, at its start or within a path: begin before its opening quote.
+    quote = text.rfind('"', 0, index)
+    begin = quote - 1 if quote >= 0 and re.fullmatch(r'[^",:{}\s]*', text[quote + 1:index]) else index - 1
     for i in range(begin, -1, -1):
         ch = text[i]
         if ch == '"' and (i == 0 or text[i - 1] != '\\'):
@@ -490,6 +589,9 @@ def main() -> int:
                         help="unsigned Aux Computer Use.app from apps/computer-use-helper/build.sh; replaces the supplied helper")
     parser.add_argument('--memory-helper', type=Path,
                         help='unsigned aux-memory from apps/memory-helper/build.sh; replaces the helper the daemon launches')
+    parser.add_argument('--memory-distribution', type=Path,
+                        help='fixed Developer ID aux-memory and pins.json; replaces the seeded runtime and needs a daemon '
+                             'compiled with its hash. Copied, never signed here')
     args = parser.parse_args()
 
     out = args.out.resolve()
@@ -499,6 +601,8 @@ def main() -> int:
     release = args.identity == 'developer-id'
     if release and not args.daemon_profile:
         raise SystemExit('--daemon-profile is required for developer-id signing')
+    if release and not args.memory_distribution:
+        raise SystemExit('--memory-distribution is required for developer-id signing: Apple rejects the supplied binary')
     identity = identity_sha1(args.identity)
     for name, value in ENTITLEMENTS.items():
         (work / f'{name}.entitlements').write_bytes(plistlib.dumps(value))
@@ -519,6 +623,10 @@ def main() -> int:
         edits += helper_edits
     if args.memory_helper:
         memory_edits, memory_cascade = replace_memory_helper(app, args.memory_helper.resolve())
+        edits += memory_edits
+        helper_cascade += memory_cascade
+    if args.memory_distribution:
+        memory_edits, memory_cascade = replace_memory_distribution(app, args.memory_distribution.resolve())
         edits += memory_edits
         helper_cascade += memory_cascade
     # Component transforms written as modules (count-checked inside, see transforms.mjs).
@@ -608,6 +716,8 @@ def main() -> int:
         if executable and target.startswith(AUX) and target != DAEMON_APP and sha256(executable) != before[0]:
             cascade += repin_cascade(app, {before[0]: (sha256(executable), before[1], executable.stat().st_size)})
     run(['codesign', '--verify', '--deep', '--strict', str(app)])
+    if args.memory_distribution:
+        verify_memory_chain(app, json.loads((args.memory_distribution / 'pins.json').read_text()), args.daemon_executable)
 
     receipt = {
         'format': 'aux.release-assembly.v1', 'version': args.version, 'build': args.build,

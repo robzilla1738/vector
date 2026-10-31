@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location('assemble', HERE / 'assemble.py')
@@ -274,6 +275,133 @@ class ComputerUseHelper(unittest.TestCase):
         with self.assertRaises(SystemExit):
             assemble.replace_computer_use_helper(self.app, self.built)
 
+
+
+class MemoryDistribution(unittest.TestCase):
+    """The whole pin chain, built to the shape of the shipped files."""
+    S = assemble.SUPPLIED_MEMORY
+
+    def setUp(self):
+        self.app = Path(tempfile.mkdtemp())
+        supplied = b'\xcf\xfa\xed\xfe' + b's' * (self.S['bytes'] - 4)
+        patcher = mock.patch.dict(assemble.SUPPLIED_MEMORY, sha256=hashlib.sha256(supplied).hexdigest())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        old = dict(assemble.SUPPLIED_MEMORY)
+        descriptor = assemble.memory_runtime_descriptor(old)
+        assemble.SUPPLIED_MEMORY['runtimeKey'] = hashlib.sha256(descriptor).hexdigest()
+        key, gen = assemble.SUPPLIED_MEMORY['runtimeKey'], assemble.MEMORY_GENERATION
+        self.root = self.app / assemble.MEMORY_RUNTIMES / key
+        (self.root / gen).mkdir(parents=True)
+        (self.root / gen / 'aux-memory').write_bytes(supplied)
+        (self.root / gen / 'runtime.json').write_bytes(descriptor)
+        (self.root / 'CURRENT').write_text(gen)
+        self.catalog = self.app / assemble.MEMORY_CATALOG
+        self.catalog.write_text(json.dumps({'format': 'aux.bundled-memory-catalog.v1', 'runtimes': [{'files': {'aux-memory': {
+            'bytes': old['bytes'], 'sha256': old['sha256'], 'compressedBytes': old['compressedBytes'],
+            'compressedSha256': old['compressedSha256']}}}], 'models': []}, separators=(',', ':')))
+        self.policy = self.app / assemble.MEMORY_POLICY
+        self.policy.parent.mkdir(parents=True)
+        self.policy.write_text(json.dumps({'sourceSha256': old['sha256'], 'sha256': 'e' * 64, 'bytes': 7}))
+        prefix = f'memory-runtimes/{key}/{gen}'
+        row = lambda path, file: {'path': path, 'type': 'file', 'mode': 384, 'size': file.stat().st_size, 'sha256': assemble.sha256(file)}
+        seed = {'format': 'aux.bundled-memory-seed.v2', 'catalogSha256': assemble.sha256(self.catalog),
+                'groups': [{'kind': 'memory-runtimes', 'key': key, 'generation': gen, 'sourcePrefix': prefix, 'descriptor': 'runtime.json',
+                            'files': [row('aux-memory', self.root / gen / 'aux-memory'), row('runtime.json', self.root / gen / 'runtime.json')]}],
+                'entries': [row('memory-catalog.json', self.catalog), {'path': 'memory-runtimes', 'type': 'directory', 'mode': 448},
+                            {'path': f'memory-runtimes/{key}', 'type': 'directory', 'mode': 448},
+                            row(f'memory-runtimes/{key}/CURRENT', self.root / 'CURRENT'),
+                            row(f'{prefix}/aux-memory', self.root / gen / 'aux-memory'),
+                            row(f'{prefix}/runtime.json', self.root / gen / 'runtime.json')]}
+        self.entry = self.app / assemble.MEMORY_ENTRY
+        self.entry.parent.mkdir(parents=True)
+        self.entry.write_text('const AUX_MEMORY_V2_SEED=' + json.dumps(seed, separators=(',', ':')) + ';\nasync function seed(){}\n')
+        self.fixed = Path(tempfile.mkdtemp())
+        signed = b'\xcf\xfa\xed\xfe' + b'o' * 995308
+        (self.fixed / 'aux-memory').write_bytes(signed)
+        self.pins = {'identifier': 'dev.aux.browser.memory', 'sha256': hashlib.sha256(signed).hexdigest(), 'bytes': len(signed),
+                     'compressedSha256': 'c' * 64, 'compressedBytes': 297479}
+        self.pins['runtimeKey'] = hashlib.sha256(assemble.memory_runtime_descriptor(self.pins)).hexdigest()
+        (self.fixed / 'pins.json').write_text(json.dumps(self.pins))
+        signature = mock.patch.object(assemble, 'require_release_signature')
+        self.signature = signature.start()
+        self.addCleanup(signature.stop)
+
+    def replace(self):
+        return assemble.replace_memory_distribution(self.app, self.fixed)
+
+    def edit_entry(self, old, new):
+        self.assertIn(old, self.entry.read_text())
+        self.entry.write_text(self.entry.read_text().replace(old, new))
+
+    def test_repins_every_link(self):
+        supplied_key = assemble.SUPPLIED_MEMORY['runtimeKey']
+        self.replace()
+        key = self.pins['runtimeKey']
+        self.assertEqual((self.app / assemble.MEMORY_RUNTIMES / key / assemble.MEMORY_GENERATION / 'aux-memory').read_bytes(),
+                         (self.fixed / 'aux-memory').read_bytes())
+        self.assertEqual(json.loads(self.policy.read_text())['sourceSha256'], self.pins['sha256'])
+        self.assertFalse((self.app / assemble.MEMORY_RUNTIMES / supplied_key).exists())
+        self.signature.assert_called_once()
+        assemble.verify_memory_chain(self.app, self.pins)
+
+    def test_a_shorter_descriptor_updates_its_size_in_every_seed_row(self):
+        self.replace()
+        seed = json.loads(self.entry.read_text().split('=', 1)[1].split(';\n')[0])
+        descriptor = len(assemble.memory_runtime_descriptor(self.pins))
+        rows = [r for r in seed['entries'] + seed['groups'][0]['files'] if r['path'].endswith('runtime.json')]
+        self.assertEqual({r['size'] for r in rows}, {descriptor})
+        self.assertEqual(descriptor, 214)
+
+    def test_refuses_a_fixed_copy_that_is_not_its_pins(self):
+        (self.fixed / 'aux-memory').write_bytes(b'other')
+        with self.assertRaises(SystemExit):
+            self.replace()
+
+    def test_refuses_an_unsigned_fixed_copy(self):
+        self.signature.side_effect = SystemExit('unsigned')
+        with self.assertRaises(SystemExit):
+            self.replace()
+
+    def test_refuses_changed_supplied_bytes(self):
+        (self.root / assemble.MEMORY_GENERATION / 'aux-memory').write_bytes(b'changed')
+        with self.assertRaises(SystemExit):
+            self.replace()
+
+    def test_each_broken_link_is_refused(self):
+        self.replace()
+        key = self.pins['runtimeKey']
+        breaks = {
+            'binary': lambda: (self.app / assemble.MEMORY_RUNTIMES / key / assemble.MEMORY_GENERATION / 'aux-memory').write_bytes(b'x'),
+            'descriptor': lambda: (self.app / assemble.MEMORY_RUNTIMES / key / assemble.MEMORY_GENERATION / 'runtime.json').write_bytes(b'{}'),
+            'catalog': lambda: self.catalog.write_text(self.catalog.read_text().replace('297479', '297480')),
+            'catalog hash': lambda: self.catalog.write_text(self.catalog.read_text() + ' '),
+            'seed size': lambda: self.edit_entry('"size":214', '"size":215'),
+            'seed key': lambda: self.edit_entry(f'"key":"{key}"', '"key":"' + 'f' * 64 + '"'),
+            'policy': lambda: self.policy.write_text(json.dumps({'sourceSha256': self.S['sha256']})),
+        }
+        for name, damage in breaks.items():
+            saved = {p: p.read_bytes() for p in self.app.rglob('*') if p.is_file()}
+            damage()
+            with self.subTest(name), self.assertRaises(SystemExit):
+                assemble.verify_memory_chain(self.app, self.pins)
+            for path, data in saved.items():
+                path.write_bytes(data)
+
+    def test_daemon_must_carry_the_new_constant(self):
+        self.replace()
+        daemon = Path(tempfile.mkdtemp()) / 'Aux Daemon'
+        daemon.write_bytes(self.pins['sha256'].encode())
+        assemble.verify_memory_chain(self.app, self.pins, daemon)
+        daemon.write_bytes(assemble.SUPPLIED_MEMORY['sha256'].encode())
+        with self.assertRaises(SystemExit):
+            assemble.verify_memory_chain(self.app, self.pins, daemon)
+
+
+class EnclosingObject(unittest.TestCase):
+    def test_a_digest_inside_a_path_finds_its_own_object(self):
+        text = '{"a":{"path":"x/DIGEST/y","size":5}}'
+        self.assertEqual(text[slice(*assemble.enclosing_object(text, text.index('DIGEST')))], '{"path":"x/DIGEST/y","size":5}')
 
 
 class MemoryHelper(unittest.TestCase):
