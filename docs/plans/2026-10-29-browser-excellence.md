@@ -6,7 +6,7 @@ Robert asked for a thorough review of the browser experience — the agent, qual
 
 **Sources:** nine read-only code reviews of build 77 and the durable checkout, plus an on-screen look at build 77 beside the running Aside and the saved Arc references (`out/acceptance/20261027/ref/`). Findings marked *(check)* were inferred from code and need one look on screen before or while fixing. File paths are under the durable checkout's `src/` unless they start with `vendor/`, `scripts/` or `docs/`; `frame/` means `chrome/browser/ui/views/frame/`.
 
-## Progress (build 117, 2026-10-30)
+## Progress (build 128, 2026-10-30)
 
 **Read this first:** [the third audit](2026-10-30-plan-audit-3.md) supersedes the rest of this section. [The second audit](2026-10-30-plan-audit-2.md) checked every item and [the owner's requests](2026-10-30-owner-requests.md) against build 117, and overrules this section. It supersedes [the first audit](2026-10-30-plan-audit.md), which found onboarding, the chrome://settings cleanup and the approvals popover unbuilt; all three are now in. The list below describes what was built.
 
@@ -91,12 +91,12 @@ Build 117 (`out/release/1.0.0-117`) carries everything below. It is assembled fr
 - **Gutter seam fixed** *(seen)*: in the single-page card layout the surface view under the card was hidden, so the gutter around the page (and beside the Agent panel) showed bare window material instead of the Space color. It now shows, and rounds only the corners on the window's edge.
 
 **Not done, and why**
-- **Batch 10 rewrites still to do:**
-  - The daemon's remaining services: the ledger's write, read-content, verify and clear paths; MCP state with its manager; the agent server; and the model registry. The registry runs credentials through its core paths (33 uses), so it stays supplied until the credential store is in scope, along with auth, tokens and the Keychain.
-  - The rest of the extension's supplied UI, listed in `extension-supplied-ui-sweep.tsv` (bytes, JSX calls, copy strings, chunk; sizes include bundled libraries). Live UI left: Channels chat (`route-VV0zL3cm`), onboarding `ai` and its hero, `experimental`, `communication`, `recovery`, `progress`, `route-BiU8pLwS`, `route-Dh145hWk`, `-utils`, and small icon chunks. `components-BlZz2O2v` mixes the off-by-scope Vault UI and needs a decision. Features that are off by scope (billing, payments, add-on credits, the built-in password manager, hosted sign-in, referrals) are not rewritten; their removal is a separate item. Bundled libraries (markdown, diagrams, router, icon sets, three.js, material-color-utilities) stay supplied. The Spaces sidebar is native browser UI, already Aux source. Bundled third-party libraries (for example material-color-utilities) stay supplied.
-  - The native addons: Aux's own `aux-macos-utilities.node` matches the supplied one under parity (`apps/macos-utilities-addon`) and is swapped in: fixed copy `release-addons-a2`, daemon relink `release-state-root-a7`, browser pin rebuilt (`docs/spec/native/macos-utilities.md` section 7). A launch check is still owed. `aux-pdf.node` turns out to be Aux's own earlier PDFium build, re-signed; its sources, GN target, spec (`docs/spec/native/pdf.md`) and parity test are in `apps/pdf-addon` (10/10 against the supplied image). Its build script is not committed: to link outside `out/AuxFast` it swaps the checkout's link filter for the upstream toolchain files, and loosening that guard is Robert's call. A GN target inside `out/AuxFast` now replaces it (`chrome/browser/aux/pdf_addon`) and compiles, but the filter admits exact outputs, so the link waits on Robert adding `aux-pdf.node` to `excluded-product-outputs.json` (`docs/spec/native/pdf.md` section 8). The supplied `native/aux-pdf-pins.cjs` also pins an older image; the daemon loads PDF through a linked binding, so it is probably unused. The supplied `native/aux-macos-utilities.cjs` pins an older image and would refuse if required, but nothing requires it.
-  - The memory agent predicted a seatbelt denial when a memory folder sits inside a task home. It has not appeared in builds 96–99 (no memory warnings in the daemon log); revisit only if it does.
-  - The memory-distribution `aux-memory` stays unsigned, as supplied. Notarization may reject an unsigned Mach-O in the bundle; that is checked when notarization runs.
+- **Batch 10, what remains supplied (build 128):**
+  - Daemon: only the credential, key and token paths. The ledger, agent server, MCP manager and model listing are Aux source; a test keeps the catalog off the credential paths.
+  - Extension: libraries, and the hosted sign-in chunks that the paused-account path still reaches.
+  - Native addons: `aux-pdf.node` needs the owner's link filter entry. Aux's `aux-macos-utilities.node` passes parity but is refused at bootstrap, so releases keep the supplied image (`docs/spec/native/macos-utilities.md`, section 7).
+  - The runtime is done: all 84 Mach-Os are rebuilt from upstream.
+  - The memory-distribution `aux-memory` stays unsigned, as supplied. Notarization is out of scope here.
 - **Organization model unit tests:**
   - They compile, but linking a test binary needs `aux_test` outputs in `build/toolchain/apple/host-output-allowlist.json`.
   - The permission classifier refused that edit even with Robert's approval, so Robert adds it by hand.

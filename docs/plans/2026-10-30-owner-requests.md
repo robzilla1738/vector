@@ -30,11 +30,11 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 | 15 | Drag a tab to Bookmarks | seen |
 | 16 | Drag a tab over another tab with a well-thought-out split preview | seen |
 | 17 | Hover a tab shows a preview | seen |
-| 18 | A split is one tab showing both, never the tabs individually as well | built; a drag split seen, other routes not reproduced |
+| 18 | A split is one tab showing both, never the tabs individually as well | seen (drag, row menu including a Settings tab, and after restart) |
 | 19 | Collapsed: no traffic lights over the page, as in Arc | seen |
 | 20 | Hover pop-out is full height with the traffic lights in it, so it doesn't go away | seen |
 | 21 | Hover pop-out outline correct in every theme | seen (navy, light, green, unthemed) |
-| 22 | Pins separate per Space | built (leak fixed in code; re-check) |
+| 22 | Pins separate per Space | seen (a new Space shows none of Main's pins) |
 | 23 | Bookmarks separate per Space, regardless of cookies | seen |
 | 24 | Agent thread follows cookie sharing; can be separate across Spaces | built |
 
@@ -44,17 +44,17 @@ Status: **seen** (checked on screen), **built** (in code, not yet seen), **open*
 |---|---|---|
 | 25 | New Tab stays centered; the Chats view doesn't come back | seen |
 | 26 | Site panel and extensions like Arc: simple buttons, a layout that expands | seen |
-| 27 | Hide Send feedback | built |
-| 28 | Clean up the Max plan | built |
-| 29 | Clean up UltraBrowse | built |
+| 27 | Hide Send feedback | seen (absent from Settings) |
+| 28 | Clean up the Max plan | seen (Models, Account and onboarding show no plans) |
+| 29 | Clean up UltraBrowse | built (route edits and CSS tokens gone; no UI left to see) |
 | 30 | Onboarding brings over passwords if possible | built (Chromium family and Safari; Firefox and Zen not possible; real import is his) |
 
 ## Runtime and build
 
 | # | Request | Status |
 |---|---|---|
-| 31 | Do the runtime work | open: Node, Python and rg rebuild from upstream in progress |
-| 32 | Everything in the plan complete and ready to test | open: see [the second audit](2026-10-30-plan-audit-2.md) |
+| 31 | Do the runtime work | seen (all 84 Mach-Os rebuilt from upstream for macOS 15; run under Developer ID in builds 120 to 128, and an agent turn finished on it) |
+| 32 | Everything in the plan complete and ready to test | ready to test as build 128; the open items are in [the review checklist](2026-10-30-review-checklist.md) |
 | 33 | Every item in the plan and from Robert done and excellent | open |
 
 ## Standing rules from earlier in the work
