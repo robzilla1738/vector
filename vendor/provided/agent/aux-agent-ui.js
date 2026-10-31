@@ -3,7 +3,7 @@
 // customize sheet, and the Settings section. Built only from the supplied components and
 // tokens; scripts/release/transforms.mjs copies this file to dist/assets/ and wires it in.
 import {A as interop, C as cx, E as requireReact, w as requireJsx} from "./browser-color-scheme-Df5VSuPV.js";
-import {Kt as useAccount, cn as Input} from "./strip-markdown-DRcmtuJc.js";
+import {Kt as useAccount, Wt as AccountProvider, cn as Input} from "./strip-markdown-DRcmtuJc.js";
 import {g as trpc, i as readAccount} from "./queries-ldd77hNk.js";
 import {t as Button} from "./button-82u7k4S8.js";
 import {t as Textarea} from "./textarea-5TASg52t.js";
@@ -592,7 +592,11 @@ export function AuxAgentSetup() {
     look();
     return () => { live = false; };
   }, [attempt]);
-  if (accountId !== null) return j.jsx(AgentSetupFields, {accountId});
+  // Onboarding runs outside the app shell, and the model picker reads the account from context.
+  if (accountId !== null) return j.jsx(AccountProvider, {
+    value: {accountId, browserProfile: null, mode: "default"},
+    children: j.jsx(AgentSetupFields, {accountId}),
+  });
   if (!failed) return j.jsx("p", {role: "status", className: "text-muted-foreground text-sm", children: GETTING_READY});
   return j.jsxs("div", {role: "alert", className: "flex items-center gap-3", children: [
     j.jsx("p", {className: "text-muted-foreground text-sm", children: "Your agent couldn’t start. You can name it later in the agent panel."}),
