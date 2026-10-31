@@ -151,7 +151,7 @@ State: **ready**, **active**, **blocked** or **planned**. "Bound by" is what lim
 
 | ID | Question | Scope | Exit | Bound by | State |
 |---|---|---|---|---|---|
-| DISC-1 | What does Apple reject today? | Submit a current Developer ID build to notarytool and read the log. Upload only, nothing published | A list of rejected paths, and a verdict on `aux-memory` and the 86 rebuilt runtime files | Apple's queue | ready |
+| DISC-1 | What does Apple reject today? | Build 139 submitted, nothing published | Only the unsigned `memory-distribution` `aux-memory` was rejected. The rebuilt runtime and all else passed | Done | done |
 | DISC-2 | How big is the rebase? | Fresh Chromium checkout at the current stable tag in `aux-chromium-durable/`, then `chromium-rebase.py --dry-run` | Conflict count by area, and a call on whether to do NATIVE-2 before or after REL-1 | Network and disk | ready |
 | DISC-3 | Where does the time go, and how are keys stored? | One-time timers in `openTab` and turn stages. Time the first-launch signature check and daemon start. Add a fixture key and read how `credentials.json` stores it | Time per step. Keys confirmed plain or wrapped | One build and launch | planned |
 
