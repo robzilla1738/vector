@@ -12,6 +12,10 @@ import {ROOT_NAMESPACES, RUNTIME_FILES, integrateDaemon, withoutStoreEdits} from
 
 const resources = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources';
 const START = 'Promise.resolve().then(()=>(init_src(),src_exports)).then(({startDaemon:Cn})=>Cn())';
+/** The evidence key as a fixed test key and its IV as fixed bytes, so nothing reaches the Keychain
+ * and both runs store the same ciphertext. */
+const TEST_EVIDENCE_CRYPTO = [['function resolveEvidenceKey(Cn){', 'function resolveEvidenceKey(Cn){return Buffer.alloc(32,7)}function auxSupplied_resolveEvidenceKey(Cn){'],
+  ['ni=randomBytes(IV_BYTES),ri=createCipheriv(', 'ni=Buffer.alloc(IV_BYTES),ri=createCipheriv(']];
 const COMMON = ['auxRouter', 'init_router', 'toJSONSchema', 'getAppErrorCode', 'init_accounts', 'tryMigrateStateDb', 'stateDb', 'AccountRegistry', 'auxOwnedDaemon', 'auxOwnedDaemonBindings'];
 
 /** Each root namespace's supplied router and its lazy module initializer, exported as
@@ -22,6 +26,10 @@ function harnessEntry(candidate, roots, extra) {
   for (const rule of JSON.parse(readFileSync(path.join(repoRoot, 'scripts/release/package-edits.json'), 'utf8')).edits)
     if (rule.target === target) text = text.split(rule.find).join(rule.replace);
   text = integrateDaemon(integrateAgentDaemon(integrateProviderDaemon(text)));
+  for (const [find, replace] of TEST_EVIDENCE_CRYPTO) {
+    if (text.split(find).length !== 2) throw Error(`parity stage: expected one ${find}`);
+    text = text.replace(find, replace);
+  }
   if (text.split(START).length !== 2) throw Error('parity stage: expected one daemon start');
   const names = roots.map(namespace => {
     const router = ROOT_NAMESPACES[namespace], escaped = router.replaceAll('$', '\\$');

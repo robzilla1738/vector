@@ -43,6 +43,8 @@ export const STORES = Object.freeze({
   channels: './stores/channels.mjs',
   memoryFiles: './stores/memoryFiles.mjs',
   contextLedger: './stores/contextLedger.mjs',
+  contextWrite: './stores/contextWrite.mjs',
+  contextEvidence: './stores/contextEvidence.mjs',
   contextHistory: './stores/contextHistory.mjs',
   toolFiles: './tools/files.mjs',
   toolSession: './tools/session.mjs',
@@ -56,6 +58,8 @@ export const STORES = Object.freeze({
   browserBinding: './bridge/binding.mjs',
   mcpManager: './mcp/manager.mjs',
   mcpConnections: './mcp/connections.mjs',
+  agentServer: './agent/server.mjs',
+  modelCatalog: './models/catalog.mjs',
 });
 
 /** Modules the namespaces and stores import, copied with them. */

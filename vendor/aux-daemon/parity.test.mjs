@@ -15,6 +15,8 @@ import {NAMESPACES, STORES} from './registry.mjs';
 // The real path: /var/folders is a symlink, and the session file checks compare resolved paths.
 const TOOL_REFERENCE = new URL('../../fixtures/aux-daemon/tools.json', import.meta.url), BRIDGE_REFERENCE = new URL('../../fixtures/aux-daemon/bridge.json', import.meta.url),
   MCP_REFERENCE = new URL('../../fixtures/aux-daemon/mcp.json', import.meta.url), CONTEXT_REFERENCE = new URL('../../fixtures/aux-daemon/context.json', import.meta.url);
+const SERVICE_REFERENCES = {ledger: 'ledger', agentServer: 'agent-server', modelCatalog: 'model-catalog'};
+const serviceReference = step => new URL(`../../fixtures/aux-daemon/${SERVICE_REFERENCES[step]}.json`, import.meta.url);
 const scratch = mkdtempSync(path.join(realpathSync(tmpdir()), 'aux-daemon-parity-'));
 test.after(() => rmSync(scratch, {recursive: true, force: true}));
 
@@ -64,6 +66,7 @@ if (process.env.AUX_RECORD_FIXTURES) {
   writeFileSync(BRIDGE_REFERENCE, `${JSON.stringify(supplied.steps.bridge, null, 1)}\n`);
   writeFileSync(MCP_REFERENCE, `${JSON.stringify(supplied.steps.mcp, null, 1)}\n`);
   writeFileSync(CONTEXT_REFERENCE, `${JSON.stringify(supplied.steps.context, null, 1)}\n`);
+  for (const step of Object.keys(SERVICE_REFERENCES)) writeFileSync(serviceReference(step), `${JSON.stringify(supplied.steps[step], null, 1)}\n`);
 }
 const auxRun = run(entries, 'aux'), aux = comparable(auxRun);
 
@@ -113,6 +116,21 @@ test('the MCP manager and connection state: the same results and server traffic'
 test('Context Awareness: the capture policy and history text match the reference', () => {
   assert.deepEqual(supplied.steps.context, JSON.parse(readFileSync(CONTEXT_REFERENCE, 'utf8')));
   assert.deepEqual(aux.steps.context, supplied.steps.context);
+});
+
+for (const [step, label] of Object.entries({ledger: 'the ledger\'s write, content, verify and clear paths', agentServer: 'the agent server', modelCatalog: 'the model catalog'}))
+  test(`${label}: the reference fixture is the supplied bundle, and Aux matches it`, () => {
+    const reference = JSON.parse(readFileSync(serviceReference(step), 'utf8'));
+    assert.deepEqual(supplied.steps[step], reference);
+    supplied.steps[step].forEach((result, index) => assert.deepEqual(aux.steps[step][index], result, `result ${index}: ${result.step}`));
+    assert.equal(aux.steps[step].length, supplied.steps[step].length);
+  });
+
+test('the agent server and the model catalog are Aux\'s, and the catalog stays off the credential paths', () => {
+  assert.equal(auxRun.wired.agentServerIsAux, true);
+  assert.deepEqual(auxRun.wired.suppliedModelMethods, []);
+  const code = readFileSync(new URL('./models/catalog.mjs', import.meta.url), 'utf8').replace(/\/\*\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(code, /[cC]redential|apiKey|[tT]oken|OAuth|resolveAuthHeaders|getAuxProvider|getCachedSubscriptionPlan|setProviderConfig|getProviderConfig/);
 });
 
 test('the same state.db and account files', () => {

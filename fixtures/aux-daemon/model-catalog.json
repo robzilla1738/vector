@@ -1,0 +1,476 @@
+[
+ {
+  "step": "built-in models",
+  "value": {
+   "count": 1152,
+   "digest": "75b96582687d40b66b485459b35e140e80d293f47475354192041d448a5c6335",
+   "first": [
+    {
+     "id": "amazon.nova-2-lite-v1:0",
+     "name": "Nova 2 Lite",
+     "api": "bedrock-converse-stream",
+     "provider": "amazon-bedrock",
+     "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+     "reasoning": true,
+     "input": [
+      "text",
+      "image"
+     ],
+     "cost": {
+      "input": 0.33,
+      "output": 2.75,
+      "cacheRead": 0.0825,
+      "cacheWrite": 0.33
+     },
+     "contextWindow": 1000000,
+     "maxTokens": 65535,
+     "inputLimits": {
+      "images": {
+       "maxPerMessage": 20,
+       "resize": {
+        "maxWidth": 2000,
+        "maxHeight": 2000,
+        "maxBytes": 4718592,
+        "jpegQuality": 80
+       }
+      }
+     }
+    },
+    {
+     "id": "amazon.nova-lite-v1:0",
+     "name": "Nova Lite",
+     "api": "bedrock-converse-stream",
+     "provider": "amazon-bedrock",
+     "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+     "reasoning": false,
+     "input": [
+      "text",
+      "image"
+     ],
+     "cost": {
+      "input": 0.06,
+      "output": 0.24,
+      "cacheRead": 0.015,
+      "cacheWrite": 0.06
+     },
+     "contextWindow": 300000,
+     "maxTokens": 10000,
+     "inputLimits": {
+      "images": {
+       "maxPerMessage": 20,
+       "resize": {
+        "maxWidth": 2000,
+        "maxHeight": 2000,
+        "maxBytes": 4718592,
+        "jpegQuality": 80
+       }
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "step": "supported",
+  "value": {
+   "count": 1152,
+   "digest": "5df4bf68cf93cf47bead3a8676f7c858b1fb4658ab451c83449f12699e1e8741",
+   "first": [
+    {
+     "id": "amazon.nova-2-lite-v1:0",
+     "name": "Nova 2 Lite",
+     "provider": "amazon-bedrock",
+     "reasoning": true,
+     "contextWindow": 1000000,
+     "maxTokens": 65535,
+     "availableThinkingLevels": [
+      "off",
+      "minimal",
+      "low",
+      "medium",
+      "high"
+     ],
+     "supportsFastMode": false,
+     "supportsVision": true
+    },
+    {
+     "id": "amazon.nova-lite-v1:0",
+     "name": "Nova Lite",
+     "provider": "amazon-bedrock",
+     "reasoning": false,
+     "contextWindow": 300000,
+     "maxTokens": 10000,
+     "availableThinkingLevels": [
+      "off"
+     ],
+     "supportsFastMode": false,
+     "supportsVision": true
+    }
+   ]
+  }
+ },
+ {
+  "step": "by provider",
+  "value": {
+   "aux": {
+    "count": 0,
+    "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "anthropic": {
+    "count": 15,
+    "digest": "a28615e694b3c84124807efd760ca772938f931bac6669f7256a027b3d0c7f8d"
+   },
+   "openai": {
+    "count": 39,
+    "digest": "cb6cd7abe7988f38eaa9d8d30432d196c60d5d100950f1dbc4a563e205a124c4"
+   },
+   "openai-codex": {
+    "count": 0,
+    "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "claude-code": {
+    "count": 15,
+    "digest": "304fbe7a02e80198adb8dacce8d3cbe5b1178853de8d9c71e29e354a9f054f40"
+   },
+   "github-copilot": {
+    "count": 0,
+    "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "openrouter": {
+    "count": 377,
+    "digest": "3bf1719bdbfa5013766c3d0d1cdea447dac623cdec06e26b1458aac88abf85dc"
+   },
+   "google": {
+    "count": 22,
+    "digest": "18eb827aea11caee4be4cd9d4cf714e09c2467ff43587cd81f0f6c61dc31d480"
+   },
+   "absent": {
+    "count": 0,
+    "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "vercel-ai-gateway": {
+    "count": 0,
+    "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "xai-grok-oauth": {
+    "count": 0,
+    "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   }
+  }
+ },
+ {
+  "step": "with models.json",
+  "value": {
+   "count": 1155,
+   "digest": "c0765d4a6fcf966f399d24ca82cb6c5b561ee23329b58604d428f4eaa947052f",
+   "first": [
+    {
+     "id": "amazon.nova-2-lite-v1:0",
+     "name": "Nova 2 Lite",
+     "provider": "amazon-bedrock",
+     "reasoning": true,
+     "contextWindow": 1000000,
+     "maxTokens": 65535,
+     "availableThinkingLevels": [
+      "off",
+      "minimal",
+      "low",
+      "medium",
+      "high"
+     ],
+     "supportsFastMode": false,
+     "supportsVision": true
+    },
+    {
+     "id": "amazon.nova-lite-v1:0",
+     "name": "Nova Lite",
+     "provider": "amazon-bedrock",
+     "reasoning": false,
+     "contextWindow": 300000,
+     "maxTokens": 10000,
+     "availableThinkingLevels": [
+      "off"
+     ],
+     "supportsFastMode": false,
+     "supportsVision": true
+    }
+   ]
+  }
+ },
+ {
+  "step": "custom providers",
+  "value": {
+   "count": 2,
+   "digest": "97d013e7a8785e7801fd79525a42bfe6fe43798b411ebe161c98bc42c0a226da",
+   "first": [
+    {
+     "id": "own-1",
+     "name": "Own one",
+     "api": "openai-completions",
+     "provider": "custom-provider",
+     "baseUrl": "https://models.example/v1",
+     "reasoning": false,
+     "input": [
+      "text"
+     ],
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     },
+     "contextWindow": 128000,
+     "maxTokens": 16384
+    },
+    {
+     "id": "gpt-4o",
+     "name": "Renamed",
+     "api": "openai-completions",
+     "provider": "custom-provider",
+     "baseUrl": "https://models.example/v1",
+     "reasoning": false,
+     "input": [
+      "text"
+     ],
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     },
+     "contextWindow": 128000,
+     "maxTokens": 16384
+    }
+   ]
+  }
+ },
+ {
+  "step": "merged",
+  "value": {
+   "count": 3,
+   "digest": "60288757f2402cab62a98de97ef03cf7c23c9c9ea6288fd16d1ae7bb89658974",
+   "first": [
+    {
+     "id": "own-1",
+     "extra": true,
+     "name": "Own one",
+     "api": "openai-completions",
+     "provider": "custom-provider",
+     "baseUrl": "https://models.example/v1",
+     "reasoning": false,
+     "input": [
+      "text"
+     ],
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     },
+     "contextWindow": 128000,
+     "maxTokens": 16384
+    },
+    {
+     "id": "gpt-4o",
+     "name": "Renamed",
+     "api": "openai-completions",
+     "provider": "custom-provider",
+     "baseUrl": "https://models.example/v1",
+     "reasoning": false,
+     "input": [
+      "text"
+     ],
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     },
+     "contextWindow": 128000,
+     "maxTokens": 16384
+    }
+   ]
+  }
+ },
+ {
+  "step": "merged with nothing of its own",
+  "value": [
+   {
+    "id": "listed"
+   }
+  ]
+ },
+ {
+  "step": "one model",
+  "value": [
+   "own-1",
+   null,
+   false
+  ]
+ },
+ {
+  "step": "finding",
+  "value": [
+   "custom-provider",
+   "own-1",
+   null,
+   true,
+   false
+  ]
+ },
+ {
+  "step": "custom models",
+  "value": [
+   [
+    {
+     "id": "mine",
+     "name": "Mine again",
+     "provider": "custom-provider",
+     "reasoning": false,
+     "contextWindow": 1000,
+     "maxTokens": 100,
+     "availableThinkingLevels": [
+      "off"
+     ],
+     "supportsFastMode": false,
+     "supportsVision": false,
+     "isCustom": true
+    }
+   ],
+   null
+  ]
+ },
+ {
+  "step": "recent",
+  "value": {
+   "count": 407,
+   "digest": "31c2183e031f3cf00f4004c2729f0658fe167f0708a1b137189dfc37df9cc339",
+   "first": [
+    {
+     "id": "anthropic.claude-haiku-4-5-20251001-v1:0",
+     "name": "Claude Haiku 4.5",
+     "api": "bedrock-converse-stream",
+     "provider": "amazon-bedrock",
+     "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+     "reasoning": true,
+     "input": [
+      "text",
+      "image"
+     ],
+     "cost": {
+      "input": 1,
+      "output": 5,
+      "cacheRead": 0.1,
+      "cacheWrite": 1.25
+     },
+     "contextWindow": 200000,
+     "maxTokens": 64000,
+     "compat": {
+      "supportsStrictMode": true
+     },
+     "inputLimits": {
+      "images": {
+       "maxPerMessage": 20,
+       "resize": {
+        "maxWidth": 2000,
+        "maxHeight": 2000,
+        "maxBytes": 4718592,
+        "jpegQuality": 80
+       }
+      }
+     }
+    },
+    {
+     "id": "anthropic.claude-opus-4-1-20250805-v1:0",
+     "name": "Claude Opus 4.1",
+     "api": "bedrock-converse-stream",
+     "provider": "amazon-bedrock",
+     "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+     "reasoning": true,
+     "input": [
+      "text",
+      "image"
+     ],
+     "cost": {
+      "input": 15,
+      "output": 75,
+      "cacheRead": 1.5,
+      "cacheWrite": 18.75
+     },
+     "contextWindow": 200000,
+     "maxTokens": 32000,
+     "inputLimits": {
+      "images": {
+       "maxPerMessage": 20,
+       "resize": {
+        "maxWidth": 2000,
+        "maxHeight": 2000,
+        "maxBytes": 4718592,
+        "jpegQuality": 80
+       }
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "step": "visible ids",
+  "value": [
+   {},
+   []
+  ]
+ },
+ {
+  "step": "with a plan",
+  "value": [
+   true,
+   true,
+   false,
+   [],
+   {
+    "xai-grok-oauth": [
+     "grok-4",
+     "grok-composer-2.5-fast"
+    ]
+   }
+  ]
+ },
+ {
+  "step": "openrouter",
+  "value": [
+   [
+    [
+     "mine/one"
+    ],
+    [
+     "mine/one"
+    ],
+    []
+   ],
+   [
+    "mine/one"
+   ],
+   "OpenRouter model definitions not found: nobody/absent",
+   [],
+   [
+    {
+     "provider": "other",
+     "id": "b"
+    }
+   ]
+  ]
+ },
+ {
+  "step": "gateways",
+  "value": [
+   [],
+   [
+    {
+     "provider": "other",
+     "id": "b"
+    }
+   ]
+  ]
+ }
+]

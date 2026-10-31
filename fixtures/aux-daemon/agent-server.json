@@ -1,0 +1,2821 @@
+[
+ {
+  "step": "nothing loaded",
+  "value": [
+   null,
+   false,
+   false,
+   true,
+   false,
+   [],
+   0,
+   {
+    "available": 200,
+    "capacity": 200
+   },
+   {
+    "loaded": [],
+    "pendingSessionCreations": 0
+   }
+  ]
+ },
+ {
+  "step": "load an absent task",
+  "error": "Session not found: no-such-task"
+ },
+ {
+  "step": "connect",
+  "value": null
+ },
+ {
+  "step": "prompt",
+  "value": null
+ },
+ {
+  "step": "resend",
+  "value": null
+ },
+ {
+  "step": "reuse the id",
+  "value": null
+ },
+ {
+  "step": "a prompt",
+  "frames": [
+   [
+    "a",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 226>",
+     "running": false
+    }
+   ],
+   [
+    "a",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c1",
+     "commandType": "prompt"
+    }
+   ],
+   [
+    "a",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 227>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "a",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 227>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "a",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 227>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "a",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c1",
+     "commandType": "prompt",
+     "duplicate": true
+    }
+   ],
+   [
+    "a",
+    {
+     "op": "error",
+     "protocolVersion": 1,
+     "commandId": "c1",
+     "message": "Command id reused with different payload"
+    }
+   ]
+  ],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Prompting"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Hi"
+   ]
+  ]
+ },
+ {
+  "step": "after the run",
+  "value": [
+   false,
+   true,
+   true,
+   [
+    {
+     "limit": 3
+    }
+   ],
+   [
+    {
+     "limit": 1
+    }
+   ],
+   0
+  ]
+ },
+ {
+  "step": "replay with no cursor",
+  "value": null
+ },
+ {
+  "step": "run for replay",
+  "value": [
+   [
+    true,
+    true,
+    1,
+    true,
+    {
+     "available": 199,
+     "capacity": 200
+    }
+   ],
+   true
+  ]
+ },
+ {
+  "step": "replay",
+  "frames": [
+   [
+    "b",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 226>",
+     "running": false
+    }
+   ],
+   [
+    "c",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 228>",
+     "running": false
+    }
+   ],
+   [
+    "c",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c1",
+     "commandType": "prompt"
+    }
+   ],
+   [
+    "c",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "late",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 228>",
+     "running": true
+    }
+   ],
+   [
+    "late",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "stale",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 228>",
+     "running": true
+    }
+   ],
+   [
+    "stale",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "gone-run",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 228>",
+     "running": true
+    }
+   ],
+   [
+    "gone-run",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "c",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "late",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "stale",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "gone-run",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "c",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "late",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "stale",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "gone-run",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "after",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 228>",
+     "running": false
+    }
+   ],
+   [
+    "after",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "after",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 229>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "after-all",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 228>",
+     "running": false
+    }
+   ],
+   [
+    "old-run",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 228>",
+     "running": false
+    }
+   ],
+   [
+    "old-run",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "old",
+     "seq": 4,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ]
+  ],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Replaying"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Long"
+   ]
+  ]
+ },
+ {
+  "step": "gap",
+  "value": null
+ },
+ {
+  "step": "gaps in the replay",
+  "frames": [
+   [
+    "gap",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 230>",
+     "running": false
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 2,
+     "event": {
+      "type": "tool_execution_update",
+      "index": 0
+     }
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 3,
+     "event": {
+      "type": "tool_execution_update",
+      "index": 1
+     }
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 4,
+     "event": {
+      "type": "tool_execution_update",
+      "index": 2
+     }
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 5,
+     "event": {
+      "type": "tool_execution_update",
+      "index": 3
+     }
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 6,
+     "event": {
+      "type": "tool_execution_update",
+      "index": 4
+     }
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 7,
+     "event": {
+      "type": "tool_execution_update",
+      "index": 5
+     }
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 8,
+     "event": {
+      "type": "tool_execution_update",
+      "index": 6
+     }
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 9,
+     "event": {
+      "type": "tool_execution_update",
+      "index": 7
+     }
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 10,
+     "event": {
+      "type": "tool_execution_update",
+      "index": 8
+     }
+    }
+   ],
+   [
+    "gap-live",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 230>",
+     "running": true
+    }
+   ],
+   [
+    "gap-live",
+    {
+     "op": "error",
+     "protocolVersion": 1,
+     "message": "Replay buffer no longer contains requested cursor. Reload session to resync."
+    }
+   ],
+   [
+    "gap-near",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 230>",
+     "running": true
+    }
+   ],
+   [
+    "gap-near",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 10,
+     "event": {
+      "type": "tool_execution_update",
+      "index": 8
+     }
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 11,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "gap-live",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 11,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "gap-near",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 11,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "gap",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 12,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "gap-live",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 12,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "gap-near",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 12,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "gap-after",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 230>",
+     "running": false
+    }
+   ],
+   [
+    "gap-after",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 231>",
+     "seq": 2,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ]
+  ],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Gaps"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Long"
+   ]
+  ]
+ },
+ {
+  "step": "an event over the byte limit",
+  "value": null
+ },
+ {
+  "step": "gaps",
+  "frames": [
+   [
+    "huge-after",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 232>",
+     "running": false
+    }
+   ],
+   [
+    "huge-after",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "unknown",
+     "seq": 2,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ]
+  ],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Huge event"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Long"
+   ]
+  ]
+ },
+ {
+  "step": "start",
+  "value": null
+ },
+ {
+  "step": "steer",
+  "value": null
+ },
+ {
+  "step": "steer and interrupt",
+  "value": null
+ },
+ {
+  "step": "queue",
+  "value": null
+ },
+ {
+  "step": "interrupting steer",
+  "value": null
+ },
+ {
+  "step": "interrupting steer that stops the run",
+  "value": null
+ },
+ {
+  "step": "steering",
+  "frames": [
+   [
+    "s",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 233>",
+     "running": false
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c1",
+     "commandType": "prompt"
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 234>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c2",
+     "commandType": "steer"
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c3",
+     "commandType": "steer"
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 235>",
+     "running": false
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c1",
+     "commandType": "prompt"
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 236>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c2",
+     "commandType": "steer"
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 236>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 236>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 237>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 237>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: continue"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 237>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c3",
+     "commandType": "prompt"
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 238>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c4",
+     "commandType": "steer"
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 238>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 238>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 239>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 239>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: continue"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "i",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 239>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ]
+  ],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Steering"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Go"
+   ],
+   [
+    "steer",
+    "Also",
+    null
+   ],
+   [
+    "steer",
+    "x",
+    null
+   ],
+   [
+    "followUp",
+    "y"
+   ],
+   [
+    "interruptSteer",
+    {
+     "role": "assistant"
+    },
+    "z"
+   ],
+   [
+    "create",
+    "Interrupted"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Go"
+   ],
+   [
+    "abortForSteering"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "continue",
+    null
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Again"
+   ],
+   [
+    "interruptSteer",
+    "Stop",
+    null
+   ],
+   [
+    "abortForSteering"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "continue",
+    null
+   ]
+  ]
+ },
+ {
+  "step": "a stale turn",
+  "error": "This Turn has ended. Send the message again to start a new Turn."
+ },
+ {
+  "step": "steer a queued message",
+  "value": null
+ },
+ {
+  "step": "steer with an array",
+  "value": null
+ },
+ {
+  "step": "steering, queued",
+  "frames": [
+   [
+    "s",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c4",
+     "commandType": "steer"
+    }
+   ]
+  ],
+  "pinged": false,
+  "log": [
+   [
+    "steer",
+    [
+     {
+      "role": "user",
+      "id": "q1"
+     }
+    ],
+    null
+   ],
+   [
+    "steer",
+    [
+     {
+      "role": "user",
+      "id": "q1"
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "step": "steer when idle runs",
+  "value": null
+ },
+ {
+  "step": "queue when idle runs",
+  "value": null
+ },
+ {
+  "step": "steer a queued message when idle",
+  "value": null
+ },
+ {
+  "step": "a queued steer that fails goes back in the queue",
+  "value": [
+   null,
+   "steer failed",
+   null
+  ]
+ },
+ {
+  "step": "continue",
+  "value": null
+ },
+ {
+  "step": "an unknown command",
+  "value": null
+ },
+ {
+  "step": "interrupt command",
+  "value": null
+ },
+ {
+  "step": "commands",
+  "frames": [
+   [
+    "s",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 234>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 234>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c5",
+     "commandType": "continue"
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 240>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 240>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: continue"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 240>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c6",
+     "commandType": "dance"
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 241>",
+     "seq": 1,
+     "event": {
+      "type": "agent_error",
+      "errorMessage": "Unhandled session command: [object Object]"
+     }
+    }
+   ],
+   [
+    "s",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c7",
+     "commandType": "interrupt"
+    }
+   ]
+  ],
+  "pinged": false,
+  "log": [
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "steer",
+    "Again",
+    null
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "followUp",
+    "Again"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "steer",
+    [
+     {
+      "role": "user",
+      "id": "q1"
+     }
+    ],
+    null
+   ],
+   [
+    "create",
+    "Queued steer"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "steer",
+    [
+     {
+      "role": "user",
+      "id": "q1"
+     }
+    ],
+    null
+   ],
+   [
+    "restore"
+   ],
+   [
+    "changeStatus",
+    "errored"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Go"
+   ],
+   [
+    "steer",
+    [
+     {
+      "role": "user",
+      "id": "q1"
+     }
+    ],
+    null
+   ],
+   [
+    "restore"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "continue",
+    null
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "changeStatus",
+    "errored"
+   ],
+   [
+    "interrupt"
+   ]
+  ]
+ },
+ {
+  "step": "a run that fails before starting",
+  "value": null
+ },
+ {
+  "step": "status after",
+  "value": "idle"
+ },
+ {
+  "step": "reconnect to an errored task",
+  "value": null
+ },
+ {
+  "step": "failing",
+  "frames": [
+   [
+    "f",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 242>",
+     "running": false
+    }
+   ],
+   [
+    "f",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c1",
+     "commandType": "prompt"
+    }
+   ],
+   [
+    "f",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 243>",
+     "seq": 1,
+     "event": {
+      "type": "agent_error",
+      "errorMessage": "the model failed"
+     }
+    }
+   ],
+   [
+    "f2",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 242>",
+     "running": false
+    }
+   ]
+  ],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Failing"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Hi"
+   ],
+   [
+    "changeStatus",
+    "errored"
+   ]
+  ]
+ },
+ {
+  "step": "a worker failing",
+  "value": null
+ },
+ {
+  "step": "worker",
+  "frames": [],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Worker"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Work"
+   ],
+   [
+    "changeStatus",
+    "errored"
+   ],
+   [
+    "changeStatus",
+    "errored"
+   ],
+   [
+    "hook",
+    "subagent.run.ended",
+    "<id 272>",
+    "errored",
+    "not an error"
+   ]
+  ]
+ },
+ {
+  "step": "a worker that stops to ask",
+  "value": null
+ },
+ {
+  "step": "worker paused",
+  "frames": [],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Paused worker"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Work"
+   ]
+  ]
+ },
+ {
+  "step": "a routine run",
+  "value": null
+ },
+ {
+  "step": "already running",
+  "value": "Agent is already processing. Use steer() or queue() while streaming."
+ },
+ {
+  "step": "a task that cannot start",
+  "value": [
+   [
+    "PRECONDITION_FAILED",
+    "This task could not initialize. Your draft is preserved; check model and tool availability, then try again."
+   ],
+   "errored"
+  ]
+ },
+ {
+  "step": "a run in an archived project",
+  "value": "Project is unavailable: gone"
+ },
+ {
+  "step": "run failures",
+  "frames": [],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Routine run"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Tick"
+   ],
+   [
+    "create",
+    "Busy"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "One"
+   ],
+   [
+    "create",
+    "In project"
+   ]
+  ]
+ },
+ {
+  "step": "no open run",
+  "value": "exhausted"
+ },
+ {
+  "step": "status",
+  "value": "aborted"
+ },
+ {
+  "step": "resume an idle task",
+  "value": "skipped"
+ },
+ {
+  "step": "out of attempts",
+  "value": [
+   "exhausted",
+   4,
+   "errored"
+  ]
+ },
+ {
+  "step": "the last attempt",
+  "value": [
+   "resumed",
+   3
+  ]
+ },
+ {
+  "step": "a resume that cannot start",
+  "value": [
+   "exhausted",
+   "errored"
+  ]
+ },
+ {
+  "step": "recover",
+  "value": {
+   "resumed": 2,
+   "skipped": 0,
+   "exhausted": 2
+  }
+ },
+ {
+  "step": "when recovered",
+  "value": null
+ },
+ {
+  "step": "resuming",
+  "frames": [],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Last attempt"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "resumeAfterCrash",
+    null
+   ],
+   [
+    "hook",
+    "subagent.run.ended",
+    "<id 272>",
+    "aborted",
+    ""
+   ],
+   [
+    "create",
+    "Open child"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "resumeAfterCrash",
+    null
+   ],
+   [
+    "hook",
+    "subagent.run.ended",
+    "<id 261>",
+    "idle",
+    "Done: resumeAfterCrash"
+   ],
+   [
+    "create",
+    "Open run"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "resumeAfterCrash",
+    null
+   ]
+  ]
+ },
+ {
+  "step": "compact",
+  "value": null
+ },
+ {
+  "step": "compact fails",
+  "error": "compact failed"
+ },
+ {
+  "step": "system message, wakeup",
+  "value": null
+ },
+ {
+  "step": "system message, queue",
+  "value": null
+ },
+ {
+  "step": "system message, steer",
+  "value": null
+ },
+ {
+  "step": "system message to a suspended task",
+  "value": null
+ },
+ {
+  "step": "system message while running",
+  "value": [
+   "Aborted",
+   "Aborted"
+  ]
+ },
+ {
+  "step": "queued messages",
+  "value": [
+   true,
+   true,
+   true
+  ]
+ },
+ {
+  "step": "append while loaded",
+  "value": null
+ },
+ {
+  "step": "append while not loaded",
+  "value": [
+   {
+    "role": "user",
+    "content": [
+     {
+      "type": "text",
+      "text": "Stored"
+     }
+    ],
+    "timestamp": 1
+   }
+  ]
+ },
+ {
+  "step": "refresh",
+  "value": [
+   "read-only",
+   {
+    "a": 2
+   }
+  ]
+ },
+ {
+  "step": "prewarm",
+  "value": null
+ },
+ {
+  "step": "reload",
+  "value": true
+ },
+ {
+  "step": "reload while running",
+  "value": "Cannot reload a session while the agent is running."
+ },
+ {
+  "step": "calls",
+  "frames": [],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Calls"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "compact",
+    {
+     "instructions": "short"
+    }
+   ],
+   [
+    "create",
+    "Compacting"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "compact",
+    null
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    {
+     "role": "system-message",
+     "content": "Wake",
+     "kind": "k",
+     "metadata": {},
+     "timestamp": 1767241628500
+    }
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    {
+     "role": "system-message",
+     "content": "Later",
+     "kind": "k",
+     "metadata": {
+      "a": 1
+     },
+     "timestamp": 1767241628500
+    }
+   ],
+   [
+    "appendMessage",
+    {
+     "role": "system-message",
+     "content": "Held",
+     "kind": "k",
+     "metadata": {},
+     "timestamp": 1767241628500
+    }
+   ],
+   [
+    "create",
+    "Messaged"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "One"
+   ],
+   [
+    "sendSystemMessage",
+    "Now",
+    {
+     "kind": "k",
+     "mode": "steer"
+    }
+   ],
+   [
+    "sendSystemMessage",
+    "Soon",
+    {
+     "kind": "k",
+     "mode": "queue"
+    }
+   ],
+   [
+    "removeQueuedMessage",
+    "m"
+   ],
+   [
+    "updateQueuedMessage",
+    "m",
+    {
+     "text": "t"
+    }
+   ],
+   [
+    "moveQueuedMessage",
+    "m",
+    2
+   ],
+   [
+    "appendMessage",
+    {
+     "role": "user",
+     "content": "Note"
+    }
+   ],
+   [
+    "refreshBrowserBinding",
+    {
+     "profileId": "Default"
+    }
+   ],
+   [
+    "applyExecutionModel",
+    {
+     "provider": "test",
+     "modelId": "test"
+    }
+   ],
+   [
+    "terminateAll"
+   ],
+   [
+    "create",
+    "Unloaded"
+   ],
+   [
+    "create",
+    "Calls"
+   ],
+   [
+    "dispose",
+    {
+     "closeOwnedTabs": false
+    }
+   ],
+   [
+    "create",
+    "Reloaded"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "One"
+   ]
+  ]
+ },
+ {
+  "step": "interrupt a stored task",
+  "value": [
+   true,
+   "interrupted",
+   "Session interrupted by user."
+  ]
+ },
+ {
+  "step": "abort a stored task",
+  "value": [
+   true,
+   "aborted",
+   false,
+   false
+  ]
+ },
+ {
+  "step": "stop a tree",
+  "value": [
+   true,
+   true
+  ]
+ },
+ {
+  "step": "stopping",
+  "frames": [],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Top"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "One"
+   ],
+   [
+    "create",
+    "Under"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Two"
+   ],
+   [
+    "interrupt"
+   ],
+   [
+    "interrupt"
+   ],
+   [
+    "abort"
+   ],
+   [
+    "abort"
+   ]
+  ]
+ },
+ {
+  "step": "dead sockets",
+  "value": null
+ },
+ {
+  "step": "a command through a socket that closed",
+  "value": false
+ },
+ {
+  "step": "an ephemeral task pending purge",
+  "value": [
+   "Session is pending purge: <task>",
+   "This task could not initialize. Your draft is preserved; check model and tool availability, then try again."
+  ]
+ },
+ {
+  "step": "sockets",
+  "frames": [
+   [
+    "dies",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 244>",
+     "running": false
+    }
+   ],
+   [
+    "stays",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 244>",
+     "running": false
+    }
+   ],
+   [
+    "dies",
+    {
+     "op": "ack",
+     "protocolVersion": 1,
+     "commandId": "c1",
+     "commandType": "prompt"
+    }
+   ],
+   [
+    "dies",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 245>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "stays",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 245>",
+     "seq": 1,
+     "event": {
+      "type": "agent_start"
+     }
+    }
+   ],
+   [
+    "stays",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 245>",
+     "seq": 2,
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "Done: prompt"
+        }
+       ],
+       "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 2
+       }
+      }
+     }
+    }
+   ],
+   [
+    "stays",
+    {
+     "op": "event",
+     "protocolVersion": 1,
+     "runId": "<id 245>",
+     "seq": 3,
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ],
+   [
+    "e",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 246>",
+     "running": false
+    }
+   ]
+  ],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Dead sockets"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "Hi"
+   ],
+   [
+    "create",
+    "Closing"
+   ],
+   [
+    "create",
+    "Ephemeral"
+   ]
+  ]
+ },
+ {
+  "step": "dispose",
+  "value": true
+ },
+ {
+  "step": "dispose again",
+  "value": false
+ },
+ {
+  "step": "dispose a running task",
+  "value": [
+   true,
+   true
+  ]
+ },
+ {
+  "step": "idle time",
+  "value": [
+   true,
+   false
+  ]
+ },
+ {
+  "step": "no idle time",
+  "value": false
+ },
+ {
+  "step": "CLI task left suspended",
+  "value": "suspended"
+ },
+ {
+  "step": "disposal failure at load",
+  "value": "AUX_AGENT_ADMISSION_CLOSED"
+ },
+ {
+  "step": "disposal",
+  "frames": [
+   [
+    "d",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 247>",
+     "running": false
+    }
+   ],
+   [
+    "d",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "quick",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 248>",
+     "running": false
+    }
+   ],
+   [
+    "cli",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 249>",
+     "running": false
+    }
+   ]
+  ],
+  "pinged": true,
+  "log": [
+   [
+    "create",
+    "Disposed"
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "create",
+    "Disposed while running"
+   ],
+   [
+    "refreshMcpTools"
+   ],
+   [
+    "prompt",
+    "One"
+   ],
+   [
+    "abort"
+   ],
+   [
+    "dispose",
+    {
+     "closeOwnedTabs": true
+    }
+   ],
+   [
+    "create",
+    "Idles away"
+   ],
+   [
+    "dispose",
+    {
+     "closeOwnedTabs": false
+    }
+   ],
+   [
+    "create",
+    "Goes at once"
+   ],
+   [
+    "dispose",
+    {
+     "closeOwnedTabs": false
+    }
+   ],
+   [
+    "create",
+    "Goes at once"
+   ],
+   [
+    "dispose",
+    {
+     "closeOwnedTabs": false
+    }
+   ],
+   [
+    "create",
+    "CLI"
+   ],
+   [
+    "abort"
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "create",
+    "Closes while loading"
+   ],
+   [
+    "dispose"
+   ]
+  ]
+ },
+ {
+  "step": "drain",
+  "error": "Aux agent sessions did not settle",
+  "errors": [
+   "dispose failed"
+  ]
+ },
+ {
+  "step": "drain again",
+  "error": "Aux agent sessions did not settle",
+  "errors": [
+   "dispose failed"
+  ]
+ },
+ {
+  "step": "terminate",
+  "value": {
+   "loaded": [],
+   "pendingSessionCreations": 0
+  }
+ },
+ {
+  "step": "after draining",
+  "value": [
+   "AUX_AGENT_ADMISSION_CLOSED",
+   "AUX_AGENT_ADMISSION_CLOSED",
+   "This task could not initialize. Your draft is preserved; check model and tool availability, then try again.",
+   "AUX_AGENT_ADMISSION_CLOSED"
+  ]
+ },
+ {
+  "step": "shutdown",
+  "frames": [
+   [
+    "z",
+    {
+     "op": "ready",
+     "protocolVersion": 1,
+     "sessionId": "<id 250>",
+     "running": false
+    }
+   ],
+   [
+    "a",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "c",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "late",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "stale",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "gone-run",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "after",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "after-all",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "old-run",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "gap",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "gap-live",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "gap-near",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "gap-after",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "huge",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "huge-after",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "s",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "i",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "f",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "f2",
+    "closed",
+    1001,
+    "session disposed"
+   ],
+   [
+    "z",
+    "closed",
+    1001,
+    "session disposed"
+   ]
+  ],
+  "pinged": false,
+  "log": [
+   [
+    "create",
+    "Shutting down"
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ],
+   [
+    "dispose",
+    {}
+   ]
+  ]
+ },
+ {
+  "step": "the daemon's own server",
+  "value": [
+   {
+    "available": 200,
+    "capacity": 200
+   },
+   0
+  ]
+ }
+]

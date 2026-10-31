@@ -1,8 +1,8 @@
 /** The `models` tRPC namespace: model listings and catalogs, credentials, custom providers,
  * routing, subscription usage, the provider CLI status, Aux's download name and tab productivity
  * requests, and the OAuth flow procedures as the release keeps them (Aux registers no sign-in
- * providers, so the flow manager has none to start). The model registry, flow manager and
- * request runners stay the supplied ones. */
+ * providers, so the flow manager has none to start). The registry's credential paths, flow
+ * manager and request runners stay the supplied ones; its catalog side is models/catalog.mjs. */
 export function create({accountProcedure, z, TRPCError, models: m}) {
   const request = {requestId: z.string().uuid(), profileId: z.string().min(1).max(256)};
   const registry = accountId => m.models(accountId);

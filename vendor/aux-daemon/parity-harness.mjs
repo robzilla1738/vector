@@ -128,6 +128,10 @@ if (mode === 'aux') {
   };
   const shape = procedure => JSON.stringify({type: procedure._def.type, meta: procedure._def.meta, inputs: procedure._def.inputs.map(schema),
     output: procedure._def.output ? schema(procedure._def.output) : null});
+  // The services that replace a class or its methods rather than a procedure.
+  const {methods} = daemon.auxOwnedDaemon.store('modelCatalog', () => bindings);
+  wired.suppliedModelMethods = Object.keys(methods).filter(name => daemon.ModelsManager.prototype[name] !== methods[name]);
+  wired.agentServerIsAux = daemon.AgentSessionServer === daemon.auxOwnedDaemon.store('agentServer', () => bindings) && daemon.GlobalAgentSessionServer instanceof daemon.AgentSessionServer;
   wired.schemaMismatches = wired.aux.filter(path => {
     const [root, ...rest] = path.split('.');
     return shape(daemon.auxRouter._def.procedures[path]) !== shape(supplied[root]._def.procedures[rest.join('.')]);

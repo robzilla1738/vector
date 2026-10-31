@@ -6,6 +6,7 @@
 import {createServer} from 'node:http';
 import {mkdirSync, rmSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
+import {SERVICE_STEPS} from './parity-steps-services.mjs';
 
 /** A schema as JSON, with its symbol keys (TypeBox's kind and optional marks) as text. */
 function plain(value) {
@@ -650,4 +651,4 @@ async function runContext(harness) {
   return results;
 }
 
-export const STEPS = {toolLists, tools: runTools, bridge: runBridge, mcp: runMcp, context: runContext};
+export const STEPS = {toolLists, tools: runTools, bridge: runBridge, mcp: runMcp, context: runContext, ...SERVICE_STEPS};

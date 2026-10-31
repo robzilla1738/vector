@@ -1,8 +1,8 @@
 /** The Context Awareness ledger, its read side: captured events, the ten-minute summaries made from
- * them, and the counts the settings and status views show. Writing events (the native helper and
- * the browser), reading captured content (stored encrypted), clearing, and making summaries (a
- * model) stay the supplied ones, as do the ledger file and its migrations. Queries use the
- * supplied query builder and tables. Times are epoch milliseconds. */
+ * them, and the counts the settings and status views show. Writing and clearing are in
+ * contextWrite.mjs, stored content in contextEvidence.mjs. Making summaries (a model) stays the
+ * supplied one, as do the ledger file and its migrations. Queries use the supplied query builder
+ * and tables. Times are epoch milliseconds. */
 const searchTerms = text => text ? [...new Set(text.toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}+#._-]*/gu) ?? [])] : [];
 
 /** The first index in `events` (sorted by time) at or after `at`. */
@@ -67,6 +67,10 @@ export function create({stores: {contextLedger: l}}) {
         domains: db.selectDistinct({domain: events.domain}).from(events).where(and(eq(events.bundleId, app.bundleId), sql`${events.domain} IS NOT NULL`)).limit(5).all()
           .flatMap(row => row.domain ? [row.domain] : [])}));
   };
+
+  /** Whether the user was browsing since `since`, as the browser reported it. */
+  const hasRecentAttendedBrowsing = (accountId, since) => l.hasContextAwarenessLedger(accountId) && ledger(accountId).select({id: events.id}).from(events)
+    .where(and(eq(events.source, 'aux_dom'), gte(events.occurredAt, since), sql`json_extract(${events.payload}, '$.trigger') IN ('navigation', 'activation', 'interaction')`)).limit(1).get() !== undefined;
 
   /** Drops a window's ten-minute summary and queues the window to be summarized again. */
   const resetTenMinuteWindow = (accountId, window) => {
@@ -136,7 +140,7 @@ export function create({stores: {contextLedger: l}}) {
       summaryCount: Number(usage?.count ?? 0), inputTokens: Number(usage?.inputTokens ?? 0), outputTokens: Number(usage?.outputTokens ?? 0)};
   };
 
-  return {listContextAwarenessEvents, listHistorySummaries, listContextAwarenessView, listContextAwarenessRecents, resetTenMinuteWindow, getSummaryJobStatus,
+  return {listContextAwarenessEvents, listHistorySummaries, listContextAwarenessView, listContextAwarenessRecents, hasRecentAttendedBrowsing, resetTenMinuteWindow, getSummaryJobStatus,
     getContextAwarenessStats, listNativeCaptureHealth, getContextAwarenessViewStatus, eventIndexAt,
     tenMinuteWindow: at => {
       const from = Math.floor(at / l.tenMinutes) * l.tenMinutes;

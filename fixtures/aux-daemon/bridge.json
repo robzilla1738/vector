@@ -1638,7 +1638,7 @@
        "pwmAccountId": {
         "type": "string",
         "format": "uuid",
-        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 60>|<id 61>)$"
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 292>|<id 293>)$"
        },
        "targetId": {
         "type": "string",
@@ -3083,7 +3083,7 @@
          "pwmAccountId": {
           "type": "string",
           "format": "uuid",
-          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 60>|<id 61>)$"
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 292>|<id 293>)$"
          },
          "targetId": {
           "type": "string",
@@ -3326,7 +3326,7 @@
             "documentCapability": {
              "type": "string",
              "format": "uuid",
-             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 60>|<id 61>)$"
+             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 292>|<id 293>)$"
             }
            },
            "required": [
@@ -4308,7 +4308,7 @@
          "pwmAccountId": {
           "type": "string",
           "format": "uuid",
-          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 60>|<id 61>)$"
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 292>|<id 293>)$"
          },
          "targetId": {
           "type": "string",
@@ -4551,7 +4551,7 @@
             "documentCapability": {
              "type": "string",
              "format": "uuid",
-             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 60>|<id 61>)$"
+             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 292>|<id 293>)$"
             }
            },
            "required": [
@@ -5695,7 +5695,7 @@
            "pwmAccountId": {
             "type": "string",
             "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 60>|<id 61>)$"
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 292>|<id 293>)$"
            },
            "targetId": {
             "type": "string",
@@ -5938,7 +5938,7 @@
               "documentCapability": {
                "type": "string",
                "format": "uuid",
-               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 60>|<id 61>)$"
+               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 292>|<id 293>)$"
               }
              },
              "required": [
@@ -6992,7 +6992,7 @@
            "pwmAccountId": {
             "type": "string",
             "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 60>|<id 61>)$"
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 292>|<id 293>)$"
            },
            "targetId": {
             "type": "string",
@@ -7235,7 +7235,7 @@
               "documentCapability": {
                "type": "string",
                "format": "uuid",
-               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 60>|<id 61>)$"
+               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<id 292>|<id 293>)$"
               }
              },
              "required": [
@@ -8354,8 +8354,8 @@
    },
    {
     "step": "history with queries",
-    "error": "parity harness: no native commands",
-    "name": "Error"
+    "error": "Invalid authentication tag length: 0",
+    "name": "TypeError"
    },
    {
     "step": "history",

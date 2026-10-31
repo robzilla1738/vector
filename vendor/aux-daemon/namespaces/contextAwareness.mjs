@@ -1,6 +1,6 @@
 /** The `contextAwareness` tRPC namespace: what the Context Awareness helper captured, its
  * permissions, history views and summaries. Aux and Aux Canary never appear among the apps to
- * choose from. The capture store, native helper and summarizer stay the supplied ones. */
+ * choose from. The native helper and summarizer stay the supplied ones. */
 const OWN_BUNDLE_IDS = new Set(['dev.aux.browser', 'dev.aux.browser.canary']);
 
 export function create({accountProcedure, z, contextAwareness: c}) {

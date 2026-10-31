@@ -731,4 +731,8 @@ export const EXTRA_EXPORTS = ['attentionByAccountId', 'hasForegroundAgentManager
   // MCP.
   'McpManager', 'getMcpConnectionStatus', 'inspectMcpConnection', 'connectMcpServer', 'cancelMcpConnection', 'forgetMcpConnectionStatus', 'disconnectMcpServer', 'finishMcpOAuthFlow', 'migrateLegacyMcpInventories',
   // Context Awareness.
-  'isCaptureAllowed', 'findCapturedUrls', 'getContextAwarenessFootprint', 'formatHistorySearch', 'formatHistoryRead', 'historyRowAt'];
+  'isCaptureAllowed', 'findCapturedUrls', 'getContextAwarenessFootprint', 'formatHistorySearch', 'formatHistoryRead', 'historyRowAt',
+  'recordContextAwarenessEvent', 'recordCapture', 'clearContextAwarenessAndFrames', 'readContextAwarenessEvents', 'readEventContent', 'createEvidenceReader', 'verifyContextAwarenessStore', 'sealContextAwarenessFrames',
+  'compactDegradedContextAwarenessFrames', 'runContextAwarenessGc', 'reclaimContextAwarenessSpace', 'suppressionSummary', 'bumpDeletionEpoch', 'createContextAwarenessWriteFence', 'findLatestContextAwarenessSession', 'hasRecentAttendedBrowsing',
+  // The agent server and the model registry.
+  'AgentSessionServer', 'GlobalAgentSessionServer', 'models', 'ModelsManager', 'MemoryManager'];

@@ -1,15 +1,9 @@
 /** What the agent and the settings page read about Context Awareness beyond the ledger's rows: the
- * capture policy, the disk footprint, which URLs are already captured, and the history tools' text.
- * Reading captured content (stored encrypted) stays the supplied one. */
-import {readdirSync, statSync} from 'node:fs';
-import path from 'node:path';
-
-const FOOTPRINT_TTL_MS = 3e5, DEFAULT_MAX_BYTES = 12288, URL_BATCH = 500;
+ * capture policy, which URLs are already captured, and the history tools' text. */
+const DEFAULT_MAX_BYTES = 12288, URL_BATCH = 500;
 const COMPUTER_USE_APP = [/^aumid:coursondigital\.auxcomputeruse(?:\.canary)?_[^!]+!computeruse$/, /^win32:.*[\\/]auxcomputeruse\.exe$/];
 
 export function create({contextHistory: h}) {
-  const footprints = new Map();
-
   function isCaptureAllowed(accountId, {url, typedText, bundleId} = {}) {
     const domain = url ? h.resolveCredentialDomain(url)?.preferredDomain ?? '' : '', settings = h.settings(accountId).get('contextAwareness');
     const refuse = reason => ({allowed: false, reason, domain});
@@ -34,31 +28,6 @@ export function create({contextHistory: h}) {
       for (const {url} of rows) if (url) captured.add(url);
     }
     return captured;
-  }
-
-  function episodicPages(directory, prefix) {
-    try {
-      return readdirSync(directory).filter(name => name.startsWith(prefix)).map(name => path.join(directory, name));
-    } catch {
-      return [];
-    }
-  }
-
-  const fileSize = file => {
-    try {
-      return statSync(file).size;
-    } catch {
-      return 0;
-    }
-  };
-
-  function getContextAwarenessFootprint(accountId, now = Date.now()) {
-    const cached = footprints.get(accountId);
-    if (cached && now - cached.at < FOOTPRINT_TTL_MS) return cached.value;
-    const pages = episodicPages(path.join(h.memoryDir(h.getAccountRoot(accountId)), h.EPISODIC_DIR), h.CONTEXT_AWARENESS_PAGE_PREFIX);
-    const value = {...h.measureDbFootprint(accountId), fileBytes: pages.reduce((total, page) => total + fileSize(page), 0)};
-    footprints.set(accountId, {at: now, value});
-    return value;
   }
 
   const historyRowAt = row => row.type === 'event' ? row.occurredAt : row.type === 'summary' ? row.windowTo : row.at;
@@ -134,5 +103,5 @@ export function create({contextHistory: h}) {
     return entries.map(entry => `${h.readHead(entry)}\n${entry.notice ? `${entry.notice}\n` : ''}${entry.content || readPlaceholder(entry)}${readTail(entry)}`).join(h.READ_BLOCK_SEPARATOR);
   }
 
-  return {isCaptureAllowed, findCapturedUrls, getContextAwarenessFootprint, historyRowAt, formatHistorySearch, formatHistoryRead};
+  return {isCaptureAllowed, findCapturedUrls, historyRowAt, formatHistorySearch, formatHistoryRead};
 }
