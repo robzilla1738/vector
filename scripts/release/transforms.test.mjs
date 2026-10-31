@@ -13,6 +13,7 @@ import {DAEMON_FILES as AGENT_FILES, EXTENSION_EDITS as AGENT_EDITS, UI_FILE as 
 import {RUNTIME_FILES as AUX_DAEMON_FILES} from '../../vendor/aux-daemon/integration.mjs';
 import {ASSET_FILES as POLISH_ASSETS, EDITS as POLISH_EDITS} from '../../vendor/provided/polish/integration.mjs';
 import {DOMPURIFY_CHUNK} from '../../vendor/provided/polish/dompurify.mjs';
+import {RUNTIME_FILE as I18N_RUNTIME, carriesStrings, localize, localizedBlock} from '../../vendor/provided/i18n/integration.mjs';
 import {BUILTIN_SKILLS_DIR, SKILL_FILES, SKILL_ICONS, frontMatter} from '../../vendor/aux-skills/integration.mjs';
 import {COMPONENTS, GLOBALS_CSS, LICENSE as STYLES_LICENSE, NEWTAB_PAGE, REMOVED_ASSETS, REMOVED_CHUNKS, REMOVED_FILES as STYLES_REMOVED, ROUTES, integrateNewTab, integrateStyles, readComponent,
   readRoute}
@@ -42,7 +43,7 @@ const packageEdited = relative => {
   for (const rule of packageEdits) if (rule.target === relative) text = text.split(rule.find).join(rule.replace);
   return text;
 };
-for (const relative of [...touched, newTab]) {
+for (const relative of [...touched, newTab, `${dist}/assets/browser-color-scheme-Df5VSuPV.js`]) {
   mkdirSync(path.dirname(path.join(app, relative)), {recursive: true});
   writeFileSync(path.join(app, relative), packageEdited(relative));
 }
@@ -71,8 +72,8 @@ test('transforms.mjs adds the provider CLI, agent and Aux daemon files and appli
   const result = transform();
   assert.equal(result.status, 0, result.stderr);
   const applied = JSON.parse(result.stdout);
-  assert.deepEqual(applied.filter(entry => entry.added).map(entry => path.basename(entry.path)), [...RUNTIME_FILES, ...AGENT_FILES, AGENT_UI, ...POLISH_ASSETS, ...AUX_DAEMON_FILES.map(file => path.basename(file)), ...SKILL_ICONS, STYLES_LICENSE.target]);
-  assert.deepEqual(applied.filter(entry => !entry.added && !entry.removed && !entry.label.endsWith('out of the deps')).map(entry => entry.path), [...touched.slice(0, 3), touched[0], touched[0], ...agentChunks, ...polishChunks, purifyChunk, ...skillFiles, styleFiles[0], newTab, ...componentChunks, ...routeChunks]);
+  assert.deepEqual(applied.filter(entry => entry.added).map(entry => path.basename(entry.path)), [...RUNTIME_FILES, ...AGENT_FILES, AGENT_UI, ...POLISH_ASSETS, ...AUX_DAEMON_FILES.map(file => path.basename(file)), ...SKILL_ICONS, STYLES_LICENSE.target, I18N_RUNTIME]);
+  assert.deepEqual(applied.filter(entry => !entry.added && !entry.removed && !entry.label.endsWith('out of the deps') && entry.label !== 'languages').map(entry => entry.path), [...touched.slice(0, 3), touched[0], touched[0], ...agentChunks, ...polishChunks, purifyChunk, ...skillFiles, styleFiles[0], newTab, ...componentChunks, ...routeChunks]);
   assert.deepEqual(applied.filter(entry => entry.removed).map(entry => entry.path), [...x64Pty, ...styleFiles.slice(1), ...removedFiles]);
   for (const file of removedFiles) assert.ok(!existsSync(path.join(app, file)), file);
   // Nothing left in the bundle names a chunk that is gone, in an import or a Vite deps table.
@@ -88,10 +89,10 @@ test('transforms.mjs adds the provider CLI, agent and Aux daemon files and appli
   for (const [map, read] of [[COMPONENTS, readComponent], [ROUTES, readRoute]])
     for (const [chunk, blocks] of Object.entries(map)) {
       const text = readFileSync(path.join(app, dist, chunk), 'utf8');
-      for (const {file} of blocks) assert.equal(text.split(read(file)).length - 1, 1, `${chunk}: ${file}`);
+      for (const {file} of blocks) assert.equal(text.split(carriesStrings(chunk, text) ? localizedBlock(chunk, read(file)) : read(file)).length - 1, 1, `${chunk}: ${file}`);
     }
   for (const file of skillFiles) assert.deepEqual(readFileSync(path.join(app, file)), readFileSync(path.join(repoRoot, 'vendor/aux-skills/builtin', path.relative(skills, file))), file);
-  assert.deepEqual(readFileSync(path.join(app, dist, 'assets', AGENT_UI)), readFileSync(path.join(repoRoot, 'vendor/provided/agent', AGENT_UI)));
+  assert.equal(readFileSync(path.join(app, dist, 'assets', AGENT_UI), 'utf8'), localize(readFileSync(path.join(repoRoot, 'vendor/provided/agent', AGENT_UI), 'utf8')));
   for (const file of RUNTIME_FILES) {
     assert.deepEqual(readFileSync(path.join(app, daemon, 'provider-cli', file)), readFileSync(path.join(repoRoot, 'vendor/provided/provider-cli', file)), file);
   }
